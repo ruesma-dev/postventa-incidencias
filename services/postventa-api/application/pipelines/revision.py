@@ -48,6 +48,16 @@ El historial no lee Sigrid; da, por revisión, los campos cambiados frente a la
 anterior (o a los importados). `candidatas_al_volcado` no tiene ruta HTTP: es
 el punto de entrada de F-040, y devuelve lo que da `RevisionPort.aprobadas`.
 
+## `normalizar_ubicaciones` (F-060, R17–R21)
+
+`specs/F-060-normalizar-ubicaciones/design.md` §8. Se **añade** a lo de
+F-056, que no cambia: `revision.listar(tope=10.000)` (si vuelven más,
+`BandejaDemasiadoGrande` con `contar`, sin leer las ubicaciones ni escribir)
+→ las ubicaciones válidas, **una** lectura con el catálogo **ya leído** que
+recibe (el endpoint lo lee con `leer_catalogo`; la importación pasa el suyo)
+→ `planificar_normalizacion` del dominio → si es un ensayo o el plan está
+vacío, el recuento y nada más; si no, `registrar_lote` y lo que dejó escrito.
+
 ## Logs
 
 Ninguno aquí: los pone el borde (R31, R41), con la obra, la incidencia, la
@@ -66,6 +76,10 @@ from domain.models.errores import (
     BandejaDemasiadoGrande,
     CatalogoSinVerificar,
     IncidenciaNoEncontrada,
+)
+from domain.models.normalizacion import (
+    RecuentoNormalizacion,
+    planificar_normalizacion,
 )
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
@@ -113,12 +127,14 @@ __all__ = [
     "IncidenciaRevisada",
     "PaginaDeRevision",
     "PeticionDeListado",
+    "ResultadoNormalizacion",
     "aplicar_accion",
     "candidatas_al_volcado",
     "fuente_de_ubicaciones",
     "historial",
     "leer_ubicaciones_validas",
     "listar_para_revisar",
+    "normalizar_ubicaciones",
 ]
 
 #: Las ubicaciones válidas de cada unidad del catálogo recién leído (R46–R48):
@@ -369,3 +385,69 @@ def candidatas_al_volcado(
 ) -> tuple[CandidataAlVolcado, ...]:
     """Las incidencias aprobadas de la obra, y ninguna otra (R34): para F-040."""
     return revision.aprobadas(obra_codigo=normalizar_codigo_obra(obra_codigo))
+
+
+# --------------------------------------------------------------------------
+# F-060 · normalizar las ubicaciones de una obra (design.md §8)
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ResultadoNormalizacion:
+    """Lo que hizo la normalización de una obra (R10, R19, R20).
+
+    `normalizadas` son las revisiones registradas y `conflictos` las que se
+    saltaron porque alguien actuó entre la lectura y la escritura (R13): las
+    dos a 0 en un ensayo, y su suma igual a `recuento.normalizables` en la
+    real. Solo recuentos: ningún texto ni identificador.
+    """
+
+    obra_codigo: str
+    ensayo: bool
+    recuento: RecuentoNormalizacion
+    normalizadas: int
+    conflictos: int
+
+
+def normalizar_ubicaciones(
+    obra_codigo: str,
+    *,
+    revision: RevisionPort,
+    catalogo: CatalogoObra,
+    ubicaciones: FuenteDeUbicaciones,
+    ahora: datetime,
+    ensayo: bool,
+) -> ResultadoNormalizacion:
+    """Normaliza las ubicaciones de la bandeja de una obra (R17–R21, §8).
+
+    Las incidencias, con el tope de F-056: si vuelven más, `BandejaDemasiadoGrande`
+    con el recuento, **sin** leer las ubicaciones ni escribir (R17). Las
+    ubicaciones válidas, **una** lectura con el catálogo ya leído (R18): son
+    las de la fuente de F-056, ya filtradas (de 48 como mucho), así que ningún
+    valor de la lista puede tumbar el lote con el `CHECK` de la base. El plan,
+    del dominio. En un ensayo, o sin nada que normalizar, no se llama al lote
+    (R19); si no, el lote, y lo que dejó escrito (R20).
+    """
+    situaciones = revision.listar(obra_codigo=obra_codigo, tope=TOPE_LECTURA_OBRA)
+    if len(situaciones) > TOPE_LECTURA_OBRA:
+        total = revision.contar(obra_codigo=obra_codigo)
+        raise BandejaDemasiadoGrande(
+            f"la obra tiene {total} incidencias en la bandeja y la normalización "
+            f"lee {TOPE_LECTURA_OBRA} como mucho: no se normaliza una parte en silencio",
+            total=total,
+        )
+    plan = planificar_normalizacion(situaciones, ubicaciones(catalogo), ahora=ahora)
+    normalizadas = conflictos = 0
+    if not ensayo and plan.revisiones:
+        lote = revision.registrar_lote(
+            revisiones=plan.revisiones, esperadas=plan.esperadas
+        )
+        normalizadas = len(lote.registradas)
+        conflictos = len(lote.desactualizadas)
+    return ResultadoNormalizacion(
+        obra_codigo=obra_codigo,
+        ensayo=ensayo,
+        recuento=plan.recuento,
+        normalizadas=normalizadas,
+        conflictos=conflictos,
+    )

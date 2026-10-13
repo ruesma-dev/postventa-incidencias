@@ -1,6 +1,45 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-060 · Bloque 5 HECHO (implementer, 2026-10-13)** · T17–T23 en `d2053d5`..`37b60bd` y el informe. `init.sh` en verde (api 8147 passed, 123 skipped, 2156 s; cobertura 100 % de 324 líneas); mutación 10/10 y 26/26 a mano. **Desviación pendiente de aceptación**: los tramos de la revisión se llaman `construir.bandeja`/`bandeja.listar` y no `construir.revision`/`revision.listar` (design §11.3), porque `test_f056_r31_…` (intocable) exige que la única línea del listado con «revision» sea la de F-056. Tests de documentación de otras features ampliados y declarados (decisión del líder): f053, f012, f019 y dos de f056 (uno, la cabecera, cambia lo que exige). Detalle: `progress/impl_F-060.md`, Bloque 5. Siguiente: review final. Pendientes: T7 (humano), Bloque 6.
+
+> **F-060 · decisión del humano 2026-10-12 (opción (b))**: mejor esfuerzo = cualquier excepción de la normalización tras importar se registra por su tipo y no afecta a la importación; el test de F-036 `test_f036_r118_…` no se toca. Bloque 4 retomado.
+
+> **F-060 · decisión del humano 2026-10-10 (opción (a))**: `test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5`
+> se amplía sin relajar a las siete operaciones de `RevisionPort` (más `registrar_lote`); excepción declarada en
+> `design.md` §12, R39, T19 y la cabecera de `tasks.md`. Bloque 2 en curso.
+
+> ## F-060 · `in_progress` · 2026-10-09 · spec APROBADA por el humano («si») · Bloque 1 HECHO (T1–T3, 19/19 mutantes muertos), pendiente de review
+>
+> `specs/F-060-normalizar-ubicaciones/` (requirements R1–R43 + V1–V3, design §0–§15, tasks T1–T36 en 7 bloques).
+> Rama `feature/F-060-normalizar-ubicaciones`; base fija `33d8938`. Solo `services/postventa-api`, **sin DDL**.
+>
+> **Qué propone**
+> - **D-1** la normalización es **una revisión `editar` del sistema** en `revisiones_bandeja` (los vigentes con solo
+>   la ubicación cambiada al texto de Sigrid). Descartadas: normalizar al importar (no cubre los 110) y el vigente
+>   calculado (rompe la coherencia de F-056 y el formulario de F-038).
+> - **D-2** se lanza **tras cada importación que registra filas** (mejor esfuerzo: si falla, la importación responde
+>   igual y avisa en el log) **y a demanda** con `POST /api/revision/normalizar` (`{obra, confirmado, ensayo}`,
+>   `ensayo` obligatorio), que es como se normalizan los 110 de la 0677.
+> - **D-3** coincide salvo mayúsculas (`casefold`), blancos en los extremos y forma Unicode (NFC); no blancos
+>   interiores, ni tildes, ni puntuación. Dos candidatos en la lista de la unidad → no se normaliza (sigue fuera).
+> - **D-4** constancia sin DDL: `oid` y correo = `sistema:normalizar_ubicacion` (sin `@`: ninguna persona puede
+>   enviarlo). La alternativa (columna nueva) obligaría a mover el `16_` de F-059.
+> - **D-6** solo `nueva`/`editada` (nunca `aprobada`: perdería la aprobación). **D-7** un lote, una transacción,
+>   frescura por fila; las desactualizadas se saltan.
+> - **Listado lento**: el código no permite elegir causa (dos conexiones nuevas a PostgreSQL por petición, primera
+>   petición del proceso con DDL, frío de Flex Consumption, red de la SWA…). **D-9** primero una traza con tiempos por
+>   tramo (`F-060 tiempos del listado`) y medición M1 en producción (consola + App Insights, solo lectura); el
+>   remedio se elige con el dato entre siete ya diseñados (§11.4). **D-10** objetivo en caliente: máx. < 10 s, p50 < 3 s.
+>
+> **Lo que debe validar el humano**: D-1, D-2, D-4 y **Q-1** (la normalizada queda `editada`, no `nueva`: ~110
+> pasan de `nueva` a `editada`) bloquean empezar; Q-2 (el literal), Q-3 (¿cuenta el frío?), Q-4 (NFC), Q-5 (conexión
+> viva por proceso, solo si M-1 no basta) y Q-6 (cualquiera de `posventa-usuarios` lanza la normalización).
+>
+> **Impacto**: F-038 **sin cambios de forma** (verá «editar por sistema:normalizar_ubicacion»; mejora opcional de
+> etiqueta). F-059 sin cambios de contrato; su cuenta de anónimos pasa de veintitrés a **veinticuatro** (la ajusta el
+> líder al llevar su spec a su rama). F-058 debe conservar la llamada tras importar.
+
 > ## ✅ F-056 CERRADA · 2026-10-09 · desplegada y comprobada (T19) · siguiente: F-060 (spec)
 >
 > Merge en `dev`/`main` (`2feca6e`, push hecho) y cierre en la rama (`138d8d5`, pendiente de merge y push).
@@ -8,7 +47,8 @@
 >
 > - **Siguiente: F-060** (normalizar las ubicaciones al texto exacto de Sigrid; y el listado lento, p50 7,1 s).
 >   Falta su spec y enseñarla al humano (PARADA 1).
-> - Orden: F-060 → F-038 → F-057 → F-059 → F-040 → F-058 → F-055 → F-052 → F-054.
+> - **Orden (humano, 2026-10-09, para llegar antes a escribir en Sigrid)**: F-060 → **F-059** (primera escritura real,
+>   un parte en la 0626) → F-038 → **F-040** (volcado masivo) → F-057 → F-058 → F-055 → F-052 → F-054.
 > - Worktrees vivos: `postventa-f038` (rama F-038, specs de F-038/F-056) y `postventa-f040` (rama F-040, specs
 >   de F-040/F-059). Pendiente de respuesta del humano: si se manda a `arnes-base` la propuesta del «RED de
 >   recogida» (review del Bloque 1 de F-056).

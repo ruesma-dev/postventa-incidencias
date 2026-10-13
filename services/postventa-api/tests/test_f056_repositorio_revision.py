@@ -398,6 +398,9 @@ def _repositorio(conexion: ConexionDoble) -> RepositorioRevisionPostgres:
 
 
 def test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5():
+    """Las seis de F-056 y, desde F-060, `registrar_lote` (el lote de la
+    normalización): conjunto **exacto** de siete. Ampliado sin relajar por
+    decisión del humano 2026-10-10 (F-060 `design.md` §12, R39)."""
     publicos = sorted(n for n in vars(RevisionPort) if not n.startswith("_"))
 
     assert publicos == [
@@ -406,6 +409,7 @@ def test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5():
         "historial",
         "listar",
         "registrar",
+        "registrar_lote",
         "situacion",
     ]
 

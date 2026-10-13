@@ -148,6 +148,15 @@ Endpoints:
         aprobado lo volcará F-040. Por eso no depende de ninguna ventana de
         escritura.
 
+    POST /api/revision/normalizar
+        Pone en el texto **exacto** de Sigrid la ubicación de cada incidencia
+        de la bandeja de **una** obra que solo difiere en mayúsculas (F-060),
+        con `confirmado: true` y `ensayo` booleanos (el ensayo no escribe
+        nada). Lee Sigrid solo por `POST /api/sql/read` y escribe en el
+        esquema propio, append-only, una revisión `editar` del sistema
+        (`sistema:normalizar_ubicacion`) por incidencia: **nada** en Sigrid.
+        Por eso no depende de ninguna ventana de escritura.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
@@ -262,6 +271,11 @@ llamada (100 por defecto) y una lectura de la obra con tope de 10.000, que si
 se pasa responde 409 y nunca recorta en silencio; en el log, la obra, el
 tamaño de página y **cuántas** volvieron. Con él los anónimos son veinte.
 
+`POST /api/revision/normalizar` (F-060) **no añade nada** a este cuadro: no
+devuelve ningún dato de fuera, solo recuentos (ni textos, ni identificadores,
+ni correos), y lo que escribe son revisiones del sistema en el esquema propio.
+Con él los anónimos son veintiuno.
+
 **Descartado a propósito: exigir `x-ms-client-principal`.** Parece subir el
 listón y no lo sube —va sin firma, se fabrica— y encima de algo que ya protege
 la plataforma sólo consigue **confundir qué protege de verdad**: quien lo lea
@@ -359,6 +373,7 @@ from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
 from interface_adapters.api.health import estado_del_servicio
 from interface_adapters.api.importar import importar_excel
+from interface_adapters.api.normalizacion import normalizar_obra
 from interface_adapters.api.parte import guardar_parte_http
 from interface_adapters.api.plantilla import descargar_plantilla
 from interface_adapters.api.remesa import registrar_remesa
@@ -1738,4 +1753,66 @@ def revision_acciones(req: func.HttpRequest) -> func.HttpResponse:
     except ConfiguracionPlantillaInvalida as error:
         log.error("revision/acciones con la configuración rota: %s", error.motivo)
         return _configuracion_rota(error)
+    return _json(cuerpo, 200)
+
+
+@app.route(
+    route="revision/normalizar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS
+)
+def revision_normalizar(req: func.HttpRequest) -> func.HttpResponse:
+    """Normaliza (o ensaya) las ubicaciones de la bandeja de una obra (F-060, R26–R30).
+
+    Solo traduce (§9.1), con los mismos códigos que `GET /api/revision`, y
+    **en todo lo que no es 200, sin escribir nada**:
+
+    - **200** · `{obra, ensayo, examinadas, no_exactas, normalizables,
+      ambiguas, sin_coincidencia, no_editables, normalizadas, conflictos}`:
+      solo números;
+    - **400** · `peticion_invalida`: el cuerpo no es JSON o no es el del
+      contrato, o la obra no vale (R26), antes de construir nada;
+    - **404** · ninguna obra con ese código tiene unidades de posventa;
+    - **409** · dos obras con ese código, o el catálogo o las ubicaciones
+      llegaron al techo, o la obra pasa de 10.000 incidencias
+      (`bandeja_demasiado_grande`, con el recuento);
+    - **503** · Sigrid, su configuración, el entorno o la base (D-14). Si la
+      base falla al escribir el lote —también un `CHECK`—, la transacción se
+      deshace entera: no queda ninguna escrita (R14).
+
+    Nada en Sigrid y ninguna ventana de escritura. El log lleva la obra,
+    `ensayo`, los recuentos y los segundos, o el código del rechazo: **nunca**
+    textos de ubicación, `oid` ni correo (R30).
+    """
+    try:
+        datos = req.get_json()
+    except ValueError:
+        log.info("revision/normalizar no procede: el cuerpo no es JSON")
+        return _json(
+            {
+                "error": "el cuerpo de la petición no es JSON válido",
+                "codigo": "peticion_invalida",
+            },
+            400,
+        )
+    try:
+        cuerpo = normalizar_obra(datos)
+    except (CodigoDeObraInvalido, PeticionDeRevisionInvalida) as error:
+        return _error_de_revision("revision/normalizar", error, 400)
+    except ObraSinUnidades as error:
+        log.info("revision/normalizar no procede: obra_sin_unidades")
+        return _rechazo_de_obra(error, 404)
+    except (ObraAmbigua, CatalogoSinVerificar) as error:
+        log.info(
+            "revision/normalizar no procede: %s", CODIGOS_DE_RECHAZO_DE_OBRA[type(error)]
+        )
+        return _rechazo_de_obra(error, 409)
+    except BandejaDemasiadoGrande as error:
+        return _error_de_revision("revision/normalizar", error, 409)
+    except (
+        CatalogoNoDisponible,
+        ConfiguracionSigridIncompleta,
+        ConfiguracionPgIncompleta,
+        PersistenciaNoDisponible,
+    ) as error:
+        log.warning("revision/normalizar sin Sigrid o sin base: %s", error.motivo)
+        return _sin_sigrid_o_sin_base("normalizar las ubicaciones", error)
     return _json(cuerpo, 200)

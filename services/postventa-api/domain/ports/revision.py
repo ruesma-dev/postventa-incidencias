@@ -20,16 +20,25 @@
 - `aprobadas`: las candidatas al volcado de una obra (R34): **solo** las que
   tienen como última revisión un `aprobar`. Es el punto de entrada de F-040.
 
+F-060 (`specs/F-060-normalizar-ubicaciones/design.md` §7) añade una séptima:
+
+- `registrar_lote`: las revisiones de normalización de una obra en **una**
+  transacción, con la misma frescura que `registrar` pero **por fila**: una
+  incidencia cuya última revisión ya no es la esperada se salta y las demás
+  se escriben (R12, R13). Devuelve un `ResultadoDelLote`.
+
 La última revisión es siempre la de mayor `revision_id` (R38). Las lecturas
 devuelven el **correo** de quien revisó y **nunca** el `oid` (R10): la
 revisión leída (`Revision`) no lo tiene.
 
-Si la base falla, `PersistenciaNoDisponible` (503).
+Si la base falla, `PersistenciaNoDisponible` (503); en el lote, sin escribir
+ninguna (R14).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 from uuid import UUID
 
@@ -40,7 +49,20 @@ from domain.models.revision import (
     SituacionDeRevision,
 )
 
-__all__ = ["RevisionPort"]
+__all__ = ["ResultadoDelLote", "RevisionPort"]
+
+
+@dataclass(frozen=True)
+class ResultadoDelLote:
+    """Lo que dejó escrito un lote (F-060 §7, R12, R13).
+
+    `registradas`: incidencia → `revision_id` de la revisión insertada.
+    `desactualizadas`: las que se saltaron porque su última revisión ya no era
+    la esperada (alguien actuó entre la lectura y la escritura).
+    """
+
+    registradas: Mapping[UUID, int]
+    desactualizadas: frozenset[UUID]
 
 
 @runtime_checkable
@@ -69,6 +91,19 @@ class RevisionPort(Protocol):
         `esperadas` tiene que llevar la propia incidencia. Si la última
         revisión de alguna no es la esperada, `RevisionDesactualizada` y nada
         escrito.
+        """
+        ...
+
+    def registrar_lote(
+        self,
+        *,
+        revisiones: Sequence[RevisionNueva],
+        esperadas: Mapping[UUID, int | None],
+    ) -> ResultadoDelLote:
+        """Añade, en una transacción, las revisiones que siguen frescas (R12–R16).
+
+        Cada revisión tiene que llevar su esperada y ninguna incidencia puede
+        repetirse (`ValueError`). Lote vacío: no abre nada.
         """
         ...
 

@@ -435,16 +435,24 @@ def test_f056_r44_las_filas_dicen_que_hace_cada_endpoint():
 
 
 def test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas():
-    """§8 · R40 y la cuenta de anónimos: veinte (O-1 de la review del Bloque 3)."""
+    """§8 · R40 y la cuenta de anónimos: veinte (O-1 de la review del Bloque 3).
+
+    **Ampliado por F-060 (T20), decisión del líder 2026-10-13** (criterio
+    aprobado por el humano en F-056; R39 y `design.md` §12 de F-060 lo
+    declaran): `POST /api/revision/normalizar` lleva la cuenta a
+    **veintiuno**. Las demás frases siguen exigidas, y «Los veinte» pasa, como
+    «Los diecisiete», a no poder estar.
+    """
     seccion = _normal(_integracion("## 8 · Qué exponemos nosotros"))
 
     for texto in (
-        "Los veinte quedan en nivel",
+        "Los veintiuno quedan en nivel",
         "Los tres endpoints de F-056 no dependen de ARCHIVO_HABILITADO ni de CIERRE_HABILITADO",
         "tercer endpoint que devuelve dato de fuera acumulado",
     ):
         assert texto in seccion, f"§8 no dice «{texto}»"
     assert "Los diecisiete quedan en nivel" not in seccion
+    assert "Los veinte quedan en nivel" not in seccion
 
 
 def test_f056_r44_la_seccion_ocho_dice_lo_que_hereda_f040_y_lo_que_falta():
@@ -495,11 +503,27 @@ def test_f056_r44_integracion_lleva_a_la_spec(seccion, titulo):
 
 
 def test_f056_r44_la_cabecera_dice_que_f056_lo_toco():
-    """La cabecera, al día (O-1 de la review de F-053)."""
-    cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
+    """La cabecera, al día (O-1 de la review de F-053).
 
-    assert "Última feature que lo tocó: F-056" in cabecera
-    assert "Fecha: 2026-10-09." in cabecera
+    **Ampliado por F-060 (T20), decisión del líder 2026-10-13** (criterio
+    aprobado por el humano en F-056, el mismo que F-056 aplicó al test de la
+    cabecera de F-036; R39 y `design.md` §12 de F-060 lo declaran): exigir que
+    F-056 sea la **última** feature caducaba con la siguiente. Exige una
+    cabecera bien formada —**una** fecha y **una** última feature—, que no
+    retroceda de lo que dejó F-056 (2026-10-09, F-056), y que F-056 y su
+    despliegue sigan constando en ella.
+    """
+    from datetime import date
+
+    cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
+    fechas = re.findall(r"Fecha: (\d{4}-\d{2}-\d{2})\. ", cabecera)
+    features = re.findall(r"Última feature que lo tocó: F-(\d{3})\b", cabecera)
+
+    assert len(fechas) == 1, f"se esperaba una «Fecha: AAAA-MM-DD.»: {fechas}"
+    assert len(features) == 1, f"se esperaba una «Última feature»: {features}"
+    assert date.fromisoformat(fechas[0]) >= date(2026, 10, 9)
+    assert int(features[0]) >= 56
+    assert "F-056" in cabecera
     assert "desplegada el 2026-10-09" in cabecera
 
 

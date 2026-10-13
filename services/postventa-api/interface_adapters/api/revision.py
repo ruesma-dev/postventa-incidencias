@@ -127,6 +127,11 @@ from infrastructure.sigrid.fabrica import (
 )
 
 from interface_adapters.api.plantilla import configuracion_de_la_plantilla
+from interface_adapters.api.tiempos import (
+    Cronometro,
+    es_primera_peticion,
+    segundos_de_proceso,
+)
 
 __all__ = [
     "MAX_CURSOR",
@@ -232,83 +237,116 @@ def listar_revision(
     ubicaciones: FuenteDeUbicaciones | None = None,
     configuracion: ConfiguracionPlantilla | None = None,
 ) -> dict[str, Any]:
-    """Una página de la bandeja de la obra para revisarla (R23–R31)."""
-    peticion = PeticionDeListado(
-        obra_codigo=normalizar_codigo_obra(obra),
-        filtro=_filtro(estado),
-        con_motivos=_con_motivos(con_motivos),
-        despues_de=None if cursor is None else clave_de_cursor(cursor),
-        tamano=_tamano(tamano),
-    )
-    # Sigrid primero: su puerta de entorno no abre ninguna conexión.
-    if catalogo_obra is None:
-        catalogo_obra = construir_catalogo_obra(obtener_ajustes())
-    if ubicaciones is None:
-        ubicaciones = construir_fuente_de_ubicaciones(obtener_ajustes())
-    if revision is None:
-        revision = construir_revision(obtener_ajustes())
-    if equivalencias is None:
-        equivalencias = construir_equivalencias(obtener_ajustes())
-    config = (
-        configuracion if configuracion is not None else configuracion_de_la_plantilla()
-    )
-    resultado = listar_para_revisar(
-        peticion,
-        revision=revision,
-        catalogo_obra=catalogo_obra,
-        equivalencias=equivalencias,
-        listas=config.listas,
-        ubicaciones=ubicaciones,
-    )
-    pagina = resultado.pagina
-    siguiente = pagina.siguiente
-    cuerpo = {
-        "obra": peticion.obra_codigo,
-        "catalogo": {
-            "unidades": [
-                {"codigo": u.codigo, "nombre": u.nombre}
-                for u in resultado.catalogo.unidades
-            ],
-            "ubicaciones": {
-                u.codigo: list(resultado.ubicaciones.get(u.codigo, ()))
-                for u in resultado.catalogo.unidades
-            },
-            "oficios": _oficios(resultado.catalogo, resultado.oficios),
-            "pares": _pares(resultado.catalogo),
-            "urgencias": [
-                {"codigo": o.codigo, "etiqueta": o.etiqueta}
-                for o in resultado.listas.urgencias
-            ],
-            "listados": [
-                {"codigo": o.codigo, "etiqueta": o.etiqueta}
-                for o in resultado.listas.listados
-            ],
-        },
-        "resumen": {
-            "total": resultado.resumen.total,
-            "por_estado": {
-                e.value: resultado.resumen.por_estado[e] for e in EstadoRevision
-            },
-            "con_motivos": resultado.resumen.con_motivos,
-            "por_motivo": {
-                m.value: resultado.resumen.por_motivo[m] for m in MotivoNoAprobable
-            },
-        },
-        "filtros": {"estado": peticion.filtro.value, "con_motivos": peticion.con_motivos},
-        "total_filtrado": pagina.total_filtrado,
-        "incidencias": [
-            _fila(f.situacion, f.estado, f.cambios, f.motivos) for f in pagina.filas
-        ],
-        "siguiente": None if siguiente is None else cursor_de(siguiente),
-    }
-    log.info(
-        "F-056 revision listada: obra=%s tamano=%d total_filtrado=%d devueltas=%d",
-        peticion.obra_codigo,
-        peticion.tamano,
-        pagina.total_filtrado,
-        len(pagina.filas),
-    )
-    return cuerpo
+    """Una página de la bandeja de la obra para revisarla (R23–R31).
+
+    F-060 (§11.3, R40–R42): cada petición deja además **una** línea
+    `F-060 tiempos del listado`, con 200 o con error, con los segundos de cada
+    tramo (`interface_adapters/api/tiempos.py`). El repositorio de la
+    revisión se mide como `construir.bandeja` y `bandeja.*`: la única línea
+    del listado que dice «revision» es la de F-056 (`test_f056_r31_…`). La
+    medición no cambia nada: los mismos valores, las mismas excepciones, las
+    mismas llamadas y el mismo orden de construcción.
+    """
+    cronometro = Cronometro()
+    proceso_nuevo = es_primera_peticion()
+    obra_codigo: str | None = None
+    resultado_de_la_peticion = "200"
+    try:
+        obra_codigo = normalizar_codigo_obra(obra)
+        peticion = PeticionDeListado(
+            obra_codigo=obra_codigo,
+            filtro=_filtro(estado),
+            con_motivos=_con_motivos(con_motivos),
+            despues_de=None if cursor is None else clave_de_cursor(cursor),
+            tamano=_tamano(tamano),
+        )
+        # Sigrid primero: su puerta de entorno no abre ninguna conexión.
+        if catalogo_obra is None:
+            with cronometro.tramo("construir.catalogo"):
+                catalogo_obra = construir_catalogo_obra(obtener_ajustes())
+        if ubicaciones is None:
+            with cronometro.tramo("construir.ubicaciones"):
+                ubicaciones = construir_fuente_de_ubicaciones(obtener_ajustes())
+        if revision is None:
+            with cronometro.tramo("construir.bandeja"):
+                revision = construir_revision(obtener_ajustes())
+        if equivalencias is None:
+            with cronometro.tramo("construir.equivalencias"):
+                equivalencias = construir_equivalencias(obtener_ajustes())
+        if configuracion is None:
+            with cronometro.tramo("configuracion"):
+                configuracion = configuracion_de_la_plantilla()
+        with cronometro.tramo("aplicacion"):
+            resultado = listar_para_revisar(
+                peticion,
+                revision=cronometro.medir(revision, "bandeja"),
+                catalogo_obra=cronometro.medir(catalogo_obra, "catalogo"),
+                equivalencias=cronometro.medir(equivalencias, "equivalencias"),
+                listas=configuracion.listas,
+                ubicaciones=cronometro.medir(ubicaciones, "ubicaciones"),
+            )
+        with cronometro.tramo("serializar"):
+            pagina = resultado.pagina
+            siguiente = pagina.siguiente
+            cuerpo = {
+                "obra": peticion.obra_codigo,
+                "catalogo": {
+                    "unidades": [
+                        {"codigo": u.codigo, "nombre": u.nombre}
+                        for u in resultado.catalogo.unidades
+                    ],
+                    "ubicaciones": {
+                        u.codigo: list(resultado.ubicaciones.get(u.codigo, ()))
+                        for u in resultado.catalogo.unidades
+                    },
+                    "oficios": _oficios(resultado.catalogo, resultado.oficios),
+                    "pares": _pares(resultado.catalogo),
+                    "urgencias": [
+                        {"codigo": o.codigo, "etiqueta": o.etiqueta}
+                        for o in resultado.listas.urgencias
+                    ],
+                    "listados": [
+                        {"codigo": o.codigo, "etiqueta": o.etiqueta}
+                        for o in resultado.listas.listados
+                    ],
+                },
+                "resumen": {
+                    "total": resultado.resumen.total,
+                    "por_estado": {
+                        e.value: resultado.resumen.por_estado[e] for e in EstadoRevision
+                    },
+                    "con_motivos": resultado.resumen.con_motivos,
+                    "por_motivo": {
+                        m.value: resultado.resumen.por_motivo[m] for m in MotivoNoAprobable
+                    },
+                },
+                "filtros": {"estado": peticion.filtro.value, "con_motivos": peticion.con_motivos},
+                "total_filtrado": pagina.total_filtrado,
+                "incidencias": [
+                    _fila(f.situacion, f.estado, f.cambios, f.motivos) for f in pagina.filas
+                ],
+                "siguiente": None if siguiente is None else cursor_de(siguiente),
+            }
+        log.info(
+            "F-056 revision listada: obra=%s tamano=%d total_filtrado=%d devueltas=%d",
+            peticion.obra_codigo,
+            peticion.tamano,
+            pagina.total_filtrado,
+            len(pagina.filas),
+        )
+        return cuerpo
+    except BaseException as error:
+        resultado_de_la_peticion = type(error).__name__
+        raise
+    finally:
+        log.info(
+            cronometro.linea(
+                obra=obra_codigo,
+                resultado=resultado_de_la_peticion,
+                proceso_nuevo=proceso_nuevo,
+                segundos_de_proceso=segundos_de_proceso(),
+            )
+        )
 
 
 def _filtro(crudo: Any) -> FiltroEstado:

@@ -698,7 +698,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 6,
+      "priority": 4,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "F-059 (el backend del volcado), done, desplegada y verificada; y F-038 (bandeja.html), done."
     },
@@ -891,7 +891,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 9,
+      "priority": 8,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -924,7 +924,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 10,
+      "priority": 9,
       "branch": "feature/F-054-dev-server-127"
     },
     {
@@ -941,7 +941,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 8,
+      "priority": 7,
       "branch": "feature/F-055-barridos-sin-cache"
     },
     {
@@ -958,32 +958,32 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 4,
+      "priority": 5,
       "branch": "feature/F-057-tabla-bandeja-paso1"
     },
     {
       "id": "F-058",
       "title": "La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad",
-      "description": "Alta del 2026-10-06 al resolver la Q-5 de F-056 (propuesta del spec-author). Hoy la columna Ubicación de la plantilla de F-036 sale de una lista cerrada versionada (config/plantilla_incidencias.yaml), la misma para todas las filas, y la importación la valida contra ella; la revisión de F-056, en cambio, valida contra Sigrid en vivo: las ubicaciones de la tipología de la unidad (upv.obrtplide → prmtpl.ubica, separadas por ;, exactas tras recortar; medido en la 0677: 3 tipologías de 31 a 37 ubicaciones, que cubren las 1.261 reclamaciones). Una fila puede entrar con una ubicación de la plantilla que no es de su unidad y quedar luego ubicacion_fuera_de_lista. Esta ficha alinea las dos: la plantilla y la importación usan la misma lectura que F-056. Ojo: en el Excel la lista depende de la unidad de cada fila. Opciones para su spec: (a) desplegable dependiente de la columna Unidad (rangos con nombre por unidad o tipología y validación con INDIRECTO, probado en Excel, Excel web y LibreOffice); (b) pares Unidad · Ubicación en una sola columna, como los pares oficio · proveedor de F-036; (c) un desplegable con la unión de la obra y la validación por unidad solo al importar (con el Excel de errores). Retira la lista de ubicaciones del YAML. No cambia la bandeja ni la revisión.",
+      "description": "Alta del 2026-10-06 al resolver la Q-5 de F-056 (propuesta del spec-author). Hoy la columna Ubicación de la plantilla de F-036 sale de una lista cerrada versionada (config/plantilla_incidencias.yaml), la misma para todas las filas, y la importación la valida contra ella; la revisión de F-056, en cambio, valida contra Sigrid en vivo: las ubicaciones de la tipología de la unidad (upv.obrtplide → prmtpl.ubica, separadas por ;, exactas tras recortar; medido en la 0677: 3 tipologías de 31 a 37 ubicaciones, que cubren las 1.261 reclamaciones). Una fila puede entrar con una ubicación de la plantilla que no es de su unidad y quedar luego ubicacion_fuera_de_lista. Esta ficha alinea las dos: la plantilla y la importación usan la misma lectura que F-056. Ojo: en el Excel la lista depende de la unidad de cada fila. Opciones para su spec: (a) desplegable dependiente de la columna Unidad (rangos con nombre por unidad o tipología y validación con INDIRECTO, probado en Excel, Excel web y LibreOffice); (b) pares Unidad · Ubicación en una sola columna, como los pares oficio · proveedor de F-036; (c) un desplegable con la unión de la obra y la validación por unidad solo al importar (con el Excel de errores). Retira la lista de ubicaciones del YAML. No cambia la bandeja ni la revisión. SPEC ESCRITA el 2026-10-09 en el worktree postventa-f058 (rama feature/F-058-plantilla-ubicaciones-sigrid), pendiente de aprobación. Respuestas del humano (2026-10-09): D-4 solo se aceptan plantillas de la versión nueva (una v1 se rechaza con motivo claro; cambia el criterio 4 de la ficha); Q-4 el Excel se rellena a mano en Excel; Q-6 autoriza la importación de prueba en producción; Q-7 el Bloque 0 se prueba en Excel de escritorio y Excel web (sin LibreOffice). Pendiente: D-6 (retirar o congelar scripts/migrar_excel_f036.py) y el resto de recomendaciones.",
       "acceptance": [
         "La plantilla de una obra ofrece en cada fila solo ubicaciones de la tipología de la unidad de esa fila, leídas de Sigrid al generarla",
         "La importación valida la ubicación de cada fila contra la tipología de su unidad leída de Sigrid en el momento de importar; una que no lo es vuelve en el Excel de errores con su motivo",
         "La lista de ubicaciones deja de salir de config/plantilla_incidencias.yaml",
-        "Una plantilla generada antes del cambio se sigue importando con las mismas reglas de hoy, o se rechaza con un motivo claro (lo decide su spec)",
+        "Una plantilla generada antes del cambio se rechaza con un motivo claro (decisión del humano 2026-10-09: solo la versión nueva)",
         "No se escribe nada en Sigrid",
         "bash harness/init.sh en verde"
       ],
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 7,
+      "priority": 6,
       "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
-      "blocked_by": "F-056 (la lectura de ubicaciones por unidad, §16.3 de su design)."
+      "blocked_by": "F-060 (la función de normalizar, D-3 de la spec de F-058)."
     },
     {
       "id": "F-059",
       "title": "Volcado a Sigrid en el backend: ensayo, escritura en lote y estado volcada",
-      "description": "Sacada de F-040 el 2026-10-07 por el límite de servicio (D-1, decisión del humano). El backend del volcado de la bandeja a Sigrid en services/postventa-api: tres endpoints (GET /api/volcado, POST /api/volcado/ensayo, POST /api/volcado/volcar) sobre POST /api/sigrid/partes-reclamacion de sigrid-api (azure-apps/sigrid_api.md §8.9); ensayo guardado obligatorio (misma persona, 30 min); escritura anticipada del evento enviado antes de cada commit; referencia PVI-<incidencia_id> para que reintentar no duplique; tabla append-only postventa.volcados_sigrid (16_volcados_sigrid.sql); estados derivados volcada y en_duda que amplían los de F-056 y bloquean la revisión; tipo 0002 siempre, causante false, sin urgencia ni clase; el parte queda en SAT y Posventa lo pasa a PTE a mano; ventana propia VOLCADO_HABILITADO publicada cerrada (infra/27_ventana_volcado.ps1) y lectura de verificación (infra/28_volcado_lectura_sigrid.ps1); verificación en producción en la obra 0626 con una escritura autorizada y anulación posterior. Q-6: el líder actualiza la fila de consumidores de azure-apps/sigrid_api.md al desplegar. Spec aprobada (2026-10-07): specs/F-059-volcado-sigrid-backend/ (escrita en la rama de F-040, worktree postventa-f040; se lleva a su rama al empezar). El front es F-040.",
+      "description": "Sacada de F-040 el 2026-10-07 por el límite de servicio (D-1, decisión del humano). El backend del volcado de la bandeja a Sigrid en services/postventa-api: tres endpoints (GET /api/volcado, POST /api/volcado/ensayo, POST /api/volcado/volcar) sobre POST /api/sigrid/partes-reclamacion de sigrid-api (azure-apps/sigrid_api.md §8.9); ensayo guardado obligatorio (misma persona, 30 min); escritura anticipada del evento enviado antes de cada commit; referencia PVI-<incidencia_id> para que reintentar no duplique; tabla append-only postventa.volcados_sigrid (16_volcados_sigrid.sql); estados derivados volcada y en_duda que amplían los de F-056 y bloquean la revisión; tipo 0002 siempre, causante false, sin urgencia ni clase; el parte queda en SAT y Posventa lo pasa a PTE a mano; ventana propia VOLCADO_HABILITADO publicada cerrada (infra/27_ventana_volcado.ps1) y lectura de verificación (infra/28_volcado_lectura_sigrid.ps1); verificación en producción en la obra 0626 con una escritura autorizada y anulación posterior. Q-6: el líder actualiza la fila de consumidores de azure-apps/sigrid_api.md al desplegar. Spec aprobada (2026-10-07): specs/F-059-volcado-sigrid-backend/ (escrita en la rama de F-040, worktree postventa-f040; se lleva a su rama al empezar). El front es F-040. F-056 cerrada y desplegada el 2026-10-09: ya no hay bloqueo. Orden del humano (2026-10-09): justo detrás de F-060, antes de F-038, para llegar antes a la primera escritura real en Sigrid.",
       "acceptance": [
         "Una incidencia aprobada se crea en Sigrid con sus campos (tipo 0002, oficio, ubicación, interviniente sin causante) y su código vuelve a la bandeja como volcada",
         "No se escribe en Sigrid sin un ensayo guardado de la misma persona de menos de 30 minutos, con confirmado true y con la ventana VOLCADO_HABILITADO abierta; el despliegue la deja cerrada",
@@ -998,14 +998,13 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 5,
-      "branch": "feature/F-059-volcado-sigrid-backend",
-      "blocked_by": "F-056 (las candidatas al volcado y los estados de revisión), que tiene que estar done y mergeada en dev."
+      "priority": 2,
+      "branch": "feature/F-059-volcado-sigrid-backend"
     },
     {
       "id": "F-060",
       "title": "Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid",
-      "description": "Alta del 2026-10-09 por decisión del humano, tras el paso 2 de la T19 de F-056 en producción: de las 158 incidencias de la 0677, 148 salen con ubicacion_fuera_de_lista porque la comparación contra la tipología de la unidad (prmtpl.ubica, F-056 §16.3) es exacta; 110 de ellas solo difieren en mayúsculas (la plantilla de F-036 ofrece, p. ej., «Baño 1» y Sigrid guarda «baño 1»), 0 en tildes o espacios y 38 (8 textos distintos) no están en la lista de su unidad. El humano no quiere comparar sin mayúsculas sino NORMALIZAR: una ubicación que coincide con una de la lista de su unidad salvo mayúsculas (la spec decide si también espacios; tildes y erratas siguen distinguiéndose) pasa a ser el texto exacto de Sigrid, de modo que en la bandeja, en lo aprobado y en lo que llegue al volcado (F-059) solo haya textos de Sigrid. Cubre lo ya importado (las 110 de la 0677) y lo que se importe en adelante, con constancia (la bandeja de F-036 no se reescribe y las revisiones de F-056 son append-only: la spec decide cómo, sin perder la trazabilidad). Las 38 que no están siguen fuera de lista y se corrigen en la revisión. Solo backend; no toca la plantilla (eso es F-058). Medir también el tiempo de la primera página de GET /api/revision (11,9 s en el paso 2, objetivo < 10 s) si no era arranque en frío. AÑADIDO AL CIERRE DE F-056 (2026-10-09): el listado GET /api/revision tardó p50 7,1 s y máx. 12,7 s en 9 peticiones de la T19, con las lecturas de Sigrid en 0,1–0,3 s: el tiempo se va en otra parte (base, cálculo de motivos o arranque); medirlo y bajarlo de 10 s entra aquí.",
+      "description": "Alta del 2026-10-09 por decisión del humano, tras el paso 2 de la T19 de F-056 en producción: de las 158 incidencias de la 0677, 148 salen con ubicacion_fuera_de_lista porque la comparación contra la tipología de la unidad (prmtpl.ubica, F-056 §16.3) es exacta; 110 de ellas solo difieren en mayúsculas (la plantilla de F-036 ofrece, p. ej., «Baño 1» y Sigrid guarda «baño 1»), 0 en tildes o espacios y 38 (8 textos distintos) no están en la lista de su unidad. El humano no quiere comparar sin mayúsculas sino NORMALIZAR: una ubicación que coincide con una de la lista de su unidad salvo mayúsculas (la spec decide si también espacios; tildes y erratas siguen distinguiéndose) pasa a ser el texto exacto de Sigrid, de modo que en la bandeja, en lo aprobado y en lo que llegue al volcado (F-059) solo haya textos de Sigrid. Cubre lo ya importado (las 110 de la 0677) y lo que se importe en adelante, con constancia (la bandeja de F-036 no se reescribe y las revisiones de F-056 son append-only: la spec decide cómo, sin perder la trazabilidad). Las 38 que no están siguen fuera de lista y se corrigen en la revisión. Solo backend; no toca la plantilla (eso es F-058). Medir también el tiempo de la primera página de GET /api/revision (11,9 s en el paso 2, objetivo < 10 s) si no era arranque en frío. AÑADIDO AL CIERRE DE F-056 (2026-10-09): el listado GET /api/revision tardó p50 7,1 s y máx. 12,7 s en 9 peticiones de la T19, con las lecturas de Sigrid en 0,1–0,3 s: el tiempo se va en otra parte (base, cálculo de motivos o arranque); medirlo y bajarlo de 10 s entra aquí. SPEC ESCRITA EL 2026-10-09 (spec-author): specs/F-060-normalizar-ubicaciones/, pendiente de aprobación del humano (PARADA 1). Propone una revisión editar del sistema (oid y correo sistema:normalizar_ubicacion, sin DDL) tras cada importación y a demanda con POST /api/revision/normalizar (ensayo obligatorio); medir el listado con trazas por tramo antes de optimizar.",
       "acceptance": [
         "Una ubicación que coincide con la lista de la tipología de su unidad salvo mayúsculas queda con el texto exacto de Sigrid y deja de salir como ubicacion_fuera_de_lista",
         "Vale para lo ya importado y para lo que se importe, con constancia de la normalización",
@@ -1014,7 +1013,7 @@
         "No se escribe nada en Sigrid",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 1,

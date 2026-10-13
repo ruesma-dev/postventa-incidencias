@@ -1,7 +1,7 @@
 <!-- progress/review_F-060_bloque4.md -->
 # Review · F-060 · Bloque 4 · Tras cada importación (T13–T16)
 
-- **Veredicto:** **APPROVED condicionado a la aceptación escrita de I19.** No hay que tocar ni el código ni los
+- **Veredicto:** **APPROVED** (2026-10-13: el humano acepta I19 por escrito, anotado en `progress/impl_F-060.md`; antes, condicionado a esa aceptación).** No hay que tocar ni el código ni los
   tests. El único punto abierto es el mutante a mano **I19**, declarado equivalente. En nivel `critico`,
   `CHECKPOINTS.md` C4 bis exige que el humano acepte esa equivalencia por escrito. Mi juicio es que **I19 es
   equivalente** (ver C-1). Cuando la aceptación quede anotada en `progress/impl_F-060.md`, el veredicto pasa a

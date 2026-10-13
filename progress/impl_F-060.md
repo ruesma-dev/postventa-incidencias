@@ -2149,3 +2149,7 @@ a mano, todos muertos salvo tres equivalentes **aceptados por escrito** por el h
 **Verificaciones MANUAL pendientes (humano)**: T7 (la suite de base efímera, `infra\pruebas_bbdd_efimera.ps1`), y
 el Bloque 6 entero (T24 publicar, T25/T27 lectura de Sigrid antes y después, T26 normalizar la 0677 desde la
 consola, T28 medición M1); T29 es del líder (`azure-apps`).
+
+### C-1 y C-2 de la review final (2026-10-13)
+
+Aplicados solo en el texto del Bloque 6 de `tasks.md`: C-1 (medición en frío de T28 con un bloque JS autocontenido, sintaxis comprobada con `node --check`, y qué esperar de `proceso_nuevo`) y C-2 (párrafo «Si algo sale mal» al principio del Bloque 6); código, tests y `docs/` sin tocar; tests que leen `tasks.md` y `test_f006`: 1576 passed, 37 skipped.

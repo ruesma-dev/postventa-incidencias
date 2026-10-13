@@ -189,6 +189,38 @@
 
 ## Bloque 6 · Publicar, normalizar y medir (MANUAL, humano)
 
+> **Si algo sale mal** (C-2 de la review final). Leerlo **antes** de T24:
+>
+> - **Antes del merge, anotar el commit de `dev`** (hoy `704cfca`): es la
+>   versión a la que se vuelve.
+> - **Si tras publicar falla algo que antes funcionaba** (el listado, la
+>   importación, el historial, 5xx nuevos): **no seguir** con T25–T28 y volver
+>   a publicar la versión anterior con el mismo mecanismo, desde un worktree de
+>   ese commit:
+>   ```
+>   git worktree add --detach ..\postventa-publicar <commit anotado>
+>   powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_backend.ps1
+>   git worktree remove ..\postventa-publicar
+>   ```
+>   Es seguro: F-060 no tiene DDL, y las revisiones del sistema son filas
+>   `editar` que el código de F-056 lee sin cambios (`domain/models/revision.py`
+>   no se ha tocado). Con la versión anterior desaparecen la ruta
+>   `POST /api/revision/normalizar`, la normalización tras importar y la línea
+>   de tiempos; lo ya normalizado sigue como `editada` por
+>   `sistema:normalizar_ubicacion`.
+> - **La normalización tras importar no tiene interruptor**: si hubiera que
+>   pararla, la única vía es la vuelta atrás de arriba.
+> - **Si el paso 2 de T26 escribe algo que no debía**: **no hay deshacer por la
+>   API** (las revisiones son append-only, y volver a la variante con `editar`
+>   da 400 `valores_no_validos`, R25/D-5). Parar, no relanzar nada, anotar los
+>   recuentos y volver al líder. Cualquier corrección en la base de producción
+>   es una escritura que necesita autorización expresa y su propio guion
+>   (**nunca un `DELETE` improvisado**); una persona sí puede corregir una a una
+>   con `editar` hacia otro valor **válido** de la lista.
+> - **Si T27 no da la misma lectura que T25**: F-060 solo lee Sigrid (R38, con
+>   test), así que la diferencia es actividad de Posventa en el ERP; anotarla
+>   por unidad, sin textos, y llevarla al líder antes de cerrar.
+
 - [ ] **T24 · MANUAL (humano)**: con T7 hecha y la review final APROBADA,
   merge normal de la rama a `dev` **desde un worktree aparte**, y publicar el
   backend desde un worktree limpio de `dev`, con los mismos parámetros que el
@@ -295,8 +327,29 @@
   F060.caliente = await F060.medir(10);
   console.log('Navegador, en caliente (s)', F060.caliente);
   ```
-  Y, tras **≥ 20 minutos** sin usar el servicio, en una pestaña nueva con el
-  mismo bloque `F060.medir` pegado: `console.log('En frío (s)', await F060.medir(1));`.
+  Y, tras **≥ 20 minutos** sin usar el servicio, en una **pestaña nueva** de
+  `importar.html` del front publicado, este bloque **autocontenido** (C-1 de la
+  review final). **En esa pestaña no se pega nada de T26**: cualquier otra
+  llamada antes calienta la Function.
+  ```js
+  window.F060 = {};
+  F060.exigir = (c, q) => { if (!c) throw new Error('F060 para: ' + q); };
+  F060.medir = async (n) => {
+    const t = [];
+    for (let i = 0; i < n; i++) {
+      const a = performance.now();
+      const r = await fetch('/api/revision?obra=0677&estado=todas');
+      await r.json();
+      F060.exigir(r.status === 200, `listado ${i + 1}: ${r.status}`);
+      t.push(Math.round(performance.now() - a) / 1000);
+    }
+    return t;
+  };
+  console.log('En frío (s)', await F060.medir(1));
+  ```
+  Qué esperar: en la traza de esa petición, `proceso_nuevo=True` si de verdad
+  fue un proceso nuevo. Si sale `proceso_nuevo=False`, la medición **no fue en
+  frío** y se anota así.
   Después, en Azure Portal → `appi-postventa-dev` → **Registros** (solo
   lectura), las dos consultas:
   ```

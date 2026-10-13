@@ -77,7 +77,7 @@
   el lote → esa se salta y las otras se escriben; un lote repetido con las
   esperadas viejas → todas desactualizadas, nada escrito. |
   Verificación: `.venv/Scripts/python.exe -m pytest --collect-only tests_bbdd/tests/test_f060_bbdd_lote.py` recoge sin errores
-- [ ] **T7 · MANUAL (humano)**: con Docker Desktop arrancado,
+- [x] **T7 · MANUAL (humano)**: con Docker Desktop arrancado,
   `powershell -ExecutionPolicy Bypass -File infra\pruebas_bbdd_efimera.ps1`.
   Deben pasar `test_f060_bbdd_lote.py` y los de F-036 y F-056. Anotar nº de
   tests y tiempo en `progress/impl_F-060.md`. Bloquea el cierre. |

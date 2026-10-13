@@ -1791,3 +1791,361 @@ Sigue pendiente la **T7** del Bloque 2 (MANUAL, humano) y, para el Bloque 5, la 
 - **«Cualquier excepción»** («2, si»): el humano confirma la lectura del implementer: el mejor esfuerzo captura
   `Exception` (errores del programa); `KeyboardInterrupt` y `SystemExit` suben, como fija
   `test_f060_r34_una_interrupcion_no_es_un_fallo_y_sube`.
+
+## Bloque 5 · Medir el listado, el alcance y los documentos · T17–T23 · 2026-10-13
+
+Encargo: T17 (RED), T18, T19, T20, T21 (mutación), T22 (evidencias) y T23 (`bash harness/init.sh`). HEAD de partida
+**`af84848`** (el hash anterior a T17 y el `--base` de la mutación de este bloque). Base fija de la guardia de
+alcance: **`33d8938`**.
+
+### Precondiciones
+
+- Rama comprobada: `feature/F-060-normalizar-ubicaciones`, árbol limpio en `af84848`.
+- `bash harness/init.sh` no se lanzó al empezar: lanza la suite entera y el encargo la reserva para T23 (igual que en
+  los Bloques 2 y 4). Cada tarea corrió sus tests y los colindantes.
+
+### DESVIACIÓN DECLARADA · los nombres de los tramos de la revisión (T18)
+
+`design.md` §11.3 nombra los tramos del repositorio de la revisión `construir.revision` y `revision.listar`. **Con
+esos nombres cae un test de F-056 que no se puede tocar** (R39):
+`test_f056_revision_http.py::test_f056_r31_el_log_del_listado_solo_lleva_obra_tamano_y_recuentos` filtra los
+registros del listado por la subcadena `"revision"` y exige que el único sea la línea de F-056. La línea de F-060
+diría `construir.revision=… revision.listar=…` y el test vería dos.
+
+Lo que hice: medir ese repositorio como **`construir.bandeja`**, **`bandeja.listar`** (y `bandeja.contar` cuando la
+obra pasa del tope). R40–R42 no fijan los nombres, solo qué se mide; los demás tramos son exactamente los de
+§11.3. No toqué el test de F-056 ni lo relajé, y no hay otra forma de cumplir a la vez §11.3 y R39. Lo fijan dos
+tests: `test_f060_r42_la_linea_de_f056_no_cambia_y_es_la_unica_con_revision` y la línea exacta de
+`test_f060_r40_el_listado_deja_una_linea_con_cada_tramo`. Está anotado en `design.md` §11.3 como desviación
+**pendiente de aceptación del líder y del humano**. Si se prefiere la otra salida (ampliar `test_f056_r31` para que
+filtre por `"F-056 revision"`), basta con cambiar dos literales de `listar_revision` y la línea esperada de los tests.
+
+Dos detalles de formato que §11.3 no fija y he elegido así: los segundos van con **tres decimales** (con dos, el
+`calculo` de 158 filas, de milisegundos, saldría `0.00`), y la obra es **`-`** cuando la de la petición no valía
+(un 400 por la obra también deja su línea, sin repetir lo recibido).
+
+### T17 · Fase RED · commit `d2053d5`
+
+`tests/test_f060_tiempos.py` contra un esqueleto neutro de `interface_adapters/api/tiempos.py` (no mide nada) y la
+importación de sus nombres en `revision.py` (para que `monkeypatch` encuentre `modulo.Cronometro`). Comando exacto,
+desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_tiempos.py -q -p no:cacheprovider --tb=line
+```
+
+Salida real (cada fallo, con su línea; las rutas recortadas al nombre del test):
+
+```
+tests\test_f060_tiempos.py:141: AssertionError: assert {} == {'uno': 1.75, 'dos': 0.5}
+tests\test_f060_tiempos.py:156: AssertionError: assert {} == {'falla': 2.0}
+tests\test_f060_tiempos.py:164: assert 0.0 == 3.25
+tests\test_f060_tiempos.py:176: AssertionError: assert {} == {'uno': 1.0}
+tests\test_f060_tiempos.py:211: AssertionError: assert {} == {'puerto.leer': 0.5}
+tests\test_f060_tiempos.py:222: AssertionError: assert {} == {'puerto.leer': 1.0}
+tests\test_f060_tiempos.py:234: AssertionError: assert {} == {'puerto.fallar': 0.25}
+tests\test_f060_tiempos.py:262: AssertionError: assert {} == {'ubicaciones': 1.0}
+tests\test_f060_tiempos.py:278: AssertionError: assert {} == {'ubicaciones': 0.5}
+tests\test_f060_tiempos.py:293: assert None == 0.125
+tests\test_f060_tiempos.py:321: AssertionError: assert '' == 'F-060 tiempo...ializar=2.000'
+tests\test_f060_tiempos.py:338: AssertionError: assert '' == 'F-060 tiempo..._de_proceso=0'
+tests\test_f060_tiempos.py:347: assert [False, False, False] == [True, False, False]
+tests\test_f060_tiempos.py:353: assert 100.0 <= 0.0
+tests\test_f060_tiempos.py:478: AssertionError: assert [] == ['F-060 tiemp...alizar=0.500']
+tests\test_f060_tiempos.py:461: AssertionError: se esperaba una línea de tiempos y hay 0      (6 tests)
+tests\test_f060_tiempos.py:552: AssertionError: assert [] == ['True', 'False', 'False']
+tests\test_f060_tiempos.py:665: assert 0 == 1                                              (los 12 errores del listado)
+tests\test_f060_tiempos.py:771: AssertionError: assert [] == [['bandeja', ...ubicaciones']]
+tests\test_f060_tiempos.py:873: assert 0 == 1
+36 failed, 8 passed in 4.11s
+```
+
+**36 failed, todos por aserción** (ningún error de importación ni de preparación), y **8 passed**, justificados:
+las cuatro de `test_f060_r41_las_mismas_excepciones_el_mismo_objeto[…]` y
+`test_f060_r41_con_y_sin_medicion_la_misma_respuesta_…` fijan lo que el listado de F-056 **ya hacía** (la medición
+no debe cambiarlo: es la red de R41, que tiene que estar verde antes y después);
+`test_f060_r41_un_atributo_que_no_es_metodo_pasa_tal_cual_y_no_mide` y `test_f060_r40_sin_aplicacion_no_hay_calculo`
+pasan con el esqueleto porque fijan lo que **no** se hace; y `test_f060_r42_la_forma_de_la_linea_no_es_ciega` es el
+control negativo del detector. En la primera pasada hubo dos fallos de los propios tests (una preparación que
+anotaba una llamada de más, y una obra «inválida» que `normalizar_codigo_obra` sí admite); se corrigieron en el test
+antes de este commit y la traza de arriba es la buena.
+
+### T18 · GREEN · commit `f1ab5e6`
+
+- `interface_adapters/api/tiempos.py` (§11.3): `Cronometro` (reloj inyectable; `tramo` suma también si sale por
+  excepción; `medir` devuelve un proxy que suma cada método llamado en `prefijo.metodo`, o envuelve un invocable en
+  `prefijo`, reenviando argumentos, valores y excepciones tal cual; `calculo`, `total` y `linea`),
+  `es_primera_peticion` (con cerrojo: el proceso atiende en hilos) y `segundos_de_proceso` (`time.monotonic`
+  desde que se importó el módulo).
+- `interface_adapters/api/revision.py`: **solo `listar_revision`** (y la importación de los tres nombres). El cuerpo
+  de F-056 está dentro de un `try` cuyo `finally` deja la línea; cada `construir_*` y la configuración, en su tramo
+  y solo si se construyen; los cuatro puertos, medidos; `listar_para_revisar` en `aplicacion`; el diccionario de la
+  respuesta en `serializar`; la línea de F-056, igual y en su sitio (antes de la de F-060). El `except BaseException`
+  solo anota el tipo y relanza. Ninguna otra función del módulo cambia (lo vigila T19).
+- La serialización a JSON la hace `function_app.py` (`_json`), que no se toca: el tramo `serializar` mide la
+  construcción del diccionario, no el `json.dumps`. Si M1 señala `serializar`, conviene saberlo.
+- Un fallo de un test en el GREEN (la expresión regular de un test cogía `total` como nombre de tramo) se corrigió en
+  el test.
+
+Verificación de T18: `tests/test_f060_tiempos.py tests/test_f056_revision_http.py tests/test_f056_alcance_cerrado.py`
+→ **239 passed, 9 skipped** en 6,98 s. Colindantes `-k "f056 or f060 or f010"` → **1524 passed, 12 skipped** en
+174,19 s. Cobertura (`coverage run --branch` sobre los dos ficheros de tests del listado): `tiempos.py` **68/68
+sentencias, 10/10 ramas (100 %)**; `listar_revision`, sin líneas ni ramas sin cubrir (las cuatro ramas parciales
+del informe son de `historial_revision` y `accion_de_revision`, de F-056).
+
+### T19 · `tests/test_f060_alcance_cerrado.py` · commit `fc8cd71` (ampliado en `1bdb58c` con lo de T20)
+
+Con base fija `33d8938`, las tres guardas de F-030 y una mitad que no depende de `git`:
+
+| Control | Requisito |
+|---|---|
+| en cada fichero que ya existía, **solo cambian o se añaden las piezas declaradas** (función a función y método a método, sin docstrings) y no se quita ninguna; `__all__` solo gana nombres | §12 |
+| las funciones que construyen las respuestas de F-056 y de la importación, **iguales a las de la base** (22: `historial_revision`, `accion_de_revision`, `_fila`, `_valores_de`, `serializar_importacion`, las rutas de `function_app.py`…); `listar_revision` cambia pero sus claves, no | R36 |
+| ningún `.sql` en el diff; los `.sql` son los quince de antes; ningún DDL, `UPDATE`, `DELETE` ni `TRUNCATE` en el código de F-060 | R37 |
+| ninguna línea añadida al código ni ninguna pieza de F-060 (con `importar.py` **entero**, O-2 de la review del Bloque 4) nombra una escritura de la pasarela ni una ventana (`habilitado`); ninguna importa las escrituras del ERP; ni configuración ni `environ` | R38 |
+| los ficheros de «No se toca» de §12 sin cambios; ni `infrastructure/sigrid/`, ni `infrastructure/documentos/` (la plantilla), ni el front, ni `infra/` | §12 |
+| los tests tocados fuera de los de F-060 son **exactamente** los declarados; de F-036 y F-056, solo `test_f056_repositorio_revision.py` y `test_f056_documentacion.py`; en cada uno solo cambian sus funciones declaradas, y **ninguno pierde una aserción** salvo las que cambian por declaración (la cuenta 20→21, la lista 6→7, la cabecera) | R39 |
+| cada detector tiene su control negativo | C4 bis |
+
+**Fase RED, en una copia aislada** (`CHECKPOINTS.md` C4 bis): un `git clone` local del repositorio en el temporal,
+en la rama de la feature, donde **rompí a propósito** trece cosas de las que vigila —un comentario en
+`15_revisiones_bandeja.sql`, un `16_prueba.sql`, `"sql/write"` y `os.environ` en `tiempos.py`,
+`"CIERRE_HABILITADO"` en `normalizacion.py`, la clave `correo` del historial, la clave `siguiente` del listado, un
+comentario en `test_f036_ddl.py`, una aserción menos en otra función de `test_f010`, el `README.md` del front,
+`domain/models/revision.py`, otra función de `application/pipelines/revision.py` y `config/settings.py`— y lancé el
+test con el Python del proyecto. Antes de romper: **59 passed**. Después:
+
+```
+PY -m pytest tests/test_f060_alcance_cerrado.py -q -p no:cacheprovider --tb=line
+tests\test_f060_alcance_cerrado.py:331: AssertionError: assert {'ResultadoNo..._ubicaciones'} == frozenset({'R...ubicaciones'})
+tests\test_f060_alcance_cerrado.py:331: AssertionError: assert {'historial_r...tar_revision'} == frozenset({'listar_revision'})
+tests\test_f060_alcance_cerrado.py:387: AssertionError: assert 'def historia...(resultado)]}' == 'def historia...(resultado)]}'
+tests\test_f060_alcance_cerrado.py:398: AssertionError: assert Counter({'cod... 'nombre': 1}) == Counter({'cod... 'nombre': 1})
+tests\test_f060_alcance_cerrado.py:431: AssertionError: assert ['services/po..._bandeja.sql'] == []
+tests\test_f060_alcance_cerrado.py:438: AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+tests\test_f060_alcance_cerrado.py:507: assert ['+_VENTANA =... "sql/write"'] == []
+tests\test_f060_alcance_cerrado.py:518: AssertionError: assert {'interface_a...['sql/write']} == {}
+tests\test_f060_alcance_cerrado.py:562: AssertionError: assert ['services/po.../settings.py'] == []
+tests\test_f060_alcance_cerrado.py:571: AssertionError: assert ['interface_a...i/tiempos.py'] == []
+tests\test_f060_alcance_cerrado.py:620: AssertionError: assert ['services/po.../revision.py'] == []
+tests\test_f060_alcance_cerrado.py:626: AssertionError: assert ['services/po...nt/README.md'] == []
+tests\test_f060_alcance_cerrado.py:672: AssertionError: assert ['tests/test_..._revision.py'] == ['tests/test_..._revision.py']
+tests\test_f060_alcance_cerrado.py:682: AssertionError: assert ['tests/test_..._revision.py'] == ['tests/test_..._revision.py']
+tests\test_f060_alcance_cerrado.py:692: AssertionError: assert {'ENDPOINTS',...ta_explicada'} == frozenset({'E..._lo_que_hay'})
+tests\test_f060_alcance_cerrado.py:709: AssertionError: assert {'test_f010_r...(ENDPOINTS)']} == {}
+16 failed, 43 passed in 22.03s
+```
+
+Las trece roturas, cazadas, todas por aserción. La copia se borró después; el árbol de trabajo no se tocó. En el
+árbol: **59 passed** en T19 y, con lo de T20, **59 passed** en la verificación de T20.
+
+### T20 · documentos · commit `1bdb58c`
+
+- **`docs/INTEGRACION.md`**: la cabecera (Fecha 2026-10-13, «Última feature que lo tocó: F-060», sin desplegar; lo
+  de F-056, F-053, F-036 y F-005 sigue); §1 «Con F-060 · la tercera lectura, también tras importar» (ninguna
+  lectura nueva, cuándo se hace); §2 «Con F-060 · las revisiones del sistema» (sin DDL, el lote con `FOR UPDATE`,
+  las que se saltan, idempotente, y **el ensayo abre la conexión pero no escribe ninguna fila**, O-4 de la review
+  del Bloque 3); §4 «Las de F-060: ninguna»; §6 una fila (la normalización tras importar falla: nada visible); §7 la
+  enmienda de la identidad del sistema (no es un dato personal ni un `oid`; **la marca es el correo**, porque el
+  `oid` sí lo puede enviar una persona: O-2 de la review del Bloque 1); §8 la fila de `POST /api/revision/normalizar`,
+  el párrafo «Desde F-060» (la ruta con su cuerpo, la normalización tras importar de mejor esfuerzo, la línea de
+  tiempos, las mismas claves), «tampoco depende de ninguna ventana», **«Los veintiuno quedan en nivel anónimo»** y
+  su fila en «Qué NO está desplegado»; §9 cuatro filas.
+- **`docs/ARCHITECTURE.md`**: la sección **«Normalizar las ubicaciones (F-060)»**, entre la de F-056 y «Acceso a
+  datos» (la regla, la constancia, cuándo y la concurrencia, el estado `editada`, la medición con sus tramos y el
+  porqué de `bandeja`, dónde vive cada pieza, lo que no hace); la **enmienda del «No revisa»** de F-036 («la
+  importación escribe revisiones del sistema»); y «Desde F-060» en las filas de `sigrid-api` y de PostgreSQL.
+- **`interface_adapters/api/importar.py`**: solo el docstring del módulo (O-1 de la review del Bloque 4: qué se
+  construye tras registrar filas y que la respuesta no cambia).
+- **`tests/test_f060_documentacion.py`** (nuevo, 47 casos) con las frases clave, leyendo del código el literal del
+  sistema, la ruta registrada y los tramos de la traza, más el barrido de valores y correos.
+- **Tests de otras features ampliados, sin relajar**, por la decisión del líder del encargo (criterio aprobado por el
+  humano en F-056), y **declarados** en `requirements.md` R39, `design.md` §12, la cabecera de `tasks.md` y T19/T20,
+  y vigilados por T19:
+  - `test_f053_documentacion.py`: `CUENTA_VIGENTE` = «Los veintiuno quedan en nivel» y, además, «Los veinte» en `not in`;
+  - `test_f012_documentacion.py`: `NUMERALES` gana el 21;
+  - `test_f019_documentacion.py::test_f019_r32_…`: «Los veintiuno» en `in` y «Los veinte» pasa de `in` a `not in`,
+    como cada cifra vieja antes que ella;
+  - `test_f056_documentacion.py::test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas`: «Los veintiuno», y
+    «Los veinte» en `not in`; las demás frases, igual;
+  - `test_f056_documentacion.py::test_f056_r44_la_cabecera_dice_que_f056_lo_toco`: exigía que F-056 fuera la
+    **última** feature de la cabecera, lo que caduca con cualquier feature nueva. Ahora exige una cabecera bien
+    formada (una fecha y una última feature), que no retroceda (≥ 2026-10-09, ≥ F-056) y en la que «F-056» y
+    «desplegada el 2026-10-09» sigan constando: el mismo cambio que F-056 hizo al de F-036. **Es el único que cambia
+    lo que exige** y está en `ASERCIONES_QUE_CAMBIAN` de T19.
+  - Los tres que previó la review del Bloque 3 (O-1) eran `test_f056_documentacion` (r44 cuenta), `test_f019` y
+    `test_f012`; el de la cabecera de F-056 apareció al escribir la cabecera nueva.
+
+RED de T20 (antes de tocar los documentos, con los tests ya escritos y ampliados):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_documentacion.py tests/test_f053_documentacion.py tests/test_f036_documentacion.py tests/test_f056_documentacion.py tests/test_f019_documentacion.py tests/test_f012_documentacion.py tests/test_f060_alcance_cerrado.py -q -p no:cacheprovider --tb=line
+37 failed, 276 passed in 15.76s
+```
+
+(34 de `test_f060_documentacion.py` y las tres cuentas de `f053`, `f056` r44 y `f019` r32, todas por aserción).
+Verde tras los documentos, con `test_f010_integracion_expuesto`, `test_f005_integracion_sin_secretos`,
+`test_f006_repo_sin_identificadores`, `test_f060_importar_normaliza` y las guardias de alcance de F-036 y F-056:
+**505 passed, 16 skipped** en 242,19 s.
+
+### T21 · Mutación del bloque · commit `37b60bd`
+
+```
+python -m harness.mutacion --feature F-060 --base af84848 --timeout 1800 --salida progress/mutacion_F-060_bloque5.md
+```
+
+Lanzada tras el commit de T20 (`1bdb58c`) y **esperada hasta el final** sin tocar el árbol. Salida real:
+
+```
+F-060: 3 fichero(s), 295 línea(s) de producción (origen rama, af84848b9bea936384c93122a06bf1c2a0a1c7ba..feature/F-060-normalizar-ubicaciones)
+Campaña paralela: hasta 8 workers, uno por worktree.
+[1/10] muerto        …tiempos.py:85 [aritmetico] (self._reloj() - inicio) -> (self._reloj() + inicio)
+[2/10] muerto        …tiempos.py:65 [booleano] _atendida = False -> _atendida = True
+[3/10] muerto        …tiempos.py:135 [comparacion] if nombre == APLICACION: -> if nombre != APLICACION:
+[4/10] muerto        …tiempos.py:152 [not] if not callable(valor): -> if callable(valor):
+[5/10] muerto        …tiempos.py:161 [not] primera = not _atendida -> primera = _atendida
+[6/10] muerto        …tiempos.py:85 [aritmetico] … + (self._reloj() - inicio) -> … - (self._reloj() - inicio)
+[7/10] muerto        …tiempos.py:111 [aritmetico] return self._tramos[APLICACION] - puertos -> … + puertos
+[8/10] muerto        …tiempos.py:115 [aritmetico] return self._reloj() - self._inicio -> … + self._inicio
+[9/10] muerto        …tiempos.py:168 [aritmetico] return time.monotonic() - _INICIO_DEL_PROCESO -> … + _INICIO_DEL_PROCESO
+[10/10] muerto        …tiempos.py:162 [booleano] _atendida = True -> _atendida = False
+10 mutantes evaluados, 10 muertos, 0 supervivientes, 0 timeouts en 1546.3 s
+```
+
+**10/10 muertos, 0 supervivientes, 0 timeouts, 8 workers**, 1546,3 s. La herramienta no generó ningún mutante en
+`listar_revision` (lo nuevo allí es composición, `with`, literales y el `try`) ni en `importar.py` (solo docstring).
+
+**Mutantes a mano.** En una **copia** de `services/postventa-api` en el temporal (sin `.venv`, `.env` ni
+`local.settings.json`), con un script **fuera del repositorio**: cada mutante sustituye un fragmento exacto, lanza
+`tests/test_f060_tiempos.py tests/test_f056_revision_http.py -x` y restaura el fichero.
+
+| # | Mutante (en `tiempos.py` T1–T12; en `listar_revision` T13–T26) | Resultado | Primer test que cae |
+|---|---|---|---|
+| T1 | el tramo sin `try/finally` (no suma si sale por excepción) | MUERTO | `r40_un_tramo_suma_aunque_salga_por_excepcion` |
+| T2 | el tramo sustituye en vez de sumar | MUERTO | `r40_cada_tramo_suma_sus_segundos_con_reloj_falso` |
+| T3 | un invocable se trata como objeto | MUERTO | `r41_un_invocable_suma_en_su_prefijo_y_devuelve_lo_mismo` |
+| T4 | lo medido no cuenta como puerto | MUERTO | `r40_el_calculo_es_la_aplicacion_menos_los_puertos` |
+| T5 | un atributo no invocable también se envuelve | MUERTO | `r41_un_atributo_que_no_es_metodo_pasa_tal_cual_y_no_mide` |
+| T6 | el tramo del método sin el prefijo | MUERTO | `r41_el_proxy_reenvia_los_argumentos_y_devuelve_el_mismo_objeto` |
+| T7 | el cálculo resta todos los tramos | MUERTO | `r40_el_calculo_es_la_aplicacion_menos_los_puertos` |
+| T8 | `calculo` al final de la línea | MUERTO | `r40_la_linea_con_sus_tramos_en_orden_y_el_calculo_tras_la_aplicacion` |
+| T9 | sin obra se escribe `None` | MUERTO | `r40_la_linea_sin_obra_y_sin_tramos` |
+| T10 | `es_primera_peticion` no recuerda | MUERTO | `r40_proceso_nuevo_solo_la_primera_vez` |
+| T11 | el total cuenta desde cero | MUERTO | `r40_el_total_cuenta_desde_que_se_crea_el_cronometro` |
+| T12 | los segundos de proceso con `perf_counter` | **VIVO → MUERTO** con test añadido | `r40_los_segundos_de_proceso_usan_el_reloj_del_arranque` |
+| T13 | la línea solo con error | MUERTO | `r40_el_listado_deja_una_linea_con_cada_tramo` |
+| T14 | con error, el resultado sigue en `200` | MUERTO | `r40_con_cada_error_…[obra-invalida]` |
+| T15 | la obra se anota tras validar la petición | MUERTO | `r40_con_cada_error_…[estado-invalido]` |
+| T16 | la base antes que Sigrid | MUERTO | `r40_el_listado_deja_una_linea_con_cada_tramo` |
+| T17 | las equivalencias sin medir | MUERTO | el mismo |
+| T18 | las ubicaciones sin medir | MUERTO | el mismo |
+| T19 | la configuración se lee siempre | MUERTO | `r40_con_los_adaptadores_inyectados_no_hay_tramos_de_construccion` |
+| T20 | la serialización fuera de su tramo | MUERTO | `r40_el_listado_deja_una_linea_con_cada_tramo` |
+| T21 | la línea de F-060 en `DEBUG` | MUERTO | el mismo |
+| T22 | `except Exception` en vez de `BaseException` | **VIVO → MUERTO** con test añadido | `r40_una_interrupcion_tambien_deja_la_linea_y_sube[KeyboardInterrupt]` |
+| T23 | el tramo `construir.revision` | MUERTO | `r40_el_listado_deja_una_linea_con_cada_tramo` |
+| T24 | el puerto medido como `revision` | MUERTO | el mismo |
+| T25 | la aplicación sin su tramo | MUERTO | el mismo |
+| T26 | `proceso_nuevo` siempre `True` | MUERTO | el mismo |
+
+**Supervivientes, por familias:**
+
+- **Familia «qué reloj cuenta el proceso» (T12). Hueco de severidad baja, cerrado.** En CPython `perf_counter` y
+  `monotonic` comparten fuente en Windows y en Linux, así que ningún test con relojes reales los distingue; pero
+  restar dos relojes distintos daría un número sin sentido en otra plataforma. El test añadido sustituye
+  `tiempos.time` por relojes falsos distintos y fija que `segundos_de_proceso` usa el mismo que marcó el arranque.
+- **Familia «el alcance del `except`» (T22). Hueco real de severidad baja, cerrado.** Con `except Exception`, una
+  interrupción (`KeyboardInterrupt`, `SystemExit`, el apagado del worker) a mitad de listado dejaría la línea con
+  `resultado=200`, que es falso. El test añadido (parametrizado con las dos) fija que la línea lleva el tipo de la
+  interrupción y que esta sube.
+
+Repetidos en la copia con los dos tests: `T12 MUERTO`, `T22 MUERTO`. **Mutantes a mano: 26 de 26 muertos** (24 en
+la primera pasada). **Supervivientes abiertos: ninguno; ningún equivalente que aceptar.** Los dos tests están en el
+commit de T21; con ellos, `test_f060_tiempos.py` tiene **47 casos**.
+
+### Ficheros tocados en el Bloque 5
+
+- Producción: `interface_adapters/api/tiempos.py` (**nuevo**), `interface_adapters/api/revision.py` (solo
+  `listar_revision` y una importación), `interface_adapters/api/importar.py` (solo el docstring del módulo).
+- Tests nuevos: `test_f060_tiempos.py` (47), `test_f060_alcance_cerrado.py` (59), `test_f060_documentacion.py` (47).
+- Tests ampliados (declarados): `test_f053_documentacion.py`, `test_f012_documentacion.py`,
+  `test_f019_documentacion.py`, `test_f056_documentacion.py` (dos funciones).
+- Documentos: `docs/INTEGRACION.md`, `docs/ARCHITECTURE.md`.
+- Spec: `requirements.md` (R39), `design.md` (§11.3 la desviación, §12 la excepción), `tasks.md` (cabecera, T19,
+  T20 y T17–T23 marcadas).
+- Arnés: `progress/mutacion_F-060_bloque5.md`, este informe y `progress/current.md`.
+- **No se tocaron**: `function_app.py`, `services/postventa-front/`, la plantilla, ningún `.sql`, `.env`, `Ajustes`,
+  `infra/`, `azure-apps` (es T29, del líder). Nada escribe en Sigrid.
+
+### Commits del Bloque 5
+
+| Commit | Qué |
+|---|---|
+| `d2053d5` | F-060 T17: RED de la traza de tiempos (tests y esqueleto neutro) |
+| `f1ab5e6` | F-060 T18: `tiempos.py` y `listar_revision` |
+| `fc8cd71` | F-060 T19: guardia de alcance cerrado |
+| `1bdb58c` | F-060 T20: ARCHITECTURE.md e INTEGRACION.md, tests de documentación y su declaración |
+| `37b60bd` | F-060 T21: mutación del bloque y los dos tests de los supervivientes |
+| (este commit) | F-060 T22/T23: evidencias, `init.sh` e informe |
+
+### Para la review final y para el líder
+
+- **La desviación de los nombres de tramo** (arriba) necesita la aceptación del líder y del humano.
+- La excepción de `test_f056_r44_la_cabecera_dice_que_f056_lo_toco` cambia **lo que exige** (no solo una cifra):
+  conviene que el humano la vea con nombre.
+- `azure-apps/postventa_incidencias.md` (T29) sigue sin tocar: la ruta nueva, que la importación escribe revisiones
+  del sistema, la cuenta de veintiuno y la marca por el correo.
+- Spec de F-059 (worktree `postventa-f040`): su cuenta pasa a **veinticuatro** y, como aquí, tendrá que ampliar
+  también el test de la cabecera de F-056 que dejo amplio (O-2 de la review del Bloque 3).
+- Al medir M1 (T28): la línea de tiempos de los 400 lleva `obra=-` si la obra no valía; el `json.dumps` de la
+  respuesta no está dentro de `serializar` (lo hace `function_app.py`).
+- Sigue pendiente la **T7** (MANUAL, humano) del Bloque 2.
+
+### T23 · `bash harness/init.sh`
+
+Lanzado tal cual tras el commit de T21 (`37b60bd`), con el árbol limpio; la salida se guardó en un fichero
+temporal para leerla. **Verde**, todo `[OK]`:
+
+```
+[OK] Arnés v1.5.2 (2026-08-18)
+[AVISO] ruff: 73 avisos (deuda previa, no bloquea).
+115 passed in 7.06s                                   (las herramientas del arnés)
+[OK] pytest en verde (con medición de cobertura)
+8147 passed, 123 skipped in 2156.03s (0:35:56)        (servicio api, la suite entera)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 324 líneas cambiadas cubiertas (324/324, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-060-normalizar-ubicaciones
+```
+
+La caché solo se usó para el **front**, que F-060 no toca; la suite del **api** corrió entera (8147 tests, 35 min
+56 s), así que no hizo falta repetirla sin caché. Los 123 skipped son los de siempre (controles de diff de otras
+ramas y `tests_bbdd` sin DSN). Ninguno de los ficheros de este bloque añade avisos de ruff (comprobado fichero a
+fichero: «All checks passed!»).
+
+### Pendiente
+
+Nada del Bloque 5. **Parar: review final (antes de desplegar).** Siguen pendientes la **T7** (MANUAL, humano), la
+aceptación de la desviación de los nombres de tramo, y el Bloque 6 (T24–T29).
+
+## Evidencias (F-060, Bloques 1 a 5) · T22
+
+| Evidencia | Bloque 1 | Bloque 2 | Bloque 3 | Bloque 4 | Bloque 5 |
+|---|---|---|---|---|---|
+| RED (por aserción / casos) | 58 / 80 | 24 / 27 | 123 / 134 | 51 / 59 y 25 / 80 (decisión 2026-10-12) | T17 36 / 44; T19 16 / 59 en la copia aislada; T20 37 / 313 |
+| Tests nuevos del bloque | `normalizacion_dominio` 80 | `repositorio_lote` 28 (+5 `tests_bbdd`) | `pipeline_normalizacion` 28, `normalizar_http` 99 | `importar_normaliza` 82 | `tiempos` 47, `alcance_cerrado` 59, `documentacion` 47 |
+| Cobertura de lo cambiado | 100 % (76/76, 20/20 ramas) | 100 % | 100 % | 100 % de lo nuevo | 100 % (`tiempos.py` 68/68, 10/10 ramas; `listar_revision` sin huecos) |
+| Mutación (herramienta) | 19/19 muertos, 8 workers, 2768,9 s | 4/4, 4 workers, 744,4 s | 17/17, 8 workers, 1801,1 s | 6/6, 6 workers, 1042,9 s | **10/10, 8 workers, 1546,3 s** |
+| Mutación (a mano) | M11 y X07 muertos; X01 vivo, aceptado (2026-10-10) | 10/10 | 28/29; H11 equivalente, aceptado (2026-10-11) | 19/20; I19 equivalente, aceptado (2026-10-13) | **26/26** (dos con tests añadidos) |
+| Supervivientes abiertos | 0 | 0 | 0 | 0 | **0** |
+
+**Totales de la feature**: mutación con la herramienta **56 generados, 56 muertos, 0 supervivientes, 0 timeouts**;
+a mano, todos muertos salvo tres equivalentes **aceptados por escrito** por el humano (X01, H11, I19).
+
+**Suite entera (T23)**: `bash harness/init.sh` en verde; api **8147 passed, 123 skipped en 2156,03 s (35 min
+56 s)**; herramientas del arnés 115 passed en 7,06 s; **PUERTA COBERTURA 100,0 % de 324 líneas cambiadas**
+(324/324, umbral 80 %, nivel crítico).
+
+**Verificaciones MANUAL pendientes (humano)**: T7 (la suite de base efímera, `infra\pruebas_bbdd_efimera.ps1`), y
+el Bloque 6 entero (T24 publicar, T25/T27 lectura de Sigrid antes y después, T26 normalizar la 0677 desde la
+consola, T28 medición M1); T29 es del líder (`azure-apps`).

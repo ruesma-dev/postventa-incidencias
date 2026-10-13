@@ -179,10 +179,10 @@
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_documentacion.py tests/test_f053_documentacion.py tests/test_f036_documentacion.py tests/test_f056_documentacion.py`
 - [x] **T21 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T17> --timeout 1800 --salida progress/mutacion_F-060_bloque5.md` sin supervivientes abiertos
-- [ ] **T22**: «Evidencias» completas en `progress/impl_F-060.md` (tests,
+- [x] **T22**: «Evidencias» completas en `progress/impl_F-060.md` (tests,
   cobertura, mutantes y workers de cada bloque, tiempo de la suite). |
   Verificación: lectura del informe por el reviewer
-- [ ] **T23**: `bash harness/init.sh` en verde (suite entera, cobertura). |
+- [x] **T23**: `bash harness/init.sh` en verde (suite entera, cobertura). |
   Verificación: `bash harness/init.sh`
 
 **Parar. Review final (antes de desplegar).**

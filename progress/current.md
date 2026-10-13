@@ -1,6 +1,8 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-060 · Bloque 5 HECHO (implementer, 2026-10-13)** · T17–T23 en `d2053d5`..`37b60bd` y el informe. `init.sh` en verde (api 8147 passed, 123 skipped, 2156 s; cobertura 100 % de 324 líneas); mutación 10/10 y 26/26 a mano. **Desviación pendiente de aceptación**: los tramos de la revisión se llaman `construir.bandeja`/`bandeja.listar` y no `construir.revision`/`revision.listar` (design §11.3), porque `test_f056_r31_…` (intocable) exige que la única línea del listado con «revision» sea la de F-056. Tests de documentación de otras features ampliados y declarados (decisión del líder): f053, f012, f019 y dos de f056 (uno, la cabecera, cambia lo que exige). Detalle: `progress/impl_F-060.md`, Bloque 5. Siguiente: review final. Pendientes: T7 (humano), Bloque 6.
+
 > **F-060 · decisión del humano 2026-10-12 (opción (b))**: mejor esfuerzo = cualquier excepción de la normalización tras importar se registra por su tipo y no afecta a la importación; el test de F-036 `test_f036_r118_…` no se toca. Bloque 4 retomado.
 
 > **F-060 · decisión del humano 2026-10-10 (opción (a))**: `test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5`

@@ -127,6 +127,11 @@ from infrastructure.sigrid.fabrica import (
 )
 
 from interface_adapters.api.plantilla import configuracion_de_la_plantilla
+from interface_adapters.api.tiempos import (  # noqa: F401 - esqueleto de T17, lo usa T18
+    Cronometro,
+    es_primera_peticion,
+    segundos_de_proceso,
+)
 
 __all__ = [
     "MAX_CURSOR",

@@ -154,7 +154,7 @@
 - [x] **T18 · GREEN**: `interface_adapters/api/tiempos.py` y su uso en
   `listar_revision` (solo esa función de `interface_adapters/api/revision.py`). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_tiempos.py tests/test_f056_revision_http.py tests/test_f056_alcance_cerrado.py`
-- [ ] **T19**: `tests/test_f060_alcance_cerrado.py` con base fija `33d8938`
+- [x] **T19**: `tests/test_f060_alcance_cerrado.py` con base fija `33d8938`
   (R36–R39): las claves de las respuestas de F-056 y de la importación,
   iguales a las de la base; ningún `.sql` cambiado; ninguna ruta de escritura
   de la pasarela ni ventana en el código de F-060; los ficheros de «No se

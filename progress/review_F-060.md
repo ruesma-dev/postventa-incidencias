@@ -345,3 +345,11 @@ puede depender de pegar antes otro que tenga efectos (llamadas a la API, escritu
 escriba en producción o publique tiene que traer su “si algo sale mal”: a qué versión se vuelve, con qué comando, y
 qué no se puede deshacer.» Motivo: C-1 y C-2 de esta review; un guion que solo se lee de arriba abajo no ve que la
 pestaña nueva empieza vacía. Vale para cualquier proyecto: candidato a `arnes-base`.
+
+## Comprobación del líder (2026-10-13) · C-1 y C-2
+
+Comprobado leyendo `specs/F-060-normalizar-ubicaciones/tasks.md` en `e852732` (solo cambió ese fichero y una línea
+de `progress/impl_F-060.md`): **C-1** resuelto (bloque JS autocontenido para la pestaña nueva, con el cuerpo
+entero de `F060.medir`, la advertencia de no pegar nada de T26 y qué esperar de `proceso_nuevo`); **C-2** resuelto
+(párrafo «Si algo sale mal» antes de T24, con los cinco puntos). Como preveía esta review, el veredicto pasa a
+**APPROVED condicionado a T7** («58 passed», 0 skipped y 0 failed en `infra\pruebas_bbdd_efimera.ps1`).

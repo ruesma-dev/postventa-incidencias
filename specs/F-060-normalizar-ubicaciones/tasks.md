@@ -144,14 +144,14 @@
 
 ## Bloque 5 · Medir el listado, el alcance y los documentos
 
-- [ ] **T17 · RED**: `tests/test_f060_tiempos.py` (R40–R42, §11.3): con
+- [x] **T17 · RED**: `tests/test_f060_tiempos.py` (R40–R42, §11.3): con
   reloj falso, los tramos, la aplicación y el cálculo; la línea con 200 y con
   cada error del listado; el proxy devuelve lo mismo y relanza lo mismo; el
   orden de construcción (Sigrid antes que la base) no cambia;
   `proceso_nuevo` solo en la primera; `caplog` sin correo, `oid` ni textos;
   la línea de F-056 intacta. Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_tiempos.py` **falla**
-- [ ] **T18 · GREEN**: `interface_adapters/api/tiempos.py` y su uso en
+- [x] **T18 · GREEN**: `interface_adapters/api/tiempos.py` y su uso en
   `listar_revision` (solo esa función de `interface_adapters/api/revision.py`). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_tiempos.py tests/test_f056_revision_http.py tests/test_f056_alcance_cerrado.py`
 - [ ] **T19**: `tests/test_f060_alcance_cerrado.py` con base fija `33d8938`

@@ -147,10 +147,9 @@ def test_f060_r40_un_tramo_suma_aunque_salga_por_excepcion() -> None:
     cronometro = tiempos.Cronometro(reloj)
     error = ValueError("de prueba")
 
-    with pytest.raises(ValueError) as capturada:
-        with cronometro.tramo("falla"):
-            reloj.avanzar(2.0)
-            raise error
+    with pytest.raises(ValueError) as capturada, cronometro.tramo("falla"):
+        reloj.avanzar(2.0)
+        raise error
 
     assert capturada.value is error
     assert dict(cronometro.tramos()) == {"falla": 2.0}
@@ -476,13 +475,15 @@ def test_f060_r40_el_listado_deja_una_linea_con_cada_tramo(monkeypatch, caplog) 
 
     assert respuesta.status_code == 200
     assert _lineas(caplog) == [
-        "F-060 tiempos del listado: obra=9901 resultado=200 total=10.625 "
-        "proceso_nuevo=False segundos_de_proceso=812 "
-        "construir.catalogo=0.250 construir.ubicaciones=0.500 construir.bandeja=1.000 "
-        "construir.equivalencias=2.000 configuracion=0.125 bandeja.listar=4.000 "
-        "catalogo.leer_unidades=0.250 catalogo.leer_oficios=0.500 "
-        "equivalencias.ultimas_decisiones=0.125 ubicaciones=1.000 "
-        "aplicacion=6.250 calculo=0.375 serializar=0.500"
+        (
+            "F-060 tiempos del listado: obra=9901 resultado=200 total=10.625 "
+            "proceso_nuevo=False segundos_de_proceso=812 "
+            "construir.catalogo=0.250 construir.ubicaciones=0.500 construir.bandeja=1.000 "
+            "construir.equivalencias=2.000 configuracion=0.125 bandeja.listar=4.000 "
+            "catalogo.leer_unidades=0.250 catalogo.leer_oficios=0.500 "
+            "equivalencias.ultimas_decisiones=0.125 ubicaciones=1.000 "
+            "aplicacion=6.250 calculo=0.375 serializar=0.500"
+        )
     ]
 
 
@@ -525,7 +526,8 @@ def test_f060_r40_con_los_adaptadores_inyectados_no_hay_tramos_de_construccion(
     )
 
     linea = _una_linea(caplog)
-    nombres = re.findall(r" ([a-z_]+(?:\.[a-z_]+)?)=\d+\.\d{3}", linea)
+    tramos = linea.split(" segundos_de_proceso=", 1)[1]
+    nombres = re.findall(r" ([a-z_]+(?:\.[a-z_]+)?)=\d+\.\d{3}", tramos)
     assert nombres == [
         "bandeja.listar",
         "catalogo.leer_unidades",

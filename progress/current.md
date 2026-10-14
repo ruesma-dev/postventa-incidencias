@@ -1,6 +1,9 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-060 · Bloque 7 desbloqueado (humano, 2026-10-14): opción (a)**, M-3 completo (IA, PDF y `openpyxl`), con la
+> excepción de §12 para `interface_adapters/api/plantilla.py::descargar_plantilla`. Enmienda en `design.md` §11.4 y §12.
+
 > **F-060 · Bloque 7 BLOQUEADO antes de T31 (implementer, 2026-10-14)** · M-3 medido: diferir IA, PDF y `openpyxl`
 > quita ≈ 2,1 s de CPU por proceso nuevo (1034 → 723 módulos), pero **`openpyxl` no se puede diferir sin tocar
 > `interface_adapters/api/plantilla.py`**, intocable en `design.md` §12 y en `test_f060_alcance_cerrado.py`; y los

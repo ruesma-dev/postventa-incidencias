@@ -150,11 +150,17 @@ def test_f060_t20_el_control_de_correos_caza(texto):
 
 
 def test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando():
+    """Al cierre (2026-10-14, T36), la cabecera pasa a decir que F-060 está
+    **desplegada** (T24, 2026-10-13) y verificada en el entorno (T26 y T27,
+    2026-10-14), como hizo F-056 en el suyo.
+    """
     cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
 
     assert "Última feature que lo tocó: F-060" in cabecera
-    assert "Fecha: 2026-10-13." in cabecera
-    assert "sin desplegar" in cabecera
+    assert "Fecha: 2026-10-14." in cabecera
+    for texto in ("desplegada el 2026-10-13", "verificada en el entorno el 2026-10-14"):
+        assert texto in cabecera, f"la cabecera no dice «{texto}»"
+    assert "sin desplegar" not in cabecera
     # Lo que ya decía sigue: F-056 desplegada, F-053, F-036 y el origen.
     for texto in ("F-056", "desplegada el 2026-10-09", "F-053", "F-036", "F-005"):
         assert texto in cabecera, f"la cabecera ya no dice «{texto}»"
@@ -289,11 +295,30 @@ def test_f060_r43_la_seccion_ocho_dice_la_importacion_la_traza_y_la_cuenta():
 
 
 def test_f060_r43_la_seccion_ocho_dice_que_f060_no_esta_desplegada():
+    """§8 · «Qué NO está desplegado»: F-060, con su consecuencia visible.
+
+    Al cierre (2026-10-14, T36), la fila pasa a decir que la normalización está
+    **desplegada** y verificada (T26 y T27), y que lo que falta es la velocidad
+    del listado: la medición M2 (T35) y que lo pendiente es **F-061**. El
+    párrafo «Desde F-060» de §8 deja también de decir «sin desplegar».
+    """
     ausencias = _integracion("### Qué NO está desplegado, y hay que decirlo antes de enseñarlo")
     fila = _normal(_fila(ausencias, "| Normalizar las ubicaciones |"))
 
-    assert "F-060" in fila
-    assert "sin desplegar" in fila
+    for texto in (
+        "F-060",
+        "Desplegada el 2026-10-13",
+        "verificada en el entorno el 2026-10-14",
+        "p50 5,00 s",
+        "máximo 13,21 s",
+        "F-061",
+    ):
+        assert texto in fila, f"la fila de F-060 no dice «{texto}»"
+    assert "sin desplegar" not in fila
+
+    ocho = _normal(_integracion("## 8 · Qué exponemos nosotros"))
+    assert "Desde F-060 (2026-10-13; desplegada el 2026-10-13 y verificada en el entorno el 2026-10-14)" in ocho
+    assert "Desde F-060 (2026-10-13; implementada en su rama y sin desplegar)" not in ocho
 
 
 @pytest.mark.parametrize("modulo", MODULOS_DE_F060)
@@ -400,6 +425,26 @@ def test_f060_r43_la_medicion():
         assert texto in seccion, f"la sección no dice «{texto}»"
     for tramo in sorted(_tramos_de_la_traza()):
         assert tramo in seccion, f"la sección no nombra el tramo «{tramo}»"
+
+
+def test_f060_t36_la_seccion_dice_que_esta_desplegada_y_lo_que_mide():
+    """Al cierre (2026-10-14, T36): desplegada y verificada, y la medición M2.
+
+    Lo mismo que la cabecera y §8 de `INTEGRACION.md`: la línea de estado de la
+    sección deja de decir «sin desplegar», y la medición dice el resultado tras
+    la importación diferida del Bloque 7 (M-3) y que lo que falta es F-061.
+    """
+    seccion = _normal(_normalizacion())
+
+    for texto in (
+        "Añadida el 2026-10-13 por F-060; desplegada el 2026-10-13 y verificada en el entorno el 2026-10-14.",
+        "importación diferida",
+        "p50 5,00 s",
+        "máximo 13,21 s",
+        "F-061",
+    ):
+        assert texto in seccion, f"la sección no dice «{texto}»"
+    assert "sin desplegar" not in seccion
 
 
 def test_f060_r43_dice_lo_que_no_hace_y_lleva_a_la_spec():

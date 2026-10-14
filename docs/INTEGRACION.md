@@ -1,11 +1,13 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-10-13. **Última feature que
+> **Origen**: este repositorio. **Fecha**: 2026-10-14. **Última feature que
 > lo tocó**: F-060, normalizar las ubicaciones de la bandeja al texto exacto
 > de Sigrid —una ruta nueva, revisiones del **sistema** en la tabla de F-056,
 > también tras cada importación, y una línea de tiempos por listado (§1, §2,
-> §4, §6, §7, §8 y §9)—, implementada en su rama y **sin desplegar**.
+> §4, §6, §7, §8 y §9)—, **desplegada** el 2026-10-13 y verificada en el
+> entorno el 2026-10-14 (T26 y T27), con la importación diferida del
+> Bloque 7 publicada el 2026-10-14.
 > Antes, F-056, la revisión de la bandeja en el backend —una tabla
 > append-only, tres endpoints, el correo de quien revisa y una tercera lectura
 > de Sigrid—, **desplegada** el 2026-10-09 y verificada en el entorno (T19);
@@ -1436,7 +1438,8 @@ guion podría chocar; no se filtra, consta aquí
   No tienen ruta HTTP: son el punto de entrada de **F-040**, que es quien
   escribirá en el ERP. El detalle, en `specs/F-056-revision-bandeja-backend/`.
 
-**Desde F-060** (2026-10-13; implementada en su rama y **sin desplegar**) las
+**Desde F-060** (2026-10-13; **desplegada** el 2026-10-13 y verificada en el
+entorno el 2026-10-14) las
 ubicaciones de la bandeja que solo difieren en mayúsculas de las de Sigrid se
 **normalizan** con revisiones del sistema (§2, §7), y las respuestas de F-056
 y de la importación siguen con **las mismas claves**:
@@ -1504,7 +1507,7 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
 | La entrada de incidencias por Excel | F-036 | **Desplegada** desde el 2026-10-02 (verificada en el entorno el 2026-10-05, T29): las rutas de la plantilla, la importación, la bandeja y los catálogos existen en el entorno desplegado. Lo importado **se queda en la bandeja**: no crea ninguna incidencia en Sigrid hasta **F-040**, ni se revisa ni se edita hasta **F-038** |
-| Normalizar las ubicaciones | F-060 | Implementada en su rama y **sin desplegar**: hasta que se publique, la ruta `POST /api/revision/normalizar` no existe en el entorno, la importación no normaliza y el listado no deja la línea de tiempos. Las ubicaciones que solo difieren en mayúsculas siguen saliendo como `ubicacion_fuera_de_lista` |
+| Normalizar las ubicaciones | F-060 | **Desplegada** el 2026-10-13 y verificada en el entorno el 2026-10-14 (T26 y T27): la ruta `POST /api/revision/normalizar` existe, la importación normaliza tras registrar filas y el listado deja la línea de tiempos. Lo que aún no está es la velocidad del listado: tras la importación diferida del Bloque 7, la medición M2 (T35) da en caliente p50 5,00 s y máximo 13,21 s, por encima del objetivo (máximo < 10 s, p50 < 3 s); lo que falta, sobre todo las lecturas lentas de `sigrid-api`, va a **F-061** |
 | La revisión de la bandeja | F-056 | **Desplegada** el 2026-10-09 y verificada en el entorno (T19): las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` y la tabla `postventa.revisiones_bandeja` (la crea el DDL al arrancar) ya existen. Lo que aún no está: sin la página de **F-038** solo se puede usar llamando a las rutas; nada de lo aprobado llega a Sigrid hasta **F-040** |
 
 > **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo

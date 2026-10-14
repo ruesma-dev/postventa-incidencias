@@ -2541,3 +2541,53 @@ por `operation_Id`:
 - **Frío**: 23,8 s en el navegador, de los que ≈ 12 s son arranque de la plataforma (navegador − `duration`) tras el
   despliegue y la espera.
 - 10 peticiones seguidas en **4 instancias** (3 nuevas).
+
+## Cierre · documentación (parte de T36, implementer, 2026-10-14)
+
+Encargo del líder sobre HEAD `e35f905`: dejar dicho en los documentos que F-060 está desplegada y verificada, con la
+medición M2 y que lo pendiente es F-061, como hizo F-056 en su cierre. Sin código de producción.
+
+**Qué cambió**:
+
+- `docs/INTEGRACION.md`: cabecera (`Fecha: 2026-10-14`; F-060 «**desplegada** el 2026-10-13 y verificada en el
+  entorno el 2026-10-14 (T26 y T27), con la importación diferida del Bloque 7 publicada el 2026-10-14»); el párrafo
+  «Desde F-060» de §8 (ya no dice «implementada en su rama y sin desplegar»); y la fila «Normalizar las ubicaciones»
+  de «Qué NO está desplegado»: desplegada y verificada, y lo que falta es la velocidad del listado (M2, T35: p50
+  5,00 s y máximo 13,21 s en caliente, por encima del objetivo), que va a **F-061**.
+- `docs/ARCHITECTURE.md`, sección «Normalizar las ubicaciones (F-060)»: la línea de estado («desplegada el
+  2026-10-13 y verificada en el entorno el 2026-10-14»); un párrafo nuevo al final de «La medición del listado» con
+  M-3 (la importación diferida y sus cuatro funciones) y M2 (p50 5,00 s, máximo 13,21 s; dominan las lecturas de
+  `sigrid-api`; lo que falta, F-061); y «Lo que no hace»: «No optimiza el listado más allá de la importación diferida».
+- Sin cifras de ubicaciones ni textos nuevos (las cifras de la 0677 que ya estaban en ARCHITECTURE siguen como
+  estaban). Ninguna otra feature fija esas frases: solo `test_f060_documentacion.py`.
+- `services/postventa-api/tests/test_f060_documentacion.py`, al estilo de `test_f056_documentacion.py:480`:
+  `test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando` (fecha 2026-10-14, «desplegada el 2026-10-13»,
+  «verificada en el entorno el 2026-10-14» y «sin desplegar» **fuera**); `test_f060_r43_la_seccion_ocho_dice_que_f060_no_esta_desplegada`
+  (mismo nombre, como F-056; la fila exige «Desplegada el 2026-10-13», la verificación, «p50 5,00 s», «máximo
+  13,21 s» y «F-061», sin «sin desplegar»; y el párrafo de §8, la nueva redacción y no la vieja); y uno nuevo,
+  `test_f060_t36_la_seccion_dice_que_esta_desplegada_y_lo_que_mide` (ARCHITECTURE: la línea de estado,
+  «importación diferida», las dos cifras de M2, «F-061» y nada de «sin desplegar»).
+
+**RED** (tests cambiados, documentos aún sin tocar; desde un directorio sin `.env`):
+
+```
+$ python -m pytest services/postventa-api/tests/test_f060_documentacion.py --rootdir services/postventa-api -q -p no:cacheprovider -rf --tb=line
+…test_f060_documentacion.py:160: AssertionError: assert 'Fecha: 2026-10-14.' in '<!-- docs/INTEGRACION.md --> # Integración con el ecosistema · postventa-incidencias Origen: este repositorio. Fecha:...'
+E   AssertionError: la fila de F-060 no dice «Desplegada el 2026-10-13»
+    assert 'Desplegada el 2026-10-13' in '| Normalizar las ubicaciones | F-060 | Implementada en su rama y sin desplegar: hasta que se publique, …'
+E   AssertionError: la sección no dice «Añadida el 2026-10-13 por F-060; desplegada el 2026-10-13 y verificada en el entorno el 2026-10-14.»
+    assert '…' in '## Normalizar las ubicaciones (F-060) Añadida el 2026-10-13 por F-060, implementada en su rama y sin desplegar. …'
+FAILED …test_f060_documentacion.py::test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando
+FAILED …test_f060_documentacion.py::test_f060_r43_la_seccion_ocho_dice_que_f060_no_esta_desplegada
+FAILED …test_f060_documentacion.py::test_f060_t36_la_seccion_dice_que_esta_desplegada_y_lo_que_mide
+3 failed, 35 passed in 1.09s
+```
+
+**GREEN**, desde un directorio sin `.env`: todos los `tests/test_*documentacion*.py` más
+`test_f005_integracion_sin_secretos.py`, **506 passed en 8,48 s**; los otros trece tests que leen `INTEGRACION.md` o
+`ARCHITECTURE.md` más `test_f060_alcance_cerrado.py`, **530 passed, 11 skipped en 120,73 s**; `ruff check` del
+test, limpio. `init.sh` entero lo lanza el líder.
+
+**Qué falta para cerrar (líder)**: el resto de T36 (`progress/history.md`, la ficha en `done` con la review y
+`init.sh` en verde) y llevar a `azure-apps/postventa_incidencias.md` la cabecera y la fila nuevas de
+`docs/INTEGRACION.md`.

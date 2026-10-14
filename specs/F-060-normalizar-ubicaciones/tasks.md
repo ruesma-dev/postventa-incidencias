@@ -383,7 +383,7 @@
   cumple** (máximo < 10 s y p50 < 3 s en caliente), anotar «Bloque 7 no hace
   falta» y saltar a T36. |
   Verificación: la anotación en `design.md` §11.4
-- [ ] **T31 · RED** del remedio elegido, según su fila:
+- [x] **T31 · RED** del remedio elegido, según su fila:
   M-1: una sola `psycopg.connect` por listado, los dos repositorios sobre la
   misma conexión, cerrada en `finally` también con error, y los
   `test_f056_r46_…` en verde; M-2: reconexión ante una conexión cerrada o

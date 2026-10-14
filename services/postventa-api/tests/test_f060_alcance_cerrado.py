@@ -13,7 +13,7 @@ puerto de la revisión). Cada frontera tiene aquí su control:
 | Sigrid y las ventanas de escritura | **R38** | ninguna línea añadida y ninguna pieza de F-060 nombra una ruta de escritura de la pasarela ni una ventana (`…_HABILITADO`); ninguna importa las escrituras del ERP; ninguna variable de entorno nueva |
 | Los ficheros de «No se toca» | **§12** | sin cambios, ni el front, ni `infra/`, ni la plantilla |
 | Los tests de F-036, F-056 y los que cuentan rutas | **R39** | solo los declarados, solo en sus funciones declaradas, y sin perder ninguna aserción salvo las declaradas |
-| El resto del código tocado | §12 | en cada fichero, solo cambian o se añaden las piezas declaradas |
+| El resto del código tocado | §12 | en cada fichero, solo cambian o se añaden las piezas declaradas (desde el Bloque 7, también las de M-3, `plantilla.py` incluido) |
 
 ## Las excepciones declaradas a «sin tocar» (R39)
 
@@ -284,6 +284,13 @@ PIEZAS_DE_F060: dict[str, frozenset[str]] = {
     ),
     # T18: solo `listar_revision` (la medición, §11.3).
     "interface_adapters/api/revision.py": frozenset({"listar_revision"}),
+    # Bloque 7, M-3 opción (a) del humano (2026-10-14; `design.md` §11.4 y §12):
+    # el `import` del adaptador pesado, dentro de la función que lo usa, y nada
+    # más. `importar_excel` ya estaba declarada arriba. `plantilla.py` es la
+    # excepción a «No se toca», solo en `descargar_plantilla`.
+    "infrastructure/llm/fabrica.py": frozenset({"_construir_gemini"}),
+    "interface_adapters/api/split.py": frozenset({"trocear_remesa"}),
+    "interface_adapters/api/plantilla.py": frozenset({"descargar_plantilla"}),
     "function_app.py": frozenset({"revision_normalizar"}),
 }
 
@@ -604,7 +611,9 @@ INTOCABLES = tuple(
         "application/pipelines/equivalencias.py",
         "config/plantilla_incidencias.yaml",
         "interface_adapters/api/bandeja.py",
-        "interface_adapters/api/plantilla.py",
+        # `interface_adapters/api/plantilla.py` salió de aquí en el Bloque 7
+        # (M-3, `design.md` §12): solo cambia `descargar_plantilla`, y lo
+        # vigila `PIEZAS_DE_F060`.
         "interface_adapters/api/equivalencias.py",
     )
 )

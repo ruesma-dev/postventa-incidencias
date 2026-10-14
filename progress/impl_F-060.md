@@ -2474,3 +2474,38 @@ dan el `OSError` de la guardia). Las cuatro piezas siguen en verde con la guardi
 hijos sin red) y `test_f060_alcance_cerrado.py` **81 passed** (antes 73: +8), juntos **92 passed en 52,92 s**;
 `ruff check` de los dos, limpio. Sin cambios en código de producción: la puerta de cobertura y la mutación de T33/T34
 no cambian, y no se ha relanzado `init.sh` entero (lo permite el encargo).
+
+#### C-B7-3 de la re-review del Bloque 7 · 2026-10-14
+
+Re-review en `progress/review_F-060.md` («Re-review del Bloque 7», `247a983`): C-B7-1 y C-B7-2 resueltos; pide
+C-B7-3. Tocado **solo** `services/postventa-api/tests/test_f060_alcance_cerrado.py` y este informe; O-B7-5 no se
+hace (así lo dice el encargo).
+
+**Qué cambia.** `_resto_del_modulo` descartaba **cualquier** `Assign`/`AnnAssign`, pero `_definiciones` solo recoge
+las que asignan a un nombre: `ConfiguracionPlantilla.listas = None` o `a, b = f(), 1` a nivel de módulo no los veía
+ninguno de los dos controles. Ahora el filtro es `_es_definicion` (nuevo): funciones y clases, siempre; un `Assign`
+solo si **todos** sus destinos son `ast.Name`; un `AnnAssign` solo si su destino es `ast.Name`; es exactamente lo que
+recoge `_definiciones`. En `test_f060_s12_m3_el_control_del_resto_del_modulo_no_es_ciego`, cuatro aserciones más:
+`a, b = f(), 1` (sale como `a, b = (f(), 1)`), `m.x = 1` y `m.x: int = 1` añadidos a la base aparecen en el resto, y
+`Y = Z = 2` / `W: int = 3` siguen sin aparecer (son definiciones).
+
+**RED** en una copia desechable (worktree temporal de la rama, ya borrado), con `ConfiguracionPlantilla.listas =
+None` añadido al final de `plantilla.py`, desde un directorio sin `.env`:
+
+```
+== guarda de hoy (HEAD 247a983) con ConfiguracionPlantilla.listas = None al final de plantilla.py
+$ python -m pytest <copia>/tests/test_f060_alcance_cerrado.py --rootdir <copia> -q -p no:cacheprovider -k "s12"
+30 passed, 51 deselected in 16.16s
+== guarda corregida, misma copia
+$ python -m pytest <copia>/tests/test_f060_alcance_cerrado.py --rootdir <copia> -q -p no:cacheprovider -k "s12" -rf --tb=short
+_ test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[interface_adapters/api/plantilla.py] _
+    assert ahora == esperado
+E   AssertionError: assert ['from __futu...ajustes', ...] == ['from __futu...ajustes', ...]
+E     Left contains one more item: 'ConfiguracionPlantilla.listas = None'
+FAILED …/test_f060_alcance_cerrado.py::test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[interface_adapters/api/plantilla.py]
+1 failed, 29 passed, 51 deselected in 15.11s
+```
+
+**Resultado** en el repo: `test_f060_importacion_diferida.py` + `test_f060_alcance_cerrado.py` **92 passed en
+53,83 s** (mismo número de tests: solo hay aserciones nuevas); `ruff check` de los dos, limpio. Sin cambios en
+código de producción.

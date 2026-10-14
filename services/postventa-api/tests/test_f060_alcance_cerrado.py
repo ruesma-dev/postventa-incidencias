@@ -380,18 +380,34 @@ IMPORTS_RETIRADOS_POR_M3: dict[str, str] = {
 }
 
 
+def _es_definicion(nodo: ast.stmt) -> bool:
+    """¿La recoge `_definiciones`? Lo que no, va al resto del módulo (C-B7-3).
+
+    Funciones y clases, siempre; una asignación, solo si **todos** sus destinos
+    son un nombre (`X = 1`, `X = Y = 1`); una anotada, solo si su destino lo es.
+    `a, b = f(), 1` o `m.x = 1` no son una definición: si quedaran fuera de los
+    dos controles, la guarda no las vería.
+    """
+    if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        return True
+    if isinstance(nodo, ast.Assign):
+        return all(isinstance(objetivo, ast.Name) for objetivo in nodo.targets)
+    if isinstance(nodo, ast.AnnAssign):
+        return isinstance(nodo.target, ast.Name)
+    return False
+
+
 def _resto_del_modulo(fuente: str) -> list[str]:
-    """Las sentencias de módulo que no son función, clase ni asignación, en orden.
+    """Las sentencias de módulo que `_definiciones` no recoge, en orden.
 
     Sin docstrings y con `ast.unparse`: un comentario o un cambio de formato no
-    cuentan; un `import`, una expresión suelta, un `try` o un `if`, sí.
+    cuentan; un `import`, una expresión suelta, un `try`, un `if` o una
+    asignación a algo que no es un nombre, sí.
     """
     return [
         ast.unparse(nodo)
         for nodo in _sin_docstrings(ast.parse(fuente)).body  # type: ignore[attr-defined]
-        if not isinstance(
-            nodo, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Assign | ast.AnnAssign
-        )
+        if not _es_definicion(nodo)
     ]
 
 
@@ -427,6 +443,11 @@ def test_f060_s12_m3_el_control_del_resto_del_modulo_no_es_ciego():
     assert _resto_del_modulo(base + "import os\n") == ["import a", "from b import c", "import os"]
     assert _resto_del_modulo(base + "f()\n")[-1] == "f()"
     assert _resto_del_modulo(base + "try:\n    import e\nexcept ImportError:\n    pass\n")[-1].startswith("try:")
+    # C-B7-3: una asignación a algo que no es un nombre no es una definición.
+    assert _resto_del_modulo(base + "a, b = f(), 1\n")[-1] == "a, b = (f(), 1)"
+    assert _resto_del_modulo(base + "m.x = 1\n")[-1] == "m.x = 1"
+    assert _resto_del_modulo(base + "m.x: int = 1\n")[-1] == "m.x: int = 1"
+    assert _resto_del_modulo(base + "Y = Z = 2\nW: int = 3\n") == ["import a", "from b import c"]
     assert _resto_del_modulo(base.replace('"""Doc."""', '"""Otra."""').replace("X = 1", "X = 2")) == [
         "import a",
         "from b import c",

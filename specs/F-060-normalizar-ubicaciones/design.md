@@ -514,6 +514,15 @@ implementa sin el dato:
 Tras elegir (PARADA del humano), el líder anota la elección en esta sección y
 el implementer hace el Bloque 7 con su RED, su mutación y su segunda medición.
 
+**Elección (humano, 2026-10-14, T30).** M1 (`progress/impl_F-060.md`, T28) no cumple
+D-10: en caliente p50 4,92 s y máximo 14,73 s. Descartadas H1, H4, H6 y H7. Dominan
+dos causas: **A** (H2+H3), un proceso o instancia nueva, que suma ≈ 3 s antes del
+handler y ≈ 2,5 s de plataforma (10 peticiones seguidas cayeron en 6 instancias); y
+**B** (H5), picos de 4–8 s en una sola lectura de `sigrid-api`, también en procesos
+calientes. **Se hace M-3** y nada más. Tras M2 (T35), F-060 se cierra **con el dato que
+salga**, cumpla o no D-10: no se vuelve a T30. Lo que falte (la causa B, M-4, la
+concurrencia por instancia y M-5) pasa a la ficha **F-061**.
+
 ## 12 · Ficheros
 
 **A crear** (`services/postventa-api/`): `domain/models/normalizacion.py`,

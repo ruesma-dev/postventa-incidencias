@@ -378,7 +378,7 @@
 
 ## Bloque 7 · Optimizar el listado (solo si M1 no cumple D-10)
 
-- [ ] **T30 · Decisión (líder y humano, PARADA)**: con M1, elegir uno o varios
+- [x] **T30 · Decisión (líder y humano, PARADA)** (2026-10-14: **M-3**, anotado en §11.4): con M1, elegir uno o varios
   remedios de `design.md` §11.4 y anotarlos allí, con fecha. **Si M1 ya
   cumple** (máximo < 10 s y p50 < 3 s en caliente), anotar «Bloque 7 no hace
   falta» y saltar a T36. |
@@ -401,7 +401,7 @@
 - [ ] **T34**: `bash harness/init.sh` en verde. **Review del Bloque 7.** |
   Verificación: `bash harness/init.sh`
 - [ ] **T35 · MANUAL (humano)**: publicar como en T24 y repetir la medición
-  de T28 (**M2**). Objetivo de D-10; si no se alcanza, volver a T30. |
+  de T28 (**M2**). Objetivo de D-10; si no se alcanza, volver a T30. **Enmienda (humano, 2026-10-14)**: M2 se mide y se anota, y F-060 se cierra con ese dato aunque no alcance D-10; no se vuelve a T30, lo pendiente va a F-061. |
   Verificación: MANUAL (humano)
 
 ## Cierre

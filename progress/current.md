@@ -1,6 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-060 · Bloque 6 hecho en producción y T30 decidida (humano, 2026-10-14)** · T24–T27 bien: 110 normalizadas, 0
+> conflictos, fuera de lista 148 → 38, Sigrid igual (1276). **M1 (T28) no cumple D-10**: p50 4,92 s, máx. 14,73 s; causas
+> A (instancia o proceso nuevo, ≈ 3 s de importación + ≈ 2,5 s de plataforma) y B (picos de 4–8 s en `sigrid-api`).
+> **Decisión**: solo **M-3** (Bloque 7: T31–T34 implementer, T35 publicar y M2 el humano); F-060 se cierra con M2, cumpla
+> o no; el resto va a la ficha nueva **F-061** (pendiente, prioridad 10). Detalle: `progress/impl_F-060.md`.
+
 > **F-060 · Bloque 5 HECHO (implementer, 2026-10-13)** · T17–T23 en `d2053d5`..`37b60bd` y el informe. `init.sh` en verde (api 8147 passed, 123 skipped, 2156 s; cobertura 100 % de 324 líneas); mutación 10/10 y 26/26 a mano. **Desviación pendiente de aceptación**: los tramos de la revisión se llaman `construir.bandeja`/`bandeja.listar` y no `construir.revision`/`revision.listar` (design §11.3), porque `test_f056_r31_…` (intocable) exige que la única línea del listado con «revision» sea la de F-056. Tests de documentación de otras features ampliados y declarados (decisión del líder): f053, f012, f019 y dos de f056 (uno, la cabecera, cambia lo que exige). Detalle: `progress/impl_F-060.md`, Bloque 5. Siguiente: review final. Pendientes: T7 (humano), Bloque 6.
 
 > **F-060 · decisión del humano 2026-10-12 (opción (b))**: mejor esfuerzo = cualquier excepción de la normalización tras importar se registra por su tipo y no afecta a la importación; el test de F-036 `test_f036_r118_…` no se toca. Bloque 4 retomado.

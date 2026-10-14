@@ -2159,3 +2159,13 @@ Aplicados solo en el texto del Bloque 6 de `tasks.md`: C-1 (medición en frío d
 `infra\pruebas_bbdd_efimera.ps1` lanzado en la sesión a petición del humano (Docker Desktop arrancado):
 **58 passed in 23.70s**, 0 failed, 0 skipped; contenedor destruido; «SUITE DE BASE DE DATOS EN VERDE». Con
 esto, la review del Bloque 2 y la review final quedan **APPROVED** sin condición.
+
+### Bloque 6 · producción con la 0677 (2026-10-13/14, líder)
+
+- **T24**: publicado por el humano desde copia limpia de `dev` en `6272dee`; la Function arrancó a las 16:39 UTC del 2026-10-13.
+- **T25** (antes): `t29_paso1_sigrid.ps1` → **1276 reclamaciones**, PASA (Villa 1:215, 2:169, 3:128, 4:179, 5:54, 6:34, 7:261, 12:23, 13:213, resto 0).
+- **T26 paso 1** (ensayo): fuera de lista 148, examinadas 159, no exactas 148, **normalizables 110**, **sin coincidencia 38**, ambiguas 0, no editables 0, conflictos 0, normalizadas 0, `ensayo: true`.
+- **T26 paso 2** (real): **normalizadas 110**, conflictos 0, fuera de lista **148 → 38**, repetición `segunda: 0`; por estado editada 110, nueva 48, descartada 1 (la fila de prueba de F-056), aprobada 0.
+- **T26 paso 3**: `cambios_ubicacion`, `sin_fuera_de_lista`, `importada_distinta` e `historial_ok` → **los cuatro `true`**.
+- **T27** (después): **1276 reclamaciones**, idéntico por unidad a T25; PASA. Sigrid sin cambios.
+- **T28**: pendiente (mediciones en caliente y en frío).

@@ -2191,3 +2191,87 @@ esto, la review del Bloque 2 y la review final quedan **APPROVED** sin condició
   - **Causa A, proceso o instancia nueva** (H2+H3): +≈ 3 s entre `duration` y `total` (antes del handler: importación de `function_app.py`) y +≈ 2,3–2,7 s entre navegador y `duration` (arranque de la plataforma). Le pasó a 4 de las 10 y a la de frío.
   - **Causa B, picos de Sigrid** (H5): una sola lectura tarda 3,8–7,8 s (lo normal es 0,1–0,4 s), en 4 de las 10 y en la de las 10:16 (8,4 s), también en procesos calientes (165 y 171 s). Ocurren dentro de la llamada a `sigrid-api`. No hay App Insights de `sigrid-api` consultable para ver su lado.
   - Sin A ni B, todas las peticiones están entre 0,5 y 1,2 s.
+
+## Bloque 7 · M-3 · BLOQUEADO antes de T31 (implementer, 2026-10-14)
+
+**Estado**: hecho el paso 1 del encargo (medir); **T31–T34 sin empezar y ningún fichero de código tocado**. Paro
+porque cualquier forma de aplicar M-3 tal como la pide §11.4 (IA, PDF **y `openpyxl`**) choca con el alcance cerrado
+de la propia spec (`design.md` §12, «No se toca») y con su guarda, `tests/test_f060_alcance_cerrado.py`. Decidirlo es
+cambiar la spec: no lo improviso. `features.json` sin tocar (el encargo pedía no marcar nada y avisar).
+
+### Paso 1 · Qué carga hoy `import function_app` (HEAD `8318a4d`)
+
+Medido con el intérprete del servicio (`services/postventa-api/.venv`), en procesos aparte, **sin red y sin `.env`**:
+directorio de trabajo vacío (pydantic-settings no encuentra `.env`), `PYTHONPATH` al servicio y `ENTORNO=test` como
+único valor ficticio (es la única variable obligatoria para importar). La importación no abre conexiones.
+
+`import function_app` carga **1034 módulos**. `python -X importtime` (acumulado, una pasada; esta máquina es
+ruidosa: Windows con antivirus):
+
+| Rama de la importación (desde `function_app`) | Acumulado | ¿La usa `GET /api/revision`? |
+|---|---:|---|
+| `config.logging_config` → `config.settings` (pydantic, pydantic-settings) | 1627 ms | sí |
+| `interface_adapters.api.adjuntar` → persistencia (`psycopg` 392 ms), Sigrid (`httpx` 123, `tenacity` 79), dominio | 1338 ms | sí (es quien los carga primero) |
+| `interface_adapters.api.equivalencias` → `importar` → `infrastructure.documentos.excel_openpyxl` → **`openpyxl` 742 ms** | 1006 ms | **no** |
+| `interface_adapters.api.extraer` → `infrastructure.llm.fabrica` → `gemini` → **`google.genai` 952 ms** (arrastra `anyio` y `websockets`) | 987 ms | **no** |
+| `azure.functions` (`werkzeug` 426 ms) | 879 ms | sí (el propio `function_app`) |
+| `interface_adapters.api.split` → `pdf_pymupdf` → **`pymupdf` 275 ms** | 311 ms | **no** |
+| total `function_app` | 6424 ms | |
+
+**Qué se puede diferir y cuánto da** (experimento en una copia del servicio en el scratchpad, **no en el repo**; 15
+rondas intercaladas, mediana del tiempo de CPU del proceso, menos ruidoso que el de pared):
+
+| Variante | Dónde se difiere | Módulos | CPU mediana | Ahorro |
+|---|---|---:|---:|---:|
+| base (HEAD) | — | 1034 | 4,89 s | — |
+| IA | `infrastructure/llm/fabrica.py::_construir_gemini` importa `gemini` dentro | 922 | 3,59 s | −1,30 s |
+| IA + PDF | y `interface_adapters/api/split.py::trocear_remesa` importa `pdf_pymupdf` dentro | 903 | 3,52 s | −1,37 s |
+| IA + PDF + `openpyxl` | y `descargar_plantilla` (`plantilla.py`) e `importar_excel` (`importar.py`) importan `excel_openpyxl` dentro | **723** | **2,81 s** | **−2,08 s (≈ 43 %)** |
+
+Pared, mismas rondas (mediana): 8,41 → 6,19 → 6,64 → 5,69 s; p25 7,22 → 5,40 → 5,41 → 4,22 s. Aquí el tiempo de
+pared no es fiable; el de CPU y el número de módulos, sí. `openpyxl` es un tercio del ahorro; `pymupdf`, poco.
+
+**`function_app.py` no es el sitio**: diferir ahí los `from interface_adapters.api.… import …` rompería los
+`monkeypatch.setattr(function_app, "importar_excel" | "descargar_plantilla" | "extraer_parte" | "leer_firma", …)` de
+tests de F-003, F-004, F-036 y F-053 (intocables por R39); y `test_f060_s12_en_cada_fichero_tocado_solo_cambia_lo_declarado`
+solo deja cambiar `revision_normalizar` en `function_app.py` (`importaciones`, además, está en R36: igual que la
+base). El sitio limpio es la función que usa cada adaptador (tabla de arriba): ningún test parchea esos nombres
+(`AdaptadorGeminiVision` en `llm/fabrica`, `AdaptadorPdfPyMuPdf` en `split`, `GeneradorPlantillaOpenpyxl` en
+`plantilla` e `importar`; comprobado con `grep` en `tests/`), y los tests de arquitectura que miran importaciones
+(`test_f002`, `test_f003` y `test_f036_arquitectura`) recorren el árbol con `ast.walk`: un `import` dentro de una
+función sigue contando igual.
+
+### Por qué paro: el choque con §12
+
+1. **`openpyxl` no se puede diferir sin tocar un intocable.** El listado (`interface_adapters/api/revision.py`, por
+   `configuracion_de_la_plantilla`) y `function_app.py` (por `descargar_plantilla`) importan
+   `interface_adapters/api/plantilla.py`, y ese módulo importa `excel_openpyxl` arriba. Las dos únicas formas de
+   cortarlo son:
+   - editar `interface_adapters/api/plantilla.py`: está en `INTOCABLES` de `test_f060_alcance_cerrado.py`
+     (`test_f060_s12_la_rama_no_toca_ningun_intocable` se pondría en rojo) y en «No se toca» de `design.md` §12;
+   - editar `infrastructure/documentos/excel_openpyxl.py`: carpeta entera en `CARPETAS_INTOCABLES`
+     (`test_f060_s12_ni_sigrid_ni_la_plantilla_ni_el_front_ni_infra`), y más invasivo.
+2. **Lo que sí se puede sin intocables (IA y PDF) también sale de §12.** `infrastructure/llm/fabrica.py` e
+   `interface_adapters/api/split.py` no están en «A modificar», y §11.4 dice que M-3 «toca `function_app.py`», que es
+   justo donde no se puede (párrafo anterior). La guarda no los vigila (solo recorre los ficheros de
+   `PIEZAS_DE_F060`), pero tocarlos sin declararlos dejaría la spec y el diff desalineados.
+
+### Opciones para el líder y el humano
+
+- **(a) M-3 completo (la que da el dato)**: enmendar `design.md` §12 para el Bloque 7 —sacar
+  `interface_adapters/api/plantilla.py` de «No se toca» solo para `descargar_plantilla`, y añadir a «A modificar»
+  `infrastructure/llm/fabrica.py::_construir_gemini`, `interface_adapters/api/split.py::trocear_remesa` y
+  `interface_adapters/api/plantilla.py::descargar_plantilla` (`importar.py::importar_excel` ya está declarada)— y
+  reflejarlo en `test_f060_alcance_cerrado.py` (`INTOCABLES` sin `plantilla.py`; `PIEZAS_DE_F060` con esas tres
+  piezas, para que la guarda vigile que **solo** cambian esas funciones). Sin funciones nuevas: el `import` va dentro
+  de la función, junto al uso. Ahorro medido ≈ 2,1 s de CPU por proceso nuevo (≈ 43 %), 311 módulos menos.
+- **(b) Solo IA + PDF**: sin tocar intocables; enmienda de «A modificar» con `llm/fabrica.py` y `split.py` (y
+  `PIEZAS_DE_F060`). Ahorro ≈ 1,4 s de CPU (≈ 28 %); `openpyxl` (≈ 0,7 s) quedaría para F-061.
+- En las dos, el RED de T31 sería un test nuevo `tests/test_f060_importacion_diferida.py` (la guarda de R39 deja
+  pasar `test_f060_*`) que importa `function_app` en un subproceso, con el patrón de
+  `test_f036_arquitectura_r118_importar_el_lector_aislado_no_carga_openpyxl`, y exige que `google.genai`, `pymupdf` y
+  `fitz` (y `openpyxl` en (a)) **no** estén en `sys.modules`, más un control de que `function_app` sí se importó.
+
+Nada escrito en el repo salvo este apartado y la nota de `progress/current.md`. Sin red, sin BBDD, sin Sigrid,
+`.env` sin tocar (la primera medición, lanzada desde la carpeta del servicio, dejó que pydantic-settings **leyera**
+`.env`; las cifras de este apartado son todas de procesos sin `.env`).

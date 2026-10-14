@@ -1,6 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-060 · Bloque 7 BLOQUEADO antes de T31 (implementer, 2026-10-14)** · M-3 medido: diferir IA, PDF y `openpyxl`
+> quita ≈ 2,1 s de CPU por proceso nuevo (1034 → 723 módulos), pero **`openpyxl` no se puede diferir sin tocar
+> `interface_adapters/api/plantilla.py`**, intocable en `design.md` §12 y en `test_f060_alcance_cerrado.py`; y los
+> sitios de IA y PDF (`infrastructure/llm/fabrica.py`, `interface_adapters/api/split.py`) tampoco están en «A
+> modificar» (§11.4 decía `function_app.py`, que no sirve: tests de otras features parchean sus nombres). Hace falta
+> enmendar §12: opción (a) M-3 completo u (b) solo IA + PDF. Código sin tocar. Detalle: `progress/impl_F-060.md`,
+> «Bloque 7 · M-3».
+
 > **F-060 · Bloque 6 hecho en producción y T30 decidida (humano, 2026-10-14)** · T24–T27 bien: 110 normalizadas, 0
 > conflictos, fuera de lista 148 → 38, Sigrid igual (1276). **M1 (T28) no cumple D-10**: p50 4,92 s, máx. 14,73 s; causas
 > A (instancia o proceso nuevo, ≈ 3 s de importación + ≈ 2,5 s de plataforma) y B (picos de 4–8 s en `sigrid-api`).

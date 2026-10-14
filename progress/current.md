@@ -1,6 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-060 · Bloque 7 HECHO (implementer, 2026-10-14)** · T31 `0a572d7` (RED 6/8), T32 `b40d952`, T33 `6faf03c`
+> (herramienta 0 mutantes en 16 líneas de `import`; a mano 8/8 muertos), T34 `init.sh` en verde (api 8161 passed, 123
+> skipped, 2480,72 s; cobertura 100 % de 4 líneas). `import function_app`: 1034 → 723 módulos, CPU 3,73 → 2,03 s
+> (local, sin `.env`). `function_app.py` sin cambios; ningún test de otra feature tocado. Siguiente: review del
+> Bloque 7; luego T35 (humano, M2) y T36. Detalle: `progress/impl_F-060.md`, «Bloque 7 · resultado».
+
 > **F-060 · Bloque 7 desbloqueado (humano, 2026-10-14): opción (a)**, M-3 completo (IA, PDF y `openpyxl`), con la
 > excepción de §12 para `interface_adapters/api/plantilla.py::descargar_plantilla`. Enmienda en `design.md` §11.4 y §12.
 

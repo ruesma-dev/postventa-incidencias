@@ -2396,10 +2396,81 @@ servicio expone o consume es distinto.
 | Evidencia | Valor |
 |---|---|
 | Tests ejecutados | api 8161 passed, 123 skipped (suite entera, `init.sh`); arnés 115 passed |
-| Tests nuevos | `test_f060_importacion_diferida.py`: 8 (6 en RED) |
+| Tests nuevos | `test_f060_importacion_diferida.py`: 8 (6 en RED); tras la review, 11, y 8 más en `test_f060_alcance_cerrado.py` (C-B7-1) |
 | Cobertura de lo cambiado | 100,0 % (4/4 líneas) |
-| Mutación (herramienta) | 0 generados en 16 líneas (solo `import` y comentarios), 0 supervivientes |
+| Mutación (herramienta) | 0 generados en 16 líneas (solo `import` y comentarios), 0 supervivientes; **workers**: la consola anunció «hasta 8 workers», y el informe (`progress/mutacion_F-060_bloque7.md`) registra `Workers 1` y `--workers 1` en su cabecera, porque con 0 mutantes no arranca ninguno más (O-B7-3) |
 | Mutación (a mano) | 8/8 muertos |
 | Supervivientes abiertos | 0 |
 | Tiempo de la suite | 2480,72 s (api) + 22,94 s (arnés) |
 | Importación de `function_app` | 1034 → 723 módulos; CPU 3,73 → 2,03 s (mediana local, sin `.env`) |
+
+#### Correcciones de la review del Bloque 7 (C-B7-1, C-B7-2, O-B7-1 a O-B7-3) · 2026-10-14
+
+Review en `progress/review_F-060.md` («Review del Bloque 7», `edef027`): CHANGES_REQUESTED solo en tests. Tocados
+**solo** `services/postventa-api/tests/test_f060_alcance_cerrado.py`,
+`services/postventa-api/tests/test_f060_importacion_diferida.py` y este informe; el código de M-3, sin cambios.
+Todo ejecutado desde un directorio del scratchpad **sin `.env`** (`PYTHONPATH` y `--rootdir` al servicio,
+`ENTORNO=test`); las copias desechables, en un worktree temporal de la rama, ya borrado.
+
+**C-B7-1 · la guarda ve el resto del módulo.** En `test_f060_alcance_cerrado.py`: `IMPORTS_RETIRADOS_POR_M3`
+(`llm/fabrica.py`, `api/split.py` y `api/plantilla.py`, cada uno con su `from … import` diferido) y
+`_resto_del_modulo` (las sentencias de módulo que no son función, clase ni asignación, sin docstrings, con
+`ast.unparse`, en orden). Tests nuevos: `test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[×3]` (contra la
+base fija, el resto del módulo de HEAD es **exactamente** el de la base sin ese `import`: ni uno más, ni otro orden),
+`…_el_import_diferido_no_vuelve_al_modulo[×3]` (mitad sin `git`), `…_los_ficheros_del_resto_del_modulo_son_piezas_de_f060`
+y `…_el_control_del_resto_del_modulo_no_es_ciego` (un `import os`, una llamada suelta y un `try` de módulo se ven;
+docstrings y asignaciones, no; y «añadir `import os`» no pasa por «solo quitar»). `importar.py` no entra (sus
+importaciones de módulo ya cambiaron en bloques anteriores; la review lo deja opcional). RED en la copia desechable,
+con `configuracion_de_la_plantilla()` añadida al final de `plantilla.py`:
+
+```
+== guarda de hoy (HEAD edef027) con la llamada de módulo en plantilla.py
+$ python -m pytest <copia>/tests/test_f060_alcance_cerrado.py --rootdir <copia> -q -p no:cacheprovider -k "s12"
+22 passed, 51 deselected in 15.99s
+== guarda nueva, misma copia
+$ python -m pytest <copia>/tests/test_f060_alcance_cerrado.py --rootdir <copia> -q -p no:cacheprovider -k "s12" -rf --tb=short
+_ test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[interface_adapters/api/plantilla.py] _
+    assert ahora == esperado
+E   AssertionError: assert ['from __futu...ajustes', ...] == ['from __futu...ajustes', ...]
+E     Left contains one more item: 'configuracion_de_la_plantilla()'
+FAILED …/test_f060_alcance_cerrado.py::test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[interface_adapters/api/plantilla.py]
+1 failed, 29 passed, 51 deselected in 16.53s
+```
+
+**C-B7-2 · opción (a): el cuarto caso, `importar_excel`.** `_USAR_LA_PIEZA` pasa a ir **por pieza** (las cuatro de
+§12), cada una con la biblioteca que carga; `test_f060_t31_hay_un_caso_por_cada_pieza_diferida` fija las cuatro.
+El caso nuevo llama a `importar_excel` con `generador=None` y dobles escritos en el propio test (no
+`tests/utiles_importacion.py`, que importa `openpyxl`): un lector que devuelve la plantilla reconocida con **una fila
+con error**, una bandeja que no tiene huella previa y registra cero válidas, y el catálogo y las equivalencias que ya
+usaba el caso de la plantilla (ahora compartidos en `_DOBLES_DE_SIGRID_Y_BASE`). Así el generador de verdad escribe
+el Excel de errores y el test comprueba que es un `.xlsx` (`PK`); sin filas válidas no se normaliza nada. Unas 30
+líneas de dobles: proporcionado, no hizo falta la (b). RED en la copia desechable con el `import` de
+`importar_excel` quitado:
+
+```
+== test de HEAD (edef027) con el import de importar_excel quitado
+$ python -m pytest <copia>/tests/test_f060_importacion_diferida.py --rootdir <copia> -q -p no:cacheprovider
+8 passed in 28.54s
+== test nuevo, misma copia
+$ python -m pytest <copia>/tests/test_f060_importacion_diferida.py --rootdir <copia> -q -p no:cacheprovider -rf --tb=line
+      File "…\interface_adapters\api\importar.py", line 218, in importar_excel
+          generador if generador is not None else GeneradorPlantillaOpenpyxl(),
+      NameError: name 'GeneradorPlantillaOpenpyxl' is not defined. Did you mean: 'GeneradorPlantillaPort'?
+FAILED …/test_f060_importacion_diferida.py::test_f060_t31_la_pieza_diferida_carga_su_adaptador_al_usarse[importar_excel]
+1 failed, 10 passed in 21.62s
+```
+
+Con eso, el mutante «`importar`: `import` quitado» de T33 lo caza ya un test **de F-060**, no solo
+`test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad`.
+
+**O-B7-1.** Ningún fragmento importa ya la biblioteca que se comprueba: el caso de la IA comprueba la clase **por
+nombre** (`type(extractor).__name__`), así que `despues: True` lo pone la fábrica, no el propio fragmento.
+**O-B7-2.** `_SIN_RED` va delante del código de **cada** hijo (parchea `socket.socket.connect`, `connect_ex` y
+`socket.create_connection`), con su control: `test_f060_t31_los_hijos_no_pueden_abrir_conexiones` (los dos intentos
+dan el `OSError` de la guardia). Las cuatro piezas siguen en verde con la guardia puesta: ninguna conecta.
+**O-B7-3.** Anotado arriba, en la fila de mutación. (O-B7-4 no pide nada.)
+
+**Resultado**: `test_f060_importacion_diferida.py` **11 passed** (antes 8: +1 pieza, +1 «hay un caso por pieza», +1
+hijos sin red) y `test_f060_alcance_cerrado.py` **81 passed** (antes 73: +8), juntos **92 passed en 52,92 s**;
+`ruff check` de los dos, limpio. Sin cambios en código de producción: la puerta de cobertura y la mutación de T33/T34
+no cambian, y no se ha relanzado `init.sh` entero (lo permite el encargo).

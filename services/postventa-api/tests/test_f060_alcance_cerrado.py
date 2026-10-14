@@ -13,7 +13,7 @@ puerto de la revisión). Cada frontera tiene aquí su control:
 | Sigrid y las ventanas de escritura | **R38** | ninguna línea añadida y ninguna pieza de F-060 nombra una ruta de escritura de la pasarela ni una ventana (`…_HABILITADO`); ninguna importa las escrituras del ERP; ninguna variable de entorno nueva |
 | Los ficheros de «No se toca» | **§12** | sin cambios, ni el front, ni `infra/`, ni la plantilla |
 | Los tests de F-036, F-056 y los que cuentan rutas | **R39** | solo los declarados, solo en sus funciones declaradas, y sin perder ninguna aserción salvo las declaradas |
-| El resto del código tocado | §12 | en cada fichero, solo cambian o se añaden las piezas declaradas |
+| El resto del código tocado | §12 | en cada fichero, solo cambian o se añaden las piezas declaradas (desde el Bloque 7, también las de M-3, `plantilla.py` incluido); y en los tres ficheros que añadió el Bloque 7, el resto del módulo (lo que no es una definición) solo pierde el `import` diferido |
 
 ## Las excepciones declaradas a «sin tocar» (R39)
 
@@ -284,6 +284,13 @@ PIEZAS_DE_F060: dict[str, frozenset[str]] = {
     ),
     # T18: solo `listar_revision` (la medición, §11.3).
     "interface_adapters/api/revision.py": frozenset({"listar_revision"}),
+    # Bloque 7, M-3 opción (a) del humano (2026-10-14; `design.md` §11.4 y §12):
+    # el `import` del adaptador pesado, dentro de la función que lo usa, y nada
+    # más. `importar_excel` ya estaba declarada arriba. `plantilla.py` es la
+    # excepción a «No se toca», solo en `descargar_plantilla`.
+    "infrastructure/llm/fabrica.py": frozenset({"_construir_gemini"}),
+    "interface_adapters/api/split.py": frozenset({"trocear_remesa"}),
+    "interface_adapters/api/plantilla.py": frozenset({"descargar_plantilla"}),
     "function_app.py": frozenset({"revision_normalizar"}),
 }
 
@@ -351,6 +358,106 @@ def test_f060_s12_all_solo_gana_nombres(relativa):
         exportados[clave] = set() if definicion is None else set(ast.literal_eval(definicion.split("=", 1)[1].strip()))
 
     assert exportados["antes"] <= exportados["ahora"]
+
+
+# --------------------------------------------------------------------------
+# §12 · Bloque 7 (M-3): el resto del módulo, en los ficheros que añadió
+# --------------------------------------------------------------------------
+
+#: C-B7-1 de la review del Bloque 7. `_definiciones` no ve lo que no es una
+#: definición (un `import`, una llamada suelta, un `try` o un `if` de módulo).
+#: Mientras `plantilla.py` estuvo en `INTOCABLES`, cualquier cambio era rojo;
+#: en `PIEZAS_DE_F060` hace falta mirar también **el resto del módulo**. En los
+#: tres ficheros que el Bloque 7 añadió, la única diferencia permitida ahí es la
+#: retirada del `import` que pasa a la función (`design.md` §12). `importar.py`
+#: no entra: sus importaciones de módulo ya cambiaron en bloques anteriores.
+IMPORTS_RETIRADOS_POR_M3: dict[str, str] = {
+    "infrastructure/llm/fabrica.py": "from infrastructure.llm.gemini import AdaptadorGeminiVision",
+    "interface_adapters/api/split.py": "from infrastructure.documentos.pdf_pymupdf import AdaptadorPdfPyMuPdf",
+    "interface_adapters/api/plantilla.py": (
+        "from infrastructure.documentos.excel_openpyxl import GeneradorPlantillaOpenpyxl"
+    ),
+}
+
+
+def _es_definicion(nodo: ast.stmt) -> bool:
+    """¿La recoge `_definiciones`? Lo que no, va al resto del módulo (C-B7-3).
+
+    Funciones y clases, siempre; una asignación, solo si **todos** sus destinos
+    son un nombre (`X = 1`, `X = Y = 1`); una anotada, solo si su destino lo es.
+    `a, b = f(), 1` o `m.x = 1` no son una definición: si quedaran fuera de los
+    dos controles, la guarda no las vería.
+    """
+    if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        return True
+    if isinstance(nodo, ast.Assign):
+        return all(isinstance(objetivo, ast.Name) for objetivo in nodo.targets)
+    if isinstance(nodo, ast.AnnAssign):
+        return isinstance(nodo.target, ast.Name)
+    return False
+
+
+def _resto_del_modulo(fuente: str) -> list[str]:
+    """Las sentencias de módulo que `_definiciones` no recoge, en orden.
+
+    Sin docstrings y con `ast.unparse`: un comentario o un cambio de formato no
+    cuentan; un `import`, una expresión suelta, un `try`, un `if` o una
+    asignación a algo que no es un nombre, sí.
+    """
+    return [
+        ast.unparse(nodo)
+        for nodo in _sin_docstrings(ast.parse(fuente)).body  # type: ignore[attr-defined]
+        if not _es_definicion(nodo)
+    ]
+
+
+def test_f060_s12_m3_los_ficheros_del_resto_del_modulo_son_piezas_de_f060():
+    assert set(IMPORTS_RETIRADOS_POR_M3) <= set(PIEZAS_DE_F060)
+
+
+@pytest.mark.parametrize("relativa", sorted(IMPORTS_RETIRADOS_POR_M3))
+def test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import(relativa):
+    """Contra la base fija: el resto del módulo es el de antes sin el `import` diferido."""
+    _diff_de_la_rama_o_saltar()
+    antes = _resto_del_modulo(_en_la_base(f"{SERVICIO}{relativa}"))
+    ahora = _resto_del_modulo(_actual(relativa))
+    retirado = IMPORTS_RETIRADOS_POR_M3[relativa]
+
+    assert retirado in antes, "la lista no nombra un import que estuviera en la base"
+    esperado = list(antes)
+    esperado.remove(retirado)
+    assert ahora == esperado
+
+
+@pytest.mark.parametrize("relativa", sorted(IMPORTS_RETIRADOS_POR_M3))
+def test_f060_s12_m3_el_import_diferido_no_vuelve_al_modulo(relativa):
+    """La mitad que no depende de `git`."""
+    assert IMPORTS_RETIRADOS_POR_M3[relativa] not in _resto_del_modulo(_actual(relativa))
+
+
+def test_f060_s12_m3_el_control_del_resto_del_modulo_no_es_ciego():
+    """Un `import`, una llamada suelta o un `try` de módulo se ven; las definiciones y los docstrings, no."""
+    base = '"""Doc."""\nimport a\nfrom b import c\n\n\ndef f():\n    import d\n\n\nX = 1\n'
+
+    assert _resto_del_modulo(base) == ["import a", "from b import c"]
+    assert _resto_del_modulo(base + "import os\n") == ["import a", "from b import c", "import os"]
+    assert _resto_del_modulo(base + "f()\n")[-1] == "f()"
+    assert _resto_del_modulo(base + "try:\n    import e\nexcept ImportError:\n    pass\n")[-1].startswith("try:")
+    # C-B7-3: una asignación a algo que no es un nombre no es una definición.
+    assert _resto_del_modulo(base + "a, b = f(), 1\n")[-1] == "a, b = (f(), 1)"
+    assert _resto_del_modulo(base + "m.x = 1\n")[-1] == "m.x = 1"
+    assert _resto_del_modulo(base + "m.x: int = 1\n")[-1] == "m.x: int = 1"
+    assert _resto_del_modulo(base + "Y = Z = 2\nW: int = 3\n") == ["import a", "from b import c"]
+    assert _resto_del_modulo(base.replace('"""Doc."""', '"""Otra."""').replace("X = 1", "X = 2")) == [
+        "import a",
+        "from b import c",
+    ]
+    # Y en el sentido de la comparación: añadir un `import os` no es «solo quitar».
+    antes = _resto_del_modulo(base)
+    ahora = _resto_del_modulo(base.replace("from b import c\n", "") + "import os\n")
+    esperado = list(antes)
+    esperado.remove("from b import c")
+    assert ahora != esperado
 
 
 # --------------------------------------------------------------------------
@@ -604,7 +711,9 @@ INTOCABLES = tuple(
         "application/pipelines/equivalencias.py",
         "config/plantilla_incidencias.yaml",
         "interface_adapters/api/bandeja.py",
-        "interface_adapters/api/plantilla.py",
+        # `interface_adapters/api/plantilla.py` salió de aquí en el Bloque 7
+        # (M-3, `design.md` §12): solo cambia `descargar_plantilla`, y lo
+        # vigila `PIEZAS_DE_F060`.
         "interface_adapters/api/equivalencias.py",
     )
 )

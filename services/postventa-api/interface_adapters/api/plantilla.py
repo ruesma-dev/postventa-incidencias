@@ -34,7 +34,6 @@ from domain.models.plantilla_incidencias import normalizar_codigo_obra
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.equivalencias import EquivalenciasPort
 from domain.ports.hoja_calculo import GeneradorPlantillaPort
-from infrastructure.documentos.excel_openpyxl import GeneradorPlantillaOpenpyxl
 from infrastructure.documentos.plantilla_yaml import (
     ConfiguracionPlantilla,
     cargar_plantilla_yaml,
@@ -74,6 +73,10 @@ def descargar_plantilla(
     config = (
         configuracion if configuracion is not None else configuracion_de_la_plantilla()
     )
+    # Importación diferida (F-060 M-3): importar `function_app.py` no carga
+    # `openpyxl`, que el listado de la revisión no usa.
+    from infrastructure.documentos.excel_openpyxl import GeneradorPlantillaOpenpyxl
+
     return generar_plantilla(
         codigo,
         catalogo_obra=catalogo_obra,

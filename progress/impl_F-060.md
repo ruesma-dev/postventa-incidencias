@@ -2159,3 +2159,353 @@ Aplicados solo en el texto del Bloque 6 de `tasks.md`: C-1 (medición en frío d
 `infra\pruebas_bbdd_efimera.ps1` lanzado en la sesión a petición del humano (Docker Desktop arrancado):
 **58 passed in 23.70s**, 0 failed, 0 skipped; contenedor destruido; «SUITE DE BASE DE DATOS EN VERDE». Con
 esto, la review del Bloque 2 y la review final quedan **APPROVED** sin condición.
+
+### Bloque 6 · producción con la 0677 (2026-10-13/14, líder)
+
+- **T24**: publicado por el humano desde copia limpia de `dev` en `6272dee`; la Function arrancó a las 16:39 UTC del 2026-10-13.
+- **T25** (antes): `t29_paso1_sigrid.ps1` → **1276 reclamaciones**, PASA (Villa 1:215, 2:169, 3:128, 4:179, 5:54, 6:34, 7:261, 12:23, 13:213, resto 0).
+- **T26 paso 1** (ensayo): fuera de lista 148, examinadas 159, no exactas 148, **normalizables 110**, **sin coincidencia 38**, ambiguas 0, no editables 0, conflictos 0, normalizadas 0, `ensayo: true`.
+- **T26 paso 2** (real): **normalizadas 110**, conflictos 0, fuera de lista **148 → 38**, repetición `segunda: 0`; por estado editada 110, nueva 48, descartada 1 (la fila de prueba de F-056), aprobada 0.
+- **T26 paso 3**: `cambios_ubicacion`, `sin_fuera_de_lista`, `importada_distinta` e `historial_ok` → **los cuatro `true`**.
+- **T27** (después): **1276 reclamaciones**, idéntico por unidad a T25; PASA. Sigrid sin cambios.
+- **T28 · M1** (2026-10-14, consola del humano + App Insights leído por el líder; solo lectura). Por petición: navegador / `requests.duration` / `total` de la traza (s), instancia (6 últimos), `proceso_nuevo` y segundos de proceso, y el tramo que domina:
+
+| # | Navegador | duration | total | Instancia | proceso_nuevo (s) | Tramo alto |
+|---|---|---|---|---|---|---|
+| 1 | 0,883 | 0,606 | 0,587 | 9ae59c | False (140) | — |
+| 2 | 1,167 | 0,871 | 0,848 | a1335b | True (126) | — |
+| 3 | 14,730 | 12,444 | 9,518 | 941c61 | True (11) | `catalogo.leer_unidades` 3,824 + `ubicaciones` 5,432 |
+| 4 | 5,935 | 3,652 | 0,621 | 2c2007 | True (3) | arranque |
+| 5 | 12,757 | 10,330 | 7,183 | 5707fd | True (9) | `ubicaciones` 6,695 |
+| 6 | 0,813 | 0,524 | 0,501 | 9ae59c | False (175) | — |
+| 7 | 4,951 | 4,724 | 4,699 | a1335b | False (165) | `catalogo.leer_unidades` 4,320 |
+| 8 | 0,585 | 0,492 | 0,472 | 2c2007 | False (22) | — |
+| 9 | 4,881 | 4,704 | 4,685 | a1335b | False (171) | `ubicaciones` 4,383 |
+| 10 | 6,424 | 3,754 | 0,616 | 1f39b0 | True (3) | arranque |
+| frío | 6,697 | 3,959 | 0,770 | be1fd9 | True (3) | arranque (válida como frío) |
+
+  - **Caliente (navegador)**: p50 **4,92 s**, máximo **14,73 s** → **no cumple D-10** (p50 < 3 s, máx. < 10 s). Mejora frente a F-056 (p50 7,1 s, máx. 12,7 s), pero no basta. En el servidor (`total`): p50 0,73 s, máx. 9,52 s.
+  - **Frío**: navegador 6,70 s, `duration` 3,96 s, `total` 0,77 s, `proceso_nuevo=True`.
+  - Diez peticiones **seguidas** se sirvieron en **6 instancias** distintas (en esa ventana no hubo otro tráfico); `alwaysReady` vacío, memoria 2048 MB, sin concurrencia HTTP configurada.
+  - **Descartadas**: H1 (`construir.bandeja`/`construir.equivalencias` ≤ 0,13 s), H6 (`bandeja.listar` ≤ 0,02 s), H7 (`calculo`/`serializar` ≤ 0,01 s), H4 (navegador − `duration` ≈ 0,2–0,3 s en las calientes).
+  - **Causa A, proceso o instancia nueva** (H2+H3): +≈ 3 s entre `duration` y `total` (antes del handler: importación de `function_app.py`) y +≈ 2,3–2,7 s entre navegador y `duration` (arranque de la plataforma). Le pasó a 4 de las 10 y a la de frío.
+  - **Causa B, picos de Sigrid** (H5): una sola lectura tarda 3,8–7,8 s (lo normal es 0,1–0,4 s), en 4 de las 10 y en la de las 10:16 (8,4 s), también en procesos calientes (165 y 171 s). Ocurren dentro de la llamada a `sigrid-api`. No hay App Insights de `sigrid-api` consultable para ver su lado.
+  - Sin A ni B, todas las peticiones están entre 0,5 y 1,2 s.
+
+## Bloque 7 · M-3 · T31–T34 HECHAS (implementer, 2026-10-14)
+
+**Estado final**: el humano eligió la **opción (a)** (enmienda de `design.md` §11.4 y §12 en `1e85c56`) y el
+bloque está hecho: T31 `0a572d7`, T32 `b40d952`, T33 `6faf03c`, T34 en el commit de este informe. Resumen y
+evidencias en «Bloque 7 · resultado», al final de esta sección. Lo que sigue hasta allí es el bloqueo previo, tal
+como se escribió (`14eadf0`), con la medición que sirvió para decidir.
+
+### Bloqueo previo (2026-10-14, antes de la enmienda)
+
+**Estado entonces**: hecho el paso 1 del encargo (medir); **T31–T34 sin empezar y ningún fichero de código tocado**. Paro
+porque cualquier forma de aplicar M-3 tal como la pide §11.4 (IA, PDF **y `openpyxl`**) choca con el alcance cerrado
+de la propia spec (`design.md` §12, «No se toca») y con su guarda, `tests/test_f060_alcance_cerrado.py`. Decidirlo es
+cambiar la spec: no lo improviso. `features.json` sin tocar (el encargo pedía no marcar nada y avisar).
+
+### Paso 1 · Qué carga hoy `import function_app` (HEAD `8318a4d`)
+
+Medido con el intérprete del servicio (`services/postventa-api/.venv`), en procesos aparte, **sin red y sin `.env`**:
+directorio de trabajo vacío (pydantic-settings no encuentra `.env`), `PYTHONPATH` al servicio y `ENTORNO=test` como
+único valor ficticio (es la única variable obligatoria para importar). La importación no abre conexiones.
+
+`import function_app` carga **1034 módulos**. `python -X importtime` (acumulado, una pasada; esta máquina es
+ruidosa: Windows con antivirus):
+
+| Rama de la importación (desde `function_app`) | Acumulado | ¿La usa `GET /api/revision`? |
+|---|---:|---|
+| `config.logging_config` → `config.settings` (pydantic, pydantic-settings) | 1627 ms | sí |
+| `interface_adapters.api.adjuntar` → persistencia (`psycopg` 392 ms), Sigrid (`httpx` 123, `tenacity` 79), dominio | 1338 ms | sí (es quien los carga primero) |
+| `interface_adapters.api.equivalencias` → `importar` → `infrastructure.documentos.excel_openpyxl` → **`openpyxl` 742 ms** | 1006 ms | **no** |
+| `interface_adapters.api.extraer` → `infrastructure.llm.fabrica` → `gemini` → **`google.genai` 952 ms** (arrastra `anyio` y `websockets`) | 987 ms | **no** |
+| `azure.functions` (`werkzeug` 426 ms) | 879 ms | sí (el propio `function_app`) |
+| `interface_adapters.api.split` → `pdf_pymupdf` → **`pymupdf` 275 ms** | 311 ms | **no** |
+| total `function_app` | 6424 ms | |
+
+**Qué se puede diferir y cuánto da** (experimento en una copia del servicio en el scratchpad, **no en el repo**; 15
+rondas intercaladas, mediana del tiempo de CPU del proceso, menos ruidoso que el de pared):
+
+| Variante | Dónde se difiere | Módulos | CPU mediana | Ahorro |
+|---|---|---:|---:|---:|
+| base (HEAD) | — | 1034 | 4,89 s | — |
+| IA | `infrastructure/llm/fabrica.py::_construir_gemini` importa `gemini` dentro | 922 | 3,59 s | −1,30 s |
+| IA + PDF | y `interface_adapters/api/split.py::trocear_remesa` importa `pdf_pymupdf` dentro | 903 | 3,52 s | −1,37 s |
+| IA + PDF + `openpyxl` | y `descargar_plantilla` (`plantilla.py`) e `importar_excel` (`importar.py`) importan `excel_openpyxl` dentro | **723** | **2,81 s** | **−2,08 s (≈ 43 %)** |
+
+Pared, mismas rondas (mediana): 8,41 → 6,19 → 6,64 → 5,69 s; p25 7,22 → 5,40 → 5,41 → 4,22 s. Aquí el tiempo de
+pared no es fiable; el de CPU y el número de módulos, sí. `openpyxl` es un tercio del ahorro; `pymupdf`, poco.
+
+**`function_app.py` no es el sitio**: diferir ahí los `from interface_adapters.api.… import …` rompería los
+`monkeypatch.setattr(function_app, "importar_excel" | "descargar_plantilla" | "extraer_parte" | "leer_firma", …)` de
+tests de F-003, F-004, F-036 y F-053 (intocables por R39); y `test_f060_s12_en_cada_fichero_tocado_solo_cambia_lo_declarado`
+solo deja cambiar `revision_normalizar` en `function_app.py` (`importaciones`, además, está en R36: igual que la
+base). El sitio limpio es la función que usa cada adaptador (tabla de arriba): ningún test parchea esos nombres
+(`AdaptadorGeminiVision` en `llm/fabrica`, `AdaptadorPdfPyMuPdf` en `split`, `GeneradorPlantillaOpenpyxl` en
+`plantilla` e `importar`; comprobado con `grep` en `tests/`), y los tests de arquitectura que miran importaciones
+(`test_f002`, `test_f003` y `test_f036_arquitectura`) recorren el árbol con `ast.walk`: un `import` dentro de una
+función sigue contando igual.
+
+### Por qué paro: el choque con §12
+
+1. **`openpyxl` no se puede diferir sin tocar un intocable.** El listado (`interface_adapters/api/revision.py`, por
+   `configuracion_de_la_plantilla`) y `function_app.py` (por `descargar_plantilla`) importan
+   `interface_adapters/api/plantilla.py`, y ese módulo importa `excel_openpyxl` arriba. Las dos únicas formas de
+   cortarlo son:
+   - editar `interface_adapters/api/plantilla.py`: está en `INTOCABLES` de `test_f060_alcance_cerrado.py`
+     (`test_f060_s12_la_rama_no_toca_ningun_intocable` se pondría en rojo) y en «No se toca» de `design.md` §12;
+   - editar `infrastructure/documentos/excel_openpyxl.py`: carpeta entera en `CARPETAS_INTOCABLES`
+     (`test_f060_s12_ni_sigrid_ni_la_plantilla_ni_el_front_ni_infra`), y más invasivo.
+2. **Lo que sí se puede sin intocables (IA y PDF) también sale de §12.** `infrastructure/llm/fabrica.py` e
+   `interface_adapters/api/split.py` no están en «A modificar», y §11.4 dice que M-3 «toca `function_app.py`», que es
+   justo donde no se puede (párrafo anterior). La guarda no los vigila (solo recorre los ficheros de
+   `PIEZAS_DE_F060`), pero tocarlos sin declararlos dejaría la spec y el diff desalineados.
+
+### Opciones para el líder y el humano
+
+- **(a) M-3 completo (la que da el dato)**: enmendar `design.md` §12 para el Bloque 7 —sacar
+  `interface_adapters/api/plantilla.py` de «No se toca» solo para `descargar_plantilla`, y añadir a «A modificar»
+  `infrastructure/llm/fabrica.py::_construir_gemini`, `interface_adapters/api/split.py::trocear_remesa` y
+  `interface_adapters/api/plantilla.py::descargar_plantilla` (`importar.py::importar_excel` ya está declarada)— y
+  reflejarlo en `test_f060_alcance_cerrado.py` (`INTOCABLES` sin `plantilla.py`; `PIEZAS_DE_F060` con esas tres
+  piezas, para que la guarda vigile que **solo** cambian esas funciones). Sin funciones nuevas: el `import` va dentro
+  de la función, junto al uso. Ahorro medido ≈ 2,1 s de CPU por proceso nuevo (≈ 43 %), 311 módulos menos.
+- **(b) Solo IA + PDF**: sin tocar intocables; enmienda de «A modificar» con `llm/fabrica.py` y `split.py` (y
+  `PIEZAS_DE_F060`). Ahorro ≈ 1,4 s de CPU (≈ 28 %); `openpyxl` (≈ 0,7 s) quedaría para F-061.
+- En las dos, el RED de T31 sería un test nuevo `tests/test_f060_importacion_diferida.py` (la guarda de R39 deja
+  pasar `test_f060_*`) que importa `function_app` en un subproceso, con el patrón de
+  `test_f036_arquitectura_r118_importar_el_lector_aislado_no_carga_openpyxl`, y exige que `google.genai`, `pymupdf` y
+  `fitz` (y `openpyxl` en (a)) **no** estén en `sys.modules`, más un control de que `function_app` sí se importó.
+
+Nada escrito en el repo salvo este apartado y la nota de `progress/current.md`. Sin red, sin BBDD, sin Sigrid,
+`.env` sin tocar (la primera medición, lanzada desde la carpeta del servicio, dejó que pydantic-settings **leyera**
+`.env`; las cifras de este apartado son todas de procesos sin `.env`).
+
+### Bloque 7 · resultado (opción (a), tras `1e85c56`)
+
+**Qué cambió** (solo lo que declara §12 enmendado; `function_app.py` **no** cambia):
+
+| Fichero | Pieza | Cambio |
+|---|---|---|
+| `services/postventa-api/infrastructure/llm/fabrica.py` | `_construir_gemini` | `from infrastructure.llm.gemini import AdaptadorGeminiVision` pasa de arriba del módulo a la función, tras comprobar la credencial y antes de construir |
+| `services/postventa-api/interface_adapters/api/split.py` | `trocear_remesa` | `AdaptadorPdfPyMuPdf`, dentro, justo antes de `paso_troceado` |
+| `services/postventa-api/interface_adapters/api/importar.py` | `importar_excel` | `GeneradorPlantillaOpenpyxl`, dentro de la rama que registra filas, justo antes de `paso_excel_errores` |
+| `services/postventa-api/interface_adapters/api/plantilla.py` | `descargar_plantilla` | `GeneradorPlantillaOpenpyxl`, dentro, justo antes de `generar_plantilla` (excepción de §12) |
+| `services/postventa-api/tests/test_f060_importacion_diferida.py` | nuevo | 8 casos (abajo) |
+| `services/postventa-api/tests/test_f060_alcance_cerrado.py` | `PIEZAS_DE_F060`, `INTOCABLES` | las tres piezas nuevas (`importar_excel` ya estaba) y `plantilla.py` fuera de `INTOCABLES`, con su comentario; ninguna aserción quitada |
+
+**Decisiones de diseño.** Cada `import` va **sin condición** junto a su uso (no dentro de un `if generador is None`):
+así la línea la ejecutan todos los tests que pasan por la función, también los que inyectan un doble, y el
+comportamiento es idéntico al de antes salvo el momento de la carga. Sin funciones nuevas ni cambios de firma.
+Ningún test existente parchea los nombres que se movieron (`grep` en `tests/`), así que **ningún test de otra
+feature se ha tocado**. Los tests de arquitectura que vigilan importaciones (`test_f002`, `test_f003`,
+`test_f036_arquitectura`) usan `ast.walk`: siguen viendo los `import` dentro de funciones y siguen en verde.
+
+**T31 · RED** (`0a572d7`). `tests/test_f060_importacion_diferida.py`: cada caso arranca un intérprete aparte en un
+`tmp_path` **sin `.env`** (lo comprueba), con `ENTORNO=test` y `PYTHONPATH` al servicio:
+`…_no_carga_el_modulo_pesado[google.genai|pymupdf|fitz|openpyxl]` (fuera de `sys.modules` tras `import
+function_app`); `…_el_control_no_es_ciego` (`function_app.app` existe; `psycopg`, `interface_adapters.api.revision`
+e `infrastructure.sigrid.fabrica` **sí** están; y el detector de submódulos, probado en positivo y en negativo); y
+`…_la_pieza_diferida_carga_su_adaptador_al_usarse[google.genai|openpyxl|pymupdf]` (antes de usar la pieza la
+biblioteca no está; después, sí: `construir_extractor` con credencial ficticia, `trocear_remesa` con un «PDF» que no
+lo es, y `descargar_plantilla` con dobles escritos en el propio test —los de `tests/utiles_*` importan `openpyxl` y
+lo harían verde sin más— que genera un `.xlsx` real, `PK`). Comando y salida real, antes de tocar el código:
+
+```
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f060_importacion_diferida.py -q -p no:cacheprovider -rf --tb=line
+FF.F.FFF                                                                 [100%]
+E   AssertionError: assert not True
+     +  where True = _cargado('google.genai', ['__future__', '__main__', '__mp_main__', '_abc', '_ast', '_asyncio', ...])
+E   AssertionError: assert not True
+     +  where True = _cargado('pymupdf', ['__future__', '__main__', '__mp_main__', '_abc', '_ast', '_asyncio', ...])
+E   AssertionError: assert not True
+     +  where True = _cargado('openpyxl', ['__future__', '__main__', '__mp_main__', '_abc', '_ast', '_asyncio', ...])
+E   AssertionError: assert {'antes': Tru...espues': True} == {'antes': Fal...espues': True}
+      {'antes': True} != {'antes': False}      (×3: google.genai, openpyxl, pymupdf)
+FAILED tests/test_f060_importacion_diferida.py::test_f060_t31_importar_function_app_no_carga_el_modulo_pesado[google.genai]
+FAILED tests/test_f060_importacion_diferida.py::test_f060_t31_importar_function_app_no_carga_el_modulo_pesado[pymupdf]
+FAILED tests/test_f060_importacion_diferida.py::test_f060_t31_importar_function_app_no_carga_el_modulo_pesado[openpyxl]
+FAILED tests/test_f060_importacion_diferida.py::test_f060_t31_la_pieza_diferida_carga_su_adaptador_al_usarse[google.genai]
+FAILED tests/test_f060_importacion_diferida.py::test_f060_t31_la_pieza_diferida_carga_su_adaptador_al_usarse[openpyxl]
+FAILED tests/test_f060_importacion_diferida.py::test_f060_t31_la_pieza_diferida_carga_su_adaptador_al_usarse[pymupdf]
+6 failed, 2 passed in 18.10s
+```
+
+Los dos que pasan en RED: `[fitz]` (hoy `pymupdf` ya no registra el alias `fitz`; se deja como guarda del nombre
+antiguo) y `…_el_control_no_es_ciego` (es el control, debe pasar siempre). Y la guarda ampliada, en RED por lo que
+debe (las piezas declaradas aún no habían cambiado):
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f060_alcance_cerrado.py -q -p no:cacheprovider
+E       AssertionError: assert set() == frozenset({'trocear_remesa'})
+FAILED tests/test_f060_alcance_cerrado.py::test_f060_el_control_del_diff_no_esta_mirando_una_lista_vacia
+FAILED tests/test_f060_alcance_cerrado.py::test_f060_s12_en_cada_fichero_tocado_solo_cambia_lo_declarado[infrastructure/llm/fabrica.py]
+FAILED tests/test_f060_alcance_cerrado.py::test_f060_s12_en_cada_fichero_tocado_solo_cambia_lo_declarado[interface_adapters/api/plantilla.py]
+FAILED tests/test_f060_alcance_cerrado.py::test_f060_s12_en_cada_fichero_tocado_solo_cambia_lo_declarado[interface_adapters/api/split.py]
+4 failed, 69 passed in 31.26s
+```
+
+**T32 · GREEN** (`b40d952`). Los dos ficheros de T31: **81 passed** (46,17 s). Suites de las features que usan las
+piezas: `-k "f002 or f003 or f004 or f053 or f060 or f010"` **1160 passed, 5 skipped** (265,34 s); `-k "f036 and
+(plantilla or importar or arquitectura or catalogos)"` **551 passed** (131,92 s).
+
+**Medición después** (mismo método que antes: 15 rondas intercaladas, procesos sin `.env`, `ENTORNO=test`; «antes»
+es la copia de HEAD `8318a4d` del scratchpad, «después» el repo):
+
+| | Módulos | CPU mediana (p25) | Pared mediana (p25) |
+|---|---:|---:|---:|
+| antes | 1034 | 3,73 s (3,52) | 5,46 s (4,72) |
+| después | **723** | **2,03 s (1,73)** | **3,43 s (2,85)** |
+
+≈ −1,7 s de CPU (−46 %) y ≈ −2,0 s de pared por proceso nuevo **en esta máquina**; en Azure las cifras absolutas
+serán otras (lo dirá M2, T35), pero la proporción es la que hay que esperar en el tramo «antes del handler».
+
+**T33 · Mutación** (`6faf03c`). `python -m harness.mutacion --feature F-060 --base 1e85c56 --timeout 1800 --salida
+progress/mutacion_F-060_bloque7.md`: alcance 4 ficheros, **16 líneas**, **0 mutantes generados** (las líneas
+cambiadas son `import` y comentarios: la herramienta solo muta comparaciones, aritmética, lógica y constantes), 0
+supervivientes. Como 0 de 0 no demuestra nada, **mutación a mano** de lo que sí puede romperse, en un worktree
+aislado (ya borrado), con los tests que deben cazarlo:
+
+| Mutante | Tests | Resultado |
+|---|---|---|
+| `fabrica`: el `import` vuelve arriba del módulo | `test_f060_importacion_diferida.py` | muerto (1 failed) |
+| `fabrica`: el `import` quitado | `test_f003_fabrica.py` | muerto (1 failed) |
+| `split`: arriba | `test_f060_importacion_diferida.py` | muerto (1 failed) |
+| `split`: quitado | `test_f002_split_http.py` | muerto (1 failed) |
+| `importar`: arriba | `test_f060_importacion_diferida.py` | muerto (1 failed) |
+| `importar`: quitado | `test_f036_importar_http.py` | muerto (1 failed) |
+| `plantilla`: arriba | `test_f060_importacion_diferida.py` | muerto (1 failed) |
+| `plantilla`: quitado | `test_f036_plantilla_http.py` | muerto (1 failed) |
+
+**8/8 muertos, 0 supervivientes abiertos.** Cada mutante se aplicó solo (los demás ficheros, como en HEAD), así
+que cada pieza está vigilada por sí misma.
+
+**T34** · `bash harness/init.sh` en verde: api **8161 passed, 123 skipped en 2480,72 s (41 min 21 s)**; herramientas
+del arnés 115 passed en 22,94 s; front en verde (caché); **PUERTA COBERTURA 100,0 % de 4 líneas cambiadas (4/4,
+umbral 80 %, nivel crítico)**; ruff 73 avisos, deuda previa (el `I001` de `importar.py` ya estaba en HEAD: comprobado
+con la versión de HEAD).
+
+**Fuera de alcance / qué falta**: T35 (MANUAL, humano: publicar y medir M2), T36 (líder) y la **review del Bloque 7**
+(T34). La causa B (picos de `sigrid-api`), M-4 y M-5 siguen en F-061. `azure-apps` no cambia: nada de lo que el
+servicio expone o consume es distinto.
+
+#### Evidencias (Bloque 7)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | api 8161 passed, 123 skipped (suite entera, `init.sh`); arnés 115 passed |
+| Tests nuevos | `test_f060_importacion_diferida.py`: 8 (6 en RED); tras la review, 11, y 8 más en `test_f060_alcance_cerrado.py` (C-B7-1) |
+| Cobertura de lo cambiado | 100,0 % (4/4 líneas) |
+| Mutación (herramienta) | 0 generados en 16 líneas (solo `import` y comentarios), 0 supervivientes; **workers**: la consola anunció «hasta 8 workers», y el informe (`progress/mutacion_F-060_bloque7.md`) registra `Workers 1` y `--workers 1` en su cabecera, porque con 0 mutantes no arranca ninguno más (O-B7-3) |
+| Mutación (a mano) | 8/8 muertos |
+| Supervivientes abiertos | 0 |
+| Tiempo de la suite | 2480,72 s (api) + 22,94 s (arnés) |
+| Importación de `function_app` | 1034 → 723 módulos; CPU 3,73 → 2,03 s (mediana local, sin `.env`) |
+
+#### Correcciones de la review del Bloque 7 (C-B7-1, C-B7-2, O-B7-1 a O-B7-3) · 2026-10-14
+
+Review en `progress/review_F-060.md` («Review del Bloque 7», `edef027`): CHANGES_REQUESTED solo en tests. Tocados
+**solo** `services/postventa-api/tests/test_f060_alcance_cerrado.py`,
+`services/postventa-api/tests/test_f060_importacion_diferida.py` y este informe; el código de M-3, sin cambios.
+Todo ejecutado desde un directorio del scratchpad **sin `.env`** (`PYTHONPATH` y `--rootdir` al servicio,
+`ENTORNO=test`); las copias desechables, en un worktree temporal de la rama, ya borrado.
+
+**C-B7-1 · la guarda ve el resto del módulo.** En `test_f060_alcance_cerrado.py`: `IMPORTS_RETIRADOS_POR_M3`
+(`llm/fabrica.py`, `api/split.py` y `api/plantilla.py`, cada uno con su `from … import` diferido) y
+`_resto_del_modulo` (las sentencias de módulo que no son función, clase ni asignación, sin docstrings, con
+`ast.unparse`, en orden). Tests nuevos: `test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[×3]` (contra la
+base fija, el resto del módulo de HEAD es **exactamente** el de la base sin ese `import`: ni uno más, ni otro orden),
+`…_el_import_diferido_no_vuelve_al_modulo[×3]` (mitad sin `git`), `…_los_ficheros_del_resto_del_modulo_son_piezas_de_f060`
+y `…_el_control_del_resto_del_modulo_no_es_ciego` (un `import os`, una llamada suelta y un `try` de módulo se ven;
+docstrings y asignaciones, no; y «añadir `import os`» no pasa por «solo quitar»). `importar.py` no entra (sus
+importaciones de módulo ya cambiaron en bloques anteriores; la review lo deja opcional). RED en la copia desechable,
+con `configuracion_de_la_plantilla()` añadida al final de `plantilla.py`:
+
+```
+== guarda de hoy (HEAD edef027) con la llamada de módulo en plantilla.py
+$ python -m pytest <copia>/tests/test_f060_alcance_cerrado.py --rootdir <copia> -q -p no:cacheprovider -k "s12"
+22 passed, 51 deselected in 15.99s
+== guarda nueva, misma copia
+$ python -m pytest <copia>/tests/test_f060_alcance_cerrado.py --rootdir <copia> -q -p no:cacheprovider -k "s12" -rf --tb=short
+_ test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[interface_adapters/api/plantilla.py] _
+    assert ahora == esperado
+E   AssertionError: assert ['from __futu...ajustes', ...] == ['from __futu...ajustes', ...]
+E     Left contains one more item: 'configuracion_de_la_plantilla()'
+FAILED …/test_f060_alcance_cerrado.py::test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[interface_adapters/api/plantilla.py]
+1 failed, 29 passed, 51 deselected in 16.53s
+```
+
+**C-B7-2 · opción (a): el cuarto caso, `importar_excel`.** `_USAR_LA_PIEZA` pasa a ir **por pieza** (las cuatro de
+§12), cada una con la biblioteca que carga; `test_f060_t31_hay_un_caso_por_cada_pieza_diferida` fija las cuatro.
+El caso nuevo llama a `importar_excel` con `generador=None` y dobles escritos en el propio test (no
+`tests/utiles_importacion.py`, que importa `openpyxl`): un lector que devuelve la plantilla reconocida con **una fila
+con error**, una bandeja que no tiene huella previa y registra cero válidas, y el catálogo y las equivalencias que ya
+usaba el caso de la plantilla (ahora compartidos en `_DOBLES_DE_SIGRID_Y_BASE`). Así el generador de verdad escribe
+el Excel de errores y el test comprueba que es un `.xlsx` (`PK`); sin filas válidas no se normaliza nada. Unas 30
+líneas de dobles: proporcionado, no hizo falta la (b). RED en la copia desechable con el `import` de
+`importar_excel` quitado:
+
+```
+== test de HEAD (edef027) con el import de importar_excel quitado
+$ python -m pytest <copia>/tests/test_f060_importacion_diferida.py --rootdir <copia> -q -p no:cacheprovider
+8 passed in 28.54s
+== test nuevo, misma copia
+$ python -m pytest <copia>/tests/test_f060_importacion_diferida.py --rootdir <copia> -q -p no:cacheprovider -rf --tb=line
+      File "…\interface_adapters\api\importar.py", line 218, in importar_excel
+          generador if generador is not None else GeneradorPlantillaOpenpyxl(),
+      NameError: name 'GeneradorPlantillaOpenpyxl' is not defined. Did you mean: 'GeneradorPlantillaPort'?
+FAILED …/test_f060_importacion_diferida.py::test_f060_t31_la_pieza_diferida_carga_su_adaptador_al_usarse[importar_excel]
+1 failed, 10 passed in 21.62s
+```
+
+Con eso, el mutante «`importar`: `import` quitado» de T33 lo caza ya un test **de F-060**, no solo
+`test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad`.
+
+**O-B7-1.** Ningún fragmento importa ya la biblioteca que se comprueba: el caso de la IA comprueba la clase **por
+nombre** (`type(extractor).__name__`), así que `despues: True` lo pone la fábrica, no el propio fragmento.
+**O-B7-2.** `_SIN_RED` va delante del código de **cada** hijo (parchea `socket.socket.connect`, `connect_ex` y
+`socket.create_connection`), con su control: `test_f060_t31_los_hijos_no_pueden_abrir_conexiones` (los dos intentos
+dan el `OSError` de la guardia). Las cuatro piezas siguen en verde con la guardia puesta: ninguna conecta.
+**O-B7-3.** Anotado arriba, en la fila de mutación. (O-B7-4 no pide nada.)
+
+**Resultado**: `test_f060_importacion_diferida.py` **11 passed** (antes 8: +1 pieza, +1 «hay un caso por pieza», +1
+hijos sin red) y `test_f060_alcance_cerrado.py` **81 passed** (antes 73: +8), juntos **92 passed en 52,92 s**;
+`ruff check` de los dos, limpio. Sin cambios en código de producción: la puerta de cobertura y la mutación de T33/T34
+no cambian, y no se ha relanzado `init.sh` entero (lo permite el encargo).
+
+#### C-B7-3 de la re-review del Bloque 7 · 2026-10-14
+
+Re-review en `progress/review_F-060.md` («Re-review del Bloque 7», `247a983`): C-B7-1 y C-B7-2 resueltos; pide
+C-B7-3. Tocado **solo** `services/postventa-api/tests/test_f060_alcance_cerrado.py` y este informe; O-B7-5 no se
+hace (así lo dice el encargo).
+
+**Qué cambia.** `_resto_del_modulo` descartaba **cualquier** `Assign`/`AnnAssign`, pero `_definiciones` solo recoge
+las que asignan a un nombre: `ConfiguracionPlantilla.listas = None` o `a, b = f(), 1` a nivel de módulo no los veía
+ninguno de los dos controles. Ahora el filtro es `_es_definicion` (nuevo): funciones y clases, siempre; un `Assign`
+solo si **todos** sus destinos son `ast.Name`; un `AnnAssign` solo si su destino es `ast.Name`; es exactamente lo que
+recoge `_definiciones`. En `test_f060_s12_m3_el_control_del_resto_del_modulo_no_es_ciego`, cuatro aserciones más:
+`a, b = f(), 1` (sale como `a, b = (f(), 1)`), `m.x = 1` y `m.x: int = 1` añadidos a la base aparecen en el resto, y
+`Y = Z = 2` / `W: int = 3` siguen sin aparecer (son definiciones).
+
+**RED** en una copia desechable (worktree temporal de la rama, ya borrado), con `ConfiguracionPlantilla.listas =
+None` añadido al final de `plantilla.py`, desde un directorio sin `.env`:
+
+```
+== guarda de hoy (HEAD 247a983) con ConfiguracionPlantilla.listas = None al final de plantilla.py
+$ python -m pytest <copia>/tests/test_f060_alcance_cerrado.py --rootdir <copia> -q -p no:cacheprovider -k "s12"
+30 passed, 51 deselected in 16.16s
+== guarda corregida, misma copia
+$ python -m pytest <copia>/tests/test_f060_alcance_cerrado.py --rootdir <copia> -q -p no:cacheprovider -k "s12" -rf --tb=short
+_ test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[interface_adapters/api/plantilla.py] _
+    assert ahora == esperado
+E   AssertionError: assert ['from __futu...ajustes', ...] == ['from __futu...ajustes', ...]
+E     Left contains one more item: 'ConfiguracionPlantilla.listas = None'
+FAILED …/test_f060_alcance_cerrado.py::test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import[interface_adapters/api/plantilla.py]
+1 failed, 29 passed, 51 deselected in 15.11s
+```
+
+**Resultado** en el repo: `test_f060_importacion_diferida.py` + `test_f060_alcance_cerrado.py` **92 passed en
+53,83 s** (mismo número de tests: solo hay aserciones nuevas); `ruff check` de los dos, limpio. Sin cambios en
+código de producción.

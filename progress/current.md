@@ -1,6 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-060 · Bloque 7 HECHO (implementer, 2026-10-14)** · T31 `0a572d7` (RED 6/8), T32 `b40d952`, T33 `6faf03c`
+> (herramienta 0 mutantes en 16 líneas de `import`; a mano 8/8 muertos), T34 `init.sh` en verde (api 8161 passed, 123
+> skipped, 2480,72 s; cobertura 100 % de 4 líneas). `import function_app`: 1034 → 723 módulos, CPU 3,73 → 2,03 s
+> (local, sin `.env`). `function_app.py` sin cambios; ningún test de otra feature tocado. Siguiente: review del
+> Bloque 7; luego T35 (humano, M2) y T36. Detalle: `progress/impl_F-060.md`, «Bloque 7 · resultado».
+
+> **F-060 · Bloque 7 desbloqueado (humano, 2026-10-14): opción (a)**, M-3 completo (IA, PDF y `openpyxl`), con la
+> excepción de §12 para `interface_adapters/api/plantilla.py::descargar_plantilla`. Enmienda en `design.md` §11.4 y §12.
+
+> **F-060 · Bloque 7 BLOQUEADO antes de T31 (implementer, 2026-10-14)** · M-3 medido: diferir IA, PDF y `openpyxl`
+> quita ≈ 2,1 s de CPU por proceso nuevo (1034 → 723 módulos), pero **`openpyxl` no se puede diferir sin tocar
+> `interface_adapters/api/plantilla.py`**, intocable en `design.md` §12 y en `test_f060_alcance_cerrado.py`; y los
+> sitios de IA y PDF (`infrastructure/llm/fabrica.py`, `interface_adapters/api/split.py`) tampoco están en «A
+> modificar» (§11.4 decía `function_app.py`, que no sirve: tests de otras features parchean sus nombres). Hace falta
+> enmendar §12: opción (a) M-3 completo u (b) solo IA + PDF. Código sin tocar. Detalle: `progress/impl_F-060.md`,
+> «Bloque 7 · M-3».
+
+> **F-060 · Bloque 6 hecho en producción y T30 decidida (humano, 2026-10-14)** · T24–T27 bien: 110 normalizadas, 0
+> conflictos, fuera de lista 148 → 38, Sigrid igual (1276). **M1 (T28) no cumple D-10**: p50 4,92 s, máx. 14,73 s; causas
+> A (instancia o proceso nuevo, ≈ 3 s de importación + ≈ 2,5 s de plataforma) y B (picos de 4–8 s en `sigrid-api`).
+> **Decisión**: solo **M-3** (Bloque 7: T31–T34 implementer, T35 publicar y M2 el humano); F-060 se cierra con M2, cumpla
+> o no; el resto va a la ficha nueva **F-061** (pendiente, prioridad 10). Detalle: `progress/impl_F-060.md`.
+
 > **F-060 · Bloque 5 HECHO (implementer, 2026-10-13)** · T17–T23 en `d2053d5`..`37b60bd` y el informe. `init.sh` en verde (api 8147 passed, 123 skipped, 2156 s; cobertura 100 % de 324 líneas); mutación 10/10 y 26/26 a mano. **Desviación pendiente de aceptación**: los tramos de la revisión se llaman `construir.bandeja`/`bandeja.listar` y no `construir.revision`/`revision.listar` (design §11.3), porque `test_f056_r31_…` (intocable) exige que la única línea del listado con «revision» sea la de F-056. Tests de documentación de otras features ampliados y declarados (decisión del líder): f053, f012, f019 y dos de f056 (uno, la cabecera, cambia lo que exige). Detalle: `progress/impl_F-060.md`, Bloque 5. Siguiente: review final. Pendientes: T7 (humano), Bloque 6.
 
 > **F-060 · decisión del humano 2026-10-12 (opción (b))**: mejor esfuerzo = cualquier excepción de la normalización tras importar se registra por su tipo y no afecta a la importación; el test de F-036 `test_f036_r118_…` no se toca. Bloque 4 retomado.

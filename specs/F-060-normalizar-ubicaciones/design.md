@@ -514,6 +514,15 @@ implementa sin el dato:
 Tras elegir (PARADA del humano), el líder anota la elección en esta sección y
 el implementer hace el Bloque 7 con su RED, su mutación y su segunda medición.
 
+**Elección (humano, 2026-10-14, T30).** M1 (`progress/impl_F-060.md`, T28) no cumple
+D-10: en caliente p50 4,92 s y máximo 14,73 s. Descartadas H1, H4, H6 y H7. Dominan
+dos causas: **A** (H2+H3), un proceso o instancia nueva, que suma ≈ 3 s antes del
+handler y ≈ 2,5 s de plataforma (10 peticiones seguidas cayeron en 6 instancias); y
+**B** (H5), picos de 4–8 s en una sola lectura de `sigrid-api`, también en procesos
+calientes. **Se hace M-3** y nada más. Tras M2 (T35), F-060 se cierra **con el dato que
+salga**, cumpla o no D-10: no se vuelve a T30. Lo que falte (la causa B, M-4, la
+concurrencia por instancia y M-5) pasa a la ficha **F-061**. **M-3 se aplica con la opción (a)** del humano (2026-10-14): IA, PDF y `openpyxl`, con la excepción de §12 para `plantilla.py`.
+
 ## 12 · Ficheros
 
 **A crear** (`services/postventa-api/`): `domain/models/normalizacion.py`,
@@ -544,7 +553,20 @@ tests `test_f060_normalizacion_dominio.py`, `test_f060_repositorio_lote.py`,
 - **Excepción del Bloque 5 (T20; decisión del líder 2026-10-13 con el criterio que el humano aprobó en F-056: un test de documentación que fija una frase que cambia se amplía sin relajar y se declara)**: `test_f056_documentacion.py::test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas` («Los veintiuno», y «Los veinte» en `not in`) y `…::test_f056_r44_la_cabecera_dice_que_f056_lo_toco` (deja de exigir que F-056 sea la **última** feature de la cabecera de `INTEGRACION.md` y exige una cabecera bien formada que no retroceda, con F-056 y su despliegue constando, como hizo F-056 con el de F-036); fuera de F-036 y F-056, `test_f053_documentacion.py` (`CUENTA_VIGENTE`), `test_f012_documentacion.py` (`NUMERALES` hasta 21) y `test_f019_documentacion.py::test_f019_r32_…`. Ninguna otra aserción cambia; `tests/test_f060_alcance_cerrado.py` lo vigila función a función.
 - `docs/ARCHITECTURE.md`, `docs/INTEGRACION.md` (R43) y, al desplegar,
   `azure-apps/postventa_incidencias.md`.
-- Bloque 7: lo que diga el remedio elegido (§11.4).
+- Bloque 7: lo que diga el remedio elegido (§11.4). **M-3, opción (a) del
+  humano (2026-10-14)**, a partir de la medición del implementer
+  (`progress/impl_F-060.md`, «Bloque 7 · M-3»): el `import` del adaptador pesado
+  pasa **dentro** de la función que lo usa, sin funciones nuevas ni cambio de
+  comportamiento, en `infrastructure/llm/fabrica.py::_construir_gemini`
+  (`google.genai`), `interface_adapters/api/split.py::trocear_remesa`
+  (`pymupdf`), `interface_adapters/api/importar.py::importar_excel` y
+  `interface_adapters/api/plantilla.py::descargar_plantilla` (`openpyxl`).
+  **Excepción a «No se toca»**: `interface_adapters/api/plantilla.py`, solo
+  en `descargar_plantilla`. `function_app.py` **no** cambia por M-3 (tests
+  de F-003, F-004, F-036 y F-053 parchean sus nombres). Test nuevo
+  `test_f060_importacion_diferida.py`; `test_f060_alcance_cerrado.py` saca
+  `plantilla.py` de `INTOCABLES` y añade esas piezas a `PIEZAS_DE_F060` para
+  vigilar que solo cambian esas funciones.
 
 **No se toca**: todos los `.sql`; `domain/models/revision.py`,
 `importacion.py`, `plantilla_incidencias.py`, `equivalencias.py`;

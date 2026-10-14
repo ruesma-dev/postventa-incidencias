@@ -94,7 +94,6 @@ from domain.ports.bandeja import BandejaPort, ResultadoImportacion
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.equivalencias import EquivalenciasPort
 from domain.ports.hoja_calculo import GeneradorPlantillaPort, LectorPlantillaPort
-from infrastructure.documentos.excel_openpyxl import GeneradorPlantillaOpenpyxl
 from infrastructure.documentos.lector_aislado import LectorPlantillaAislado
 from infrastructure.documentos.plantilla_yaml import ConfiguracionPlantilla
 from infrastructure.persistencia.fabrica import (
@@ -211,6 +210,10 @@ def importar_excel(
         contexto = paso_catalogo(contexto, catalogo_obra, equivalencias)
         contexto = paso_validacion(contexto, config.listas)
         contexto = paso_registro(contexto, bandeja, nuevo_id=nuevo_id)
+        # Importación diferida (F-060 M-3): importar `function_app.py` no
+        # carga `openpyxl`, que el listado de la revisión no usa.
+        from infrastructure.documentos.excel_openpyxl import GeneradorPlantillaOpenpyxl
+
         contexto = paso_excel_errores(
             contexto,
             generador if generador is not None else GeneradorPlantillaOpenpyxl(),

@@ -545,3 +545,67 @@ segundo es un hallazgo, como en el punto 7.» Motivo: C-B7-2; el 8/8 era cierto,
 F-036. Y **a `CHECKPOINTS.md`, C4 bis**: «Si un fichero sale de una lista de "no se toca" para pasar a una guarda
 por definiciones, la guarda nueva tiene que ver también lo que no es una definición (importaciones y sentencias de
 módulo)». Motivo: C-B7-1. Ambas valen para cualquier proyecto: candidatas a `arnes-base`.
+
+## Re-review del Bloque 7 · 2026-10-14
+
+- **Veredicto:** **CHANGES_REQUESTED**, por **un solo** punto nuevo y pequeño (C-B7-3), en el mismo fichero de test.
+  C-B7-1 y C-B7-2 quedan **resueltos** y O-B7-1 a O-B7-3, atendidas. El código de producción de M-3 sigue
+  **aprobado** sin cambios. Con C-B7-3 aplicado (una condición en `_resto_del_modulo` y dos aserciones en su control,
+  con su traza RED), el líder puede comprobarlo leyendo el diff y el test en verde, sin otra review entera.
+- **Revisado:** `edef027..94f4f76` (`03c079a` correcciones del implementer; `94f4f76` automejora del arnés aprobada
+  por el humano, que se aplica en esta re-review: mutantes a mano cazados por la propia feature, y C4 bis «la guarda
+  ve el módulo»).
+
+### Lo ejecutado (resultados reales)
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh`, tal cual | **ENTORNO LISTO** (exit 0). Arnés 115 passed; api **8172 passed, 123 skipped** en 2464,94 s (8161 de T34 + 11 nuevos); front en verde por caché; **PUERTA COBERTURA 100,0 % de 4 líneas** (4/4, nivel crítico); `rigor` válido; rama correcta. Árbol limpio después |
+| `git diff --stat edef027..03c079a -- services/` | Solo `tests/test_f060_alcance_cerrado.py` y `tests/test_f060_importacion_diferida.py`; ningún fichero de producción, `function_app.py` intacto, ningún test de otra feature |
+| Los dos ficheros, desde un directorio **sin `.env`** del scratchpad | **92 passed** en 43,4 s (11 + 81, como dice el informe) |
+| `ruff check` de los dos | All checks passed |
+| Los 8 mutantes a mano, repetidos en una copia desechable (sin `.env`, sin git), **solo contra los tests de F-060** (regla nueva de `reviewer.md`) | **8/8 cazados por tests de F-060**. Cada mutante añade, sobre el control sin mutar, estos fallos: `fabrica` arriba → `no_carga_el_modulo_pesado[google.genai]` y `al_usarse[_construir_gemini]`; `fabrica` quitado → `al_usarse[_construir_gemini]`; `split` arriba → `no_carga…[pymupdf]` y `al_usarse[trocear_remesa]`; `split` quitado → `al_usarse[trocear_remesa]`; `importar` arriba → `no_carga…[openpyxl]`, `al_usarse[descargar_plantilla]` y `al_usarse[importar_excel]`; **`importar` quitado → `al_usarse[importar_excel]`** (antes de `03c079a`, ninguno de F-060); `plantilla` arriba → los mismos tres que `importar` arriba; `plantilla` quitado → `al_usarse[descargar_plantilla]`. (En la copia, fuera del repo, 11 tests de `test_f060_alcance_cerrado.py` fallan igual con y sin mutante porque leen la ruta del repo, y 64 se saltan sin git: es el entorno, no el mutante; por eso el control sin mutar va delante) |
+| C-B7-1, RED reproducida sin tocar el árbol (las funciones de la propia guarda, base fija `33d8938` contra el texto de HEAD con la mutación aplicada en memoria) | En los tres ficheros: HEAD → la guarda pasa; **+ una llamada suelta de módulo → falla**; **el `import` de vuelta arriba → falla**. Coincide con la traza del implementer (`configuracion_de_la_plantilla()` en `plantilla.py`) |
+| C-B7-2: el caso nuevo | Llama a `importar_excel` con `generador=None`, lector y bandeja en dobles propios (sin `tests/utiles_importacion.py`) y una fila con error: el generador real escribe el Excel de errores (`PK`). `antes False / despues True`. Mata el mutante «`importar` quitado» por sí solo (fila de arriba) |
+| O-B7-1 | Ningún fragmento importa la biblioteca que se comprueba; la IA se comprueba por nombre de clase. Resuelto |
+| O-B7-2 | `_SIN_RED` delante de cada hijo, con su control (`test_f060_t31_los_hijos_no_pueden_abrir_conexiones`: los dos intentos dan el `OSError` de la guardia). Resuelto |
+| O-B7-3 | Workers anotados en «Evidencias». Resuelto |
+| **C4 bis nuevo («la guarda ve el módulo»)**, probado con las funciones de la propia guarda sobre los tres ficheros | Ve un `import`, una llamada suelta, un `try`, un `if` y un `del` de módulo. **No ve** una asignación de módulo cuyo destino **no es un nombre**: `a, b = print(), 1` (tupla), `print.x = 1` o `ConfiguracionPlantilla.listas = None` (atributo), `algo["k"] = …` (subíndice) dan la guarda **en verde** en los tres ficheros (ver C-B7-3) |
+
+### Checkpoints (solo lo que cambia respecto de la review del Bloque 7)
+
+- [x] C1 · `bash harness/init.sh` en verde (arriba).
+- [x] C3 · Sin `print()` de depuración, sin secretos; primera línea con la ruta en los dos ficheros.
+- [x] C4 · Sin red: ahora también en los hijos, con guardia y control propios.
+- [x] C4 bis · Fase RED de C-B7-1 y C-B7-2 con traza real en `progress/impl_F-060.md` (y C-B7-1 reproducida aquí).
+- [x] C4 bis · Mutantes a mano: 8/8, **todos** cazados por tests de la propia feature (regla de `94f4f76`).
+- [ ] C4 bis · **Guarda que ve el módulo** (punto nuevo de `94f4f76`): ve importaciones y sentencias sueltas, pero no
+  las asignaciones de módulo a destinos que no son un nombre, que tampoco ve `_definiciones`. C-B7-3.
+- [x] C4 bis · Ningún N/A sin justificar (los de la review del Bloque 7 siguen valiendo: coste por mutante con 0
+  mutantes; C3 bis y C4 ter sin objeto; RM7 no aplica porque el requisito no es un orden).
+- [x] C5 · Árbol limpio tras `init.sh` y tras mis comprobaciones (copias en el scratchpad, borradas).
+
+### Cambios requeridos
+
+1. **C-B7-3 · `_resto_del_modulo` descarta todas las asignaciones, y `_definiciones` solo recoge las de un nombre.**
+   `services/postventa-api/tests/test_f060_alcance_cerrado.py`, `_resto_del_modulo` (`:383-396`, el filtro en `:393`): el filtro
+   `isinstance(nodo, … | ast.Assign | ast.AnnAssign)` deja fuera **cualquier** asignación, pero `_definiciones`
+   (`:181-203`) solo registra las que tienen como destino un `ast.Name`. Lo que queda en medio no lo ve nadie:
+   comprobado en los tres ficheros de `IMPORTS_RETIRADOS_POR_M3`, añadir al final del módulo `a, b = print(), 1`,
+   `print.x = 1` o, en `plantilla.py`, `ConfiguracionPlantilla.listas = None` deja `_novedades`, `_quitadas` y
+   `test_f060_s12_m3_el_resto_del_modulo_solo_pierde_su_import` **en verde**. Es la misma clase de hueco que C-B7-1
+   (una llamada o un parche de otro objeto ejecutado al importar), y el punto nuevo de C4 bis pide que la guarda vea
+   «lo que no es una definición». **Qué hacer**: en `_resto_del_modulo`, descartar un `Assign` solo si **todos** sus
+   destinos son `ast.Name`, y un `AnnAssign` solo si su destino es `ast.Name` (exactamente lo que `_definiciones`
+   recoge); y en `test_f060_s12_m3_el_control_del_resto_del_modulo_no_es_ciego` (`:422`), dos aserciones más: `a, b = f(), 1`
+   y `m.x = 1` añadidos a la base aparecen en el resto. Traza RED en `progress/impl_F-060.md`: con la mutación
+   `ConfiguracionPlantilla.listas = None` al final de `plantilla.py` en una copia desechable, la guarda de hoy en
+   verde y la corregida en rojo.
+
+### Observaciones (no bloquean)
+
+- **O-B7-5 · Lo mismo vale para el resto de `PIEZAS_DE_F060`** (`importar.py`, `revision.py`, `function_app.py`…):
+  `_definiciones` no ve allí ni sentencias sueltas ni asignaciones a atributos. La review lo dejó opcional para
+  `importar.py` y sigue siéndolo: ninguno de esos ficheros estuvo en «no se toca». Si el líder quiere cerrar F-060
+  sin ese matiz, bastaría con ampliar `IMPORTS_RETIRADOS_POR_M3` a una lista general de «cambios de módulo
+  declarados» por fichero.

@@ -396,7 +396,7 @@
   Verificación: el test del remedio **falla**
 - [x] **T32 · GREEN** del remedio. |
   Verificación: el test de T31 y los de F-056 que toque, en verde
-- [ ] **T33 · Mutación del bloque.** |
+- [x] **T33 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T31> --timeout 1800 --salida progress/mutacion_F-060_bloque7.md` sin supervivientes abiertos
 - [ ] **T34**: `bash harness/init.sh` en verde. **Review del Bloque 7.** |
   Verificación: `bash harness/init.sh`

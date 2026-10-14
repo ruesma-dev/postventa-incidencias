@@ -369,7 +369,7 @@
   `duration`, el `total` de la traza, `proceso_nuevo` y los tramos; y el p50
   y el máximo en caliente. Ni textos ni correos (las líneas no los llevan). |
   Verificación: MANUAL (humano)
-- [ ] **T29**: el líder pone al día `azure-apps/postventa_incidencias.md` (la
+- [x] **T29** (`azure-apps` `61423f1`, 2026-10-14): el líder pone al día `azure-apps/postventa_incidencias.md` (la
   ruta nueva y que la importación escribe revisiones del sistema), con commit
   en ese repositorio. |
   Verificación: `git -C ..\azure-apps log -1` muestra el commit
@@ -406,7 +406,7 @@
 
 ## Cierre
 
-- [ ] **T36**: el líder resume F-060 en `progress/history.md` (recuentos de
+- [x] **T36**: el líder resume F-060 en `progress/history.md` (recuentos de
   T26, medición M1 y, si la hubo, M2), deja la ficha en `done` con la review
   APROBADA, y `bash harness/init.sh` en verde. |
   Verificación: `bash harness/init.sh`

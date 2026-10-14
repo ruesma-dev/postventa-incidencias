@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-060 CERRADA · 2026-10-14 · desplegada y verificada · siguiente: F-059
+> Resumen en `progress/history.md`; `azure-apps` en `61423f1`. Merge del cierre en `dev`/`main` y push: pendientes del humano.
+> - **Siguiente: F-059** (backend del volcado; primera escritura real, un parte en la 0626). Su spec vive en el worktree
+>   `postventa-f040` y cuenta 23→24 anónimas: ajustarla a partir de **21**.
+> - **F-061** (optimizar el listado) en el backlog, prioridad 10, con la pista de los ≈ 4 s de `sigrid-api`.
+> - Pendientes del humano: la prueba de los prototipos de F-058 (T1) y Q-3/Q-4 de F-057.
+
 > **F-060 · Bloque 7 APPROVED (2026-10-14)** · M-3 en `b40d952`; correcciones de review hasta `5f6d0a3`; `init.sh` en verde
 > (8172 passed, cobertura 100 %). Merge local en `dev` y `main` **`cad2cb2`** (sin push). Siguiente: **T35** (humano: publicar con
 > `C:\Users\pgris\t38_desplegar_f060_bloque7.ps1` y medir M2: frío y luego caliente en la misma pestaña), T36 cierre.

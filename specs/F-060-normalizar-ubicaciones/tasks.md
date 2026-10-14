@@ -400,7 +400,7 @@
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T31> --timeout 1800 --salida progress/mutacion_F-060_bloque7.md` sin supervivientes abiertos
 - [x] **T34**: `bash harness/init.sh` en verde. **Review del Bloque 7.** |
   Verificación: `bash harness/init.sh`
-- [ ] **T35 · MANUAL (humano)**: publicar como en T24 y repetir la medición
+- [x] **T35 · MANUAL (humano)**: publicar como en T24 y repetir la medición
   de T28 (**M2**). Objetivo de D-10; si no se alcanza, volver a T30. **Enmienda (humano, 2026-10-14)**: M2 se mide y se anota, y F-060 se cierra con ese dato aunque no alcance D-10; no se vuelve a T30, lo pendiente va a F-061. |
   Verificación: MANUAL (humano)
 

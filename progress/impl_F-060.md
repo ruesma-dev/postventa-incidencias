@@ -2509,3 +2509,35 @@ FAILED …/test_f060_alcance_cerrado.py::test_f060_s12_m3_el_resto_del_modulo_so
 **Resultado** en el repo: `test_f060_importacion_diferida.py` + `test_f060_alcance_cerrado.py` **92 passed en
 53,83 s** (mismo número de tests: solo hay aserciones nuevas); `ruff check` de los dos, limpio. Sin cambios en
 código de producción.
+
+### T35 · M2 en producción tras M-3 (2026-10-14, líder)
+
+Publicado por el humano con `t38_desplegar_f060_bloque7.ps1` desde copia limpia de `dev` en **`cad2cb2`**. Medición
+de la consola (frío en pestaña nueva tras ≥ 20 min, luego 10 en caliente en la misma pestaña) cruzada con App Insights
+por `operation_Id`:
+
+| # | Navegador | duration | total | Instancia | proceso_nuevo (s) | Tramo alto |
+|---|---|---|---|---|---|---|
+| frío | 23,785 | 11,733 | 9,049 | 94cfaa | True (10) | `leer_unidades` 4,327 + `ubicaciones` 4,341; ≈ 12 s de plataforma |
+| 1 | 13,209 | 10,546 | 8,817 | 4c57d9 | True (10) | `leer_unidades` 3,767 + `ubicaciones` 4,719 |
+| 2 | 7,355 | 7,042 | 7,018 | 4c57d9 | False (17) | `leer_unidades` 6,631 |
+| 3 | 12,956 | 10,429 | 8,828 | 3e0af8 | True (10) | `ubicaciones` 8,121 |
+| 4 | 5,368 | 2,657 | 0,701 | 3e0661 | True (2) | arranque |
+| 5 | 0,752 | 0,492 | 0,473 | 3e0af8 | False (16) | — |
+| 6 | 5,395 | 2,569 | 0,871 | 03207e | True (2) | arranque |
+| 7 | 4,637 | 4,231 | 4,212 | 3e0661 | False (12) | `ubicaciones` 3,841 |
+| 8 | 0,610 | 0,492 | 0,476 | 03207e | False (7) | — |
+| 9 | 0,608 | 0,475 | 0,460 | 3e0af8 | False (27) | — |
+| 10 | 0,870 | 0,558 | 0,537 | 3e0661 | False (14) | — |
+
+- **Caliente (navegador)**: p50 **5,00 s**, máximo **13,21 s** → **no cumple D-10** (M1: 4,92 / 14,73). En el servidor
+  (`total`): p50 0,79 s, máx. 8,83 s. Por decisión del humano (T30, 2026-10-14), F-060 se cierra con este dato.
+- **M-3 hizo lo suyo**: el tramo antes del handler en procesos nuevos baja de ≈ 3,0 s (M1) a **≈ 1,6–2,0 s** (2,68 en
+  el frío), ≈ −1,2 s, en línea con lo medido en local.
+- **Lo que domina ahora es la causa B (Sigrid)**: 6 de las 11 peticiones tienen una o dos lecturas de 3,8–8,1 s, y en
+  los procesos nuevos (≈ 10 s de vida) salen lentas casi siempre. Las duraciones se agrupan en **≈ 4 s y ≈ 8 s**
+  (4,33 · 4,34 · 3,77 · 4,72 · 3,84 · 6,63 · 8,12; en M1 4,32 · 4,38 · 3,82 · 5,43 · 6,70): parece una espera fija
+  (conexión, DNS o reintento) más que una consulta lenta. Pista para **F-061**.
+- **Frío**: 23,8 s en el navegador, de los que ≈ 12 s son arranque de la plataforma (navegador − `duration`) tras el
+  despliegue y la espera.
+- 10 peticiones seguidas en **4 instancias** (3 nuevas).

@@ -80,6 +80,12 @@ nivel de rigor dice cuánta evidencia hay que exigir.
    de alcance**; si ahí sí salen mutantes, el cero es legítimo (exclusión
    por diseño); si tampoco salen, el cero es sospechoso y hay que
    investigarlo antes de aprobar.
+   **Si la verificación real son mutantes a mano** (porque la campaña dio
+   cero o se quedó corta), repítelos en una copia desechable y anota, para
+   cada uno, si lo caza un test **de la propia feature** o solo una suite
+   vecina; lo segundo es un hallazgo (el test de la feature no protege lo
+   que dice proteger). Aprobado por el humano el 2026-10-14, a propuesta del
+   reviewer del Bloque 7 de F-060.
 5. El informe del implementer debe traer la sección **«Evidencias»** con los
    cuatro números (tests, cobertura de lo cambiado, mutantes y
    supervivientes, tiempo de la suite).

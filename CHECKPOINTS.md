@@ -194,6 +194,11 @@ recorre estos puntos **contra ese nivel**.
       cambiadas, mutantes generados y supervivientes, y tiempo de la suite.
       Con la campaña de mutación, además, **el nº de workers con que se lanzó**:
       sin él no se puede calcular el coste por mutante del punto anterior.
+- [ ] Si un fichero sale de una lista de «no se toca» para pasar a una guarda
+      por definiciones (funciones, clases, asignaciones), la guarda nueva ve
+      también lo que no es una definición (importaciones y sentencias de
+      módulo), con su control no ciego. Aprobado por el humano el
+      2026-10-14 (F-060, Bloque 7).
 - [ ] Ningún punto de este bloque marcado N/A sin justificación escrita.
 
 ## C4 ter — Las verificaciones extra por rutas sensibles están hechas

@@ -1,6 +1,10 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-060 · Bloque 7 APPROVED (2026-10-14)** · M-3 en `b40d952`; correcciones de review hasta `5f6d0a3`; `init.sh` en verde
+> (8172 passed, cobertura 100 %). Merge local en `dev` y `main` **`cad2cb2`** (sin push). Siguiente: **T35** (humano: publicar con
+> `C:\Users\pgris\t38_desplegar_f060_bloque7.ps1` y medir M2: frío y luego caliente en la misma pestaña), T36 cierre.
+
 > **F-060 · Bloque 7 HECHO (implementer, 2026-10-14)** · T31 `0a572d7` (RED 6/8), T32 `b40d952`, T33 `6faf03c`
 > (herramienta 0 mutantes en 16 líneas de `import`; a mano 8/8 muertos), T34 `init.sh` en verde (api 8161 passed, 123
 > skipped, 2480,72 s; cobertura 100 % de 4 líneas). `import function_app`: 1034 → 723 módulos, CPU 3,73 → 2,03 s

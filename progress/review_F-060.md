@@ -609,3 +609,15 @@ módulo)». Motivo: C-B7-1. Ambas valen para cualquier proyecto: candidatas a `a
   `importar.py` y sigue siéndolo: ninguno de esos ficheros estuvo en «no se toca». Si el líder quiere cerrar F-060
   sin ese matiz, bastaría con ampliar `IMPORTS_RETIRADOS_POR_M3` a una lista general de «cambios de módulo
   declarados» por fichero.
+
+### Cierre del Bloque 7 · C-B7-3 comprobado por el líder (2026-10-14)
+
+Como dejó dicho la re-review («el líder puede comprobarlo leyendo el diff y el test en verde»): `5f6d0a3` toca solo
+`tests/test_f060_alcance_cerrado.py` y el informe. `_es_definicion` descarta un `Assign` solo si todos sus destinos
+son `ast.Name` y un `AnnAssign` solo si su destino lo es, igual que `_definiciones`; el control gana `a, b = f(), 1`,
+`m.x = 1` y `m.x: int = 1` (aparecen) y `Y = Z = 2` / `W: int = 3` (no aparecen). Traza RED en
+`progress/impl_F-060.md` (con `ConfiguracionPlantilla.listas = None`: hoy verde, corregida rojo). Ejecutado por el
+líder desde un directorio sin `.env`: `test_f060_importacion_diferida.py` + `test_f060_alcance_cerrado.py` **92
+passed en 57,12 s**. Sin cambios de producción desde el `init.sh` en verde de la re-review (8172 passed).
+
+**Veredicto del Bloque 7: APPROVED.** Siguiente: T35 (humano: publicar y medir M2).

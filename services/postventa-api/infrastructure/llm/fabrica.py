@@ -20,8 +20,6 @@ from config.settings import Ajustes
 from domain.models.errores import ConfiguracionIaIncompleta, ProveedorNoSoportado
 from domain.ports.extractor import ExtractorPort
 
-from infrastructure.llm.gemini import AdaptadorGeminiVision
-
 
 def _construir_gemini(ajustes: Ajustes) -> ExtractorPort:
     """El adaptador de Gemini con los ajustes del entorno.
@@ -36,6 +34,10 @@ def _construir_gemini(ajustes: Ajustes) -> ExtractorPort:
             "falta la variable GEMINI_API_KEY: sin credencial no se puede "
             "construir el extractor del proveedor 'gemini'"
         )
+    # Importación diferida (F-060 M-3): `google.genai` pesa ≈ 1 s y el listado
+    # de la revisión no lo usa; importar `function_app.py` no debe cargarlo.
+    from infrastructure.llm.gemini import AdaptadorGeminiVision
+
     return AdaptadorGeminiVision(
         api_key=credencial,
         modelo=ajustes.gemini_model,

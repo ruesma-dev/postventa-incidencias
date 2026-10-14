@@ -394,7 +394,7 @@
   la guarda de DDL; M-7: los mismos motivos que antes sobre fixtures
   variadas. Traza pegada. |
   Verificación: el test del remedio **falla**
-- [ ] **T32 · GREEN** del remedio. |
+- [x] **T32 · GREEN** del remedio. |
   Verificación: el test de T31 y los de F-056 que toque, en verde
 - [ ] **T33 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T31> --timeout 1800 --salida progress/mutacion_F-060_bloque7.md` sin supervivientes abiertos

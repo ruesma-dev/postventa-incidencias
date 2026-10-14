@@ -21,7 +21,6 @@ from application.pipelines.paso_ingesta import paso_ingesta
 from application.pipelines.paso_troceado import paso_troceado
 from domain.models.errores import RemesaSinPdfUtilizable
 from domain.models.remesa import DocumentoEntrada, ParteTroceado
-from infrastructure.documentos.pdf_pymupdf import AdaptadorPdfPyMuPdf
 from infrastructure.documentos.zip_estandar import AdaptadorZipEstandar
 
 
@@ -38,6 +37,10 @@ def trocear_remesa(entradas: list[DocumentoEntrada]) -> dict[str, Any]:
     contexto = paso_ingesta(
         ContextoRemesa(entradas=list(entradas)), AdaptadorZipEstandar()
     )
+    # Importación diferida (F-060 M-3): importar `function_app.py` no carga
+    # `pymupdf`, que el listado de la revisión no usa.
+    from infrastructure.documentos.pdf_pymupdf import AdaptadorPdfPyMuPdf
+
     contexto = paso_troceado(contexto, AdaptadorPdfPyMuPdf())
 
     if not contexto.partes:

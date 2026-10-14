@@ -2168,4 +2168,26 @@ esto, la review del Bloque 2 y la review final quedan **APPROVED** sin condició
 - **T26 paso 2** (real): **normalizadas 110**, conflictos 0, fuera de lista **148 → 38**, repetición `segunda: 0`; por estado editada 110, nueva 48, descartada 1 (la fila de prueba de F-056), aprobada 0.
 - **T26 paso 3**: `cambios_ubicacion`, `sin_fuera_de_lista`, `importada_distinta` e `historial_ok` → **los cuatro `true`**.
 - **T27** (después): **1276 reclamaciones**, idéntico por unidad a T25; PASA. Sigrid sin cambios.
-- **T28**: pendiente (mediciones en caliente y en frío).
+- **T28 · M1** (2026-10-14, consola del humano + App Insights leído por el líder; solo lectura). Por petición: navegador / `requests.duration` / `total` de la traza (s), instancia (6 últimos), `proceso_nuevo` y segundos de proceso, y el tramo que domina:
+
+| # | Navegador | duration | total | Instancia | proceso_nuevo (s) | Tramo alto |
+|---|---|---|---|---|---|---|
+| 1 | 0,883 | 0,606 | 0,587 | 9ae59c | False (140) | — |
+| 2 | 1,167 | 0,871 | 0,848 | a1335b | True (126) | — |
+| 3 | 14,730 | 12,444 | 9,518 | 941c61 | True (11) | `catalogo.leer_unidades` 3,824 + `ubicaciones` 5,432 |
+| 4 | 5,935 | 3,652 | 0,621 | 2c2007 | True (3) | arranque |
+| 5 | 12,757 | 10,330 | 7,183 | 5707fd | True (9) | `ubicaciones` 6,695 |
+| 6 | 0,813 | 0,524 | 0,501 | 9ae59c | False (175) | — |
+| 7 | 4,951 | 4,724 | 4,699 | a1335b | False (165) | `catalogo.leer_unidades` 4,320 |
+| 8 | 0,585 | 0,492 | 0,472 | 2c2007 | False (22) | — |
+| 9 | 4,881 | 4,704 | 4,685 | a1335b | False (171) | `ubicaciones` 4,383 |
+| 10 | 6,424 | 3,754 | 0,616 | 1f39b0 | True (3) | arranque |
+| frío | 6,697 | 3,959 | 0,770 | be1fd9 | True (3) | arranque (válida como frío) |
+
+  - **Caliente (navegador)**: p50 **4,92 s**, máximo **14,73 s** → **no cumple D-10** (p50 < 3 s, máx. < 10 s). Mejora frente a F-056 (p50 7,1 s, máx. 12,7 s), pero no basta. En el servidor (`total`): p50 0,73 s, máx. 9,52 s.
+  - **Frío**: navegador 6,70 s, `duration` 3,96 s, `total` 0,77 s, `proceso_nuevo=True`.
+  - Diez peticiones **seguidas** se sirvieron en **6 instancias** distintas (en esa ventana no hubo otro tráfico); `alwaysReady` vacío, memoria 2048 MB, sin concurrencia HTTP configurada.
+  - **Descartadas**: H1 (`construir.bandeja`/`construir.equivalencias` ≤ 0,13 s), H6 (`bandeja.listar` ≤ 0,02 s), H7 (`calculo`/`serializar` ≤ 0,01 s), H4 (navegador − `duration` ≈ 0,2–0,3 s en las calientes).
+  - **Causa A, proceso o instancia nueva** (H2+H3): +≈ 3 s entre `duration` y `total` (antes del handler: importación de `function_app.py`) y +≈ 2,3–2,7 s entre navegador y `duration` (arranque de la plataforma). Le pasó a 4 de las 10 y a la de frío.
+  - **Causa B, picos de Sigrid** (H5): una sola lectura tarda 3,8–7,8 s (lo normal es 0,1–0,4 s), en 4 de las 10 y en la de las 10:16 (8,4 s), también en procesos calientes (165 y 171 s). Ocurren dentro de la llamada a `sigrid-api`. No hay App Insights de `sigrid-api` consultable para ver su lado.
+  - Sin A ni B, todas las peticiones están entre 0,5 y 1,2 s.

@@ -353,3 +353,195 @@ de `progress/impl_F-060.md`): **C-1** resuelto (bloque JS autocontenido para la 
 entero de `F060.medir`, la advertencia de no pegar nada de T26 y qué esperar de `proceso_nuevo`); **C-2** resuelto
 (párrafo «Si algo sale mal» antes de T24, con los cinco puntos). Como preveía esta review, el veredicto pasa a
 **APPROVED condicionado a T7** («58 passed», 0 skipped y 0 failed en `infra\pruebas_bbdd_efimera.ps1`).
+
+## Review del Bloque 7 (M-3, opción (a)) · 2026-10-14
+
+- **Veredicto:** **CHANGES_REQUESTED**, solo en los **tests** (C-B7-1 y C-B7-2). El código de producción de M-3 queda
+  **aprobado tal cual**: las cuatro piezas son las declaradas, el comportamiento es idéntico salvo el momento de la
+  carga y `function_app.py` no cambia. No hay que tocar `services/` fuera de `tests/test_f060_*.py`, ni relanzar
+  `init.sh` entero: basta con los dos ficheros de test, la traza RED de C-B7-1 y la guarda en verde.
+- **Rama:** `feature/F-060-normalizar-ubicaciones`, HEAD `d8f7be1`. Revisado `1e85c56..d8f7be1` (T31 `0a572d7`, T32
+  `b40d952`, T33 `6faf03c`, T34 `d8f7be1`), contra `design.md` §11.4 y §12 enmendados en `1e85c56`.
+
+### Nivel de rigor
+
+`critico` (declarado en `harness/features.json`). Exige: fase RED con traza pegada, cobertura de las líneas
+cambiadas ≥ 80 %, mutación con cero supervivientes (también los mutantes a mano), verificación independiente de la
+campaña y RM7 si el requisito central es un orden.
+
+### Lo ejecutado (resultados reales)
+
+Todo desde un directorio de trabajo **sin `.env`** del scratchpad (`PYTHONPATH` al servicio, `--rootdir` al
+servicio), sin red, sin BBDD y sin Sigrid. `init.sh` **no** se repitió: vale la evidencia de T34 (8161 passed, 123
+skipped; cobertura 100,0 % de 4 líneas), como permite el encargo; no vi motivo para repetirlo porque el árbol no ha
+cambiado desde T34 salvo este informe.
+
+| Qué | Resultado |
+|---|---|
+| `pytest tests/test_f060_importacion_diferida.py tests/test_f060_alcance_cerrado.py` | **81 passed** en 39,7 s |
+| `git diff --stat 1e85c56..HEAD` | Código: solo `fabrica.py`, `split.py`, `importar.py`, `plantilla.py`. Tests: solo `test_f060_importacion_diferida.py` (nuevo) y `test_f060_alcance_cerrado.py`. `function_app.py`: **sin cambios**. Ningún test de otra feature tocado |
+| Diff de las cuatro piezas | En cada una, el `from … import` sale de arriba del módulo y entra, **sin condición**, en la función que lo usa, justo antes de su único uso. Sin funciones nuevas ni firmas cambiadas. Ningún test parchea esos nombres por módulo (`grep` de `importar.GeneradorPlantilla…`, `split.AdaptadorPdf…`, `fabrica.AdaptadorGemini…` y de las cadenas en `setattr`: cero). `scripts/migracion_f036.py` importa `GeneradorPlantillaOpenpyxl` de su módulo de origen: no le afecta |
+| Ramas de error | `_construir_gemini`: el `import` va **después** de la comprobación de la credencial, así que `ConfiguracionIaIncompleta` sale igual que antes y sin cargar `google.genai`. `trocear_remesa`: `paso_ingesta` (y sus errores) antes del `import`; un PDF inválido sigue llegando a `paso_troceado` y dando `RemesaSinPdfUtilizable` (lo ejerce el propio test). `importar_excel`: el `import` está en la rama `not ya_importado`, tras `paso_registro`, en el mismo punto donde antes se construía el generador; los 400/409/413/503 anteriores salen igual. `descargar_plantilla`: tras construir catálogo, equivalencias y configuración, como antes el constructor. Única diferencia posible: un `ImportError` de la biblioteca pasaría de la carga del módulo a la llamada, y las cuatro están en `requirements.txt` |
+| `ruff check` de los seis ficheros (código y tests) | All checks passed |
+| Recálculo puro (`harness.alcance` + `generar_mutantes`, base `1e85c56`) | 4 ficheros, **16 líneas** (4 por fichero: 2 de comentario, el `import`, la línea en blanco), **0 mutantes**: coincide con el informe |
+| Control del cero (`generar_mutantes` sobre **todas** las líneas de los mismos ficheros) | `fabrica.py` 2, `importar.py` 24, `plantilla.py` 0, `split.py` 2: el generador funciona en esos ficheros; el cero del alcance es **legítimo** (solo hay `import`, comentarios y blancos, que la herramienta no muta) |
+| Campaña reejecutada («Tiempo total» 0,0 s < 5 min): `python -m harness.mutacion --feature F-060 --base 1e85c56 --timeout 1800 --workers 1 --salida <scratchpad>` | 0 generados, 0 evaluados, 0 muertos, 0 supervivientes, 0 timeouts: **los mismos totales**. `git status` limpio después |
+| Los 8 mutantes a mano, repetidos en una **copia desechable** del servicio (scratchpad, sin `.env`, sin git) | **8/8 muertos**, ver la tabla de abajo. Control sin mutar sobre los mismos ficheros: 109 passed |
+| ¿Construir el extractor de Gemini con credencial ficticia abre conexión? (subproceso con `socket.socket.connect` y `socket.create_connection` prohibidos) | No: `AdaptadorGeminiVision` construido sin ninguna conexión |
+| `fitz` | En este venv `import pymupdf` **no** registra `fitz` (comprobado: `'fitz' in sys.modules` → `False`), pero `fitz` existe como módulo aparte (shim obsoleto). El caso `[fitz]` no es ciego: un `import fitz` en cualquier módulo que cargue `function_app` lo pondría en rojo |
+
+Mutantes a mano (cada uno solo; los demás ficheros como en HEAD):
+
+| Mutante | Tests | Resultado | ¿Lo caza un test de F-060? |
+|---|---|---|---|
+| `fabrica`: `import` arriba | `test_f060_importacion_diferida.py` | muerto (2 failed) | sí |
+| `fabrica`: `import` quitado | `test_f003_fabrica.py` | muerto (4 failed) | sí (`…_al_usarse[google.genai]`, por `NameError`) |
+| `split`: arriba | `test_f060_importacion_diferida.py` | muerto (2 failed) | sí |
+| `split`: quitado | `test_f002_split_http.py` | muerto (8 failed) | sí (`…_al_usarse[pymupdf]`) |
+| `importar`: arriba | `test_f060_importacion_diferida.py` | muerto (2 failed) | sí |
+| `importar`: quitado | `test_f036_importar_http.py` | muerto (1 failed: `test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad`, `NameError`) | **no**: los nueve `test_f060_*.py` dan exactamente los mismos resultados con y sin el mutante (ver C-B7-2) |
+| `plantilla`: arriba | `test_f060_importacion_diferida.py` | muerto (2 failed) | sí |
+| `plantilla`: quitado | `test_f036_plantilla_http.py` | muerto (1 failed) | sí (`…_al_usarse[openpyxl]`) |
+
+La mutación a mano **es suficiente** como evidencia de que el código está vigilado: la herramienta no puede generar
+nada sobre un `import`, las dos familias que importan («vuelve arriba» rompe M-3; «quitado» rompe el
+comportamiento) están cubiertas en las cuatro piezas, y todos mueren con la suite. RM7 no aplica: el requisito
+central de M-3 no es un orden entre colaboradores, sino **qué** se carga al importar (`N/A` justificado).
+
+### Checkpoints
+
+**C1**
+- [x] `bash harness/init.sh` en verde: evidencia de T34 (no repetido, ver arriba).
+- [x] Existen los ficheros del arnés.
+
+**C2**
+- [x] Una sola feature `in_progress` (F-060).
+- [x] Rama `feature/F-060-normalizar-ubicaciones`.
+- [x] `progress/current.md` describe la sesión activa (el histórico de F-056 ya está señalado en O-6).
+- N/A Feature `done` sin resumen: F-060 no está `done`.
+
+**C3**
+- [x] Hexagonal: los `import` diferidos están en `interface_adapters/` y en la fábrica de `infrastructure/`, donde
+  ya estaban a nivel de módulo; dominio y aplicación intactos.
+- [x] Primera línea con la ruta en el test nuevo; los demás ficheros la conservan.
+- [x] Sin `print()` de depuración (el `print(json.dumps(...))` del test es la salida del intérprete hijo, que el
+  test lee), sin TODOs, sin secretos (credencial `"no-es-una-credencial"`).
+- N/A Parte como unidad, archivado, manuscrito, firmado, reprocesar, estados de Sigrid: M-3 no toca esa lógica.
+- [x] Ningún PDF ni escaneado añadido (el «PDF» del test son bytes literales `b"no es un pdf"`).
+
+**C3 bis**
+- N/A: el bloque no incorpora documentos de fuera.
+
+**C4**
+- [x] Requisito del bloque (§11.4 y §12 enmendados: «importar `function_app.py` no carga IA, PDF ni `openpyxl`, sin
+  cambiar comportamiento») con test; ver la tabla de cobertura.
+- [x] Sin red ni BBDD. Ojo: los subprocesos del test nuevo **no** tienen la guardia `sin_red` de `conftest.py` (es
+  de la sesión de pytest, no del hijo); lo he comprobado aparte (ninguna conexión) y lo dejo en O-B7-2.
+- [x] T35 (MANUAL, humano) sigue en `tasks.md` con su comando; no es de este bloque.
+
+**C4 bis**
+- [x] `rigor: critico` declarado.
+- [x] **Fase RED**: traza real pegada en `progress/impl_F-060.md` (6 failed / 2 passed del test nuevo, con el porqué
+  de los dos verdes; y 4 failed de la guarda ampliada).
+- [x] **Cobertura**: `PUERTA COBERTURA` 100,0 % de 4 líneas en T34.
+- [x] **Mutación**: informe generado por la herramienta; alcance y nº de mutantes recalculados y coincidentes; el
+  cero, contrastado con la prueba de control.
+- [x] **Muertos comprobados**: campaña reejecutada (0,0 s < 5 min), mismos totales; y los 8 a mano, repetidos.
+- N/A **Coste por mutante**: 0 mutantes, el cociente no existe; la verificación real de este bloque son los 8 a mano.
+- [x] Supervivientes: ninguno, ni de la herramienta ni a mano.
+- [x] Sección «Evidencias (Bloque 7)» con tests, cobertura, mutación, supervivientes y tiempo de la suite. Los
+  workers no están en esa tabla, pero el informe de mutación dice `Workers 1` (O-B7-3).
+- [x] Ningún N/A sin justificar en este bloque.
+
+**C4 ter**
+- N/A: no existe `harness/rutas_sensibles.json` (solo el `.ejemplo.json`): sin declaración, el bloque no aplica.
+
+**C5**
+- [x] T31–T34 `[x]` con commits `F-060 T31: …` a `F-060 T34: …`. T35 (humano) y T36 (líder) siguen abiertas, como
+  corresponde al punto del flujo.
+- [x] Sin ficheros temporales ni artefactos sin trackear (`git status` limpio; `coverage.json` está en `.gitignore`).
+- [x] `features.json`: F-060 `in_progress`, que es su estado real.
+
+**Guarda `test_f060_alcance_cerrado.py`** (pedido expreso del encargo):
+- [x] Ninguna aserción quitada ni cambiada: el diff solo añade tres entradas a `PIEZAS_DE_F060`, una fila de la
+  tabla del docstring y saca `plantilla.py` de `INTOCABLES`, que es lo que manda §12.
+- [ ] **Pero el paso de `INTOCABLES` a `PIEZAS_DE_F060` deja `plantilla.py` menos vigilado de lo que §12 dice
+  vigilar**: ver C-B7-1.
+
+### Cobertura: requisito → test
+
+| Requisito (design §11.4 y §12, Bloque 7) | Test |
+|---|---|
+| Importar `function_app.py` no carga `google.genai` | `test_f060_importacion_diferida.py::test_f060_t31_importar_function_app_no_carga_el_modulo_pesado[google.genai]` |
+| … ni `pymupdf` / `fitz` | `…[pymupdf]`, `…[fitz]` |
+| … ni `openpyxl` | `…[openpyxl]` |
+| El control mira un `function_app` cargado de verdad | `…::test_f060_t31_el_control_no_es_ciego` |
+| `_construir_gemini` sigue construyendo el adaptador | `…_la_pieza_diferida_carga_su_adaptador_al_usarse[google.genai]`; `test_f003_fabrica.py` |
+| `trocear_remesa` sigue troceando con PyMuPDF | `…_al_usarse[pymupdf]`; `test_f002_split_http.py` |
+| `descargar_plantilla` sigue generando el `.xlsx` | `…_al_usarse[openpyxl]`; `test_f036_plantilla_http.py` |
+| `importar_excel` sigue generando el Excel de errores | **solo** `test_f036_importar_http.py::test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad` (C-B7-2) |
+| Solo cambian las cuatro funciones declaradas | `test_f060_alcance_cerrado.py::test_f060_s12_en_cada_fichero_tocado_solo_cambia_lo_declarado[…]` (con el hueco de C-B7-1) |
+| `function_app.py` no cambia por M-3 | `PIEZAS_DE_F060["function_app.py"]` sigue siendo solo `revision_normalizar` (y `git diff 1e85c56..HEAD` vacío en ese fichero) |
+
+### Cambios requeridos
+
+1. **C-B7-1 · La guarda no ve el código de módulo de `plantilla.py` que no es una definición.**
+   `services/postventa-api/tests/test_f060_alcance_cerrado.py:181-203` (`_definiciones`: «Los `import` no cuentan»)
+   solo compara funciones, clases y asignaciones. Hasta el Bloque 7, `plantilla.py` estaba en `INTOCABLES`
+   (**cualquier** cambio en el fichero era rojo); ahora, en `PIEZAS_DE_F060` (`:293`), el test de `:338` no ve un
+   `import` nuevo, una expresión suelta o un `try`/`if` a nivel de módulo. Comprobado con las funciones de la propia
+   guarda sobre `plantilla.py`: añadir `import os`, `configuracion_de_la_plantilla()` o
+   `try: import openpyxl / except ImportError: pass` al final del módulo da `_novedades == set()` y
+   `_quitadas == set()`, es decir, **verde**; solo `X = 1` se detecta. §12 dice que la guarda vigila que en
+   `plantilla.py` cambie «solo `descargar_plantilla`», y hoy no puede afirmarlo. (El `try: import openpyxl` lo
+   cazaría `test_f060_importacion_diferida.py`, pero una llamada suelta a nivel de módulo no la caza nadie de F-060.)
+   **Qué hacer**: en `test_f060_alcance_cerrado.py`, para los tres ficheros que el Bloque 7 añade a
+   `PIEZAS_DE_F060` (`infrastructure/llm/fabrica.py`, `interface_adapters/api/split.py`,
+   `interface_adapters/api/plantilla.py`), comparar también **el resto del módulo** (las sentencias de nivel de
+   módulo que no son función, clase ni asignación, sin docstrings, con `ast.unparse`) entre la base fija y HEAD, y
+   exigir que la única diferencia sea **la retirada del `import` declarado** de cada uno (un diccionario con esas
+   tres líneas). Con su control no ciego en el estilo de `test_f060_s12_los_controles_del_codigo_no_son_ciegos` (un
+   `import os` añadido a nivel de módulo se detecta). Ampliarlo a `importar.py` es opcional: allí las importaciones
+   de nivel de módulo ya cambiaron en bloques anteriores y habría que declararlas. Traza RED en
+   `progress/impl_F-060.md`: aplicada en una copia desechable una sentencia de módulo en `plantilla.py`, la guarda
+   nueva en rojo y la de hoy en verde.
+
+2. **C-B7-2 · `importar_excel` es la única pieza diferida que ningún test de F-060 ejerce.**
+   El docstring de `services/postventa-api/tests/test_f060_importacion_diferida.py:16` dice «cada pieza diferida
+   sigue cargando su adaptador al usarse», y `_USAR_LA_PIEZA` (`:104`) solo tiene tres casos (IA, PDF y la
+   plantilla). Con el `import` de `importar_excel` **quitado**, los nueve `test_f060_*.py` dan exactamente el mismo
+   resultado que sin mutar (comprobado en la copia desechable); el mutante solo muere en
+   `test_f036_importar_http.py::test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad`, de otra
+   feature. El comportamiento está protegido en la suite entera, pero el test de F-060 afirma algo que no
+   comprueba. **Qué hacer**, una de dos: (a) añadir el cuarto caso a `_USAR_LA_PIEZA` (`importar_excel` con
+   `generador=None` y el resto de puertos en dobles escritos en el propio test, sin `tests/utiles_importacion.py`,
+   que importa `openpyxl`), con `antes False / después True` y su traza RED en una copia con el `import` quitado; o
+   (b) si los dobles de la importación salen desproporcionados, corregir el docstring (líneas 7-16) para que diga
+   que cubre tres de las cuatro y nombrar ahí el test de F-036 que vigila la cuarta. Preferible (a).
+
+### Observaciones (no bloquean)
+
+- **O-B7-1 · El caso `[google.genai]` de `…_al_usarse` importa él mismo `AdaptadorGeminiVision`** antes de llamar a
+  la fábrica (para el `isinstance`), así que su `despues: True` lo garantiza el propio snippet y no la fábrica. El
+  caso sigue mordiendo (si la fábrica pierde su `import`, `NameError` y rojo: comprobado), pero por el `isinstance`,
+  no por `sys.modules`. Medir `despues` **antes** del `import` del snippet (o comprobar la clase por nombre) lo
+  haría coherente con los otros dos.
+- **O-B7-2 · Los intérpretes hijos del test nuevo no tienen la guardia de red** de `conftest.py` (R19 de F-003). Hoy
+  no conectan (comprobado con `connect` prohibido), pero si un día `genai.Client` abriera conexión al construirse,
+  nadie lo vería. Bastaría con anteponer al código de cada hijo el mismo parche de `socket.socket.connect`.
+- **O-B7-3 · Workers en «Evidencias (Bloque 7)».** La tabla no dice con cuántos workers se lanzó la campaña (lo dice
+  el informe de mutación: 1), y el comando de T33 en el informe no lleva el `--workers 1` que sí consta en la
+  cabecera de `progress/mutacion_F-060_bloque7.md`. Con 0 mutantes no cambia nada; anotarlo por consistencia con
+  C4 bis.
+- **O-B7-4 · El `I001` de `importar.py`** que cita T34 no sale con `python -m ruff check` desde la raíz del repo ni
+  en HEAD ni en `1e85c56`; será de otra configuración. Sin efecto.
+
+### Propuesta de automejora (para que la apruebe el humano; no aplicada)
+
+**A `.claude/agents/reviewer.md`, punto 4 de «Validación contra el nivel de rigor»**, tras la prueba de control del
+cero: «Si la campaña da cero mutantes y la verificación real son **mutantes a mano**, el reviewer los repite en una
+copia desechable y anota, para cada uno, si lo caza un test **de la propia feature** o solo una suite vecina; lo
+segundo es un hallazgo, como en el punto 7.» Motivo: C-B7-2; el 8/8 era cierto, pero uno de los ocho solo lo veía
+F-036. Y **a `CHECKPOINTS.md`, C4 bis**: «Si un fichero sale de una lista de "no se toca" para pasar a una guarda
+por definiciones, la guarda nueva tiene que ver también lo que no es una definición (importaciones y sentencias de
+módulo)». Motivo: C-B7-1. Ambas valen para cualquier proyecto: candidatas a `arnes-base`.

@@ -1519,6 +1519,21 @@ def test_f059_los_tipos_son_inmutables() -> None:
         (Excluida(UUID(int=1), MX.YA_VOLCADA, COD), "sigrid_cod"),
         (bloqueada(1), "accion"),
         (pedida(1), "revision_id"),
+        # T3: los seis que la mutación del Bloque 1 encontró sin vigilar.
+        (parte_en_sigrid(), "sigrid_cod"),
+        (ultimo(EV.ENVIADO), "estado"),
+        (en_duda(), "volcada"),
+        (ms[0].intervinientes[0], "causante"),
+        (
+            seleccionar_para_volcado([pedida(1)], ensayo(evento(1)), actuales(1)),
+            "mandadas",
+        ),
+        (
+            PosibleDuplicado(
+                UUID(int=1), ms[0].referencia_externa, IDE, COD, IDE_2, COD_2
+            ),
+            "sigrid_ide",
+        ),
     )
     for objeto, campo in objetos:
         with pytest.raises(FrozenInstanceError):

@@ -110,6 +110,14 @@ que **no admite el estado** de la incidencia (`AccionNoPermitida`,
 409). **En todos, sin haber escrito nada.** Ninguno lleva el `oid`, el correo,
 la descripción, el detalle ni el motivo de quien revisa: solo códigos.
 
+Los del **volcado a Sigrid** (F-059, `design.md` §7) vuelven a escribir en el
+ERP de producción y se reparten igual: lo **mal pedido**
+(`CuerpoDeVolcadoInvalido` → 400), lo que **no se puede volcar así**
+(`EnsayoNoValido`, `VolcadoRechazadoPorLaPasarela` → 409), lo que dice que
+**aquí no se vuelca** (`VolcadoDeshabilitado`, `ConfiguracionDeVolcadoInvalida`
+→ 503), lo que **no consta** (`EnsayoSinRespuesta`, `VolcadoSinRespuesta` →
+502) y lo que **está en Sigrid sin traza** (`VolcadoSinTraza` → 500).
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
 """
@@ -117,6 +125,7 @@ es el borde.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from uuid import UUID
 
 
 class ErrorDeIngesta(Exception):
@@ -1457,3 +1466,114 @@ class BandejaDemasiadoGrande(Exception):
         super().__init__(motivo)
         self.motivo = motivo
         self.total = total
+
+
+# --------------------------------------------------------------------------
+# F-059 · volcado a Sigrid (`design.md` §7)
+# --------------------------------------------------------------------------
+#
+# Ninguno lleva en su motivo el `oid`, el correo, el login de Sigrid ni ningún
+# texto recibido (R9, R34): acaban en un log. De la pasarela, solo códigos
+# (R35). Los de F-009 (`UsuarioSigridNoMapeado`, `UsuarioSigridInexistente`) y
+# los de F-056 (`AccionNoPermitida`, `BandejaDemasiadoGrande`) se reutilizan.
+
+
+class CuerpoDeVolcadoInvalido(Exception):
+    """El cuerpo del ensayo o del volcado no es el del contrato (F-059, R9, R15).
+
+    **400** `peticion_invalida`, **antes** de construir ningún adaptador: ni la
+    base ni Sigrid se tocan.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class VolcadoDeshabilitado(Exception):
+    """La ventana `VOLCADO_HABILITADO` está cerrada (F-059, R16, D-3). **503**.
+
+    Se comprueba en la fábrica **y** en el adaptador, que se niega a mandar
+    `commit: true` si se construyó sin ella. No se ha leído ni escrito nada.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ConfiguracionDeVolcadoInvalida(Exception):
+    """`VOLCADO_PARTES_POR_LLAMADA` no es un entero de 1 a 50 (F-059, R30). **503**.
+
+    Nombra la variable y nunca su valor.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class EnsayoNoValido(Exception):
+    """El volcado no tiene un ensayo vigente (F-059, R17, D-5). **409**.
+
+    `causa` es el código: `no_existe`, `de_otra_obra`, `de_otra_persona` o
+    `caducado`. Sin llamar a Sigrid ni escribir.
+    """
+
+    def __init__(self, motivo: str, *, causa: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.causa = causa
+
+
+class VolcadoRechazadoPorLaPasarela(Exception):
+    """La pasarela rechaza el lote entero con un 400 (F-059, R14, R24).
+
+    Nada se ha escrito en Sigrid. Lleva solo `details.codigo` como
+    `codigo_pasarela` (R35). **409**, o **503** si el código es configuración
+    del dueño de `sigrid-api` (`clasificar_codigo_de_lote`).
+    """
+
+    def __init__(self, motivo: str, *, codigo_pasarela: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.codigo_pasarela = codigo_pasarela
+
+
+class EnsayoSinRespuesta(Exception):
+    """El ensayo no tiene una respuesta utilizable de la pasarela (F-059, R14).
+
+    **502** sin guardar nada: el ensayo es una lectura y repetirlo es inocuo.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class VolcadoSinRespuesta(Exception):
+    """No consta qué ha pasado en Sigrid con el volcado (F-059, R23). **502**.
+
+    Se levanta **después** de guardar `sin_respuesta` de cada parte mandado.
+    `en_duda` son esas incidencias. El motivo dice que reintentar es seguro
+    —la referencia `PVI-` no deja duplicar— y que no hay que tocar Sigrid a
+    mano.
+    """
+
+    def __init__(self, motivo: str, *, en_duda: tuple[UUID, ...]) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.en_duda = en_duda
+
+
+class VolcadoSinTraza(Exception):
+    """Sigrid respondió y no se pudo guardar el resultado (F-059, R25). **500**.
+
+    Hermano de `CierreSinTraza` y de `GraficoSinTraza`: las incidencias quedan
+    `en_duda` (su último evento es `enviado`) y el siguiente ensayo las
+    encuentra `idempotente`.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo

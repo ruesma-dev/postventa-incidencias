@@ -106,12 +106,18 @@ BASE = "base_ficticia"
 USU = "login_ficticio"
 DESCRIPCION = "Ejemplo de grieta junto a la ventana del salón"
 DETALLE = "Ejemplo de detalle largo de la incidencia"
+#: La forma canónica de `UUID(int=0xABCDEF)`, compuesta por partes: un GUID
+#: literal en el repositorio lo rechaza la guardia R26 de F-006.
+CANONICO_ABCDEF = "-".join(("0" * 8, "0" * 4, "0" * 4, "0" * 4, "0" * 6 + "abcdef"))
 COD = "RS26.10/0001"
 COD_2 = "RS26.10/0002"
 IDE = 700001
 IDE_2 = 700002
 
-CODIGOS_DE_PRECONDICION = ("escritura_reclamaciones_deshabilitada", "base_de_datos_no_permitida")
+CODIGOS_DE_PRECONDICION = (
+    "escritura_reclamaciones_deshabilitada",
+    "base_de_datos_no_permitida",
+)
 CODIGOS_DE_RECHAZO = (
     "lote_demasiado_grande",
     "obra_no_encontrada",
@@ -227,7 +233,9 @@ def ultimo(estado: EstadoEvento, motivo: str | None = None) -> UltimoEvento:
 
 
 def volcada(cod: str = COD, ide: int = IDE) -> SituacionDeVolcado:
-    return SituacionDeVolcado(volcada=parte_en_sigrid(cod, ide), ultimo=ultimo(EV.CREADO))
+    return SituacionDeVolcado(
+        volcada=parte_en_sigrid(cod, ide), ultimo=ultimo(EV.CREADO)
+    )
 
 
 def en_duda(estado: EstadoEvento = EV.ENVIADO) -> SituacionDeVolcado:
@@ -244,7 +252,11 @@ def ensayo(
     *eventos: EventoDeEnsayo, obra: str = OBRA, oid: str = OID, at: datetime = AHORA
 ) -> Ensayo:
     return Ensayo(
-        ensayo_id=UUID(int=500), obra_codigo=obra, actor_oid=oid, at_utc=at, eventos=eventos
+        ensayo_id=UUID(int=500),
+        obra_codigo=obra,
+        actor_oid=oid,
+        at_utc=at,
+        eventos=eventos,
     )
 
 
@@ -277,7 +289,9 @@ def bloqueada(
         revision_id=c.revision_id if revision_id is None else revision_id,
         accion=accion,
         huella=c.huella if huella is None else huella,
-        volcado=SituacionDeVolcado(volcada=None, ultimo=None) if volcado is None else volcado,
+        volcado=SituacionDeVolcado(volcada=None, ultimo=None)
+        if volcado is None
+        else volcado,
     )
 
 
@@ -287,7 +301,8 @@ def actuales(*ns: int) -> dict[UUID, SituacionBloqueada]:
 
 def pedida(n: int, revision_id: int | None = None) -> PedidaAlVolcado:
     return PedidaAlVolcado(
-        incidencia_id=UUID(int=n), revision_id=10 + n if revision_id is None else revision_id
+        incidencia_id=UUID(int=n),
+        revision_id=10 + n if revision_id is None else revision_id,
     )
 
 
@@ -313,7 +328,9 @@ def elemento(
     return datos
 
 
-def respuesta(*elementos: dict[str, object], dry_run: object = False, **mas: object) -> dict:
+def respuesta(
+    *elementos: dict[str, object], dry_run: object = False, **mas: object
+) -> dict:
     datos: dict[str, object] = {
         "ok": True,
         "committed": True,
@@ -360,7 +377,7 @@ def creado(i: int, parte: ParteAVolcar, **mas: object) -> dict[str, object]:
 def test_f059_r5_la_referencia_es_pvi_y_el_uuid_canonico() -> None:
     incidencia_id = UUID(int=0xABCDEF)
     referencia = referencia_de(incidencia_id)
-    assert referencia == "PVI-00000000-0000-0000-0000-000000abcdef"
+    assert referencia == "PVI-" + CANONICO_ABCDEF
     assert len(referencia) == 40
     assert referencia[4:] == str(incidencia_id)
     assert PREFIJO_REFERENCIA == "PVI-"
@@ -368,7 +385,7 @@ def test_f059_r5_la_referencia_es_pvi_y_el_uuid_canonico() -> None:
 
 def test_f059_r5_de_un_uuid_escrito_en_mayusculas_sale_en_minusculas() -> None:
     incidencia_id = UUID(str(UUID(int=0xABCDEF)).upper())
-    assert referencia_de(incidencia_id) == "PVI-00000000-0000-0000-0000-000000abcdef"
+    assert referencia_de(incidencia_id) == "PVI-" + CANONICO_ABCDEF
 
 
 def test_f059_r5_la_misma_incidencia_da_siempre_la_misma() -> None:
@@ -376,7 +393,9 @@ def test_f059_r5_la_misma_incidencia_da_siempre_la_misma() -> None:
     assert referencia_de(UUID(int=7)) != referencia_de(UUID(int=8))
 
 
-@pytest.mark.parametrize("no_uuid", [str(UUID(int=1)), 1, None])
+@pytest.mark.parametrize(
+    "no_uuid", [str(UUID(int=1)), 1, None], ids=["texto", "entero", "nada"]
+)
 def test_f059_r5_solo_sale_de_un_uuid(no_uuid: object) -> None:
     with pytest.raises(TypeError):
         referencia_de(no_uuid)  # type: ignore[arg-type]
@@ -401,7 +420,9 @@ def test_f059_r6_el_parte_clave_a_clave() -> None:
         oficio="0046",
         ubicacion="Baño",
         forma_comunicacion=1,
-        intervinientes=(Interviniente(oficio="0046", proveedor="EJ07", causante=False),),
+        intervinientes=(
+            Interviniente(oficio="0046", proveedor="EJ07", causante=False),
+        ),
     )
 
 
@@ -412,7 +433,9 @@ def test_f059_r6_las_constantes() -> None:
 
 
 @pytest.mark.parametrize("listado", [Listado.PRIMERO, Listado.SEGUNDO, None])
-def test_f059_r6_q1_el_tipo_es_0002_con_cualquier_listado(listado: Listado | None) -> None:
+def test_f059_r6_q1_el_tipo_es_0002_con_cualquier_listado(
+    listado: Listado | None,
+) -> None:
     assert parte_de(candidata(v=valores(listado=listado))).tipo == "0002"
 
 
@@ -482,7 +505,9 @@ def test_f059_r6_el_cuerpo_clave_a_clave() -> None:
                 "oficio": "0046",
                 "ubicacion": "Baño",
                 "forma_comunicacion": 1,
-                "intervinientes": [{"oficio": "0046", "proveedor": "EJ07", "causante": False}],
+                "intervinientes": [
+                    {"oficio": "0046", "proveedor": "EJ07", "causante": False}
+                ],
             }
         ],
     }
@@ -497,7 +522,11 @@ def test_f059_r6_commit_siempre_explicito(commit: bool) -> None:
 def test_f059_r6_commit_solo_booleano(commit: object) -> None:
     with pytest.raises(TypeError):
         cuerpo_de_lote(
-            [parte_de(candidata())], obra=OBRA, usu=USU, commit=commit, base=BASE  # type: ignore[arg-type]
+            [parte_de(candidata())],
+            obra=OBRA,
+            usu=USU,
+            commit=commit,  # type: ignore[arg-type]
+            base=BASE,
         )
 
 
@@ -581,7 +610,9 @@ def test_f059_r7_la_huella_intacta() -> None:
 
 def test_f059_r7_un_valor_cambiado_con_la_huella_vieja() -> None:
     vieja = huella_de_valores(valores())
-    assert huella_intacta(candidata(v=valores(ubicacion="Cocina"), huella=vieja)) is False
+    assert (
+        huella_intacta(candidata(v=valores(ubicacion="Cocina"), huella=vieja)) is False
+    )
 
 
 # --------------------------------------------------------------------------
@@ -607,7 +638,9 @@ def test_f059_r11_no_es_de_la_bandeja() -> None:
 
 def test_f059_r11_de_otra_obra() -> None:
     c = candidata(1, obra=OTRA_OBRA)
-    sel = seleccionar_para_ensayo([c.incidencia_id], [c], {c.incidencia_id: situacion(c)}, obra=OBRA)
+    sel = seleccionar_para_ensayo(
+        [c.incidencia_id], [c], {c.incidencia_id: situacion(c)}, obra=OBRA
+    )
     assert sel.excluidas == (Excluida(c.incidencia_id, MX.DE_OTRA_OBRA, None),)
     assert sel.mandadas == ()
 
@@ -644,7 +677,9 @@ def test_f059_r11_no_es_candidata(accion: AccionRevision) -> None:
     assert sel.excluidas == (Excluida(c.incidencia_id, MX.NO_ES_CANDIDATA, None),)
 
 
-def test_f059_r11_no_es_candidata_si_la_situacion_no_lo_es_aunque_la_lista_la_traiga() -> None:
+def test_f059_r11_no_es_candidata_si_la_situacion_no_lo_es_aunque_la_lista_la_traiga() -> (
+    None
+):
     c = candidata(1)
     sits = {c.incidencia_id: situacion(c, accion=A.EDITAR)}
     sel = seleccionar_para_ensayo([c.incidencia_id], [c], sits, obra=OBRA)
@@ -654,7 +689,9 @@ def test_f059_r11_no_es_candidata_si_la_situacion_no_lo_es_aunque_la_lista_la_tr
 
 def test_f059_r11_no_es_candidata_si_la_lista_no_la_trae() -> None:
     c = candidata(1)
-    sel = seleccionar_para_ensayo([c.incidencia_id], [], {c.incidencia_id: situacion(c)}, obra=OBRA)
+    sel = seleccionar_para_ensayo(
+        [c.incidencia_id], [], {c.incidencia_id: situacion(c)}, obra=OBRA
+    )
     assert sel.excluidas == (Excluida(c.incidencia_id, MX.NO_ES_CANDIDATA, None),)
 
 
@@ -674,7 +711,9 @@ def test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_mandar() -> None:
 
 def test_f059_r7_r11_huella_no_coincide() -> None:
     c = candidata(1, v=valores(ubicacion="Cocina"), huella=huella_de_valores(valores()))
-    sel = seleccionar_para_ensayo([c.incidencia_id], [c], {c.incidencia_id: situacion(c)}, obra=OBRA)
+    sel = seleccionar_para_ensayo(
+        [c.incidencia_id], [c], {c.incidencia_id: situacion(c)}, obra=OBRA
+    )
     assert sel.excluidas == (Excluida(c.incidencia_id, MX.HUELLA_NO_COINCIDE, None),)
     assert sel.mandadas == ()
 
@@ -703,7 +742,10 @@ def test_f059_r11_pedidas_repetidas() -> None:
     c = candidata(1)
     with pytest.raises(ValueError):
         seleccionar_para_ensayo(
-            [c.incidencia_id, c.incidencia_id], [c], {c.incidencia_id: situacion(c)}, obra=OBRA
+            [c.incidencia_id, c.incidencia_id],
+            [c],
+            {c.incidencia_id: situacion(c)},
+            obra=OBRA,
         )
 
 
@@ -769,7 +811,9 @@ def test_f059_r17_las_constantes_y_los_motivos() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo() -> None:
+def test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo() -> (
+    None
+):
     ens = ensayo(evento(1), evento(2), evento(3))
     sel = seleccionar_para_volcado([pedida(3), pedida(1)], ens, actuales(1, 2, 3))
     assert sel.mandadas == (evento(1), evento(3))
@@ -784,13 +828,17 @@ def test_f059_r18_fuera_del_ensayo_si_no_esta() -> None:
 
 @pytest.mark.parametrize("estado", [EV.IDEMPOTENTE, EV.RECHAZADO, EV.NO_PROCESADO])
 def test_f059_r18_fuera_del_ensayo_si_no_salio_previsto(estado: EstadoEvento) -> None:
-    sel = seleccionar_para_volcado([pedida(1)], ensayo(evento(1, estado=estado)), actuales(1))
+    sel = seleccionar_para_volcado(
+        [pedida(1)], ensayo(evento(1, estado=estado)), actuales(1)
+    )
     assert sel.excluidas == (Excluida(UUID(int=1), MX.FUERA_DEL_ENSAYO, None),)
     assert sel.mandadas == ()
 
 
 def test_f059_r18_revision_desactualizada_si_la_pedida_no_es_la_del_ensayo() -> None:
-    sel = seleccionar_para_volcado([pedida(1, revision_id=99)], ensayo(evento(1)), actuales(1))
+    sel = seleccionar_para_volcado(
+        [pedida(1, revision_id=99)], ensayo(evento(1)), actuales(1)
+    )
     assert sel.excluidas == (Excluida(UUID(int=1), MX.REVISION_DESACTUALIZADA, None),)
     assert sel.mandadas == ()
 
@@ -798,12 +846,16 @@ def test_f059_r18_revision_desactualizada_si_la_pedida_no_es_la_del_ensayo() -> 
 def test_f059_r18_lo_del_ensayo_antes_que_lo_de_la_base() -> None:
     fuera = evento(1, estado=EV.RECHAZADO)
     sel = seleccionar_para_volcado(
-        [pedida(1, revision_id=99)], ensayo(fuera), {UUID(int=1): bloqueada(1, volcado=volcada())}
+        [pedida(1, revision_id=99)],
+        ensayo(fuera),
+        {UUID(int=1): bloqueada(1, volcado=volcada())},
     )
     assert sel.excluidas == (Excluida(UUID(int=1), MX.FUERA_DEL_ENSAYO, None),)
 
 
-def test_f059_r20_revision_desactualizada_si_hay_otra_revision_despues_del_ensayo() -> None:
+def test_f059_r20_revision_desactualizada_si_hay_otra_revision_despues_del_ensayo() -> (
+    None
+):
     sits = {UUID(int=1): bloqueada(1, revision_id=99)}
     sel = seleccionar_para_volcado([pedida(1)], ensayo(evento(1)), sits)
     assert sel.excluidas == (Excluida(UUID(int=1), MX.REVISION_DESACTUALIZADA, None),)
@@ -835,7 +887,12 @@ def test_f059_r20_ya_volcada_antes_que_la_revision() -> None:
 
 @pytest.mark.parametrize(
     "volcado",
-    [en_duda(EV.ENVIADO), en_duda(EV.SIN_RESPUESTA), con_rechazo(), con_rechazo(EV.NO_PROCESADO)],
+    [
+        en_duda(EV.ENVIADO),
+        en_duda(EV.SIN_RESPUESTA),
+        con_rechazo(),
+        con_rechazo(EV.NO_PROCESADO),
+    ],
 )
 def test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_volcar(
     volcado: SituacionDeVolcado,
@@ -907,7 +964,10 @@ def test_f059_r22_r35_rechazado_y_no_procesado_solo_con_el_codigo() -> None:
     ms = mandados(1, 2)
     datos = respuesta(
         elemento(
-            0, ms[0], "rechazado", motivo={"codigo": "oficio_no_esta_en_la_obra", "mensaje": mensaje}
+            0,
+            ms[0],
+            "rechazado",
+            motivo={"codigo": "oficio_no_esta_en_la_obra", "mensaje": mensaje},
         ),
         elemento(
             1,
@@ -925,7 +985,9 @@ def test_f059_r22_r35_rechazado_y_no_procesado_solo_con_el_codigo() -> None:
     assert "Persona Ejemplo" not in repr(resultados)
 
 
-def test_f059_r22_el_orden_de_la_lista_no_importa_si_cada_indice_trae_su_referencia() -> None:
+def test_f059_r22_el_orden_de_la_lista_no_importa_si_cada_indice_trae_su_referencia() -> (
+    None
+):
     ms = mandados(1, 2, 3)
     en_orden = [creado(0, ms[0]), creado(1, ms[1]), creado(2, ms[2])]
     esperado = interpretar_respuesta(ms, respuesta(*en_orden), modo=VOLCADO)
@@ -956,16 +1018,23 @@ def test_f059_r22_un_parte_que_no_vuelve_es_sin_respuesta_y_los_demas_valen() ->
 def test_f059_r22_referencia_cambiada() -> None:
     ms = mandados(1)
     datos = respuesta(creado(0, ms[0], referencia_externa="PVI-otra-referencia"))
-    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (resultado(ms[0], EV.SIN_RESPUESTA),)
+    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (
+        resultado(ms[0], EV.SIN_RESPUESTA),
+    )
 
 
 @pytest.mark.parametrize(
-    "estado", ["previsto", "enviado", "sin_respuesta", "otro", "", "CREADO", None, 3, ["creado"]]
+    "estado",
+    ["previsto", "enviado", "sin_respuesta", "otro", "", "CREADO", None, 3, ["creado"]],
 )
 def test_f059_r22_un_estado_que_no_es_de_los_cuatro(estado: object) -> None:
     ms = mandados(1)
-    datos = respuesta(elemento(0, ms[0], estado, ide=IDE, cod=COD, motivo={"codigo": "x"}))
-    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (resultado(ms[0], EV.SIN_RESPUESTA),)
+    datos = respuesta(
+        elemento(0, ms[0], estado, ide=IDE, cod=COD, motivo={"codigo": "x"})
+    )
+    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (
+        resultado(ms[0], EV.SIN_RESPUESTA),
+    )
 
 
 @pytest.mark.parametrize("estado", ["creado", "idempotente"])
@@ -973,7 +1042,9 @@ def test_f059_r22_un_estado_que_no_es_de_los_cuatro(estado: object) -> None:
 def test_f059_r22_con_parte_sin_ide_entero(estado: str, ide: object) -> None:
     ms = mandados(1)
     datos = respuesta(elemento(0, ms[0], estado, ide=ide, cod=COD))
-    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (resultado(ms[0], EV.SIN_RESPUESTA),)
+    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (
+        resultado(ms[0], EV.SIN_RESPUESTA),
+    )
 
 
 @pytest.mark.parametrize("estado", ["creado", "idempotente"])
@@ -998,7 +1069,9 @@ def test_f059_r22_con_parte_sin_ide_entero(estado: str, ide: object) -> None:
 def test_f059_r22_con_parte_sin_cod_bien_formado(estado: str, cod: object) -> None:
     ms = mandados(1)
     datos = respuesta(elemento(0, ms[0], estado, ide=IDE, cod=cod))
-    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (resultado(ms[0], EV.SIN_RESPUESTA),)
+    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (
+        resultado(ms[0], EV.SIN_RESPUESTA),
+    )
 
 
 def test_f059_r22_un_cod_de_otro_mes_bien_formado_vale_y_el_ide_1_tambien() -> None:
@@ -1026,10 +1099,14 @@ def test_f059_r22_un_cod_de_otro_mes_bien_formado_vale_y_el_ide_1_tambien() -> N
         "oficio_no_esta_en_la_obra",
     ],
 )
-def test_f059_r22_r35_sin_codigo_de_motivo_admisible(estado: str, motivo: object) -> None:
+def test_f059_r22_r35_sin_codigo_de_motivo_admisible(
+    estado: str, motivo: object
+) -> None:
     ms = mandados(1)
     datos = respuesta(elemento(0, ms[0], estado, motivo=motivo))
-    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (resultado(ms[0], EV.SIN_RESPUESTA),)
+    assert interpretar_respuesta(ms, datos, modo=VOLCADO) == (
+        resultado(ms[0], EV.SIN_RESPUESTA),
+    )
 
 
 def test_f059_r35_el_codigo_de_motivo_de_64_y_con_cifras_vale() -> None:
@@ -1057,7 +1134,9 @@ def test_f059_r35_el_codigo_de_motivo_de_64_y_con_cifras_vale() -> None:
         {"partes": [], "dry_run": None},
     ],
 )
-def test_f059_r23_sin_la_forma_de_la_pasarela_no_hay_interpretacion(datos: object) -> None:
+def test_f059_r23_sin_la_forma_de_la_pasarela_no_hay_interpretacion(
+    datos: object,
+) -> None:
     assert interpretar_respuesta(mandados(1), datos, modo=VOLCADO) is None
     assert interpretar_respuesta(mandados(1), datos, modo=ENSAYO) is None
 
@@ -1145,7 +1224,9 @@ def test_f059_r12_r13_en_el_ensayo_idempotente_rechazado_y_no_procesado_valen() 
     datos = respuesta(
         elemento(0, ms[0], "idempotente", ide=IDE, cod=COD),
         elemento(1, ms[1], "rechazado", motivo={"codigo": "referencia_en_conflicto"}),
-        elemento(2, ms[2], "no_procesado", motivo={"codigo": "presupuesto_de_tiempo_agotado"}),
+        elemento(
+            2, ms[2], "no_procesado", motivo={"codigo": "presupuesto_de_tiempo_agotado"}
+        ),
         dry_run=True,
     )
     assert interpretar_respuesta(ms, datos, modo=ENSAYO) == (
@@ -1156,16 +1237,24 @@ def test_f059_r12_r13_en_el_ensayo_idempotente_rechazado_y_no_procesado_valen() 
 
 
 @pytest.mark.parametrize("estado", ["creado", "enviado", "sin_respuesta"])
-def test_f059_r14_en_el_ensayo_un_estado_de_escritura_es_sin_respuesta(estado: str) -> None:
+def test_f059_r14_en_el_ensayo_un_estado_de_escritura_es_sin_respuesta(
+    estado: str,
+) -> None:
     ms = mandados(1)
     datos = respuesta(elemento(0, ms[0], estado, ide=IDE, cod=COD), dry_run=True)
-    assert interpretar_respuesta(ms, datos, modo=ENSAYO) == (resultado(ms[0], EV.SIN_RESPUESTA),)
+    assert interpretar_respuesta(ms, datos, modo=ENSAYO) == (
+        resultado(ms[0], EV.SIN_RESPUESTA),
+    )
 
 
 def test_f059_r22_el_idempotente_del_ensayo_tambien_exige_ide_y_cod() -> None:
     ms = mandados(1)
-    datos = respuesta(elemento(0, ms[0], "idempotente", ide=IDE, cod="RS26.10/1"), dry_run=True)
-    assert interpretar_respuesta(ms, datos, modo=ENSAYO) == (resultado(ms[0], EV.SIN_RESPUESTA),)
+    datos = respuesta(
+        elemento(0, ms[0], "idempotente", ide=IDE, cod="RS26.10/1"), dry_run=True
+    )
+    assert interpretar_respuesta(ms, datos, modo=ENSAYO) == (
+        resultado(ms[0], EV.SIN_RESPUESTA),
+    )
 
 
 # --------------------------------------------------------------------------
@@ -1191,7 +1280,8 @@ def test_f059_r24_todos_no_procesados_con_el_codigo_de_lote(codigo: str) -> None
 
 
 @pytest.mark.parametrize(
-    "codigo", ["oficio_no_esta_en_la_obra", "otro_codigo", "", None, "Solicitud invalida."]
+    "codigo",
+    ["oficio_no_esta_en_la_obra", "otro_codigo", "", None, "Solicitud invalida."],
 )
 def test_f059_r24_r35_un_codigo_que_no_es_de_lote_no_se_guarda(codigo: object) -> None:
     with pytest.raises(ValueError):
@@ -1222,14 +1312,18 @@ def test_f059_r26_un_creado_con_otro_ide_es_un_posible_duplicado() -> None:
 def test_f059_r26_con_el_mismo_ide_no_lo_es() -> None:
     ms = mandados(1)
     resultados = (resultado(ms[0], EV.CREADO, ide=IDE, cod=COD),)
-    assert posibles_duplicados(resultados, {ms[0].incidencia_id: volcada(COD, IDE)}) == ()
+    assert (
+        posibles_duplicados(resultados, {ms[0].incidencia_id: volcada(COD, IDE)}) == ()
+    )
 
 
 @pytest.mark.parametrize("estado", [EV.IDEMPOTENTE, EV.RECHAZADO, EV.SIN_RESPUESTA])
 def test_f059_r26_solo_un_creado(estado: EstadoEvento) -> None:
     ms = mandados(1)
     resultados = (resultado(ms[0], estado, ide=IDE_2, cod=COD_2),)
-    assert posibles_duplicados(resultados, {ms[0].incidencia_id: volcada(COD, IDE)}) == ()
+    assert (
+        posibles_duplicados(resultados, {ms[0].incidencia_id: volcada(COD, IDE)}) == ()
+    )
 
 
 def test_f059_r26_sin_parte_anterior_no_lo_es() -> None:
@@ -1274,7 +1368,15 @@ def test_f059_r14_r24_los_de_rechazo(codigo: str) -> None:
 
 @pytest.mark.parametrize(
     "codigo",
-    ["oficio_no_esta_en_la_obra", "OBRA_NO_ENCONTRADA", " obra_no_encontrada", "", None, 5],
+    [
+        "oficio_no_esta_en_la_obra",
+        "OBRA_NO_ENCONTRADA",
+        " obra_no_encontrada",
+        "",
+        None,
+        5,
+        ["obra_no_encontrada"],
+    ],
 )
 def test_f059_r14_un_codigo_desconocido_no_tiene_clase(codigo: object) -> None:
     assert clasificar_codigo_de_lote(codigo) is None
@@ -1302,7 +1404,13 @@ def test_f059_r12_el_resumen_del_ensayo() -> None:
         "no_procesados": 0,
         "excluidas": 1,
     }
-    assert list(resumen) == ["previstos", "idempotentes", "rechazados", "no_procesados", "excluidas"]
+    assert list(resumen) == [
+        "previstos",
+        "idempotentes",
+        "rechazados",
+        "no_procesados",
+        "excluidas",
+    ]
 
 
 def test_f059_r22_el_resumen_del_volcado() -> None:
@@ -1434,9 +1542,16 @@ def test_f059_los_ocho_errores_del_volcado() -> None:
     no_valido = errores.EnsayoNoValido("caducado hace rato", causa="caducado")
     assert (no_valido.motivo, no_valido.causa) == ("caducado hace rato", "caducado")
 
-    pasarela = errores.VolcadoRechazadoPorLaPasarela("rechazado", codigo_pasarela="obra_no_encontrada")
-    assert (pasarela.motivo, pasarela.codigo_pasarela) == ("rechazado", "obra_no_encontrada")
+    pasarela = errores.VolcadoRechazadoPorLaPasarela(
+        "rechazado", codigo_pasarela="obra_no_encontrada"
+    )
+    assert (pasarela.motivo, pasarela.codigo_pasarela) == (
+        "rechazado",
+        "obra_no_encontrada",
+    )
 
-    sin_respuesta = errores.VolcadoSinRespuesta("sin respuesta", en_duda=(UUID(int=1), UUID(int=2)))
+    sin_respuesta = errores.VolcadoSinRespuesta(
+        "sin respuesta", en_duda=(UUID(int=1), UUID(int=2))
+    )
     assert sin_respuesta.motivo == "sin respuesta"
     assert sin_respuesta.en_duda == (UUID(int=1), UUID(int=2))

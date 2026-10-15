@@ -152,7 +152,9 @@ def sit(
 
 
 def editados(n: int = 1) -> ValoresIncidencia:
-    return replace(valores_importados(incidencia(n)), descripcion="Ejemplo de descripción editada")
+    return replace(
+        valores_importados(incidencia(n)), descripcion="Ejemplo de descripción editada"
+    )
 
 
 def parte_en_sigrid() -> ParteEnSigrid:
@@ -172,7 +174,9 @@ def en_duda(estado: EstadoEvento = EV.ENVIADO) -> SituacionDeVolcado:
 
 
 def con_rechazo(estado: EstadoEvento = EV.RECHAZADO) -> SituacionDeVolcado:
-    return SituacionDeVolcado(volcada=None, ultimo=ultimo(estado, "oficio_no_esta_en_la_obra"))
+    return SituacionDeVolcado(
+        volcada=None, ultimo=ultimo(estado, "oficio_no_esta_en_la_obra")
+    )
 
 
 def seis() -> tuple[SituacionDeRevision, ...]:
@@ -225,22 +229,30 @@ def test_f059_r1_r13_un_idempotente_de_ensayo_deja_volcada() -> None:
 
 @pytest.mark.parametrize("estado", [EV.ENVIADO, EV.SIN_RESPUESTA, EV.RECHAZADO])
 def test_f059_r1_volcada_gana_a_lo_que_diga_el_ultimo(estado: EstadoEvento) -> None:
-    situacion = SituacionDeVolcado(volcada=parte_en_sigrid(), ultimo=ultimo(estado, "x"))
+    situacion = SituacionDeVolcado(
+        volcada=parte_en_sigrid(), ultimo=ultimo(estado, "x")
+    )
     assert estado_de_volcado(situacion) == "volcada"
 
 
 @pytest.mark.parametrize("estado", [EV.ENVIADO, EV.SIN_RESPUESTA])
-def test_f059_r1_el_ultimo_enviado_o_sin_respuesta_deja_en_duda(estado: EstadoEvento) -> None:
+def test_f059_r1_el_ultimo_enviado_o_sin_respuesta_deja_en_duda(
+    estado: EstadoEvento,
+) -> None:
     assert estado_de_volcado(en_duda(estado)) == "en_duda"
 
 
 @pytest.mark.parametrize("estado", [EV.RECHAZADO, EV.NO_PROCESADO])
-def test_f059_r1_el_ultimo_rechazado_o_no_procesado_no_cambia_nada(estado: EstadoEvento) -> None:
+def test_f059_r1_el_ultimo_rechazado_o_no_procesado_no_cambia_nada(
+    estado: EstadoEvento,
+) -> None:
     assert estado_de_volcado(con_rechazo(estado)) is None
 
 
 @pytest.mark.parametrize("estado", [EV.CREADO, EV.IDEMPOTENTE])
-def test_f059_r1_un_ultimo_con_parte_en_sigrid_exige_la_parte(estado: EstadoEvento) -> None:
+def test_f059_r1_un_ultimo_con_parte_en_sigrid_exige_la_parte(
+    estado: EstadoEvento,
+) -> None:
     with pytest.raises(ValueError):
         SituacionDeVolcado(volcada=None, ultimo=ultimo(estado))
 
@@ -347,7 +359,10 @@ def test_f059_r2_las_de_f056_no_cambian() -> None:
 @pytest.mark.parametrize("accion", list(AccionRevision))
 @pytest.mark.parametrize("previa_al_dia", [True, False])
 def test_f059_r2_d14_accion_no_permitida_con_el_estado_y_sin_acciones(
-    volcado: SituacionDeVolcado, estado: str, accion: AccionRevision, previa_al_dia: bool
+    volcado: SituacionDeVolcado,
+    estado: str,
+    accion: AccionRevision,
+    previa_al_dia: bool,
 ) -> None:
     situacion = sit(1, A.APROBAR, volcado=volcado)
     peticion = PeticionDeAccion(
@@ -366,7 +381,11 @@ def test_f059_r2_d14_accion_no_permitida_con_el_estado_y_sin_acciones(
 def test_f059_r27_una_aprobada_con_rechazo_se_edita() -> None:
     situacion = sit(1, A.APROBAR, volcado=con_rechazo())
     peticion = PeticionDeAccion(
-        incidencia_id=UUID(int=1), accion=A.EDITAR, quien=QUIEN, revision_previa=11, valores=pedidos()
+        incidencia_id=UUID(int=1),
+        accion=A.EDITAR,
+        quien=QUIEN,
+        revision_previa=11,
+        valores=pedidos(),
     )
     assert comprobar_sin_sigrid(situacion, peticion) is None
 
@@ -460,7 +479,14 @@ def test_f059_r4_los_dos_filtros_nuevos(valor: str, esperado: list[int]) -> None
 
 
 def test_f059_r4_todas_son_las_seis() -> None:
-    assert ids(paginar(filas(seis()), filtro=FiltroEstado.TODAS).filas) == [1, 2, 3, 4, 5, 6]
+    assert ids(paginar(filas(seis()), filtro=FiltroEstado.TODAS).filas) == [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+    ]
 
 
 def test_f059_r4_los_valores_del_filtro() -> None:
@@ -507,7 +533,9 @@ def test_f059_f060_ni_aunque_la_ultima_revision_no_fuera_un_aprobar() -> None:
         return sit(n, A.EDITAR, inc=inc, vals=vals, volcado=volcado)
 
     sin_volcado = planificar_normalizacion(
-        [editada_en_minuscula(1, None), editada_en_minuscula(2, None)], UBICACIONES, ahora=AHORA
+        [editada_en_minuscula(1, None), editada_en_minuscula(2, None)],
+        UBICACIONES,
+        ahora=AHORA,
     )
     assert len(sin_volcado.revisiones) == 2
 

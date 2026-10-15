@@ -1011,7 +1011,15 @@ def test_f056_r27_la_respuesta_lleva_lo_de_r27(monkeypatch) -> None:
     assert datos["obra"] == OBRA
     assert datos["resumen"] == {
         "total": 3,
-        "por_estado": {"nueva": 2, "editada": 0, "aprobada": 0, "descartada": 1},
+        # F-059 (R41, F-1 (a); design.md §21.3 C): seis estados.
+        "por_estado": {
+            "nueva": 2,
+            "editada": 0,
+            "aprobada": 0,
+            "descartada": 1,
+            "volcada": 0,
+            "en_duda": 0,
+        },
         "con_motivos": 1,
         "por_motivo": {m.value: int(m is MotivoNoAprobable.SIN_UBICACION) for m in MotivoNoAprobable},
     }

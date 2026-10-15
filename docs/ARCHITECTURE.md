@@ -989,6 +989,17 @@ descartar y aprobar; desde `aprobada`, editar —y la incidencia **pierde la
 aprobación**— y descartar; desde `descartada`, solo recuperar. Cualquier otra
 es 409 `accion_no_permitida`, sin leer Sigrid ni escribir.
 
+**Enmienda de F-059 (2026-10-15): seis estados.** El volcado a Sigrid añade
+dos, también **derivados** y con **precedencia** sobre los cuatro de F-056:
+`volcada`, si Sigrid tiene el parte (algún evento `creado` o `idempotente` en
+`postventa.volcados_sigrid`), y si no, `en_duda`, si se pidió crearlo y no
+consta qué pasó (el último evento de modo `volcado` es `enviado` o
+`sin_respuesta`). Desde `volcada` y desde `en_duda` **no se admite ninguna
+acción**: 409 `accion_no_permitida` con `acciones: []`. Las candidatas al
+volcado son las `aprobada` y las `en_duda`, nunca una `volcada`, y el filtro
+`activas` deja fuera las `descartada` y las `volcada`. El diseño, en
+`specs/F-059-volcado-sigrid-backend/design.md` §4.
+
 ### Validar contra el catálogo de hoy
 
 Editar y aprobar comparan contra lo que Sigrid dice **en ese momento** —el

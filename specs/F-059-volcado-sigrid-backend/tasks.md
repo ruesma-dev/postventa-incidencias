@@ -74,7 +74,7 @@
   `sistema:normalizar_ubicacion`. Los tipos de §7 en
   `domain/models/situacion_volcado.py` (módulo hoja). Traza del fallo pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_volcado_dominio.py tests/test_f059_estados.py` **falla**
-- [ ] **T2 · GREEN**: `domain/models/situacion_volcado.py` y
+- [x] **T2 · GREEN**: `domain/models/situacion_volcado.py` y
   `domain/models/volcado.py`; los ocho errores en
   `domain/models/errores.py`; en `domain/models/revision.py`, los cambios de
   §12 (`volcado` como último campo con `None` por defecto). Ampliar, sin quitar

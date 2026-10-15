@@ -662,6 +662,9 @@ def test_f056_r27_resumen_de_toda_la_obra_y_pagina_filtrada() -> None:
         E.EDITADA: 0,
         E.APROBADA: 1,
         E.DESCARTADA: 1,
+        # F-059 (R41, F-1 (a); design.md §21.3 C)
+        E.VOLCADA: 0,
+        E.EN_DUDA: 0,
     }
     assert resultado.resumen.con_motivos == 2
     assert resultado.resumen.por_motivo[M.SIN_UBICACION] == 1

@@ -4,11 +4,20 @@
 > **Aprobado por el humano el 2026-10-07** (`design.md` §20). Es el tramo A de
 > la spec conjunta de F-040 (D-1); el front es F-040
 > (`specs/F-040-volcado-sigrid/tasks.md`), que empieza cuando esta ficha esté
-> `done` y verificada. Rama propuesta `feature/F-059-volcado-sigrid-backend`.
+> `done` y verificada. Rama `feature/F-059-volcado-sigrid-backend`.
 >
-> **Base fija**: el commit de `dev` con **F-056 ya mergeada**, del que nace la
-> rama (T0). El implementer la anota en `progress/impl_F-059.md` antes de T1.
-> Las guardias de alcance y la campaña final de mutación usan esa base.
+> **Conciliada con dev 2d2efd7 el 2026-10-15** (`design.md` §20 y §21):
+> anónimos 21 → **24**; nombres reales de F-056; convivencia con F-060 (sus
+> revisiones del sistema no tocan una `volcada` ni una `en_duda`); módulo hoja
+> `situacion_volcado.py`; tests ajenos a ampliar por bloque. Ningún requisito
+> cambia. **Pendientes del humano antes de T2**: F-1 (lista de tests ajenos,
+> R41) y F-2 (`volcado` también en la respuesta de la acción), en
+> `design.md` §21.6.
+>
+> **Base fija: `2d2efd7`** (`dev` con F-056 y F-060 mergeadas), de la que nace
+> la rama (T0, commit de arranque `a9c2475`). El implementer la anota en
+> `progress/impl_F-059.md` antes de T1. Las guardias de alcance y la campaña
+> final de mutación usan esa base.
 >
 > Rigor **`critico`**: RED con la traza **pegada** en
 > `progress/impl_F-059.md`, cobertura ≥ 80 % de lo cambiado, cero
@@ -27,7 +36,7 @@
 > pytest …`. Mutación por bloque: `python -m harness.mutacion --feature F-059
 > --base <hash anterior al bloque> --timeout 1800 --salida
 > progress/mutacion_F-059_bloqueN.md`; la **campaña final** (T22):
-> `python -m harness.mutacion --feature F-059 --base <base fija> --timeout
+> `python -m harness.mutacion --feature F-059 --base 2d2efd7 --timeout
 > 1800`, que escribe `progress/mutacion_F-059.md`. Los workers, en
 > «Evidencias».
 
@@ -36,7 +45,11 @@
 - [ ] **T0**: F-056 `done`, mergeada en `dev` y desplegada. La rama de F-059
   nace de ese `dev` y ese commit es la **base fija**. Si los nombres de F-056
   difieren de su design (`design.md` §12), el implementer lo dice antes de
-  empezar. Las decisiones y respuestas están aprobadas (`design.md` §20). |
+  empezar. Las decisiones y respuestas están aprobadas (`design.md` §20).
+  **Estado 2026-10-15**: rama creada por el líder desde `dev` **`2d2efd7`**
+  (F-056 y F-060 `done`), commit `a9c2475`; nombres de F-056 comprobados en
+  la conciliación (`design.md` §21.2): solo hay que parar si alguno difiere
+  de esa tabla. Falta la anotación en `progress/impl_F-059.md`. |
   Verificación: `git log --oneline -1 dev` y `git merge-base HEAD dev` anotados en `progress/impl_F-059.md`
 
 ## Bloque 1 · El dominio
@@ -51,14 +64,27 @@
   `todos_sin_respuesta`, `todos_no_procesados`, `posibles_duplicados` (R26),
   `clasificar_codigo_de_lote` (R14, R24), `validar_partes_por_llamada` (R30).
   Y `tests/test_f059_estados.py` contra `domain/models/revision.py` de F-056:
-  la tabla de §4.1 con su precedencia, §4.2, `es_candidata`, `resumen` con
-  seis estados y `activas` (R1–R4). Traza del fallo pegada. |
+  la tabla de §4.1 con su precedencia, §4.2, `es_candidata`, `candidata_de`
+  que rechaza una `volcada`, `resumen` con seis estados, `activas` (R1–R4),
+  `SituacionDeRevision` construida sin `volcado` (vale `None`), y la
+  convivencia con F-060 (`design.md` §21.5): `planificar_normalizacion`,
+  importada sin tocarla, con una `volcada` y una `en_duda` normalizables → sin
+  revisiones y en `no_editables`; `validar_quien` rechaza
+  `sistema:normalizar_ubicacion`. Los tipos de §7 en
+  `domain/models/situacion_volcado.py` (módulo hoja). Traza del fallo pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_volcado_dominio.py tests/test_f059_estados.py` **falla**
-- [ ] **T2 · GREEN**: `domain/models/volcado.py`; los ocho errores en
+- [ ] **T2 · GREEN**: `domain/models/situacion_volcado.py` y
+  `domain/models/volcado.py`; los ocho errores en
   `domain/models/errores.py`; en `domain/models/revision.py`, los cambios de
-  §12. Ampliar, sin quitar casos, los tests de F-056 que fijan cuatro estados
-  o las acciones, citados en el informe. |
-  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_volcado_dominio.py tests/test_f059_estados.py tests/test_f056_revision_dominio.py tests/test_f056_paginacion.py tests/test_f005_arquitectura.py`
+  §12 (`volcado` como último campo con `None` por defecto). Ampliar, sin quitar
+  casos, los tests de F-056 que fijan cuatro estados o las acciones, citados
+  en el informe: el grupo C de `design.md` §21.3 que se pone rojo aquí
+  (`test_f056_paginacion.py`, `test_f056_pipeline_revision.py`,
+  `test_f056_revision_dominio.py` y el `por_estado` y el mensaje de filtros de
+  `test_f056_revision_http.py`). Y, adelantada de T20 para no dejar la suite en
+  rojo, la enmienda de la sección de F-056 de `docs/ARCHITECTURE.md` que nombra
+  `volcada` y `en_duda` (`test_f056_r44_nombra_cada_estado`). |
+  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_volcado_dominio.py tests/test_f059_estados.py tests/test_f056_revision_dominio.py tests/test_f056_paginacion.py tests/test_f056_pipeline_revision.py tests/test_f056_revision_http.py tests/test_f056_documentacion.py tests/test_f060_normalizacion_dominio.py tests/test_f060_pipeline_normalizacion.py tests/test_f005_arquitectura.py`
 - [ ] **T3 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-059 --base <hash anterior a T1> --timeout 1800 --salida progress/mutacion_F-059_bloque1.md` sin supervivientes abiertos
 
@@ -74,32 +100,43 @@
   `anotar_enviados` —`FOR UPDATE` en orden fijo, la decisión pura dentro,
   `INSERT` de los `enviado` y `COMMIT` en una transacción, `ROLLBACK` si
   falla—; `guardar_resultados`; R33: ningún `UPDATE`/`DELETE`/`TRUNCATE`,
-  ninguna lectura de `actor_oid`). Ampliar
-  `tests/test_f056_repositorio_revision.py`: `registrar` con un `enviado`
-  aparecido tras el primer chequeo → `AccionNoPermitida` sin insertar (R2,
-  R29); `listar`/`situacion`/`aprobadas` traen la situación de volcado. Añadir
-  `16_` a `test_f005_ddl_idempotente_texto.py` (y a `test_f056_ddl.py` si fija
-  el último), sin quitar nada. Traza pegada. |
+  ninguna lectura de `actor_oid`; el bloqueo es `select_bloquear` de F-056).
+  Ampliar `tests/test_f056_repositorio_revision.py`: `registrar` con un
+  `enviado` aparecido tras el primer chequeo → `AccionNoPermitida` sin
+  insertar (R2, R29); `listar`/`situacion`/`aprobadas` traen la situación de
+  volcado (`_select_situaciones`, `fila_a_situacion`); las filas falsas con el
+  ancho nuevo; `aprobadas` con una `volcada` en la obra no falla y no la
+  devuelve. Añadir `16_` a `test_f005_ddl_idempotente_texto.py` y a
+  `test_f056_ddl.py` (`nombres[-1]`), sin quitar nada; y, **si el humano
+  acepta F-1**, ampliar igual el resto del grupo A de `design.md` §21.3
+  (F-028, F-030–F-034, `test_f036_t14_…`, `test_f056_r12_…` y
+  `test_f060_r37_los_sql_son_los_quince_de_antes`). Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_ddl.py tests/test_f059_repositorio_volcado.py tests/test_f056_repositorio_revision.py` **falla**
 - [ ] **T5**: `infrastructure/persistencia/sql/16_volcados_sigrid.sql` con la
   cabecera de `design.md` §9. |
-  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_ddl.py tests/test_f005_ddl_idempotente_texto.py`
+  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_ddl.py tests/test_f005_ddl_idempotente_texto.py tests/test_f056_ddl.py tests/test_f028_ddl_historico.py tests/test_f030_veredicto_persistido.py tests/test_f031_alcance_cerrado.py tests/test_f032_alcance_cerrado.py tests/test_f033_alcance_cerrado.py tests/test_f034_alcance_cerrado.py tests/test_f036_ddl.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
 - [ ] **T6**: `domain/ports/volcado.py` (`RepositorioVolcadoPort`),
   `sentencias_volcado.py`, `repositorio_volcado_pg.py`,
   `construir_volcados` en `infrastructure/persistencia/fabrica.py`; y los
-  cambios de §12 en `sentencias_revision.py` y `repositorio_revision_pg.py`. |
-  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_repositorio_volcado.py tests/test_f056_repositorio_revision.py`
+  cambios de §12 en `sentencias_revision.py` (`_select_situaciones`,
+  `fila_a_situacion`) y `repositorio_revision_pg.py` (`_registrar`,
+  `aprobadas`); `registrar_lote`, `_registrar_lote`, `select_bloquear`,
+  `select_ultimas_revisiones` e `insert_revision` sin cambios. |
+  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_repositorio_volcado.py tests/test_f056_repositorio_revision.py tests/test_f060_repositorio_lote.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
 - [ ] **T7**: `tests_bbdd/tests/test_f059_bbdd_volcado.py`: DDL dos veces y
   nada en `public`; cada `CHECK` (estado desconocido, `creado` sin `cod`,
   `rechazado` sin motivo, `ensayo` con `ensayo_id`, referencia sin `PVI-`);
   claves ajenas; append-only; **dos conexiones**: (a) `anotar_enviados` y
   `registrar` de F-056 sobre la misma incidencia → uno gana y el otro sale
   excluido o 409; (b) dos `anotar_enviados` → los dos insertan `enviado` (lo
-  resuelve Sigrid, R29); la derivación de §4.1 leída de la base. |
+  resuelve Sigrid, R29); (c) `registrar_lote` de F-060 y `anotar_enviados`
+  sobre la misma incidencia → se serializan sin interbloqueo (`design.md`
+  §21.5); la derivación de §4.1 leída de la base. |
   Verificación: `.venv/Scripts/python.exe -m pytest --collect-only tests_bbdd/tests/test_f059_bbdd_volcado.py` recoge sin errores
 - [ ] **T8 · MANUAL (humano)**: con Docker Desktop arrancado,
   `powershell -ExecutionPolicy Bypass -File infra\pruebas_bbdd_efimera.ps1`.
-  Deben pasar `test_f059_bbdd_volcado.py` y los de F-036 y F-056. Anotar nº de
+  Deben pasar `test_f059_bbdd_volcado.py` y los de F-036, F-056 y F-060
+  (`test_f060_bbdd_lote.py`). Anotar nº de
   tests y tiempo en `progress/impl_F-059.md`. Bloquea el cierre. |
   Verificación: MANUAL (humano)
 - [ ] **T9 · Mutación del bloque.** |
@@ -149,24 +186,32 @@
   R12 sin `filas` ni `cod` provisionales; R14, R23, R24 cada código a su HTTP;
   R28; R34 y R35 con `caplog` buscando el `oid`, el correo, el login y las
   descripciones de la prueba en cada respuesta y cada registro; R42). Ampliar
-  `tests/test_f056_revision_http.py` (R4) y los que enumeran rutas
-  (`test_f010_endpoints_protegidos.py` y los que cuenten anónimos). Traza
-  pegada. |
+  `tests/test_f056_revision_http.py` (R4: `CLAVES_DE_FILA` con `volcado`, en
+  el listado y —según F-2— en la respuesta de la acción) y
+  `test_f010_endpoints_protegidos.py` (`ENDPOINTS` con las tres rutas y la
+  cuenta a **veinticuatro**). Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_pipeline_volcado.py tests/test_f059_volcado_http.py tests/test_f056_revision_http.py` **falla**
 - [ ] **T14**: `application/pipelines/volcado.py` (§10). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_pipeline_volcado.py`
 - [ ] **T15**: `interface_adapters/api/volcado.py`; en
-  `interface_adapters/api/revision.py`, el objeto `volcado` y los filtros (R4);
-  en `function_app.py`, las tres rutas, los ocho errores y la cabecera
-  (veintitrés anónimos). |
-  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_volcado_http.py tests/test_f056_revision_http.py tests/test_f010_endpoints_protegidos.py`
+  `interface_adapters/api/revision.py`, el objeto `volcado` en `_fila` y los
+  filtros en `_filtro` (R4; `listar_revision` no se toca); en
+  `function_app.py`, las tres rutas, los ocho errores en una traducción propia
+  (`_error_de_revision` no cambia) y la cabecera (**veinticuatro**
+  anónimos). Nada nuevo carga `openpyxl`, `pymupdf` ni `google.genai` al
+  importar `function_app`. |
+  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_volcado_http.py tests/test_f056_revision_http.py tests/test_f010_endpoints_protegidos.py tests/test_f060_importacion_diferida.py tests/test_f060_normalizar_http.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
 - [ ] **T16**: `tests/test_f059_alcance_cerrado.py` con el patrón de
-  `test_f056_alcance_cerrado.py` y la base fija: R36 (rutas nombradas; ninguna
-  `sql/write` nueva; `RUTA_PARTES_RECLAMACION` solo en
-  `infrastructure/sigrid/volcado.py`), R37, R41 (tests de F-009, F-012, F-036 y
-  F-053 sin diff; `paso_cierre.py` solo con el cambio de anotación) y los
-  ficheros de «No se toca» sin cambios, `services/postventa-front/` incluido. |
-  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_alcance_cerrado.py tests/test_f056_alcance_cerrado.py tests/test_f036_alcance_cerrado.py`
+  `test_f060_alcance_cerrado.py` (piezas por definición, base fija y no
+  `merge-base`, las tres guardas de F-030) con `BASE_FIJA = "2d2efd7"` y
+  `RAMA_DE_LA_FEATURE = "feature/F-059-volcado-sigrid-backend"`: R36 (rutas
+  nombradas; ninguna `sql/write` nueva; `RUTA_PARTES_RECLAMACION` solo en
+  `infrastructure/sigrid/volcado.py`), R37, R41 (tests de F-009 sin diff; los
+  de F-012, F-036 y F-053, y los demás de `design.md` §21.3, solo en sus
+  funciones declaradas y sin perder aserciones, según F-1; `paso_cierre.py`
+  solo con el cambio de anotación) y los ficheros de «No se toca» sin
+  cambios, `services/postventa-front/` y las piezas de F-060 incluidos. |
+  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_alcance_cerrado.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py tests/test_f036_alcance_cerrado.py`
 - [ ] **T17 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-059 --base <hash anterior a T13> --timeout 1800 --salida progress/mutacion_F-059_bloque4.md`
 
@@ -197,10 +242,15 @@
   la referencia `PVI-` en `RCPCLI` como forma de reconocer nuestros partes, el
   `usu`, que nace en SAT y **Posventa lo pasa a PTE a mano**, que se anulan en
   la UI y nunca con `DELETE`—; §4 las dos variables; §7 la cuarta superficie;
-  §8 los tres endpoints y «veintitrés») y `docs/DESPLIEGUE.md` (sección de la
-  ventana del volcado, publicada cerrada, con `27_`). Cabeceras de fecha y
-  última feature al día. |
-  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_documentacion.py tests/test_f056_documentacion.py tests/test_f036_documentacion.py`
+  §8 los tres endpoints y «Los veinticuatro quedan en nivel», con «Los
+  veintiuno» fuera) y `docs/DESPLIEGUE.md` (sección de la ventana del volcado,
+  publicada cerrada, con `27_`). Cabeceras de fecha y última feature al día
+  (F-059). Con F-1, ampliar sin relajar el grupo B de `design.md` §21.3
+  (`NUMERALES` hasta 24, `CUENTA_VIGENTE`, `test_f019_r32_…`,
+  `test_f056_r44_la_seccion_ocho_…`, y los dos de `test_f060_documentacion.py`:
+  la cuenta y la cabecera, que pasa a exigir una cabecera bien formada que no
+  retroceda con F-060 y su despliegue constando). |
+  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_documentacion.py tests/test_f056_documentacion.py tests/test_f060_documentacion.py tests/test_f036_documentacion.py tests/test_f053_documentacion.py tests/test_f012_documentacion.py tests/test_f019_documentacion.py`
 - [ ] **T21**: `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
   al día con lo mismo (qué consume de `sigrid-api` y qué escribe en el ERP),
   sin secretos ni identificadores; commit en ese repositorio
@@ -209,7 +259,7 @@
   al desplegar** (T24), no esta tarea. |
   Verificación: `git -C C:\Users\pgris\PycharmProjects\azure-apps show --stat HEAD` enseña solo `postventa_incidencias.md`
 - [ ] **T22 · Campaña final de mutación** del tramo entero. |
-  Verificación: `python -m harness.mutacion --feature F-059 --base <base fija> --timeout 1800` → `progress/mutacion_F-059.md` sin supervivientes abiertos
+  Verificación: `python -m harness.mutacion --feature F-059 --base 2d2efd7 --timeout 1800` → `progress/mutacion_F-059.md` sin supervivientes abiertos
 - [ ] **T23**: `bash harness/init.sh` en verde. |
   Verificación: `bash harness/init.sh`
 
@@ -242,7 +292,9 @@
   2. **Fila de prueba**: importar en `importar.html` a la 0626 una fila con la
      descripción «PRUEBA F-059 - ANULAR», la UPV elegida y un oficio con
      proveedor de la obra; ponerle una ubicación de su tipología y aprobarla
-     (consola, como T19 de F-056). Anotar su `incidencia_id`.
+     (consola, como T19 de F-056). Tras importar, la normalización de F-060
+     puede dejarla `editada` con la ubicación de Sigrid: da igual para el
+     guion (`design.md` §21.5). Anotar su `incidencia_id`.
   3. **Ventana cerrada**: `GET /api/volcado?obra=0626` (la prueba entre las
      candidatas); `POST /api/volcado/ensayo` con
      `{obra, usuario_oid, usuario_correo, incidencias: [id]}` (identidad de

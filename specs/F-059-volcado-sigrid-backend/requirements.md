@@ -21,8 +21,13 @@
 > números de requisito (R1–R43) se conservan de la spec conjunta; los del
 > front son R50–R59 y viven en F-040.
 >
-> Rama propuesta `feature/F-059-volcado-sigrid-backend`. Rigor **`critico`**:
+> Rama `feature/F-059-volcado-sigrid-backend`. Rigor **`critico`**:
 > es **escritura en el ERP de producción**.
+>
+> **Conciliada con dev 2d2efd7 el 2026-10-15** (F-056 y F-060 ya en `dev`):
+> cuentas, nombres reales y convivencia con F-060 en `design.md` §21; ningún
+> requisito cambia de fondo. Queda pendiente del humano la lista de tests
+> ajenos que hay que ampliar (R41, `design.md` §21.6 F-1).
 
 ## 0 · De dónde sale
 
@@ -49,6 +54,12 @@ Lo que ya existe y se **consume sin cambiar**:
   `huella`). Su design §10 deja aquí `usu`, `commit`, `referencia_externa`,
   `descripcion_larga`, `tipo`, `clase`, `forma_comunicacion`, «Causante» y el
   estado `volcada` **en tabla propia**.
+- **F-060** (en `dev` desde el 2026-10-14): revisiones `editar` **del
+  sistema** (`sistema:normalizar_ubicacion`) tras cada importación y a
+  demanda, **solo** sobre incidencias `nueva` y `editada`, con
+  `RevisionPort.registrar_lote` (la séptima operación del puerto). F-059 no la
+  usa ni la cambia; por qué no puede tocar una `volcada` ni una `en_duda`, en
+  `design.md` §21.5.
 - **F-009**: la resolución del **login de Sigrid** de quien confirma
   (`resolver_login_de_sigrid`, correspondencia en `postventa.usuarios_sigrid`
   verificada contra `dbo.usu`).
@@ -330,8 +341,16 @@ Lo que ya existe y se **consume sin cambiar**:
 - **R41.** Los tests de F-009, F-012, F-036 y F-053 siguen en verde **sin
   tocarse**; los de F-056 solo se amplían donde fijan cuatro estados o las
   acciones posibles, citados uno a uno en el informe.
-- **R42.** Las tres rutas nuevas van en `ANONYMOUS` como las demás (veintitrés
-  con las de F-056) y ninguna mira `CIERRE_HABILITADO` ni `ARCHIVO_HABILITADO`.
+
+  > **Conciliación 2026-10-15, pendiente del humano (`design.md` §21.6
+  > F-1).** Con `dev` 2d2efd7, el `16_…sql`, la cuenta de anónimos y la
+  > cabecera de `INTEGRACION.md` ya aprobados (R32, R40, R42) obligan a
+  > ampliar tests que este requisito da por intocables (de F-012, F-036 y
+  > F-053) y otros de F-028, F-030–F-034, F-056 y F-060. Inventario en
+  > `design.md` §21.3. Este texto no cambia hasta que el humano decida.
+- **R42.** Las tres rutas nuevas van en `ANONYMOUS` como las demás
+  (veinticuatro: las veintiuna de `dev` tras F-056 y F-060, más estas tres) y
+  ninguna mira `CIERRE_HABILITADO` ni `ARCHIVO_HABILITADO`.
 
 ## 11 · Verificación en producción
 

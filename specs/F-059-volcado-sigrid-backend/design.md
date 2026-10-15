@@ -6,6 +6,9 @@
 > es el backend (R1–R43) y va **antes**; el front (R50–R59) es **F-040**
 > (`specs/F-040-volcado-sigrid/`), que consume el contrato de §11 y está
 > bloqueada por esta.
+>
+> **Conciliada con dev 2d2efd7 el 2026-10-15**: nombres reales de F-056,
+> convivencia con F-060, cuentas y tests ajenos en **§21**; resumen en §20.
 
 ## 0 · Dónde está el riesgo
 
@@ -39,7 +42,8 @@ de la suite.
 | Pieza | De | Cómo se usa |
 |---|---|---|
 | `POST /api/sigrid/partes-reclamacion` | `sigrid-api` F-006 (§8.9) | Ensayo (`commit:false`) y volcado (`commit:true`). Sin cambios |
-| `candidatas_al_volcado`, `CandidataAlVolcado`, `huella_de_valores`, `estado_de`, `acciones_posibles`, `es_candidata`, `RevisionPort`, `revisiones_bandeja` | F-056 | Se **importan**; los cuatro primeros se **amplían** (§12), porque F-056 dejó ahí la costura (su design §3.2, §10) |
+| `candidatas_al_volcado` (`application/pipelines/revision.py`), `CandidataAlVolcado`, `huella_de_valores`, `estado_de`, `acciones_posibles`, `es_candidata`, `resumen`, `RevisionPort`, `revisiones_bandeja` | F-056 | Se **importan**. Se **amplían** (§12) `EstadoRevision`, `FiltroEstado`, `SituacionDeRevision`, `estado_de`, `acciones_posibles`, `es_candidata` y el filtro de `paginar`, porque F-056 dejó ahí la costura (su design §3.2, §10). `CandidataAlVolcado`, `huella_de_valores` y `RevisionPort` (siete operaciones desde F-060) **no** cambian (§21.2) |
+| `normalizar_ubicaciones`, `registrar_lote`, `ESTADOS_NORMALIZABLES` | F-060 | **Ni se usan ni se tocan**; conviven con los estados nuevos sin cambios (§21.5) |
 | `resolver_login_de_sigrid`, `postventa.usuarios_sigrid` | F-009 | Se **importa**; solo se ensancha el tipo de un parámetro (§8.4) |
 | `construir_cliente_http`, `CORRECTOS`, `ENTORNOS_CON_CIERRE`, `ErrorDeSigrid`, `es_transitorio` | `infrastructure/sigrid/cliente.py` | Se **importan**, como hacen `graficos.py` y `catalogo_obra.py` |
 | `select_usuario` | `infrastructure/sigrid/consultas.py` | Se **importa** para verificar el login |
@@ -109,6 +113,11 @@ Posventa pasa a PTE en Sigrid, a mano (Q-3)
 `volcada` de una `aprobada` o una `en_duda`. Un `idempotente` en un ensayo
 también deja `volcada`: es Sigrid diciendo que el parte existe.
 
+Por lo mismo, la **última revisión** de una `volcada` o una `en_duda` es
+siempre un `aprobar`: ninguna acción la sucede (R2). Eso es lo que deja fuera
+a las revisiones del sistema de F-060, que solo escriben sobre `nueva` y
+`editada` (§21.5).
+
 ### 4.2 · Acciones (R2, R27; D-14)
 
 | Desde \ acción | `editar` | `descartar` | `aprobar` | `recuperar` | ensayar y volcar |
@@ -150,6 +159,13 @@ cualquier camino existiera, la misma referencia lo devolvería `idempotente` o
 | `intervinientes` | `[{oficio, proveedor, causante: false}]` con proveedor (Q-2); `[]` sin él (D-9) | La candidata | F-056 el par; **F-059** el resto |
 | urgencia | **No existe en §8.9** y no se manda (D-10) | — | **F-059** |
 | propietario, persona | **No se mandan**: los copia la pasarela de la UPV | — | `sigrid-api` |
+
+«La candidata» es la `CandidataAlVolcado` de F-056 tal como está en `dev`:
+`incidencia_id`, `obra_codigo`, `revision_id`, `huella` y `aprobada_at_utc`
+arriba, y los trece valores en **`candidata.valores`** (`ValoresIncidencia`:
+`unidad_codigo`, `descripcion`, `detalle`, `oficio_codigo`, `ubicacion`,
+`proveedor_codigo`…). Su `__post_init__` ya exige oficio resuelto, ubicación
+recortada de 48 como mucho y ningún ambiguo.
 
 `tipo` y `causante` se mandan **explícitos** aunque coincidan con el defecto
 de §8.9: si la pasarela cambiara su defecto, este servicio no cambiaría de
@@ -267,13 +283,23 @@ class ResultadoParte:                 # lo que se guarda de cada parte
 @dataclass(frozen=True)
 class SituacionDeVolcado:             # lo que la base sabe de una incidencia
     volcada: ParteEnSigrid | None     # primer creado/idempotente: cod, ide, at, correo
-    ultimo: UltimoEvento | None       # último de modo volcado: estado, motivo, at
+    ultimo: UltimoEvento | None       # último de modo volcado: estado, motivo, at, correo (R4: volcado_por)
 
 @dataclass(frozen=True)
 class EventoDeEnsayo: incidencia_id: UUID; revision_id: int; huella: str; estado: EstadoEvento
 @dataclass(frozen=True)
 class Ensayo: ensayo_id: UUID; obra_codigo: str; actor_oid: str; at_utc: datetime; eventos: tuple[EventoDeEnsayo, ...]
 ```
+
+**Dónde vive cada tipo (conciliación 2026-10-15).** `domain/models/revision.py`
+(F-056) necesita `SituacionDeVolcado` y `estado_de_volcado` para su
+`estado_de`, y `volcado.py` necesita `CandidataAlVolcado` y
+`huella_de_valores` de `revision.py`: en un solo módulo sería una importación
+circular. Por eso `ModoVolcado`, `EstadoEvento`, `ParteEnSigrid`,
+`UltimoEvento`, `SituacionDeVolcado` y `estado_de_volcado` van en un módulo
+**hoja**, `domain/models/situacion_volcado.py`, que no importa nada de
+`revision.py`; `revision.py` y `volcado.py` importan de él, y `volcado.py`
+reexporta lo que necesite. El resto de este apartado vive en `volcado.py`.
 
 | Función | Responsabilidad | R |
 |---|---|---|
@@ -340,6 +366,14 @@ ORDER BY incidencia_id FOR UPDATE`, lee la última revisión de cada una
 `decidir`, inserta los `enviado` y hace `COMMIT`. Así la regla vive en el
 dominio y el bloqueo en el adaptador.
 
+El bloqueo es **la misma sentencia** `select_bloquear` de
+`sentencias_revision.py` (F-056), importada y sin cambiarla: así
+`anotar_enviados`, `registrar` (F-056) y `registrar_lote` (F-060) bloquean las
+mismas filas en el mismo orden y no pueden interbloquearse (§21.5). La última
+revisión con su `accion` y su huella se lee con una sentencia propia de
+`sentencias_volcado.py` (`select_ultimas_revisiones` de F-056 solo devuelve el
+`revision_id` y no se toca).
+
 ### 8.2 · `infrastructure/sigrid/volcado.py` — `AdaptadorVolcadoSigridApi`
 
 Calco de la **forma** de `graficos.py` y `catalogo_obra.py`: **importa** de
@@ -386,7 +420,10 @@ cierre para leer el login, que exige `CIERRE_HABILITADO`, otra ventana.
 
 Esquema `postventa`, siguiente a `15_revisiones_bandeja.sql` (F-056); lee de
 `13_` y `15_`; solo `CREATE TABLE IF NOT EXISTS` y `CREATE INDEX IF NOT
-EXISTS`.
+EXISTS`. El número **16 sigue libre** en `dev` 2d2efd7: F-060 no añadió DDL
+(su D-4) y ninguna otra rama ni spec lo reserva (§21.1). Los tipos casan con
+F-056: `revisiones_bandeja.revision_id` es `bigserial` y
+`bandeja_incidencias.incidencia_id`, `uuid`.
 
 ```sql
 CREATE TABLE IF NOT EXISTS postventa.volcados_sigrid (
@@ -461,7 +498,15 @@ escritura → base** es el requisito: lo barato y lo que no escribe, primero.
 
 ## 11 · Borde HTTP: `interface_adapters/api/volcado.py` (el contrato de F-040)
 
-Tres rutas nuevas en `function_app.py`, en `ANONYMOUS` (veintitrés):
+Tres rutas nuevas en `function_app.py`, en `ANONYMOUS` (**veinticuatro**: las
+veintiuna de `dev` 2d2efd7 —F-056 llevó la cuenta a veinte y F-060, con
+`revision/normalizar`, a veintiuna— más estas tres). `function_app.py` solo
+importa de `interface_adapters/api/volcado.py`, nunca de
+`infrastructure.sigrid.escrituras` ni `graficos` (lo vigila
+`test_f056_r39_…`), y ninguna importación nueva carga `openpyxl`, `pymupdf`
+ni `google.genai` al importar `function_app` (M-3 de F-060,
+`test_f060_importacion_diferida.py`). Los errores van en una traducción
+propia; `_error_de_revision` (F-056, que también usa F-060) no cambia.
 
 | Ruta | Éxito | Errores |
 |---|---|---|
@@ -511,16 +556,25 @@ estado, código y `sigrid_cod` (R34).
 
 ## 12 · Lo que cambia en F-056
 
-Sobre el código de F-056 **tal como esté en `dev`** al empezar (base fija). Si
-sus nombres difieren de su design, el implementer **para** y lo dice.
+Sobre el código de F-056 **tal como está en `dev` 2d2efd7** (base fija), con
+F-060 ya encima. Los nombres reales se comprobaron en la conciliación (§21.2):
+el implementer **no** tiene que parar por ellos; sí si encuentra alguno que
+difiera de §21.2.
 
 | Fichero | Cambio |
 |---|---|
-| `domain/models/revision.py` | `EstadoRevision` + `VOLCADA`, `EN_DUDA`; `FiltroEstado` + los dos y `ACTIVAS` sin `volcada` (D-7); `SituacionDeRevision` + `volcado: SituacionDeVolcado | None`; `estado_de` con la precedencia de §4.1 (usa `estado_de_volcado`); `acciones_posibles` → `()` para los dos; `es_candidata` → `aprobada` o `en_duda`; `resumen` con seis estados |
-| `infrastructure/persistencia/sentencias_revision.py` | `listar`, `situacion` y `aprobadas` traen la situación de volcado con dos `LEFT JOIN LATERAL` sobre `volcados_sigrid` (el primer `creado`/`idempotente` por `evento_id`; el último de modo `volcado`) |
-| `infrastructure/persistencia/repositorio_revision_pg.py` | `registrar`, dentro de su transacción y tras el `FOR UPDATE`, lee la situación de volcado de las filas bloqueadas y levanta `AccionNoPermitida` si es `volcada` o `en_duda` (R2) |
-| `interface_adapters/api/revision.py` | El objeto `volcado` de cada incidencia (R4); los filtros nuevos |
-| Tests de F-056 que fijan cuatro estados, `activas` o las acciones | Se **amplían**, sin quitar casos, citados en el informe (R41) |
+| `domain/models/revision.py` | `EstadoRevision` + `VOLCADA`, `EN_DUDA`; `FiltroEstado` + los dos y `ACTIVAS` sin `volcada` (D-7; el filtro está en `_pasa`); `SituacionDeRevision` + `volcado: SituacionDeVolcado | None = None` como **último campo y con valor por defecto**, para que los tests de F-056 y F-060 y `tests/utiles_revision.py`, que la construyen sin él, sigan valiendo; `estado_de` con la precedencia de §4.1 (usa `estado_de_volcado`, de `situacion_volcado.py`, §7); `_PERMITIDAS` → `()` para los dos (lo devuelve `acciones_posibles`); `es_candidata` → `aprobada` o `en_duda` (y con ello `candidata_de` rechaza una `volcada`); `resumen` con seis estados (sale solo: recorre `EstadoRevision`) |
+| `infrastructure/persistencia/sentencias_revision.py` | `_select_situaciones`, la consulta común de `select_situaciones_de_obra` (`listar`), `select_situacion` (`situacion`) y `select_aprobadas` (`aprobadas`), gana dos `LEFT JOIN LATERAL` sobre `volcados_sigrid` (el primer `creado`/`idempotente` por `evento_id`; el último de modo `volcado`, con su `actor_correo` y **nunca** `actor_oid`); `fila_a_situacion` llena `SituacionDeRevision.volcado` (la de la original de una duplicada queda `None`). `select_bloquear`, `select_ultimas_revisiones` e `insert_revision` **no** cambian: las comparte `registrar_lote` de F-060 |
+| `infrastructure/persistencia/repositorio_revision_pg.py` | `_registrar` (el paso de `registrar`), tras `select_bloquear` y dentro de su transacción, lee con una sentencia nueva la situación de volcado de la incidencia bloqueada y levanta `AccionNoPermitida(estado=…, acciones=())` si es `volcada` o `en_duda` (R2), antes de la comprobación de frescura. `aprobadas` filtra con `es_candidata` **antes** de `candidata_de`: con la situación de volcado en la fila, una `volcada` (última revisión `aprobar`) haría fallar `candidata_de`; así devuelve `aprobada` y `en_duda` (R3). `registrar_lote` y `_registrar_lote` (F-060) **no** cambian (§21.5) |
+| `interface_adapters/api/revision.py` | `_fila`, el objeto `volcado` de cada incidencia (R4; `_fila` es común al listado y a la respuesta de `POST /api/revision/acciones`, §21.6 F-2); `_filtro`, los dos valores nuevos y su mensaje. **`listar_revision` no cambia** (es pieza de F-060: su medición) y no se añade ninguna importación de `infrastructure.sigrid` (`test_f056_r39_de_sigrid_solo_se_usa_el_catalogo_de_f036`) |
+| `RevisionPort` (`domain/ports/revision.py`) | **Nada**: sigue con sus siete operaciones (`test_f056_r34_…`, ampliado por F-060). Lo nuevo de F-059 va en `RepositorioVolcadoPort` (§8.1) |
+| Tests de F-056 que fijan cuatro estados, `activas` o las acciones | Se **amplían**, sin quitar casos, citados en el informe (R41); lista en §21.3 |
+
+Lo que estas piezas de F-056 **no pueden ganar**, porque lo vigilan los
+controles de `test_f056_alcance_cerrado.py` que no dependen de `git` (y que no
+se tocan): la palabra «habilitado», una ruta de escritura de `sigrid-api`,
+`UPDATE`/`DELETE`/`TRUNCATE`, DDL, una lectura del entorno (`environ`,
+`getenv`) o una importación de `infrastructure.sigrid` nueva (§21.4).
 
 `15_revisiones_bandeja.sql` **no** se toca: su `CHECK` de `accion` no admite
 `volcar`, y F-056 lo dejó así a propósito («F-040 llevará el volcado en su
@@ -550,6 +604,10 @@ tabla»; hoy, esta ficha).
   siguiente despliegue la vuelve a cerrar».
 - `infra/28_volcado_lectura_sigrid.ps1`: solo lectura sobre
   `08_lectura_sigrid_comun.ps1` (R39), para las fotos de antes y después.
+- Los números **27 y 28 siguen libres** en `dev` 2d2efd7 (el último script
+  numerado es `26_catalogos_plantilla_sigrid.ps1`, y luego `90_`), igual que
+  `VOLCADO_HABILITADO` y `VOLCADO_PARTES_POR_LLAMADA`, que no aparecen en
+  ningún fichero del servicio ni de `infra/` (§21.1).
 - Se publica **desde un worktree limpio de `dev`**, nunca desde la carpeta de
   trabajo.
 
@@ -614,6 +672,7 @@ y el de R4.
 ## 17 · Ficheros
 
 **A crear**, en `services/postventa-api/`:
+`domain/models/situacion_volcado.py` (el módulo hoja de §7),
 `domain/models/volcado.py`, `domain/ports/volcado.py`,
 `application/pipelines/volcado.py`,
 `infrastructure/persistencia/sql/16_volcados_sigrid.sql`,
@@ -625,7 +684,10 @@ tests `test_f059_volcado_dominio.py`, `test_f059_estados.py`,
 `test_f059_adaptador_volcado.py`, `test_f059_fabrica.py`,
 `test_f059_pipeline_volcado.py`, `test_f059_volcado_http.py`,
 `test_f059_alcance_cerrado.py`, `test_f059_scripts_infra.py`,
-`test_f059_documentacion.py` y `tests_bbdd/tests/test_f059_bbdd_volcado.py`.
+`test_f059_documentacion.py` y `tests_bbdd/tests/test_f059_bbdd_volcado.py`;
+si hacen falta, los dobles de F-059 en un `tests/utiles_volcado.py` propio
+(`tests/utiles_revision.py` es de F-056 y no se toca: su `RevisionEnMemoria`
+se envuelve o se hereda, no se cambia).
 En `infra/`: `27_ventana_volcado.ps1`, `28_volcado_lectura_sigrid.ps1`.
 
 **A modificar**: `domain/models/errores.py` (ocho errores);
@@ -634,11 +696,13 @@ En `infra/`: `27_ventana_volcado.ps1`, `28_volcado_lectura_sigrid.ps1`.
 `resolver_login_de_sigrid`); `config/settings.py` (dos campos);
 `infrastructure/sigrid/fabrica.py` (dos fábricas **añadidas**);
 `infrastructure/persistencia/fabrica.py` (`construir_volcados`);
-`function_app.py` (tres rutas, errores, cabecera: veintitrés anónimos); los
+`function_app.py` (tres rutas, errores, cabecera: veinticuatro anónimos); los
 de F-056 de §12; los tests que enumeran rutas, `.sql`, tablas o variables
 (`test_f010_endpoints_protegidos.py`, `test_f005_ddl_idempotente_texto.py`,
 los de scripts de `infra/` si fijan las App Settings), **añadiendo sin
-quitar** y citándolos; `infra/desplegar_backend.ps1`;
+quitar** y citándolos; los demás tests ajenos que el plan rompe, con el
+inventario de §21.3, **si el humano lo acepta** (§21.6 F-1);
+`infra/desplegar_backend.ps1`;
 `docs/ARCHITECTURE.md`, `docs/INTEGRACION.md`, `docs/DESPLIEGUE.md`;
 `.env.example` y `local.settings.json.example` (los dos nombres, con
 placeholder); `azure-apps/postventa_incidencias.md` y la fila de F-040/F-059
@@ -652,7 +716,16 @@ importan); la lógica de `paso_cierre.py`, `paso_grafico.py`,
 `plantilla.py`, `catalogo_obra.py` de aplicación;
 `config/plantilla_incidencias.yaml`; `infra/19_ventana_escritura.ps1`,
 `22_ventana_archivo.ps1`; **`services/postventa-front/` entero** (es F-040);
-y **nada** del repositorio `sigrid-api`.
+y **nada** del repositorio `sigrid-api`. Y lo de **F-060** (§21.5):
+`domain/models/normalizacion.py`, `interface_adapters/api/normalizacion.py`,
+`interface_adapters/api/tiempos.py`, `interface_adapters/api/importar.py`,
+`normalizar_ubicaciones` y `ResultadoNormalizacion` de
+`application/pipelines/revision.py`, `ResultadoDelLote` y
+`RevisionPort.registrar_lote`, `RepositorioRevisionPostgres.registrar_lote` y
+`_registrar_lote`, `listar_revision`, y `revision_normalizar` y
+`_error_de_revision` de `function_app.py`; `select_bloquear`,
+`select_ultimas_revisiones` e `insert_revision` de `sentencias_revision.py`;
+y `tests/utiles_revision.py`.
 
 ## 18 · Tests
 
@@ -684,6 +757,8 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | R36, R37, R41, R42 | Alcance con la base fija: rutas nombradas; ninguna `sql/write` nueva; `VOLCADO_HABILITADO` no aparece en cierre/gráfico/archivo y estos no aparecen en volcado; «No se toca» sin cambios (front incluido); tests de F-009/F-012/F-036/F-053 sin diff |
 | R38, R39 | Texto de los scripts: sin parámetros solo lee; `-Cerrar` sin palabra; `-Abrir` con palabra; relee; `28_` solo `sql/read` y sin columnas de nombres; `desplegar_backend.ps1` con `VOLCADO_HABILITADO=false` en su línea, con y sin `-VentanasCerradas` |
 | R40 | Frases clave en los cuatro documentos, incluida «Posventa lo pasa a PTE a mano» |
+| R1–R3 con F-060 (§21.5) | `planificar_normalizacion` de F-060, **importada y sin tocarla**, con una `volcada` y una `en_duda` cuya ubicación sería normalizable → ninguna revisión y las dos en `no_editables`; `validar_quien` rechaza `sistema:normalizar_ubicacion` como quien ensaya o vuelca (R9, R15); y en `tests_bbdd`, `registrar_lote` y `anotar_enviados` sobre la misma incidencia con dos conexiones se serializan sin interbloqueo |
+| R4, `SituacionDeRevision` | Construida sin `volcado` sigue valiendo (`None`): los tests de F-056 y F-060 no cambian por eso; `aprobadas` con una `volcada` en la obra no falla y no la devuelve |
 
 ## 19 · Riesgos y alternativas descartadas
 
@@ -720,8 +795,36 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
     documentación y el panel de F-040.
 12. **Riesgo: escritura real en una obra en uso** (0626) para la verificación:
     una sola, autorizada, sin pasar a PTE y anulada al terminar.
+13. **Riesgo (dato nuevo, F-060/F-061): picos de 4–8 s en una sola lectura de
+    `sigrid-api`**, también en procesos calientes (`progress/impl_F-060.md`,
+    M1 y M2; ficha F-061). El ensayo y el volcado hacen una lectura (el login)
+    antes de la llamada de lote: un pico ahí más una llamada lenta acercan la
+    petición a los 45 s del proxy. No cambia ninguna decisión: el corte del
+    proxy ya está en §6.2 (la Function sigue y lo que no conste queda
+    `en_duda`), `N` es ajustable (Q-8) y el log de R31 lo mide.
+14. **Riesgo: el listado de la revisión, que F-060 midió lento**, gana dos
+    `LEFT JOIN LATERAL` sobre `volcados_sigrid` (§12). Van por
+    `ix_volcados_sigrid_incidencia` y en la misma consulta (ninguna conexión ni
+    lectura más por petición: `test_f056_r46_…` sigue igual); la traza «F-060
+    tiempos del listado» lo enseñará en `bandeja.listar`, y F-061 lo vigila.
 
 ## 20 · Decisiones y respuestas (aprobadas por el humano el 2026-10-07)
+
+> **Conciliada con dev 2d2efd7 el 2026-10-15** (spec-author, a petición del
+> líder; detalle en §21 y en `progress/spec_F-059.md`). Ninguna decisión de
+> esta tabla se reabre. Se ajustaron, como **mecánicos**: la cuenta de
+> anónimos (21 → **24**); los nombres reales de F-056 (`_select_situaciones`,
+> `_registrar`, `_fila`, `_filtro`, `candidata.valores`…); el módulo hoja
+> `situacion_volcado.py` para no importar en círculo; `SituacionDeRevision.volcado`
+> con valor por defecto; `aprobadas` filtrando con `es_candidata`; el bloqueo
+> con la misma `select_bloquear` que F-056 y F-060; la convivencia con F-060
+> (sus revisiones del sistema no pueden tocar una `volcada` ni una `en_duda`);
+> la base fija `2d2efd7`; los números 16, 27 y 28, libres; §8.9 de
+> `sigrid-api`, sin cambios desde el 2026-10-07; y dos riesgos nuevos con
+> datos de F-060 (§19.13, §19.14). Quedan **dos de fondo para el humano**
+> (§21.6): **F-1**, la lista de tests ajenos que el plan aprobado obliga a
+> ampliar, contra la letra de R41; y **F-2**, el objeto `volcado` también en
+> la respuesta de `POST /api/revision/acciones`.
 
 | Id | Decisión |
 |---|---|
@@ -747,3 +850,182 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | Q-6 | Este trabajo actualiza la fila de consumidores de `azure-apps/sigrid_api.md` (el líder, al desplegar) |
 | Q-7 | Puede volcar cualquiera de `posventa-usuarios` con login de Sigrid, por ahora |
 | Q-8 | El primer volcado masivo de la 0677 y el ajuste de `N`: más adelante, fuera de esta ficha |
+
+## 21 · Conciliación con `dev` 2d2efd7 (2026-10-15)
+
+La spec se escribió el 2026-10-07 sobre `dev` f86d639, **antes** de que se
+implementaran F-056 (`done` el 2026-10-09) y F-060 (`done` el 2026-10-14).
+Esta sección contrasta lo supuesto con el código real de la base fija.
+
+### 21.1 · Qué hay en `dev` que la spec no veía
+
+| Pieza | Estado en 2d2efd7 | Efecto en F-059 |
+|---|---|---|
+| Rutas anónimas | **Veintiuna** (F-056 las llevó a veinte; F-060 añadió `revision/normalizar`) | Con las tres de F-059, **veinticuatro** (R42, §11) |
+| `RevisionPort` | **Siete** operaciones (F-060 añadió `registrar_lote`; `test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5` las fija) | F-059 **no** añade ninguna: lo suyo va en `RepositorioVolcadoPort` |
+| Revisiones del sistema (F-060) | `editar` con `oid` y correo `sistema:normalizar_ubicacion`, tras cada importación (mejor esfuerzo) y con `POST /api/revision/normalizar` | Conviven sin cambios (§21.5) |
+| Medición del listado (F-060) | `listar_revision` envuelve los puertos en un cronómetro; una línea «F-060 tiempos del listado» | `listar_revision` no se toca; el riesgo de las `LATERAL`, en §19.14 |
+| Importación diferida (F-060 M-3) | Importar `function_app` no carga `openpyxl`, `pymupdf` ni `google.genai` | Los módulos nuevos tampoco (§11) |
+| DDL | El último es `15_revisiones_bandeja.sql`; F-060 no añadió ninguno | **`16_volcados_sigrid.sql` sigue libre** |
+| `infra/` | El último numerado es `26_…`; luego `90_…` | **`27_` y `28_` libres** |
+| Variables | Ni `VOLCADO_HABILITADO` ni `VOLCADO_PARTES_POR_LLAMADA` existen | Libres |
+| `azure-apps/sigrid_api.md` §8.9 | Sin cambios desde el 2026-10-07 (los dos commits posteriores al fichero son de albaranes y de facturas y no tocan §8.9); la fila de consumidores de §10 sigue diciendo «F-040» | El contrato de §5 vale tal cual; Q-6 sigue pendiente para el despliegue |
+| Otras ramas (F-038, F-040, F-057, F-058) | Ninguna reserva el 16, el 27 ni el 28 | — |
+
+### 21.2 · Los nombres de F-056, como quedaron
+
+| La spec decía | En el código de `dev` |
+|---|---|
+| `candidatas_al_volcado(obra)` | `application/pipelines/revision.py::candidatas_al_volcado(obra_codigo, *, revision)`, que devuelve `RevisionPort.aprobadas` |
+| Los campos de la candidata | `CandidataAlVolcado(incidencia_id, obra_codigo, valores, huella, aprobada_at_utc, revision_id)`; los trece valores en `valores` (`ValoresIncidencia`) |
+| `estado_de`, `acciones_posibles`, `es_candidata`, `resumen` | Los mismos, en `domain/models/revision.py`; las acciones salen del diccionario `_PERMITIDAS`; el filtro de estado está en `_pasa` (lo usa `paginar`); `candidata_de` exige `es_candidata` |
+| Las sentencias de «`listar`, `situacion` y `aprobadas`» | Una consulta común, `_select_situaciones`, para `select_situaciones_de_obra`, `select_situacion` y `select_aprobadas`; la fila se parte con `fila_a_situacion` |
+| El bloqueo de `registrar` | `select_bloquear` (`FOR UPDATE`, `ORDER BY incidencia_id`), en `RepositorioRevisionPostgres._registrar`; también la usa `_registrar_lote` (F-060) |
+| El borde de la revisión | `interface_adapters/api/revision.py`: `_fila` (la incidencia serializada), `_filtro`, `listar_revision` (pieza de F-060) |
+| Los errores reutilizados | `AccionNoPermitida(motivo, *, estado, acciones)`, `BandejaDemasiadoGrande(motivo, *, total)`, `RevisionDesactualizada`, `PeticionDeRevisionInvalida`, `PersistenciaNoDisponible`, como se suponía; en `function_app.py`, `_error_de_revision` |
+| La validación de quien | `validar_quien(oid, correo)`; desde F-060, un correo sin `@` no vale (el literal del sistema no se puede enviar) |
+| F-009 | `resolver_login_de_sigrid(usuarios, erp, *, usuario_oid, correo, ahora)` en `paso_cierre.py`, con `erp: ErpPort`; `RepositorioUsuariosSigridPort` en `domain/ports/usuarios_sigrid.py` |
+| El cliente de Sigrid | `construir_cliente_http`, `CORRECTOS`, `ENTORNOS_CON_CIERRE`, `ErrorDeSigrid`, `es_transitorio`, `exigir_entorno_con_cierre` en `cliente.py`; `select_usuario` en `consultas.py`; `_exigir_configuracion` en `fabrica.py`; `sigrid_timeout_s` = 35 por defecto |
+| La tabla | `postventa.revisiones_bandeja`: `revision_id bigserial`, `revisado_por` (el `oid`), `revisado_correo`, `huella_valores` |
+
+Ningún nombre obliga a cambiar una decisión. Lo que sí cambió el diseño
+(como mecánico) está en §7 (módulo hoja), §8.1 (bloqueo) y §12.
+
+### 21.3 · Tests ajenos que el plan aprobado obliga a ampliar (inventario)
+
+Comprobado leyendo cada test contra `dev` 2d2efd7. Todos se ampliarían **sin
+relajar** (la cifra o el fichero vigente en `in`, el anterior en `not in`) y
+se declararían uno a uno en `test_f059_alcance_cerrado.py`, con el criterio
+que el humano aprobó en F-056 (R45) y que el líder aplicó en F-060 (§12).
+**Pendiente de F-1** para los que R41 da por intocables.
+
+**A · El `16_…sql`** (controles que no dependen de `git`; se ponen rojos en
+T5):
+
+| Test | Qué fija | De |
+|---|---|---|
+| `test_f005_ddl_idempotente_texto.py::test_f005_r1_se_aplican_todos_los_ficheros_en_orden` | La lista entera de `.sql` | F-005 (ya en la spec) |
+| `test_f056_ddl.py::test_f056_r36_el_fichero_va_detras_de_los_de_f036` | `nombres[-1] == 15_…` | F-056 (ya en la spec) |
+| `test_f028_ddl_historico.py::test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo` | La cola tras el `11_` | F-028 |
+| `test_f030_veredicto_persistido.py::test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo` | `DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056` | F-030 |
+| `test_f031_alcance_cerrado.py::test_f031_r17_no_hay_ni_un_fichero_de_ddl_nuevo` | Ídem | F-031 |
+| `test_f032_alcance_cerrado.py::test_f032_r22_no_hay_ni_un_fichero_de_ddl_nuevo` | Ídem | F-032 |
+| `test_f033_alcance_cerrado.py::test_f033_no_hay_ni_un_fichero_de_ddl_nuevo` | Ídem | F-033 |
+| `test_f034_alcance_cerrado.py::test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo` | Ídem | F-034 |
+| `test_f036_ddl.py::test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden` | Lo que va tras el `11_`: `12_`…`15_` | **F-036 (R41 lo da por intocable)** |
+| `test_f056_alcance_cerrado.py::test_f056_r12_solo_15_declara_una_columna_de_correo` | Solo el `15_` tiene una columna de correo; el `16_` trae `actor_correo` (D-8) | F-056 (fuera de «cuatro estados o acciones») |
+| `test_f060_alcance_cerrado.py::test_f060_r37_los_sql_son_los_quince_de_antes` | Los quince `.sql`, «ni un `16_`» | F-060 |
+
+**B · La cuenta de anónimos y la cabecera de `INTEGRACION.md`** (rojos en
+T15 y T20):
+
+| Test | Qué fija | De |
+|---|---|---|
+| `test_f010_endpoints_protegidos.py` (`ENDPOINTS`, `test_f010_r32_…`) | Las veintiuna rutas | F-010 (ya en la spec) |
+| `test_f012_documentacion.py` (`NUMERALES`, `test_f012_r68_integracion_declara_el_endpoint_nuevo_que_exponemos`) | `NUMERALES` hasta 21 | **F-012 (R41 lo da por intocable)** |
+| `test_f053_documentacion.py` (`CUENTA_VIGENTE`, `test_f053_t6_…`) | «Los veintiuno quedan en nivel» | **F-053 (R41 lo da por intocable)** |
+| `test_f019_documentacion.py::test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints` | «Los veintiuno» en `in` | F-019 |
+| `test_f056_documentacion.py::test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas` | «Los veintiuno» | F-056 |
+| `test_f060_documentacion.py::test_f060_r43_la_seccion_ocho_dice_la_importacion_la_traza_y_la_cuenta` | «Los veintiuno» | F-060 |
+| `test_f060_documentacion.py::test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando` | «Última feature que lo tocó: F-060» y «Fecha: 2026-10-14.» | F-060: pasaría a exigir una cabecera bien formada que no retroceda, con F-060 y su despliegue constando (lo mismo que F-060 hizo con el de F-056) |
+
+**C · Los estados y la fila de F-056** (rojos en T2, T6 y T15; R41 ya los
+admite si «fijan cuatro estados o las acciones», salvo los marcados):
+
+| Test | Qué fija |
+|---|---|
+| `test_f056_paginacion.py` (el `resumen` con cuatro `por_estado`; la lista exacta de `FiltroEstado`) | Cuatro estados |
+| `test_f056_pipeline_revision.py` (el `por_estado` del resumen) | Cuatro estados |
+| `test_f056_revision_dominio.py` (estados, acciones, `es_candidata`) | Cuatro estados y acciones |
+| `test_f056_revision_http.py` (`CLAVES_DE_FILA`; `por_estado` en el listado; el mensaje de `_filtro`) | Cuatro estados, y **la clave nueva `volcado`** (fuera de la letra de R41) |
+| `test_f056_repositorio_revision.py` (filas falsas con el ancho de `_select_situaciones`; `aprobadas`; `registrar`) | **El ancho de la fila** (fuera de la letra de R41; T4 ya lo preveía) |
+| `test_f056_documentacion.py::test_f056_r44_nombra_cada_estado` | Que la sección de F-056 de `ARCHITECTURE.md` nombre cada `EstadoRevision`: con seis, la enmienda de esa sección va en T2 y no en T20 |
+
+Ninguno de los de F-009 se toca: el cambio de anotación de §8.4 no lo fija
+ningún test (`test_f009_arquitectura.py` mira las importaciones, no las
+firmas).
+
+### 21.4 · Controles ajenos que siguen vigentes y el plan respeta
+
+Los controles de las guardas de F-036, F-056 y F-060 que **no** dependen de
+`git` se comprueban en cualquier rama; los del diff se saltan fuera de la suya.
+F-059 no los toca y su código no puede romperlos:
+
+- `test_f056_alcance_cerrado.py`: en las piezas de F-056 (los ficheros nuevos
+  de F-056 enteros y sus funciones de `function_app.py` y las fábricas), ni
+  «habilitado», ni rutas de escritura de `sigrid-api`, ni `UPDATE`/`DELETE`/
+  `TRUNCATE`, ni DDL, ni `environ`/`getenv`; `function_app.py` sin importar
+  `infrastructure.sigrid.escrituras` ni `graficos`; `interface_adapters/api/revision.py`
+  sin importaciones nuevas de `infrastructure.sigrid`.
+- `test_f060_alcance_cerrado.py`: lo mismo sobre las piezas de F-060
+  (`listar_revision`, `registrar_lote`, `importar.py` entero…), que F-059 no
+  toca.
+- `test_f036_alcance_cerrado.py`: `ErpPort` sigue con `leer_reclamacion`,
+  `existe_usuario` y `cerrar` (§8.4 crea `VerificadorDeLoginPort` aparte y no
+  toca `ErpPort`).
+- `test_f060_importacion_diferida.py` (§11) y `test_f056_r46_…` (ninguna
+  construcción ni lectura más en el listado: las `LATERAL` van en la misma
+  consulta).
+
+### 21.5 · Convivencia con F-060
+
+- **La normalización no puede editar una `volcada` ni una `en_duda`.** Su
+  plan (`planificar_normalizacion`) solo escribe sobre `ESTADOS_NORMALIZABLES`
+  = {`nueva`, `editada`}, por **lista permitida**, y calcula el estado con el
+  mismo `estado_de` que F-059 amplía; como `listar` trae la situación de
+  volcado (§12), una `volcada` o una `en_duda` cuenta en `no_editables`. Y aun
+  sin eso quedaría fuera: su última revisión es un `aprobar` (§4.1), y una
+  `aprobada` tampoco es normalizable. Lo dice F-060 en su §10.2.
+- **Ni con una carrera.** Para que una incidencia que el plan vio `nueva` o
+  `editada` llegue a `en_duda` o `volcada`, alguien tiene que aprobarla antes
+  (revisión nueva) y la escritura anticipada de R20 exige esa aprobación. El
+  `_registrar_lote` de F-060 compara, bajo `FOR UPDATE`, la última
+  `revision_id` con la esperada y salta la que cambió. Por eso
+  `registrar_lote` **no** necesita la comprobación de R2 que gana `_registrar`
+  y no se toca.
+- **Sin interbloqueos.** `registrar` (F-056), `registrar_lote` (F-060) y
+  `anotar_enviados` (F-059) bloquean las filas de `bandeja_incidencias` con la
+  misma `select_bloquear`, en orden de `incidencia_id`. Un lote de
+  normalización tras una importación grande puede retener las filas del orden
+  de un segundo (F-060 §7): el volcado espera; si pasara de `pg_lock_timeout_s`,
+  la escritura anticipada falla sin escribir nada (503, «Reintentar», §6.2).
+- **El actor del volcado nunca es el sistema.** `usuario_correo` se valida con
+  `validar_quien` (R9, R15), que rechaza `sistema:normalizar_ubicacion`.
+- **Lo aprobado sigue siendo lo que se manda.** Una normalización es una
+  revisión `editar` con su huella; si después se aprueba, la huella del
+  `aprobar` es la de los valores normalizados y R7 la recalcula igual.
+- **El estado `editada`** puede venir ahora también del sistema; no cambia
+  nada de §4: se edita, se descarta o se aprueba como cualquier `editada`.
+- **En la verificación (T25)**, la fila de prueba importada puede quedar
+  `editada` por la normalización tras importar; da igual para el guion.
+
+### 21.6 · Lo que queda para el humano (cambios de fondo, no aplicados)
+
+**F-1 · R41 frente al inventario de §21.3.** R41 dice que los tests de F-012,
+F-036 y F-053 siguen **sin tocarse** y que los de F-056 solo se amplían donde
+fijan cuatro estados o acciones. Con lo ya aprobado (el `16_`, R32; la cuenta
+y la cabecera de `INTEGRACION.md`, R40 y R42; el objeto `volcado`, R4), eso es
+imposible: `test_f036_t14_…`, `NUMERALES` de F-012 y `CUENTA_VIGENTE` de F-053
+fallan por fuerza, y lo mismo los de F-028, F-030–F-034, F-056 y F-060 de
+§21.3.
+
+- **(a) Recomendada.** Añadir a R41 un bloque «Excepciones, ampliando sin
+  relajar», como R45 de F-056, con la lista de §21.3; cada una declarada
+  función a función en `test_f059_alcance_cerrado.py`, que vigila que no se
+  pierde ninguna aserción. Es el criterio que el humano aprobó en F-056 y que
+  el líder aplicó en F-060.
+- (b) Evitarlo cambiando el plan: otro número de fichero no evita nada (las
+  listas fijan los quince), y no contar las rutas en `INTEGRACION.md`
+  contradiría R40. No hay una (b) razonable.
+
+**F-2 · El objeto `volcado` en la respuesta de `POST /api/revision/acciones`.**
+R4 lo pide en «cada incidencia» de `GET /api/revision`. En el código, la fila
+del listado y la de la respuesta de la acción salen de la **misma** función
+(`_fila`).
+
+- **(a) Recomendada.** En las dos, por la función común: es una clave
+  **añadida** (F-038 ignora lo que no conoce), una incidencia tiene la misma
+  forma en las dos respuestas y no hace falta parametrizar `_fila`. El
+  historial no cambia (no usa `_fila`).
+- (b) Solo en el listado: un parámetro en `_fila` o una segunda función, y
+  dos formas de la misma incidencia.

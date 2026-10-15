@@ -566,7 +566,7 @@ difiera de §21.2.
 | `domain/models/revision.py` | `EstadoRevision` + `VOLCADA`, `EN_DUDA`; `FiltroEstado` + los dos y `ACTIVAS` sin `volcada` (D-7; el filtro está en `_pasa`); `SituacionDeRevision` + `volcado: SituacionDeVolcado | None = None` como **último campo y con valor por defecto**, para que los tests de F-056 y F-060 y `tests/utiles_revision.py`, que la construyen sin él, sigan valiendo; `estado_de` con la precedencia de §4.1 (usa `estado_de_volcado`, de `situacion_volcado.py`, §7); `_PERMITIDAS` → `()` para los dos (lo devuelve `acciones_posibles`); `es_candidata` → `aprobada` o `en_duda` (y con ello `candidata_de` rechaza una `volcada`); `resumen` con seis estados (sale solo: recorre `EstadoRevision`) |
 | `infrastructure/persistencia/sentencias_revision.py` | `_select_situaciones`, la consulta común de `select_situaciones_de_obra` (`listar`), `select_situacion` (`situacion`) y `select_aprobadas` (`aprobadas`), gana dos `LEFT JOIN LATERAL` sobre `volcados_sigrid` (el primer `creado`/`idempotente` por `evento_id`; el último de modo `volcado`, con su `actor_correo` y **nunca** `actor_oid`); `fila_a_situacion` llena `SituacionDeRevision.volcado` (la de la original de una duplicada queda `None`). `select_bloquear`, `select_ultimas_revisiones` e `insert_revision` **no** cambian: las comparte `registrar_lote` de F-060 |
 | `infrastructure/persistencia/repositorio_revision_pg.py` | `_registrar` (el paso de `registrar`), tras `select_bloquear` y dentro de su transacción, lee con una sentencia nueva la situación de volcado de la incidencia bloqueada y levanta `AccionNoPermitida(estado=…, acciones=())` si es `volcada` o `en_duda` (R2), antes de la comprobación de frescura. `aprobadas` filtra con `es_candidata` **antes** de `candidata_de`: con la situación de volcado en la fila, una `volcada` (última revisión `aprobar`) haría fallar `candidata_de`; así devuelve `aprobada` y `en_duda` (R3). `registrar_lote` y `_registrar_lote` (F-060) **no** cambian (§21.5) |
-| `interface_adapters/api/revision.py` | `_fila`, el objeto `volcado` de cada incidencia (R4; `_fila` es común al listado y a la respuesta de `POST /api/revision/acciones`, §21.6 F-2); `_filtro`, los dos valores nuevos y su mensaje. **`listar_revision` no cambia** (es pieza de F-060: su medición) y no se añade ninguna importación de `infrastructure.sigrid` (`test_f056_r39_de_sigrid_solo_se_usa_el_catalogo_de_f036`) |
+| `interface_adapters/api/revision.py` | `_fila`, el objeto `volcado` de cada incidencia (R4): `_fila` es común al listado de `GET /api/revision` y a la respuesta de `POST /api/revision/acciones`, y la clave sale **en las dos** (F-2 (a), decisión del humano del 2026-10-15, §20); `_fila` no se parametriza ni se duplica, y el historial no cambia (no usa `_fila`); `_filtro`, los dos valores nuevos y su mensaje. **`listar_revision` no cambia** (es pieza de F-060: su medición) y no se añade ninguna importación de `infrastructure.sigrid` (`test_f056_r39_de_sigrid_solo_se_usa_el_catalogo_de_f036`) |
 | `RevisionPort` (`domain/ports/revision.py`) | **Nada**: sigue con sus siete operaciones (`test_f056_r34_…`, ampliado por F-060). Lo nuevo de F-059 va en `RepositorioVolcadoPort` (§8.1) |
 | Tests de F-056 que fijan cuatro estados, `activas` o las acciones | Se **amplían**, sin quitar casos, citados en el informe (R41); lista en §21.3 |
 
@@ -700,8 +700,9 @@ En `infra/`: `27_ventana_volcado.ps1`, `28_volcado_lectura_sigrid.ps1`.
 de F-056 de §12; los tests que enumeran rutas, `.sql`, tablas o variables
 (`test_f010_endpoints_protegidos.py`, `test_f005_ddl_idempotente_texto.py`,
 los de scripts de `infra/` si fijan las App Settings), **añadiendo sin
-quitar** y citándolos; los demás tests ajenos que el plan rompe, con el
-inventario de §21.3, **si el humano lo acepta** (§21.6 F-1);
+quitar** y citándolos; los demás tests ajenos que el plan rompe, los de las
+excepciones de R41 (inventario de §21.3; F-1 (a), decisión del humano del
+2026-10-15), cada uno solo en su función declarada;
 `infra/desplegar_backend.ps1`;
 `docs/ARCHITECTURE.md`, `docs/INTEGRACION.md`, `docs/DESPLIEGUE.md`;
 `.env.example` y `local.settings.json.example` (los dos nombres, con
@@ -737,7 +738,7 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 |---|---|
 | R1–R3 | La tabla de §4.1 entera (precedencia: `volcada` gana a `en_duda` y a `descartada`); un `idempotente` de ensayo deja `volcada`; la tabla de §4.2; `es_candidata` |
 | R2, R29 | `registrar` con una fila `enviado` entre el primer chequeo y el `FOR UPDATE` → 409 sin insertar (conexión falsa); y en `tests_bbdd`, dos conexiones |
-| R4 | `volcado` en cada fila; seis estados en `resumen`; `activas` sin `volcada`; el correo sí y el `oid` no |
+| R4 | `volcado` en cada fila del listado **y** en la incidencia de la respuesta de `POST /api/revision/acciones` (F-2 (a)), con la misma forma; el historial sin cambios; seis estados en `resumen`; `activas` sin `volcada`; el correo sí y el `oid` no |
 | R5 | 40 caracteres, minúsculas, prefijo exacto `PVI-`; la misma para la misma incidencia |
 | R6 | El cuerpo **clave a clave** (`tipo` `"0002"` con `listado` `primero`, `segundo` y nulo; `causante: false`; sin `clase`; sin `descripcion_larga` con detalle nulo; `commit` siempre presente; `forma_comunicacion` 1; `[]` sin proveedor); ninguna clave de propietario, persona, urgencia, `ide`, `cod`, `emp`, `est`, `pos` |
 | R7 | Un valor cambiado en la base con la huella vieja → excluida, no se manda |
@@ -754,7 +755,7 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | R30, R31 | `N` 0, 51, «cinco» → 503; un solo intento; la duración en el log |
 | R32, R33 | La guarda real acepta el `.sql`; idempotente; `CHECK` = `Enum`; los cuatro `CHECK` de fila; ningún `UPDATE`/`DELETE`/`TRUNCATE`; ninguna lectura selecciona `actor_oid` |
 | R34, R35 | `caplog` en todos los caminos: ni descripción, ni ubicación, ni `oid`, ni correo, ni login; el `mensaje` de la pasarela no aparece |
-| R36, R37, R41, R42 | Alcance con la base fija: rutas nombradas; ninguna `sql/write` nueva; `VOLCADO_HABILITADO` no aparece en cierre/gráfico/archivo y estos no aparecen en volcado; «No se toca» sin cambios (front incluido); tests de F-009/F-012/F-036/F-053 sin diff |
+| R36, R37, R41, R42 | Alcance con la base fija: rutas nombradas; ninguna `sql/write` nueva; `VOLCADO_HABILITADO` no aparece en cierre/gráfico/archivo y estos no aparecen en volcado; «No se toca» sin cambios (front incluido); tests de F-009 sin diff; los de las excepciones de R41 (F-1 (a)) solo en su función o constante declarada y sin perder ninguna aserción; ningún otro test ajeno tocado |
 | R38, R39 | Texto de los scripts: sin parámetros solo lee; `-Cerrar` sin palabra; `-Abrir` con palabra; relee; `28_` solo `sql/read` y sin columnas de nombres; `desplegar_backend.ps1` con `VOLCADO_HABILITADO=false` en su línea, con y sin `-VentanasCerradas` |
 | R40 | Frases clave en los cuatro documentos, incluida «Posventa lo pasa a PTE a mano» |
 | R1–R3 con F-060 (§21.5) | `planificar_normalizacion` de F-060, **importada y sin tocarla**, con una `volcada` y una `en_duda` cuya ubicación sería normalizable → ninguna revisión y las dos en `no_editables`; `validar_quien` rechaza `sistema:normalizar_ubicacion` como quien ensaya o vuelca (R9, R15); y en `tests_bbdd`, `registrar_lote` y `anotar_enviados` sobre la misma incidencia con dos conexiones se serializan sin interbloqueo |
@@ -821,10 +822,9 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 > (sus revisiones del sistema no pueden tocar una `volcada` ni una `en_duda`);
 > la base fija `2d2efd7`; los números 16, 27 y 28, libres; §8.9 de
 > `sigrid-api`, sin cambios desde el 2026-10-07; y dos riesgos nuevos con
-> datos de F-060 (§19.13, §19.14). Quedan **dos de fondo para el humano**
-> (§21.6): **F-1**, la lista de tests ajenos que el plan aprobado obliga a
-> ampliar, contra la letra de R41; y **F-2**, el objeto `volcado` también en
-> la respuesta de `POST /api/revision/acciones`.
+> datos de F-060 (§19.13, §19.14). La conciliación abrió **dos de fondo**
+> (§21.6), que el humano decidió el mismo día (filas F-1 y F-2 al final de la
+> tabla).
 
 | Id | Decisión |
 |---|---|
@@ -850,6 +850,8 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | Q-6 | Este trabajo actualiza la fila de consumidores de `azure-apps/sigrid_api.md` (el líder, al desplegar) |
 | Q-7 | Puede volcar cualquiera de `posventa-usuarios` con login de Sigrid, por ahora |
 | Q-8 | El primer volcado masivo de la 0677 y el ajuste de `N`: más adelante, fuera de esta ficha |
+| **F-1** | **Decisión del humano del 2026-10-15, literal: «a en las 2»** → opción (a). R41 gana el bloque «Excepciones, ampliando sin relajar» con la lista test a test de §21.3 (como R45 de F-056); cada una declarada **función a función** en `test_f059_alcance_cerrado.py` (T16), que vigila que no se pierde ninguna aserción |
+| **F-2** | **Decisión del humano del 2026-10-15, literal: «a en las 2»** → opción (a). El objeto `volcado` va en las **dos** respuestas que serializa `_fila`: el listado de `GET /api/revision` y la respuesta de `POST /api/revision/acciones` (R4, §12) |
 
 ## 21 · Conciliación con `dev` 2d2efd7 (2026-10-15)
 
@@ -893,11 +895,12 @@ Ningún nombre obliga a cambiar una decisión. Lo que sí cambió el diseño
 
 ### 21.3 · Tests ajenos que el plan aprobado obliga a ampliar (inventario)
 
-Comprobado leyendo cada test contra `dev` 2d2efd7. Todos se ampliarían **sin
+Comprobado leyendo cada test contra `dev` 2d2efd7. Todos se amplían **sin
 relajar** (la cifra o el fichero vigente en `in`, el anterior en `not in`) y
-se declararían uno a uno en `test_f059_alcance_cerrado.py`, con el criterio
-que el humano aprobó en F-056 (R45) y que el líder aplicó en F-060 (§12).
-**Pendiente de F-1** para los que R41 da por intocables.
+se declaran función a función en `test_f059_alcance_cerrado.py`, con el
+criterio que el humano aprobó en F-056 (R45) y que el líder aplicó en F-060
+(§12). **Decidido: F-1 (a)** (humano, 2026-10-15): es la lista de excepciones
+de R41.
 
 **A · El `16_…sql`** (controles que no dependen de `git`; se ponen rojos en
 T5):
@@ -999,7 +1002,11 @@ F-059 no los toca y su código no puede romperlos:
 - **En la verificación (T25)**, la fila de prueba importada puede quedar
   `editada` por la normalización tras importar; da igual para el guion.
 
-### 21.6 · Lo que queda para el humano (cambios de fondo, no aplicados)
+### 21.6 · Los dos cambios de fondo, y lo que decidió el humano
+
+**Resueltos el 2026-10-15** por el humano, literal: **«a en las 2»** →
+**F-1 (a)** y **F-2 (a)**, aplicadas en R41, R4, §12, §17 y las tareas (§20).
+Las opciones se conservan abajo como constancia.
 
 **F-1 · R41 frente al inventario de §21.3.** R41 dice que los tests de F-012,
 F-036 y F-053 siguen **sin tocarse** y que los de F-056 solo se amplían donde
@@ -1009,7 +1016,7 @@ imposible: `test_f036_t14_…`, `NUMERALES` de F-012 y `CUENTA_VIGENTE` de F-053
 fallan por fuerza, y lo mismo los de F-028, F-030–F-034, F-056 y F-060 de
 §21.3.
 
-- **(a) Recomendada.** Añadir a R41 un bloque «Excepciones, ampliando sin
+- **(a) Recomendada y elegida.** Añadir a R41 un bloque «Excepciones, ampliando sin
   relajar», como R45 de F-056, con la lista de §21.3; cada una declarada
   función a función en `test_f059_alcance_cerrado.py`, que vigila que no se
   pierde ninguna aserción. Es el criterio que el humano aprobó en F-056 y que
@@ -1023,7 +1030,7 @@ R4 lo pide en «cada incidencia» de `GET /api/revision`. En el código, la fila
 del listado y la de la respuesta de la acción salen de la **misma** función
 (`_fila`).
 
-- **(a) Recomendada.** En las dos, por la función común: es una clave
+- **(a) Recomendada y elegida.** En las dos, por la función común: es una clave
   **añadida** (F-038 ignora lo que no conoce), una incidencia tiene la misma
   forma en las dos respuestas y no hace falta parametrizar `_fila`. El
   historial no cambia (no usa `_fila`).

@@ -14,12 +14,14 @@
 - **20 cambios mecánicos aplicados** (cuentas, nombres, rutas, números,
   estructura de módulos y orden de tareas que se derivan del código real sin
   tocar ninguna decisión, requisito ni contrato).
-- **2 cambios de fondo, NO aplicados**, para el humano: **F-1** (R41 frente a
-  los tests ajenos que el plan aprobado obliga a ampliar) y **F-2** (el objeto
-  `volcado` también en la respuesta de `POST /api/revision/acciones`).
+- **2 cambios de fondo**, **F-1** (R41 frente a los tests ajenos que el plan
+  aprobado obliga a ampliar) y **F-2** (el objeto `volcado` también en la
+  respuesta de `POST /api/revision/acciones`): **RESUELTOS** por el humano el
+  2026-10-15, literal «a en las 2» → F-1 (a) y F-2 (a), **aplicadas** en un
+  segundo commit (ver «Decisiones del humano» al final).
 - Detalle técnico completo en `design.md` **§21** (nueva) y el resumen en §20.
-- Ningún requisito R1–R43 cambia de texto salvo R42 (la cifra) y una nota
-  informativa bajo R41.
+- Requisitos tocados: R42 (la cifra) en la conciliación; R41 (bloque de
+  excepciones) y R4 (la respuesta de la acción) por las decisiones del humano.
 
 ## Comprobaciones pedidas (puntos 1–7 del encargo)
 
@@ -100,7 +102,7 @@ Y las notas «Conciliada con dev 2d2efd7 el 2026-10-15» en la cabecera de
 `tasks.md`, en `design.md` §20 (con el resumen), en la cabecera de `design.md`
 y en la de `requirements.md`.
 
-## Cambios de fondo pendientes (NO aplicados)
+## Cambios de fondo (resueltos el 2026-10-15: «a en las 2»)
 
 ### F-1 · R41 frente a los tests ajenos que el plan obliga a ampliar
 
@@ -162,7 +164,26 @@ la misma función (`_fila`); el historial no la usa.
 
 ## Para el líder
 
-- Decisiones que validar con el humano: **F-1** y **F-2** (las dos con
-  recomendación (a)). Hasta entonces, el Bloque 1 puede arrancar con T1 (RED),
-  pero T2 necesita F-1 para el grupo C que excede la letra de R41.
-- Commit local: `F-059: spec conciliada con dev 2d2efd7 (F-056 y F-060)`.
+- Nada pendiente del humano en la spec: el Bloque 1 puede empezar.
+- Commits locales: `F-059: spec conciliada con dev 2d2efd7 (F-056 y F-060)`
+  (c469e74) y `F-059: F-1 (a) y F-2 (a) aplicadas en la spec (decisión del
+  humano)`.
+
+## Decisiones del humano (2026-10-15) y cómo se aplicaron
+
+Literal del humano: **«a en las 2»** → F-1 (a) y F-2 (a).
+
+- **F-1 (a)**, aplicada en: `requirements.md` R41 (bloque «Excepciones,
+  ampliando sin relajar» con la lista test a test, como R45 de F-056: el
+  `16_`, la cuenta 21 → 24 y la cabecera de `INTEGRACION.md`, los estados y la
+  fila de F-056; F-009 sigue intacto); `design.md` §17 («A modificar»), §18
+  (fila de R41), §20 (fila F-1), §21.3 y §21.6; `tasks.md` cabecera, T4, T16
+  (la lista de excepciones, escrita a mano y función a función en
+  `test_f059_alcance_cerrado.py`, que vigila que no se pierde ninguna
+  aserción) y T20. T2 y T5 ya no llevaban condicionado explícito; T5 verifica
+  el grupo A entero.
+- **F-2 (a)**, aplicada en: `requirements.md` R4 (a); `design.md` §12 (`_fila`
+  común, sin parametrizar ni duplicar; el historial no cambia), §18 (fila de
+  R4), §20 (fila F-2) y §21.6; `tasks.md` cabecera, T13 (`CLAVES_DE_FILA` de
+  `test_f056_revision_http.py` en el listado y en la respuesta de la acción) y
+  T15.

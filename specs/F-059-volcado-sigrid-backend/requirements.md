@@ -26,8 +26,10 @@
 >
 > **Conciliada con dev 2d2efd7 el 2026-10-15** (F-056 y F-060 ya en `dev`):
 > cuentas, nombres reales y convivencia con F-060 en `design.md` §21; ningún
-> requisito cambia de fondo. Queda pendiente del humano la lista de tests
-> ajenos que hay que ampliar (R41, `design.md` §21.6 F-1).
+> requisito cambia de fondo. Las dos decisiones que abrió la conciliación las
+> tomó el humano el mismo día («a en las 2»): **F-1 (a)**, las excepciones de
+> R41, y **F-2 (a)**, el objeto `volcado` también en la respuesta de la
+> acción (R4) (`design.md` §20 y §21.6).
 
 ## 0 · De dónde sale
 
@@ -100,7 +102,9 @@ Lo que ya existe y se **consume sin cambiar**:
 - **R3.** Son candidatas al volcado **exactamente** las incidencias en estado
   `aprobada` o `en_duda`. Una `volcada` no es candidata nunca.
 - **R4.** `GET /api/revision` (F-056) debe:
-  (a) llevar en cada incidencia un objeto `volcado`: `null` sin eventos de
+  (a) llevar en cada incidencia —y, por la misma serialización, en la
+  incidencia que devuelve `POST /api/revision/acciones` (**F-2 (a)**, decisión
+  del humano del 2026-10-15)— un objeto `volcado`: `null` sin eventos de
   modo `volcado` ni parte en Sigrid; si no, `{estado, sigrid_cod,
   volcado_at_utc, volcado_por, motivo}`, donde `estado` es `volcada`,
   `en_duda`, `rechazado` o `no_procesado` (el último resultado),
@@ -342,12 +346,54 @@ Lo que ya existe y se **consume sin cambiar**:
   tocarse**; los de F-056 solo se amplían donde fijan cuatro estados o las
   acciones posibles, citados uno a uno en el informe.
 
-  > **Conciliación 2026-10-15, pendiente del humano (`design.md` §21.6
-  > F-1).** Con `dev` 2d2efd7, el `16_…sql`, la cuenta de anónimos y la
-  > cabecera de `INTEGRACION.md` ya aprobados (R32, R40, R42) obligan a
-  > ampliar tests que este requisito da por intocables (de F-012, F-036 y
-  > F-053) y otros de F-028, F-030–F-034, F-056 y F-060. Inventario en
-  > `design.md` §21.3. Este texto no cambia hasta que el humano decida.
+  > **Excepciones, ampliando sin relajar** (**F-1 (a)**, decisión del humano
+  > del 2026-10-15, «a en las 2»; `design.md` §21.3 y §21.6). Con `dev`
+  > 2d2efd7, el `16_…sql` (R32), la cuenta de anónimos y la cabecera de
+  > `INTEGRACION.md` (R40, R42) y el objeto `volcado` (R4) obligan a ampliar
+  > estos tests. Cada uno solo en la función o la constante citada, con la
+  > cifra o el fichero vigente en `in` y el anterior en `not in` cuando lo
+  > hay, sin quitar ninguna otra aserción; y cada uno declarado **función a
+  > función** en `test_f059_alcance_cerrado.py` (T16), que vigila que no se
+  > pierde ninguna aserción:
+  >
+  > - **El `16_volcados_sigrid.sql`** (lo que va tras el `15_`):
+  >   `test_f005_ddl_idempotente_texto.py::test_f005_r1_se_aplican_todos_los_ficheros_en_orden`;
+  >   `test_f028_ddl_historico.py::test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo`;
+  >   `test_f030_veredicto_persistido.py::test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo`;
+  >   `test_f031_alcance_cerrado.py::test_f031_r17_no_hay_ni_un_fichero_de_ddl_nuevo`;
+  >   `test_f032_alcance_cerrado.py::test_f032_r22_no_hay_ni_un_fichero_de_ddl_nuevo`;
+  >   `test_f033_alcance_cerrado.py::test_f033_no_hay_ni_un_fichero_de_ddl_nuevo`;
+  >   `test_f034_alcance_cerrado.py::test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo`;
+  >   `test_f036_ddl.py::test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden`
+  >   (de F-036); `test_f056_ddl.py::test_f056_r36_el_fichero_va_detras_de_los_de_f036`;
+  >   `test_f056_alcance_cerrado.py::test_f056_r12_solo_15_declara_una_columna_de_correo`
+  >   (el `16_` trae `actor_correo`, D-8); y
+  >   `test_f060_alcance_cerrado.py::test_f060_r37_los_sql_son_los_quince_de_antes`.
+  > - **La cuenta de anónimos (21 → 24) y la cabecera de `INTEGRACION.md`**:
+  >   `test_f010_endpoints_protegidos.py` (`ENDPOINTS` y
+  >   `test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada`);
+  >   `test_f012_documentacion.py` (`NUMERALES` hasta 24 y
+  >   `test_f012_r68_integracion_declara_el_endpoint_nuevo_que_exponemos`, de
+  >   F-012); `test_f053_documentacion.py` (`CUENTA_VIGENTE` y
+  >   `test_f053_t6_el_parrafo_va_antes_de_los_diecisiete_y_sin_encabezado`,
+  >   de F-053); `test_f019_documentacion.py::test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints`;
+  >   `test_f056_documentacion.py::test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas`;
+  >   `test_f060_documentacion.py::test_f060_r43_la_seccion_ocho_dice_la_importacion_la_traza_y_la_cuenta`;
+  >   y `test_f060_documentacion.py::test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando`,
+  >   que deja de exigir que F-060 sea la **última** feature de la cabecera y
+  >   exige una cabecera bien formada que no retroceda, con F-060 y su
+  >   despliegue constando (lo mismo que F-060 hizo con el de F-056).
+  > - **Los estados y la fila de F-056**: `test_f056_paginacion.py`,
+  >   `test_f056_pipeline_revision.py` y `test_f056_revision_dominio.py` (los
+  >   cuatro estados, `FiltroEstado` y las acciones);
+  >   `test_f056_revision_http.py` (`CLAVES_DE_FILA` con `volcado`, en el
+  >   listado y en la respuesta de la acción por F-2 (a); `por_estado`; el
+  >   mensaje de `_filtro`); `test_f056_repositorio_revision.py` (el ancho de
+  >   las filas falsas de `_select_situaciones`, `aprobadas` y `registrar`); y
+  >   `test_f056_documentacion.py::test_f056_r44_nombra_cada_estado` (con los
+  >   seis estados, por la enmienda de `ARCHITECTURE.md`).
+  >
+  > Los de **F-009** no se tocan: ninguno fija la anotación que cambia §8.4.
 - **R42.** Las tres rutas nuevas van en `ANONYMOUS` como las demás
   (veinticuatro: las veintiuna de `dev` tras F-056 y F-060, más estas tres) y
   ninguna mira `CIERRE_HABILITADO` ni `ARCHIVO_HABILITADO`.

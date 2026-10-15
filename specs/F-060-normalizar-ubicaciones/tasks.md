@@ -369,7 +369,7 @@
   `duration`, el `total` de la traza, `proceso_nuevo` y los tramos; y el p50
   y el máximo en caliente. Ni textos ni correos (las líneas no los llevan). |
   Verificación: MANUAL (humano)
-- [ ] **T29**: el líder pone al día `azure-apps/postventa_incidencias.md` (la
+- [x] **T29** (`azure-apps` `61423f1`, 2026-10-14): el líder pone al día `azure-apps/postventa_incidencias.md` (la
   ruta nueva y que la importación escribe revisiones del sistema), con commit
   en ese repositorio. |
   Verificación: `git -C ..\azure-apps log -1` muestra el commit
@@ -400,13 +400,13 @@
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T31> --timeout 1800 --salida progress/mutacion_F-060_bloque7.md` sin supervivientes abiertos
 - [x] **T34**: `bash harness/init.sh` en verde. **Review del Bloque 7.** |
   Verificación: `bash harness/init.sh`
-- [ ] **T35 · MANUAL (humano)**: publicar como en T24 y repetir la medición
+- [x] **T35 · MANUAL (humano)**: publicar como en T24 y repetir la medición
   de T28 (**M2**). Objetivo de D-10; si no se alcanza, volver a T30. **Enmienda (humano, 2026-10-14)**: M2 se mide y se anota, y F-060 se cierra con ese dato aunque no alcance D-10; no se vuelve a T30, lo pendiente va a F-061. |
   Verificación: MANUAL (humano)
 
 ## Cierre
 
-- [ ] **T36**: el líder resume F-060 en `progress/history.md` (recuentos de
+- [x] **T36**: el líder resume F-060 en `progress/history.md` (recuentos de
   T26, medición M1 y, si la hubo, M2), deja la ficha en `done` con la review
   APROBADA, y `bash harness/init.sh` en verde. |
   Verificación: `bash harness/init.sh`

@@ -2242,3 +2242,39 @@ Lo que sale de aquí: **F-060** (normalizar las ubicaciones al texto de Sigrid: 
 mayúsculas; y el listado lento, p50 7,1 s). Mejoras del arnés enviadas a `arnes-base` (RM7 para validar antes
 de construir y para caché/construcción perezosa; frase compartida fijada por tests ajenos; reincidencia de
 cero mutantes en `if` sin operadores).
+
+---
+
+## F-060 · Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid — 2026-10-14
+
+**Cerrada.** Rama `feature/F-060-normalizar-ubicaciones`, rigor `critico`, 7 bloques. Spec aprobada por el humano el
+2026-10-09; reviews por bloque y final APPROVED (la final, tras C-1/C-2 del texto del Bloque 6 y la T7 en verde: 58
+passed en la base efímera); Bloque 7 APPROVED tras C-B7-1/2/3 (solo tests). Desplegada el 2026-10-13 (`6272dee`) y el
+Bloque 7 el 2026-10-14 (`cad2cb2`). `azure-apps` en `61423f1`.
+
+Qué queda: la normalización es una revisión `editar` **del sistema** (`sistema:normalizar_ubicacion`, sin `@`) en
+`postventa.revisiones_bandeja`, sin DDL; se lanza tras cada importación con filas (mejor esfuerzo: cualquier
+`Exception` se registra por su tipo y la importación responde igual) y a demanda con `POST /api/revision/normalizar`
+(`confirmado` y `ensayo` obligatorios, solo recuentos); coincide salvo mayúsculas, blancos de los extremos y NFC; solo
+sobre `nueva`/`editada`, que pasan a `editada`. Veintiuna rutas anónimas. Cada `GET /api/revision` deja la línea
+`F-060 tiempos del listado`. M-3: la IA, el PDF y `openpyxl` se importan dentro de la función que los usa.
+
+En producción (0677): T26 ensayo 148 fuera de lista, 110 normalizables, 38 sin coincidencia, 0 ambiguas, 0 no
+editables; real **110 normalizadas, 0 conflictos, 148 → 38**, repetición 0; paso 3 los cuatro `true`. T25/T27: Sigrid
+igual, 1276 reclamaciones. Medición del listado en caliente: M1 p50 4,92 s / máx. 14,73 s; tras M-3, M2 p50 5,00 s /
+máx. 13,21 s: **no cumple** el objetivo (p50 < 3 s, máx. < 10 s); el humano decidió cerrar con el dato y abrir
+**F-061**. Evidencias: suite api 8172 passed; cobertura 100 % de lo cambiado en cada bloque; mutación 56/56 con la
+herramienta y todos los manuales muertos salvo X01, H11 e I19, equivalentes aceptados por escrito.
+
+Lo que enseñó:
+
+- **Medir antes de optimizar sirvió**: descartó de golpe la base, el cálculo y la red, que eran las sospechas, y
+  señaló dos causas que no estaban en la lista corta: el reparto entre instancias de Flex Consumption y los picos de
+  `sigrid-api`, agrupados en ≈ 4 y ≈ 8 s.
+- **«Toca `function_app.py`» no era el sitio**: el remedio diseñado chocaba con los tests de otras features y con el
+  alcance cerrado de la propia spec; el implementer paró y el humano amplió el alcance (opción (a)).
+- **Un 8/8 a mano puede esconder un mutante que solo caza otra feature**, y **una guarda que cambia de lista pierde
+  vigilancia** si solo compara definiciones: las dos lecciones pasaron al arnés (`reviewer.md`, C4 bis) y a
+  `arnes-base` como encargo (`5580565`).
+- **El despliegue pide teclado**: lanzado con `!` desde la sesión se aborta solo («No se ha tocado nada»); se lanza
+  desde la ventana de PowerShell del humano.

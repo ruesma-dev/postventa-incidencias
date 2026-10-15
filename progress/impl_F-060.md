@@ -2509,3 +2509,85 @@ FAILED …/test_f060_alcance_cerrado.py::test_f060_s12_m3_el_resto_del_modulo_so
 **Resultado** en el repo: `test_f060_importacion_diferida.py` + `test_f060_alcance_cerrado.py` **92 passed en
 53,83 s** (mismo número de tests: solo hay aserciones nuevas); `ruff check` de los dos, limpio. Sin cambios en
 código de producción.
+
+### T35 · M2 en producción tras M-3 (2026-10-14, líder)
+
+Publicado por el humano con `t38_desplegar_f060_bloque7.ps1` desde copia limpia de `dev` en **`cad2cb2`**. Medición
+de la consola (frío en pestaña nueva tras ≥ 20 min, luego 10 en caliente en la misma pestaña) cruzada con App Insights
+por `operation_Id`:
+
+| # | Navegador | duration | total | Instancia | proceso_nuevo (s) | Tramo alto |
+|---|---|---|---|---|---|---|
+| frío | 23,785 | 11,733 | 9,049 | 94cfaa | True (10) | `leer_unidades` 4,327 + `ubicaciones` 4,341; ≈ 12 s de plataforma |
+| 1 | 13,209 | 10,546 | 8,817 | 4c57d9 | True (10) | `leer_unidades` 3,767 + `ubicaciones` 4,719 |
+| 2 | 7,355 | 7,042 | 7,018 | 4c57d9 | False (17) | `leer_unidades` 6,631 |
+| 3 | 12,956 | 10,429 | 8,828 | 3e0af8 | True (10) | `ubicaciones` 8,121 |
+| 4 | 5,368 | 2,657 | 0,701 | 3e0661 | True (2) | arranque |
+| 5 | 0,752 | 0,492 | 0,473 | 3e0af8 | False (16) | — |
+| 6 | 5,395 | 2,569 | 0,871 | 03207e | True (2) | arranque |
+| 7 | 4,637 | 4,231 | 4,212 | 3e0661 | False (12) | `ubicaciones` 3,841 |
+| 8 | 0,610 | 0,492 | 0,476 | 03207e | False (7) | — |
+| 9 | 0,608 | 0,475 | 0,460 | 3e0af8 | False (27) | — |
+| 10 | 0,870 | 0,558 | 0,537 | 3e0661 | False (14) | — |
+
+- **Caliente (navegador)**: p50 **5,00 s**, máximo **13,21 s** → **no cumple D-10** (M1: 4,92 / 14,73). En el servidor
+  (`total`): p50 0,79 s, máx. 8,83 s. Por decisión del humano (T30, 2026-10-14), F-060 se cierra con este dato.
+- **M-3 hizo lo suyo**: el tramo antes del handler en procesos nuevos baja de ≈ 3,0 s (M1) a **≈ 1,6–2,0 s** (2,68 en
+  el frío), ≈ −1,2 s, en línea con lo medido en local.
+- **Lo que domina ahora es la causa B (Sigrid)**: 6 de las 11 peticiones tienen una o dos lecturas de 3,8–8,1 s, y en
+  los procesos nuevos (≈ 10 s de vida) salen lentas casi siempre. Las duraciones se agrupan en **≈ 4 s y ≈ 8 s**
+  (4,33 · 4,34 · 3,77 · 4,72 · 3,84 · 6,63 · 8,12; en M1 4,32 · 4,38 · 3,82 · 5,43 · 6,70): parece una espera fija
+  (conexión, DNS o reintento) más que una consulta lenta. Pista para **F-061**.
+- **Frío**: 23,8 s en el navegador, de los que ≈ 12 s son arranque de la plataforma (navegador − `duration`) tras el
+  despliegue y la espera.
+- 10 peticiones seguidas en **4 instancias** (3 nuevas).
+
+## Cierre · documentación (parte de T36, implementer, 2026-10-14)
+
+Encargo del líder sobre HEAD `e35f905`: dejar dicho en los documentos que F-060 está desplegada y verificada, con la
+medición M2 y que lo pendiente es F-061, como hizo F-056 en su cierre. Sin código de producción.
+
+**Qué cambió**:
+
+- `docs/INTEGRACION.md`: cabecera (`Fecha: 2026-10-14`; F-060 «**desplegada** el 2026-10-13 y verificada en el
+  entorno el 2026-10-14 (T26 y T27), con la importación diferida del Bloque 7 publicada el 2026-10-14»); el párrafo
+  «Desde F-060» de §8 (ya no dice «implementada en su rama y sin desplegar»); y la fila «Normalizar las ubicaciones»
+  de «Qué NO está desplegado»: desplegada y verificada, y lo que falta es la velocidad del listado (M2, T35: p50
+  5,00 s y máximo 13,21 s en caliente, por encima del objetivo), que va a **F-061**.
+- `docs/ARCHITECTURE.md`, sección «Normalizar las ubicaciones (F-060)»: la línea de estado («desplegada el
+  2026-10-13 y verificada en el entorno el 2026-10-14»); un párrafo nuevo al final de «La medición del listado» con
+  M-3 (la importación diferida y sus cuatro funciones) y M2 (p50 5,00 s, máximo 13,21 s; dominan las lecturas de
+  `sigrid-api`; lo que falta, F-061); y «Lo que no hace»: «No optimiza el listado más allá de la importación diferida».
+- Sin cifras de ubicaciones ni textos nuevos (las cifras de la 0677 que ya estaban en ARCHITECTURE siguen como
+  estaban). Ninguna otra feature fija esas frases: solo `test_f060_documentacion.py`.
+- `services/postventa-api/tests/test_f060_documentacion.py`, al estilo de `test_f056_documentacion.py:480`:
+  `test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando` (fecha 2026-10-14, «desplegada el 2026-10-13»,
+  «verificada en el entorno el 2026-10-14» y «sin desplegar» **fuera**); `test_f060_r43_la_seccion_ocho_dice_que_f060_no_esta_desplegada`
+  (mismo nombre, como F-056; la fila exige «Desplegada el 2026-10-13», la verificación, «p50 5,00 s», «máximo
+  13,21 s» y «F-061», sin «sin desplegar»; y el párrafo de §8, la nueva redacción y no la vieja); y uno nuevo,
+  `test_f060_t36_la_seccion_dice_que_esta_desplegada_y_lo_que_mide` (ARCHITECTURE: la línea de estado,
+  «importación diferida», las dos cifras de M2, «F-061» y nada de «sin desplegar»).
+
+**RED** (tests cambiados, documentos aún sin tocar; desde un directorio sin `.env`):
+
+```
+$ python -m pytest services/postventa-api/tests/test_f060_documentacion.py --rootdir services/postventa-api -q -p no:cacheprovider -rf --tb=line
+…test_f060_documentacion.py:160: AssertionError: assert 'Fecha: 2026-10-14.' in '<!-- docs/INTEGRACION.md --> # Integración con el ecosistema · postventa-incidencias Origen: este repositorio. Fecha:...'
+E   AssertionError: la fila de F-060 no dice «Desplegada el 2026-10-13»
+    assert 'Desplegada el 2026-10-13' in '| Normalizar las ubicaciones | F-060 | Implementada en su rama y sin desplegar: hasta que se publique, …'
+E   AssertionError: la sección no dice «Añadida el 2026-10-13 por F-060; desplegada el 2026-10-13 y verificada en el entorno el 2026-10-14.»
+    assert '…' in '## Normalizar las ubicaciones (F-060) Añadida el 2026-10-13 por F-060, implementada en su rama y sin desplegar. …'
+FAILED …test_f060_documentacion.py::test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando
+FAILED …test_f060_documentacion.py::test_f060_r43_la_seccion_ocho_dice_que_f060_no_esta_desplegada
+FAILED …test_f060_documentacion.py::test_f060_t36_la_seccion_dice_que_esta_desplegada_y_lo_que_mide
+3 failed, 35 passed in 1.09s
+```
+
+**GREEN**, desde un directorio sin `.env`: todos los `tests/test_*documentacion*.py` más
+`test_f005_integracion_sin_secretos.py`, **506 passed en 8,48 s**; los otros trece tests que leen `INTEGRACION.md` o
+`ARCHITECTURE.md` más `test_f060_alcance_cerrado.py`, **530 passed, 11 skipped en 120,73 s**; `ruff check` del
+test, limpio. `init.sh` entero lo lanza el líder.
+
+**Qué falta para cerrar (líder)**: el resto de T36 (`progress/history.md`, la ficha en `done` con la review y
+`init.sh` en verde) y llevar a `azure-apps/postventa_incidencias.md` la cabecera y la fila nuevas de
+`docs/INTEGRACION.md`.

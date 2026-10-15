@@ -1114,7 +1114,7 @@ candidatas.
 
 ## Normalizar las ubicaciones (F-060)
 
-**Añadida el 2026-10-13 por F-060, implementada en su rama y sin desplegar.**
+**Añadida el 2026-10-13 por F-060; desplegada el 2026-10-13 y verificada en el entorno el 2026-10-14.**
 La plantilla de F-036 ofrece las ubicaciones de su YAML y Sigrid guarda las de
 cada tipología con otras mayúsculas: en la 0677, 110 de las 148 incidencias
 con `ubicacion_fuera_de_lista` lo eran **solo por mayúsculas**. Por decisión
@@ -1210,6 +1210,15 @@ que seguir siendo la única que lo dice (`test_f056_r31`). Con la medición en
 producción se elige el remedio entre los ya diseñados (`design.md` §11.4); ninguno se
 implementa sin el dato.
 
+Con la primera medición (M1) se eligió **M-3**, la **importación diferida**:
+importar `function_app.py` ya no carga la IA, el PDF ni `openpyxl`, que el
+listado no usa; cada uno se importa dentro de la función que lo usa
+(`_construir_gemini`, `trocear_remesa`, `importar_excel` y
+`descargar_plantilla`), sin cambiar ningún comportamiento. La segunda
+medición (M2, 2026-10-14) da en caliente p50 5,00 s y máximo 13,21 s: no llega
+al objetivo de `design.md` §11.4, y lo que domina son las lecturas lentas de
+`sigrid-api`. Lo que falta va a **F-061**.
+
 ### Dónde vive cada pieza
 
 - **Dominio puro**: `domain/models/normalizacion.py` —la clave, la
@@ -1234,7 +1243,8 @@ implementa sin el dato.
   viejas.
 - **No tiene pantalla**: la página de revisión es **F-038**, que la consume sin
   cambios de forma.
-- **No optimiza el listado**: lo mide.
+- **No optimiza el listado** más allá de la importación diferida: lo mide, y
+  lo demás es **F-061**.
 
 ## Acceso a datos y sistemas externos
 

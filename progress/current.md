@@ -1,6 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-059 · `in_progress` · 2026-10-15 · paso 1: poner la spec al día con `dev`
+> Rama `feature/F-059-volcado-sigrid-backend` desde `dev` **`2d2efd7`** (base fija, T0: F-056 y F-060 mergeadas,
+> desplegadas y con push). Spec aprobada el 2026-10-07, traída del worktree `postventa-f040`. Antes de implementar, el
+> spec-author la concilia con `dev` (rutas anónimas desde 21, `RevisionPort` con 7 operaciones, revisiones del sistema
+> de F-060, nombres reales de F-056); si cambia una decisión aprobada, vuelve al humano.
+> - **Prioridad inmediata (humano, 2026-10-15)**: que Posventa pueda usar la aplicación de punta a punta →
+>   **F-059 → F-038 → F-040**, antes que el resto. F-038 y F-058 ya sin bloqueo (F-056 y F-060 `done`).
+
 > ## ✅ F-060 CERRADA · 2026-10-14 · desplegada y verificada · siguiente: F-059
 > Resumen en `progress/history.md`; `azure-apps` en `61423f1`. Merge del cierre en `dev`/`main` y push: pendientes del humano.
 > - **Siguiente: F-059** (backend del volcado; primera escritura real, un parte en la 0626). Su spec vive en el worktree

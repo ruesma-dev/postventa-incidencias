@@ -43,7 +43,7 @@
 
 ## Bloque 0 · Precondición (líder)
 
-- [ ] **T0**: F-056 `done`, mergeada en `dev` y desplegada. La rama de F-059
+- [x] **T0**: F-056 `done`, mergeada en `dev` y desplegada. La rama de F-059
   nace de ese `dev` y ese commit es la **base fija**. Si los nombres de F-056
   difieren de su design (`design.md` §12), el implementer lo dice antes de
   empezar. Las decisiones y respuestas están aprobadas (`design.md` §20).
@@ -55,7 +55,7 @@
 
 ## Bloque 1 · El dominio
 
-- [ ] **T1 · RED**: `tests/test_f059_volcado_dominio.py` contra
+- [x] **T1 · RED**: `tests/test_f059_volcado_dominio.py` contra
   `domain/models/volcado.py`, que aún no existe (`design.md` §5, §7):
   `referencia_de` (R5); `parte_de` y `cuerpo_de_lote` clave a clave (R6), con
   `tipo` `"0002"` para `listado` `primero`, `segundo` y nulo, y `causante:

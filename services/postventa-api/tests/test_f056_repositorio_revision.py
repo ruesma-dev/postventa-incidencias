@@ -58,7 +58,9 @@ from domain.models.revision import (
     estado_de,  # F-059 (R41, F-1 (a); design.md §21.3 C)
     huella_de_valores,
 )
-from domain.models.revision import EstadoRevision as E  # F-059 (R41, F-1 (a); design.md §21.3 C)
+from domain.models.revision import (
+    EstadoRevision as E,  # F-059 (R41, F-1 (a); design.md §21.3 C)
+)
 from domain.models.situacion_volcado import (  # F-059 (R41, F-1 (a); design.md §21.3 C)
     EstadoEvento,
     ParteEnSigrid,

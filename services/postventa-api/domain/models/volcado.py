@@ -271,11 +271,17 @@ class EventoDeEnsayo:
 @dataclass(frozen=True)
 class Ensayo:
     """Un ensayo guardado (una llamada de modo `ensayo`), con sus partes en el
-    orden en que se mandaron."""
+    orden en que se mandaron.
+
+    `de_la_persona` dice si lo pidió quien ahora vuelca. Lo decide **la base**,
+    que compara el `oid` guardado con el de quien pide: el `oid` de quien ensayó
+    no llega nunca al dominio (B-1 (a), decisión del humano del 2026-10-16;
+    R17, R33).
+    """
 
     ensayo_id: UUID
     obra_codigo: str
-    actor_oid: str
+    de_la_persona: bool
     at_utc: datetime
     eventos: tuple[EventoDeEnsayo, ...]
 
@@ -515,12 +521,13 @@ def seleccionar_para_ensayo(
 
 
 def validar_ensayo(
-    ensayo: Ensayo | None, *, obra: str, actor_oid: str, ahora: datetime
+    ensayo: Ensayo | None, *, obra: str, ahora: datetime
 ) -> None:
     """Que el ensayo exista, sea de la obra y de la persona y no haya caducado (R17).
 
-    Caduca a los 30 minutos **justos** (`>=`). `EnsayoNoValido` con la
-    `causa`; el motivo no repite el `oid`.
+    En ese orden. Que sea de la persona lo dice `ensayo.de_la_persona`, que
+    decidió la base (B-1 (a)): aquí no entra ningún `oid`. Caduca a los 30
+    minutos **justos** (`>=`). `EnsayoNoValido` con la `causa`.
     """
     if ensayo is None:
         raise EnsayoNoValido(
@@ -531,7 +538,7 @@ def validar_ensayo(
         raise EnsayoNoValido(
             "el ensayo es de otra obra", causa=MotivoEnsayoNoValido.DE_OTRA_OBRA.value
         )
-    if ensayo.actor_oid != actor_oid:
+    if not ensayo.de_la_persona:
         raise EnsayoNoValido(
             "el ensayo lo pidió otra persona: cada una vuelca lo que ha ensayado",
             causa=MotivoEnsayoNoValido.DE_OTRA_PERSONA.value,

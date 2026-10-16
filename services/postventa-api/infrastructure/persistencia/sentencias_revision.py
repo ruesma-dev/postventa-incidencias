@@ -32,11 +32,23 @@ es `select_bloquear`, un `FOR UPDATE` de las filas de la bandeja en orden fijo
 Aquí viven también las traducciones de fila a dominio, puras como el SQL. Las
 fechas vuelven **en UTC y con zona**; una sin zona no se adivina (O-4 de la
 review del Bloque 1: el orden del dominio resta contra un origen con zona).
+
+## La situación de volcado (F-059, §12 de su design)
+
+`_select_situaciones` gana las dos `LEFT JOIN LATERAL` de
+`sentencias_volcado.py` sobre `volcados_sigrid` (el primer evento con parte y
+el último de modo `volcado`, con su `actor_correo` y **nunca** `actor_oid`), en
+la misma consulta: ninguna lectura más por petición. `fila_a_situacion` llena
+`SituacionDeRevision.volcado` de la propia (`None` sin eventos); la de la
+original de una duplicada queda `None`. `select_bloquear`,
+`select_ultimas_revisiones` e `insert_revision` no cambian: las comparten
+`registrar_lote` de F-060 y la escritura anticipada de F-059.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from dataclasses import replace
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, TypeVar
@@ -51,9 +63,16 @@ from domain.models.revision import (
     SituacionDeRevision,
     ValoresIncidencia,
 )
+from domain.models.situacion_volcado import SituacionDeVolcado
 
 from infrastructure.persistencia.ddl import validar_nombre_de_esquema
 from infrastructure.persistencia.sentencias_bandeja import como_uuid
+from infrastructure.persistencia.sentencias_volcado import (
+    ANCHO_DEL_VOLCADO,
+    columnas_del_volcado,
+    fila_a_volcado,
+    joins_del_volcado,
+)
 
 __all__ = [
     "COLUMNAS_INSERT",
@@ -165,6 +184,9 @@ _VALORES_TAL_CUAL: tuple[str, ...] = (
 _ANCHO_BANDEJA = len(_LEIDAS_DE_LA_BANDEJA)
 _ANCHO_REVISION = len(_LEIDAS_DE_LA_REVISION)
 
+#: Una incidencia sin eventos de volcado: su `volcado` es `None` (R4 de F-059).
+_SIN_EVENTOS = SituacionDeVolcado(volcada=None, ultimo=None)
+
 #: El orden total de R25: `creada_at_utc` descendente, `fila_origen` ascendente
 #: con las que no tienen al final, e `incidencia_id`.
 _ORDEN = "ORDER BY b.creada_at_utc DESC, b.fila_origen ASC NULLS LAST, b.incidencia_id"
@@ -211,6 +233,7 @@ def _select_situaciones(esquema: str, condicion: str) -> str:
             *(f"u.{c}" for c in _LEIDAS_DE_LA_REVISION),
             *(f"o.{c}" for c in _LEIDAS_DE_LA_BANDEJA),
             *(f"uo.{c}" for c in _LEIDAS_DE_LA_REVISION),
+            *columnas_del_volcado(),
         ]
     )
     return (
@@ -219,6 +242,7 @@ def _select_situaciones(esquema: str, condicion: str) -> str:
         f"LEFT JOIN LATERAL ({_ultima(revisiones, 'b')}) u ON true\n"
         f"LEFT JOIN {bandeja} o ON o.incidencia_id = b.duplicada_de\n"
         f"LEFT JOIN LATERAL ({_ultima(revisiones, 'o')}) uo ON true\n"
+        f"{joins_del_volcado(esquema, 'b')}\n"
         f"WHERE {condicion}\n"
         f"{_ORDEN}"
     )
@@ -308,13 +332,22 @@ def select_revisiones(*, esquema: str, incidencia_id: UUID) -> tuple[str, tuple]
 
 def fila_a_situacion(fila: Sequence[Any]) -> SituacionDeRevision:
     """Una fila de las consultas de situaciones: la bandeja, su última, la
-    original y la última de la original."""
+    original, la última de la original y la situación de volcado (F-059)."""
     fin_ultima = _ANCHO_BANDEJA + _ANCHO_REVISION
     fin_original = fin_ultima + _ANCHO_BANDEJA
+    fin_ultima_original = fin_original + _ANCHO_REVISION
+    if len(fila) != fin_ultima_original + ANCHO_DEL_VOLCADO:
+        raise ValueError("la fila no tiene el ancho de la consulta de situaciones")
     original = None
     if fila[fin_ultima] is not None:  # el `incidencia_id` de la original
-        original = _situacion(fila[fin_ultima:fin_original], fila[fin_original:], None)
-    return _situacion(fila[:_ANCHO_BANDEJA], fila[_ANCHO_BANDEJA:fin_ultima], original)
+        original = _situacion(
+            fila[fin_ultima:fin_original], fila[fin_original:fin_ultima_original], None
+        )
+    volcado = fila_a_volcado(fila[fin_ultima_original:])
+    return replace(
+        _situacion(fila[:_ANCHO_BANDEJA], fila[_ANCHO_BANDEJA:fin_ultima], original),
+        volcado=None if volcado == _SIN_EVENTOS else volcado,
+    )
 
 
 def fila_a_revision(fila: Sequence[Any]) -> Revision:

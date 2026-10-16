@@ -74,7 +74,9 @@ from infrastructure.persistencia import (
     sentencias_revision,
     sentencias_volcado,
 )
-from infrastructure.persistencia.repositorio_volcado_pg import RepositorioVolcadoPostgres
+from infrastructure.persistencia.repositorio_volcado_pg import (
+    RepositorioVolcadoPostgres,
+)
 
 from tests.utiles_pg import ConexionDoble
 
@@ -651,6 +653,23 @@ def test_f059_r1_las_fechas_vuelven_en_utc_y_sin_zona_no_se_adivinan():
         sentencias_volcado.fila_a_volcado(_volcado(parte=(77, COD, sin_zona, CORREO)))
     with pytest.raises(ValueError):
         sentencias_volcado.fila_a_volcado(_volcado(ultimo=_ultimo("enviado", cuando=sin_zona)))
+
+
+def test_f059_r1_lo_que_decide_que_haya_parte_es_la_fila_y_no_su_valor():
+    """Que haya parte lo dice que la `LATERAL` traiga fila (columna no nula), no
+    que el `ide` sea «verdadero»: un `0` —que el dominio nunca guarda— sigue
+    siendo un parte. Y un estado vacío no se toma por «sin eventos»: no es un
+    estado y no se adivina."""
+    situacion = sentencias_volcado.fila_a_volcado(_volcado(parte=(0, COD, ANTES, CORREO)))
+
+    assert situacion.volcada == ParteEnSigrid(0, COD, ANTES, CORREO)
+    with pytest.raises(ValueError):
+        sentencias_volcado.fila_a_volcado(_volcado(ultimo=_ultimo("")))
+
+
+def test_f059_r20_una_accion_vacia_no_es_sin_revision():
+    with pytest.raises(ValueError):
+        sentencias_volcado.fila_a_bloqueada(_fila_de_volcado(1, revision=(11, "", None)))
 
 
 @pytest.mark.parametrize("ancho", (7, 9))

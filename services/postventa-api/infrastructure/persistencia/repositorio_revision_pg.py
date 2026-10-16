@@ -20,6 +20,11 @@ el `oid`, el correo y los textos—; si falla otra cosa dentro (la frescura),
    duplicada—, `RevisionDesactualizada` y `ROLLBACK`: nada escrito.
 3. `INSERT … RETURNING revision_id` y `COMMIT`.
 
+F-059 (§12 de su design, R2, R29) añade, entre el 2 y su comprobación, la
+situación de volcado de la propia incidencia con la fila ya bloqueada: si está
+`volcada` o `en_duda`, `AccionNoPermitida` sin acciones y `ROLLBACK`. Así un
+volcado y una edición simultáneos se ponen en fila y no se cruzan.
+
 **Nunca `pg_advisory_lock`**: su espacio de claves es del servidor compartido.
 
 ## El lote de la normalización (F-060 §7, R12–R16)
@@ -45,17 +50,21 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 from uuid import UUID
 
-from domain.models.errores import RevisionDesactualizada
+from domain.models.errores import AccionNoPermitida, RevisionDesactualizada
 from domain.models.revision import (
     CandidataAlVolcado,
+    EstadoRevision,
     Revision,
     RevisionNueva,
     SituacionDeRevision,
     candidata_de,
+    estado_de,
 )
+from domain.models.situacion_volcado import estado_de_volcado
 from domain.ports.revision import ResultadoDelLote
 
 from infrastructure.persistencia import sentencias_revision as sql
+from infrastructure.persistencia import sentencias_volcado
 from infrastructure.persistencia.repositorio_bandeja_pg import _Transaccional
 from infrastructure.persistencia.sentencias_bandeja import como_uuid
 
@@ -160,12 +169,23 @@ class RepositorioRevisionPostgres(_Transaccional):
 
         El filtro está en el SQL y, además, `candidata_de` rechaza lo que no sea
         una aprobación: lo que llega a F-040 no puede ser otra cosa.
+
+        F-059 (§12, R3): una `volcada` también tiene como última revisión un
+        `aprobar`, y no es candidata; se deja fuera **antes** de `candidata_de`,
+        que si no fallaría por la obra entera. Solo esa: lo que no sea un
+        `aprobar` sigue llegando a `candidata_de`, que lo rechaza (la doble
+        defensa de R34). Una `en_duda` sí es candidata.
         """
         filas = self._leer(
             "aprobadas_revision",
             sql.select_aprobadas(esquema=self._esquema, obra_codigo=obra_codigo),
         )
-        return tuple(candidata_de(sql.fila_a_situacion(fila)) for fila in filas)
+        situaciones = (sql.fila_a_situacion(fila) for fila in filas)
+        return tuple(
+            candidata_de(situacion)
+            for situacion in situaciones
+            if estado_de(situacion) is not EstadoRevision.VOLCADA
+        )
 
     # --- los pasos ----------------------------------------------------------
 
@@ -189,6 +209,7 @@ class RepositorioRevisionPostgres(_Transaccional):
             *sql.select_ultimas_revisiones(esquema=self._esquema, incidencias=esperadas)
         )
         ultimas = {como_uuid(incidencia): ultima for incidencia, ultima in cursor.fetchall()}
+        self._exigir_que_no_este_volcada(cursor, revision.incidencia_id)
         if any(ultimas.get(incidencia) != esperada for incidencia, esperada in esperadas.items()):
             raise RevisionDesactualizada(
                 "la incidencia ha cambiado desde que se leyó: vuelve a cargarla"
@@ -196,6 +217,28 @@ class RepositorioRevisionPostgres(_Transaccional):
         cursor.execute(*sql.insert_revision(esquema=self._esquema, revision=revision))
         (revision_id,) = cursor.fetchone()
         return revision_id
+
+    def _exigir_que_no_este_volcada(self, cursor: Any, incidencia_id: UUID) -> None:
+        """F-059 R2, R29 · con la fila ya bloqueada, la situación de volcado de la
+        propia: una `volcada` o una `en_duda` no admite ninguna acción (409 sin
+        acciones), aunque el volcado haya entrado entre el primer chequeo y el
+        bloqueo. Va antes de la frescura: es lo que la persona tiene que saber."""
+        cursor.execute(
+            *sentencias_volcado.select_volcado_de(
+                esquema=self._esquema, incidencias=[incidencia_id]
+            )
+        )
+        filas = cursor.fetchall()
+        if not filas:
+            return
+        _, bloqueada = sentencias_volcado.fila_a_bloqueada(filas[0])
+        estado = estado_de_volcado(bloqueada.volcado)
+        if estado is not None:
+            raise AccionNoPermitida(
+                f"la incidencia está {estado.value}: no admite ninguna acción de revisión",
+                estado=estado.value,
+                acciones=(),
+            )
 
     def _registrar_lote(
         self,

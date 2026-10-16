@@ -132,7 +132,7 @@
 - [x] **T5**: `infrastructure/persistencia/sql/16_volcados_sigrid.sql` con la
   cabecera de `design.md` §9. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_ddl.py tests/test_f005_ddl_idempotente_texto.py tests/test_f056_ddl.py tests/test_f028_ddl_historico.py tests/test_f030_veredicto_persistido.py tests/test_f031_alcance_cerrado.py tests/test_f032_alcance_cerrado.py tests/test_f033_alcance_cerrado.py tests/test_f034_alcance_cerrado.py tests/test_f036_ddl.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
-- [ ] **T6**: `domain/ports/volcado.py` (`RepositorioVolcadoPort`),
+- [x] **T6**: `domain/ports/volcado.py` (`RepositorioVolcadoPort`),
   `sentencias_volcado.py`, `repositorio_volcado_pg.py`,
   `construir_volcados` en `infrastructure/persistencia/fabrica.py`; y los
   cambios de §12 en `sentencias_revision.py` (`_select_situaciones`,

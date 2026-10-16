@@ -868,3 +868,104 @@ fichero (no es mío); **para el líder**: hay que redactarlos allí o `init.sh` 
 
 Cobertura, medida tras el cambio con los dos ficheros de F-059: `volcado.py` **100 %** (284 sentencias, la función
 nueva entera) y `situacion_volcado.py` **100 %** (47).
+
+## Bloque 2 · La tabla y los repositorios · **BLOQUEADO antes de T4** · 2026-10-16
+
+Encargo: T4, T5, T6, T7 y T9 (T8 la hace el humano). **No he escrito código ni tests de este bloque.** Antes de
+la RED he leído el bloque entero contra la spec y he hecho un inventario empírico (abajo), y hay **dos cosas que
+la spec no deja decidir al implementer**. Lo dicen las reglas del encargo y del arnés: no se improvisa, se para.
+Las dos se resuelven con una línea del humano cada una; las propongo con su recomendación para que vayan en una
+sola ronda.
+
+Árbol de trabajo sin tocar: `git status` limpio en `9fdb222` (solo este informe); el worktree desechable del
+inventario, retirado. `progress/current.md` y `harness/features.json` no los he tocado (regla del encargo):
+**que el líder marque el bloqueo donde corresponda.**
+
+### B-1 · R17 frente a R33: para comparar la persona del ensayo hay que leer `actor_oid`, y R33 lo prohíbe
+
+- **R17**: el volcado exige un ensayo «pedido por **el mismo `usuario_oid`**»; si no, 409 `ensayo_no_valido`
+  con `motivo` `de_otra_persona`.
+- **R33**: «**ninguna lectura selecciona `actor_oid`**». Igual de tajantes `design.md` §9 («`actor_oid` es el
+  `oid` opaco y **no se lee nunca**») y §15 (`oid`: «Ninguna respuesta, ningún log, **ninguna lectura**»); §18
+  lo pone como test de T4.
+- **Pero el diseño exige leerlo**: §8.1 da `leer_ensayo(*, ensayo_id) -> Ensayo | None` y §7 define
+  `Ensayo(ensayo_id, obra_codigo, actor_oid, at_utc, eventos)`; `validar_ensayo(ensayo, *, obra, actor_oid,
+  ahora)` compara `ensayo.actor_oid != actor_oid` (así está, aprobado, en `domain/models/volcado.py:534`, Bloque
+  1). Con esa firma, `leer_ensayo` **tiene** que seleccionar `actor_oid` para construir el `Ensayo`.
+
+No hay implementación que cumpla las dos letras sin cambiar algo aprobado. Opciones:
+
+- **(a) Recomendada: la comparación la hace la base y el `oid` nunca vuelve.** `leer_ensayo(*, ensayo_id,
+  actor_oid)`; su `SELECT` lleva el booleano `(actor_oid = %s)` y **no** la columna. En el dominio,
+  `Ensayo.actor_oid: str` pasa a `Ensayo.de_la_persona: bool` y `validar_ensayo(ensayo, *, obra, ahora)` mira ese
+  booleano, con el mismo orden de motivos de R17 (`no_existe`, `de_otra_obra`, `de_otra_persona`, `caducado`).
+  Mantiene R33 y §15 al pie de la letra y la misma propiedad que F-056 dio a `revisado_por` («se escribe y no se
+  lee»). Coste: tocar dos piezas aprobadas del Bloque 1 (`Ensayo` y `validar_ensayo`, con sus tests de R17 y sus
+  mutantes) y la firma de `leer_ensayo` de §8.1; lo haría dentro de este bloque, con su RED, y lo citaría aquí.
+- (b) Excepción a R33 solo para `leer_ensayo`: selecciona `actor_oid` para construir el `Ensayo`, que solo va a
+  `validar_ensayo` y nunca a un log ni a una respuesta (con `field(repr=False)` para que no salga en un `repr`
+  por descuido). No toca el Bloque 1, pero relaja un requisito de datos personales en una feature `critico` y
+  obliga a reescribir R33, §9 y §15.
+- (c) Descartada: rellenar `Ensayo.actor_oid` con el `oid` de quien pide cuando la base dice que coincide, y con
+  otra cosa si no. Sería un campo del dominio con un valor que no viene de donde dice.
+
+### B-2 · El inventario de R41 (grupo A de §21.3) no recoge un test que el `16_` pone rojo
+
+Inventario **empírico**: en un worktree desechable de `9fdb222`, con un `16_volcados_sigrid.sql` de borrador
+(el `CREATE TABLE` y los dos índices de `design.md` §9, literales), los 41 ficheros de `tests/` que nombran el
+DDL (`ficheros_ddl`, `cargar_ddl`, `DIRECTORIO_SQL`, `.sql`…), lanzados desde el scratchpad (sin `.env`):
+
+```
+<venv>/python.exe -m pytest <wt>/services/postventa-api/tests/<los 41> -q -p no:cacheprovider --tb=no -rf
+12 failed, 1468 passed, 102 skipped in 86.42s
+```
+
+Los 12 rojos (los `skipped` son los controles de `git` de otras ramas, que fuera de la suya se saltan):
+
+| Test | ¿En el grupo A de §21.3 / R41? |
+|---|---|
+| `test_f005_ddl_idempotente_texto.py::test_f005_r1_se_aplican_todos_los_ficheros_en_orden` | sí |
+| `test_f028_ddl_historico.py::test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo` | sí |
+| `test_f030_veredicto_persistido.py::test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo` | sí |
+| `test_f031_alcance_cerrado.py::test_f031_r17_no_hay_ni_un_fichero_de_ddl_nuevo` | sí |
+| `test_f032_alcance_cerrado.py::test_f032_r22_no_hay_ni_un_fichero_de_ddl_nuevo` | sí |
+| `test_f033_alcance_cerrado.py::test_f033_no_hay_ni_un_fichero_de_ddl_nuevo` | sí |
+| `test_f034_alcance_cerrado.py::test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo` | sí |
+| `test_f036_ddl.py::test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden` | sí |
+| `test_f056_alcance_cerrado.py::test_f056_r12_solo_15_declara_una_columna_de_correo` | sí |
+| `test_f056_ddl.py::test_f056_r36_el_fichero_va_detras_de_los_de_f036` | sí |
+| `test_f060_alcance_cerrado.py::test_f060_r37_los_sql_son_los_quince_de_antes` | sí |
+| **`test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo`** | **no** |
+
+El duodécimo exige que la **única** columna de correo de todo el esquema sea `revisiones_bandeja.revisado_correo`;
+`actor_correo` (D-8, aprobada) la rompe por fuerza. Es el gemelo del de `test_f056_alcance_cerrado.py` que §21.3
+sí lista («el `16_` trae `actor_correo`»), pero **no está** en la lista de R41, que es «test a test», y el
+encargo la cierra («ningún otro»). Sin ampliarlo, la verificación de T5 (que incluye `tests/test_f056_ddl.py`
+entero) no puede salir en verde.
+
+- **Propuesta (recomendada):** añadirlo a las excepciones de R41 (grupo A de §21.3) y ampliarlo como su gemelo,
+  sin relajar: la igualdad exacta sigue siendo exacta, ahora con dos columnas
+  (`revisiones_bandeja.revisado_correo` y `volcados_sigrid.actor_correo`), y se declara en T16.
+
+Fuera de `tests/`, **sin decisión que pedir**: los `_limpiar` de `tests_bbdd` de F-036, F-056 y F-060 hacen
+`DELETE FROM` de `revisiones_bandeja` y `bandeja_incidencias`; con filas de `volcados_sigrid` que las
+referencien, el de F-060 (que corre después del de F-059, por orden alfabético) fallaría por la clave ajena en T8.
+Lo resuelve mi propio `test_f059_bbdd_volcado.py` borrando sus filas de `volcados_sigrid` antes y después de cada
+test (la limpieza de `tests_bbdd` no es código del servicio: O-5 de F-056), sin tocar los de los demás.
+
+### Lo que haré salvo que se diga otra cosa (no bloquea; para que conste en la misma ronda)
+
+1. `guardar_resultados(*, llamada_id, ensayo_id, obra, partes, resultados, quien, ahora)`: la firma de §8.1
+   (`llamada_id, ensayo_id, resultados, quien, ahora`) no da `revision_id`, `huella_valores` ni `obra_codigo`, que
+   son `NOT NULL` en §9, y `ResultadoParte` no los lleva. Se los paso como a `guardar_ensayo` (`obra` y los
+   `ParteAVolcar` mandados), con la comprobación de que resultados y partes casan uno a uno.
+2. `quien` es el `Quien(oid, correo)` de F-056; `situaciones` devuelve una entrada por cada incidencia pedida que
+   está en la bandeja (sin eventos, `SituacionDeVolcado(None, None)`).
+3. La sentencia nueva de R2 que lee `_registrar` vive en `sentencias_volcado.py` y la importa
+   `repositorio_revision_pg.py` (sin tocar `select_bloquear`, `select_ultimas_revisiones` ni `insert_revision`).
+
+### Para seguir
+
+Con B-1 y B-2 decididos, retomo el Bloque 2 desde T4 (RED) tal cual está en `tasks.md`. Si se elige B-1 (a), la
+RED de T4 incluirá además los casos de `Ensayo.de_la_persona` y de `validar_ensayo` que cambian, y T9 mutará esas
+líneas del Bloque 1.

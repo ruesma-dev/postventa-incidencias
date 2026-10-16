@@ -86,7 +86,7 @@
   rojo, la enmienda de la sección de F-056 de `docs/ARCHITECTURE.md` que nombra
   `volcada` y `en_duda` (`test_f056_r44_nombra_cada_estado`). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_volcado_dominio.py tests/test_f059_estados.py tests/test_f056_revision_dominio.py tests/test_f056_paginacion.py tests/test_f056_pipeline_revision.py tests/test_f056_revision_http.py tests/test_f056_documentacion.py tests/test_f060_normalizacion_dominio.py tests/test_f060_pipeline_normalizacion.py tests/test_f005_arquitectura.py`
-- [ ] **T3 · Mutación del bloque.** |
+- [x] **T3 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-059 --base <hash anterior a T1> --timeout 1800 --salida progress/mutacion_F-059_bloque1.md` sin supervivientes abiertos
 
 **Parar. Review del Bloque 1.**

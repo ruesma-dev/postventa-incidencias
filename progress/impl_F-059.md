@@ -510,3 +510,272 @@ real (es `UUID(int=…)` escrito en hexadecimal); lo digo para que conste.
 
 `ruff check` sobre `domain/` y los tests de F-059: sin avisos (lanzado desde la raíz, con la configuración de
 `init.sh`; lanzado desde `services/postventa-api` reordena los imports de forma distinta y lo deshice).
+
+### T3 · Mutación del bloque · 2026-10-15/16
+
+#### La campaña de la herramienta
+
+```
+python -m harness.mutacion --feature F-059 --base 477e596 --timeout 1800 --salida progress/mutacion_F-059_bloque1.md
+85 mutantes evaluados, 85 muertos, 0 supervivientes, 0 timeouts en 13042.6 s
+```
+
+Base `477e596` (el commit de T0, el anterior a T1); alcance: 1084 líneas de producción en `errores.py` (120),
+`revision.py` (44), `situacion_volcado.py` (127) y `volcado.py` (793); **8 workers** (los de `harness/rigor.json`),
+sobre `HEAD` `e0e93db`. Informe completo: `progress/mutacion_F-059_bloque1.md`.
+
+**Cómo se llegó ahí** (para que conste, sin maquillar):
+
+1. Una primera campaña, lanzada sobre `c84e979` (T2), la **paré** a los 48 de 85 (30 muertos, 18 `timeout`):
+   la máquina tenía a la vez otras dos campañas de mutación de otros proyectos (`partes` F-046 y `porcentajes`
+   F-055, que no toqué) y cada suite de 8 workers pasaba de los 1800 s; con el repaso en serie de los `timeout`
+   le quedaban más de 10 h. Además, para entonces la reverificación (abajo) ya había encontrado seis
+   supervivientes y el código que la campaña evaluaba dejaba de ser el final. Al pararla quedaron cinco
+   `pytest` huérfanos de **esa** campaña (venv de este proyecto, padre muerto), que terminé, y sus ocho
+   worktrees, que retiré (`git worktree remove --force` y `prune`; ninguno queda).
+2. Con el test de T3 en `e0e93db`, la campaña se relanzó con el mismo comando y terminó limpia: la de arriba.
+3. **Un incidente mío**: una reverificación que lancé sobre el **árbol de trabajo** se cortó a mitad y dejó
+   aplicado un mutante en `volcado.py` (`2 <= n` en `validar_partes_por_llamada`), sin commit. El líder lo vio;
+   lo devolví a `1 <= n` con `git checkout` antes de nada, y desde entonces los mutantes a mano y la
+   reverificación se hicieron en un **worktree desechable** de `e0e93db` (retirado al terminar). El árbol de
+   trabajo no se volvió a mutar.
+
+#### Reverificación de cada mutante de la herramienta contra los tests de F-059 solos
+
+La herramienta da por muerto un mutante si falla **cualquier** test de la suite (con `-x`), y no dice cuál.
+Para saber qué test de F-059 caza cada uno, apliqué los 85 mismos mutantes —con `generar_mutantes` y
+`aplicar_mutante` de la propia herramienta y el mismo alcance— y ejecuté solo `test_f059_volcado_dominio.py` y
+`test_f059_estados.py`; si alguno sobrevivía, además los de F-056 y F-060 del bloque.
+
+- Sobre `c84e979` (T2): **79 de 85** muertos por F-059 y **6 supervivientes**, todos `frozen=True → False` en
+  tipos cuya inmutabilidad no fijaba ningún test (`ParteEnSigrid`, `UltimoEvento`, `SituacionDeVolcado`,
+  `Interviniente`, `Seleccion`, `PosibleDuplicado`); tampoco los cazaba ningún test de F-056 ni de F-060 del
+  bloque. **Hallazgo**: en la primera campaña la herramienta había dado por **muerto** el de `PosibleDuplicado`
+  (`volcado.py:320`): lo tumbó algún otro test de la suite, o un fallo bajo carga, no un test que lo vigile.
+- **Test nuevo** (`e0e93db`): `test_f059_los_tipos_son_inmutables` gana esos seis tipos. Con él, los 13
+  mutantes `frozen` del alcance mueren por ese test (`DID NOT RAISE FrozenInstanceError`).
+- Sobre `e0e93db`: **85 de 85** muertos por tests de F-059. La tabla:
+
+Mutantes generados por la herramienta en el alcance: **85**.
+
+| # | Línea | Operador | Original → mutado | Con los tests de F-059 solos | Primer test que lo caza |
+|---|---|---|---|---|---|
+| 1 | `domain/models/revision.py:950` | logico | `and estado_de(situacion) in _CANDIDATOS → or estado_de(situacion) in _CANDIDATOS` | muerto (F-059) | `test_f059_r3_una_volcada_no_es_candidata_nunca` |
+| 2 | `domain/models/revision.py:1072` | logico | `if filtro is FiltroEstado.ACTIVAS and fila.estado in _FUERA_DE_ACTIVAS: → if filtro is FiltroEstado.ACTIVAS or fila.estado in _FUERA_DE_ACTIVAS:` | muerto (F-059) | `test_f059_r4_d7_activas_sin_descartada_ni_volcada` |
+| 3 | `domain/models/situacion_volcado.py:66` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 4 | `domain/models/situacion_volcado.py:77` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 5 | `domain/models/situacion_volcado.py:88` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 6 | `domain/models/situacion_volcado.py:103` | logico | `and self.ultimo is not None → or self.ultimo is not None` | muerto (F-059) | `(recogida) copia/services/postventa-api/tests/test_f059_volcado_dominio.py` |
+| 7 | `domain/models/situacion_volcado.py:104` | logico | `and self.ultimo.estado in ESTADOS_CON_PARTE → or self.ultimo.estado in ESTADOS_CON_PARTE` | muerto (F-059) | `(recogida) copia/services/postventa-api/tests/test_f059_volcado_dominio.py` |
+| 8 | `domain/models/situacion_volcado.py:125` | logico | `if situacion.ultimo is not None and situacion.ultimo.estado in ESTADOS_EN_DUDA: → if situacion.ultimo is not None or situacion.ultimo.estado in ESTADOS_EN_DUDA:` | muerto (F-059) | `test_f059_r1_sin_eventos_no_hay_estado_de_volcado` |
+| 9 | `domain/models/volcado.py:115` | entero | `FORMA_ESCRITA = 1 → FORMA_ESCRITA = 2` | muerto (F-059) | `test_f059_r6_el_parte_clave_a_clave` |
+| 10 | `domain/models/volcado.py:117` | booleano | `CAUSANTE = False → CAUSANTE = True` | muerto (F-059) | `test_f059_r6_el_parte_clave_a_clave` |
+| 11 | `domain/models/volcado.py:119` | entero | `CADUCIDAD_DEL_ENSAYO = timedelta(minutes=30) → CADUCIDAD_DEL_ENSAYO = timedelta(minutes=31)` | muerto (F-059) | `test_f059_r17_a_los_30_minutos_caduca[pasado0]` |
+| 12 | `domain/models/volcado.py:121` | entero | `MAX_PARTES_POR_LLAMADA = 50 → MAX_PARTES_POR_LLAMADA = 51` | muerto (F-059) | `test_f059_r30_de_1_a_50_partes_por_cuerpo` |
+| 13 | `domain/models/volcado.py:221` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 14 | `domain/models/volcado.py:230` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 15 | `domain/models/volcado.py:248` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 16 | `domain/models/volcado.py:261` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 17 | `domain/models/volcado.py:271` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 18 | `domain/models/volcado.py:283` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 19 | `domain/models/volcado.py:291` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 20 | `domain/models/volcado.py:302` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 21 | `domain/models/volcado.py:312` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 22 | `domain/models/volcado.py:320` | booleano | `@dataclass(frozen=True) → @dataclass(frozen=False)` | muerto (F-059) | `test_f059_los_tipos_son_inmutables` |
+| 23 | `domain/models/volcado.py:344` | not | `if not isinstance(incidencia_id, UUID): → if isinstance(incidencia_id, UUID):` | muerto (F-059) | `test_f059_r5_la_referencia_es_pvi_y_el_uuid_canonico` |
+| 24 | `domain/models/volcado.py:346` | aritmetico | `return PREFIJO_REFERENCIA + str(incidencia_id) → return PREFIJO_REFERENCIA - str(incidencia_id)` | muerto (F-059) | `test_f059_r5_la_referencia_es_pvi_y_el_uuid_canonico` |
+| 25 | `domain/models/volcado.py:420` | not | `if not isinstance(commit, bool): → if isinstance(commit, bool):` | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| 26 | `domain/models/volcado.py:422` | not | `if not 1 <= len(partes) <= MAX_PARTES_POR_LLAMADA: → if 1 <= len(partes) <= MAX_PARTES_POR_LLAMADA:` | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| 27 | `domain/models/volcado.py:422` | entero | `if not 1 <= len(partes) <= MAX_PARTES_POR_LLAMADA: → if not 2 <= len(partes) <= MAX_PARTES_POR_LLAMADA:` | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| 28 | `domain/models/volcado.py:422` | comparacion | `if not 1 <= len(partes) <= MAX_PARTES_POR_LLAMADA: → if not 1 < len(partes) <= MAX_PARTES_POR_LLAMADA:` | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| 29 | `domain/models/volcado.py:422` | comparacion | `if not 1 <= len(partes) <= MAX_PARTES_POR_LLAMADA: → if not 1 <= len(partes) < MAX_PARTES_POR_LLAMADA:` | muerto (F-059) | `test_f059_r30_de_1_a_50_partes_por_cuerpo` |
+| 30 | `domain/models/volcado.py:427` | comparacion | `if len(set(referencias)) != len(referencias): → if len(set(referencias)) == len(referencias):` | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| 31 | `domain/models/volcado.py:440` | comparacion | `return huella_de_valores(candidata.valores) == candidata.huella → return huella_de_valores(candidata.valores) != candidata.huella` | muerto (F-059) | `test_f059_r7_la_huella_intacta` |
+| 32 | `domain/models/volcado.py:449` | comparacion | `if len(set(incidencias)) != len(incidencias): → if len(set(incidencias)) == len(incidencias):` | muerto (F-059) | `test_f059_r11_las_candidatas_van_en_el_orden_pedido` |
+| 33 | `domain/models/volcado.py:481` | comparacion | `elif situacion.obra_codigo != obra: → elif situacion.obra_codigo == obra:` | muerto (F-059) | `test_f059_r11_las_candidatas_van_en_el_orden_pedido` |
+| 34 | `domain/models/volcado.py:483` | logico | `elif situacion.volcado is not None and situacion.volcado.volcada is not None: → elif situacion.volcado is not None or situacion.volcado.volcada is not None:` | muerto (F-059) | `test_f059_r11_las_candidatas_van_en_el_orden_pedido` |
+| 35 | `domain/models/volcado.py:491` | logico | `elif candidata is None or not es_candidata(situacion): → elif candidata is None and not es_candidata(situacion):` | muerto (F-059) | `test_f059_r11_no_es_candidata_si_la_situacion_no_lo_es_aunque_la_lista_la_traiga` |
+| 36 | `domain/models/volcado.py:491` | not | `elif candidata is None or not es_candidata(situacion): → elif candidata is None or es_candidata(situacion):` | muerto (F-059) | `test_f059_r11_las_candidatas_van_en_el_orden_pedido` |
+| 37 | `domain/models/volcado.py:493` | not | `elif not huella_intacta(candidata): → elif huella_intacta(candidata):` | muerto (F-059) | `test_f059_r11_las_candidatas_van_en_el_orden_pedido` |
+| 38 | `domain/models/volcado.py:515` | comparacion | `if ensayo.obra_codigo != obra: → if ensayo.obra_codigo == obra:` | muerto (F-059) | `test_f059_r17_un_ensayo_vigente_vale` |
+| 39 | `domain/models/volcado.py:519` | comparacion | `if ensayo.actor_oid != actor_oid: → if ensayo.actor_oid == actor_oid:` | muerto (F-059) | `test_f059_r17_un_ensayo_vigente_vale` |
+| 40 | `domain/models/volcado.py:524` | aritmetico | `if ahora - ensayo.at_utc >= CADUCIDAD_DEL_ENSAYO: → if ahora + ensayo.at_utc >= CADUCIDAD_DEL_ENSAYO:` | muerto (F-059) | `test_f059_r17_un_ensayo_vigente_vale` |
+| 41 | `domain/models/volcado.py:524` | comparacion | `if ahora - ensayo.at_utc >= CADUCIDAD_DEL_ENSAYO: → if ahora - ensayo.at_utc > CADUCIDAD_DEL_ENSAYO:` | muerto (F-059) | `test_f059_r17_a_los_30_minutos_caduca[pasado0]` |
+| 42 | `domain/models/volcado.py:538` | logico | `if evento is None or evento.estado is not EstadoEvento.PREVISTO: → if evento is None and evento.estado is not EstadoEvento.PREVISTO:` | muerto (F-059) | `test_f059_r18_fuera_del_ensayo_si_no_esta` |
+| 43 | `domain/models/volcado.py:540` | comparacion | `if evento.revision_id != pedida.revision_id: → if evento.revision_id == pedida.revision_id:` | muerto (F-059) | `test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo` |
+| 44 | `domain/models/volcado.py:548` | comparacion | `actual.revision_id != evento.revision_id → actual.revision_id == evento.revision_id` | muerto (F-059) | `test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo` |
+| 45 | `domain/models/volcado.py:549` | logico | `or actual.accion is not AccionRevision.APROBAR → and actual.accion is not AccionRevision.APROBAR` | muerto (F-059) | `test_f059_r20_revision_desactualizada_si_hay_otra_revision_despues_del_ensayo` |
+| 46 | `domain/models/volcado.py:552` | comparacion | `if actual.huella != evento.huella: → if actual.huella == evento.huella:` | muerto (F-059) | `test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo` |
+| 47 | `domain/models/volcado.py:583` | entero | `excluidas.append(Excluida(pedida.incidencia_id, motivo[0], motivo[1])) → excluidas.append(Excluida(pedida.incidencia_id, motivo[1], motivo[1]))` | muerto (F-059) | `test_f059_r18_fuera_del_ensayo_si_no_esta` |
+| 48 | `domain/models/volcado.py:583` | entero | `excluidas.append(Excluida(pedida.incidencia_id, motivo[0], motivo[1])) → excluidas.append(Excluida(pedida.incidencia_id, motivo[0], motivo[2]))` | muerto (F-059) | `test_f059_r18_fuera_del_ensayo_si_no_esta` |
+| 49 | `domain/models/volcado.py:595` | logico | `return isinstance(valor, int) and not isinstance(valor, bool) → return isinstance(valor, int) or not isinstance(valor, bool)` | muerto (F-059) | `test_f059_r22_con_parte_sin_ide_entero[None-creado]` |
+| 50 | `domain/models/volcado.py:595` | not | `return isinstance(valor, int) and not isinstance(valor, bool) → return isinstance(valor, int) and isinstance(valor, bool)` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 51 | `domain/models/volcado.py:624` | logico | `or elemento.get("referencia_externa") != parte.referencia_externa → and elemento.get("referencia_externa") != parte.referencia_externa` | muerto (F-059) | `test_f059_r22_indices_cambiados_de_referencia_son_sin_respuesta` |
+| 52 | `domain/models/volcado.py:624` | comparacion | `or elemento.get("referencia_externa") != parte.referencia_externa → or elemento.get("referencia_externa") == parte.referencia_externa` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 53 | `domain/models/volcado.py:628` | not | `if not isinstance(crudo, str) or crudo not in {e.value for e in validos}: → if isinstance(crudo, str) or crudo not in {e.value for e in validos}:` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 54 | `domain/models/volcado.py:628` | logico | `if not isinstance(crudo, str) or crudo not in {e.value for e in validos}: → if not isinstance(crudo, str) and crudo not in {e.value for e in validos}:` | muerto (F-059) | `test_f059_r22_un_estado_que_no_es_de_los_cuatro[previsto]` |
+| 55 | `domain/models/volcado.py:633` | not | `if not _es_entero(ide) or ide < 1: → if _es_entero(ide) or ide < 1:` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 56 | `domain/models/volcado.py:633` | logico | `if not _es_entero(ide) or ide < 1: → if not _es_entero(ide) and ide < 1:` | muerto (F-059) | `test_f059_r22_con_parte_sin_ide_entero[None-creado]` |
+| 57 | `domain/models/volcado.py:633` | comparacion | `if not _es_entero(ide) or ide < 1: → if not _es_entero(ide) or ide <= 1:` | muerto (F-059) | `test_f059_r22_un_cod_de_otro_mes_bien_formado_vale_y_el_ide_1_tambien` |
+| 58 | `domain/models/volcado.py:633` | entero | `if not _es_entero(ide) or ide < 1: → if not _es_entero(ide) or ide < 2:` | muerto (F-059) | `test_f059_r22_un_cod_de_otro_mes_bien_formado_vale_y_el_ide_1_tambien` |
+| 59 | `domain/models/volcado.py:635` | not | `if not isinstance(cod, str) or PATRON_COD_PARTE.fullmatch(cod) is None: → if isinstance(cod, str) or PATRON_COD_PARTE.fullmatch(cod) is None:` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 60 | `domain/models/volcado.py:635` | logico | `if not isinstance(cod, str) or PATRON_COD_PARTE.fullmatch(cod) is None: → if not isinstance(cod, str) and PATRON_COD_PARTE.fullmatch(cod) is None:` | muerto (F-059) | `test_f059_r22_con_parte_sin_cod_bien_formado[None-creado]` |
+| 61 | `domain/models/volcado.py:644` | not | `if not isinstance(codigo, str) or PATRON_CODIGO_MOTIVO.fullmatch(codigo) is None: → if isinstance(codigo, str) or PATRON_CODIGO_MOTIVO.fullmatch(codigo) is None:` | muerto (F-059) | `test_f059_r22_r35_rechazado_y_no_procesado_solo_con_el_codigo` |
+| 62 | `domain/models/volcado.py:644` | logico | `if not isinstance(codigo, str) or PATRON_CODIGO_MOTIVO.fullmatch(codigo) is None: → if not isinstance(codigo, str) and PATRON_CODIGO_MOTIVO.fullmatch(codigo) is None:` | muerto (F-059) | `test_f059_r22_r35_sin_codigo_de_motivo_admisible[None-rechazado]` |
+| 63 | `domain/models/volcado.py:671` | not | `if not isinstance(datos, Mapping): → if isinstance(datos, Mapping):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 64 | `domain/models/volcado.py:674` | not | `if not isinstance(partes, list) or not isinstance(dry_run, bool): → if isinstance(partes, list) or not isinstance(dry_run, bool):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 65 | `domain/models/volcado.py:674` | logico | `if not isinstance(partes, list) or not isinstance(dry_run, bool): → if not isinstance(partes, list) and not isinstance(dry_run, bool):` | muerto (F-059) | `test_f059_r23_sin_la_forma_de_la_pasarela_no_hay_interpretacion[datos4]` |
+| 66 | `domain/models/volcado.py:674` | not | `if not isinstance(partes, list) or not isinstance(dry_run, bool): → if not isinstance(partes, list) or isinstance(dry_run, bool):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 67 | `domain/models/volcado.py:676` | comparacion | `if dry_run == (modo is ModoVolcado.VOLCADO): → if dry_run != (modo is ModoVolcado.VOLCADO):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 68 | `domain/models/volcado.py:680` | not | `if not isinstance(elemento, Mapping): → if isinstance(elemento, Mapping):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 69 | `domain/models/volcado.py:683` | not | `if not _es_entero(indice) or not 0 <= indice < len(mandados): → if _es_entero(indice) or not 0 <= indice < len(mandados):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 70 | `domain/models/volcado.py:683` | logico | `if not _es_entero(indice) or not 0 <= indice < len(mandados): → if not _es_entero(indice) and not 0 <= indice < len(mandados):` | muerto (F-059) | `test_f059_r22_r23_de_mas_o_indices_imposibles[de_mas]` |
+| 71 | `domain/models/volcado.py:683` | not | `if not _es_entero(indice) or not 0 <= indice < len(mandados): → if not _es_entero(indice) or 0 <= indice < len(mandados):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 72 | `domain/models/volcado.py:683` | entero | `if not _es_entero(indice) or not 0 <= indice < len(mandados): → if not _es_entero(indice) or not 1 <= indice < len(mandados):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 73 | `domain/models/volcado.py:683` | comparacion | `if not _es_entero(indice) or not 0 <= indice < len(mandados): → if not _es_entero(indice) or not 0 < indice < len(mandados):` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| 74 | `domain/models/volcado.py:683` | comparacion | `if not _es_entero(indice) or not 0 <= indice < len(mandados): → if not _es_entero(indice) or not 0 <= indice <= len(mandados):` | muerto (F-059) | `test_f059_r22_r23_de_mas_o_indices_imposibles[de_mas]` |
+| 75 | `domain/models/volcado.py:726` | logico | `if r.estado is not EstadoEvento.CREADO or anterior is None: → if r.estado is not EstadoEvento.CREADO and anterior is None:` | muerto (F-059) | `test_f059_r26_solo_un_creado[idempotente]` |
+| 76 | `domain/models/volcado.py:729` | logico | `if parte is not None and parte.sigrid_ide != r.sigrid_ide: → if parte is not None or parte.sigrid_ide != r.sigrid_ide:` | muerto (F-059) | `test_f059_r26_con_el_mismo_ide_no_lo_es` |
+| 77 | `domain/models/volcado.py:729` | comparacion | `if parte is not None and parte.sigrid_ide != r.sigrid_ide: → if parte is not None and parte.sigrid_ide == r.sigrid_ide:` | muerto (F-059) | `test_f059_r26_un_creado_con_otro_ide_es_un_posible_duplicado` |
+| 78 | `domain/models/volcado.py:749` | not | `if not isinstance(codigo, str): → if isinstance(codigo, str):` | muerto (F-059) | `test_f059_r24_todos_no_procesados_con_el_codigo_de_lote[escritura_reclamaciones_deshabilitada]` |
+| 79 | `domain/models/volcado.py:775` | entero | `clave: sum(1 for r in lista if r.estado is estado) for clave, estado in claves → clave: sum(2 for r in lista if r.estado is estado) for clave, estado in claves` | muerto (F-059) | `test_f059_r12_el_resumen_del_ensayo` |
+| 80 | `domain/models/volcado.py:788` | not | `if not _es_entero(n) or not 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator] → if _es_entero(n) or not 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator]` | muerto (F-059) | `test_f059_r30_n_de_1_a_50[1]` |
+| 81 | `domain/models/volcado.py:788` | logico | `if not _es_entero(n) or not 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator] → if not _es_entero(n) and not 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator]` | muerto (F-059) | `test_f059_r30_n_fuera_de_rango_o_no_entero[0]` |
+| 82 | `domain/models/volcado.py:788` | not | `if not _es_entero(n) or not 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator] → if not _es_entero(n) or 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator]` | muerto (F-059) | `test_f059_r30_n_de_1_a_50[1]` |
+| 83 | `domain/models/volcado.py:788` | entero | `if not _es_entero(n) or not 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator] → if not _es_entero(n) or not 2 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator]` | muerto (F-059) | `test_f059_r30_n_de_1_a_50[1]` |
+| 84 | `domain/models/volcado.py:788` | comparacion | `if not _es_entero(n) or not 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator] → if not _es_entero(n) or not 1 < n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator]` | muerto (F-059) | `test_f059_r30_n_de_1_a_50[1]` |
+| 85 | `domain/models/volcado.py:788` | comparacion | `if not _es_entero(n) or not 1 <= n <= MAX_PARTES_POR_LLAMADA:  # type: ignore[operator] → if not _es_entero(n) or not 1 <= n < MAX_PARTES_POR_LLAMADA:  # type: ignore[operator]` | muerto (F-059) | `test_f059_r30_n_de_1_a_50[50]` |
+
+#### Mutantes a mano (lo que la herramienta no muta)
+
+La herramienta solo muta comparaciones, aritmética, `and`/`or`, `not`, booleanos y enteros: no toca `in`/`not
+in`, `is`/`is not`, textos, conjuntos, el orden de una tupla, lo que se devuelve ni qué campo se usa. Para eso,
+88 mutantes a mano sobre `e0e93db`, en el worktree desechable, con los tests de F-059 solos (y, si sobrevivía,
+los de F-056 y F-060 del bloque). **88 de 88 muertos por tests de F-059; ninguno lo caza solo otra feature.**
+
+| Id | Fichero | Mutación | Resultado | Primer test que lo caza |
+|---|---|---|---|---|
+| M01 | `domain/models/situacion_volcado.py` | ESTADOS_CON_PARTE sin idempotente | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| M02 | `domain/models/situacion_volcado.py` | ESTADOS_EN_DUDA sin sin_respuesta | muerto (F-059) | `test_f059_r1_el_ultimo_enviado_o_sin_respuesta_deja_en_duda[sin_respuesta]` |
+| M03 | `domain/models/situacion_volcado.py` | ESTADOS_EN_DUDA con rechazado | muerto (F-059) | `test_f059_r1_el_ultimo_rechazado_o_no_procesado_no_cambia_nada[rechazado]` |
+| M04 | `domain/models/situacion_volcado.py` | estado_de_volcado(None) -> en_duda | muerto (F-059) | `test_f059_r1_sin_eventos_no_hay_estado_de_volcado` |
+| M05 | `domain/models/situacion_volcado.py` | volcada `is not None` -> `is None` | muerto (F-059) | `test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_mandar` |
+| M06 | `domain/models/situacion_volcado.py` | `in ESTADOS_EN_DUDA` -> `not in` | muerto (F-059) | `test_f059_r1_el_ultimo_enviado_o_sin_respuesta_deja_en_duda[enviado]` |
+| M07 | `domain/models/situacion_volcado.py` | en_duda devuelve volcada | muerto (F-059) | `test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_mandar` |
+| M08 | `domain/models/situacion_volcado.py` | invariante: `volcada is None` -> `is not None` | muerto (F-059) | (recogida de `test_f059_estados.py`: sus `parametrize` construyen una `volcada()` válida, que el mutante rechaza) |
+| M09 | `domain/models/situacion_volcado.py` | invariante: `in` -> `not in` | muerto (F-059) | (recogida de `test_f059_estados.py`: `en_duda()` deja de poder construirse) |
+| M10 | `domain/models/situacion_volcado.py` | EstadoVolcado.VOLCADA = 'volcado' | muerto (F-059) | `test_f059_r1_un_creado_deja_volcada` |
+| M11 | `domain/models/situacion_volcado.py` | EstadoEvento.SIN_RESPUESTA mal escrito | muerto (F-059) | `test_f059_r32_los_estados_y_los_modos_de_un_evento` |
+| M12 | `domain/models/revision.py` | estado_de sin la precedencia de §4.1 | muerto (F-059) | `test_f059_r1_la_tabla_de_cuatro_uno` |
+| M13 | `domain/models/revision.py` | precedencia: `is not None` -> `is None` | muerto (F-059) | `test_f059_r11_las_candidatas_van_en_el_orden_pedido` |
+| M14 | `domain/models/revision.py` | volcada admite recuperar | muerto (F-059) | `test_f059_r2_desde_volcada_y_en_duda_ninguna_accion[volcada]` |
+| M15 | `domain/models/revision.py` | en_duda admite editar | muerto (F-059) | `test_f059_r2_desde_volcada_y_en_duda_ninguna_accion[en_duda]` |
+| M16 | `domain/models/revision.py` | activas incluye volcada | muerto (F-059) | `test_f059_r4_d7_activas_sin_descartada_ni_volcada` |
+| M17 | `domain/models/revision.py` | activas excluye en_duda | muerto (F-059) | `test_f059_r4_d7_activas_sin_descartada_ni_volcada` |
+| M18 | `domain/models/revision.py` | en_duda no candidata | muerto (F-059) | `test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_mandar` |
+| M19 | `domain/models/revision.py` | volcada candidata | muerto (F-059) | `test_f059_r3_una_volcada_no_es_candidata_nunca` |
+| M20 | `domain/models/revision.py` | es_candidata `in` -> `not in` | muerto (F-059) | `test_f059_r11_las_candidatas_van_en_el_orden_pedido` |
+| M21 | `domain/models/revision.py` | es_candidata sin exigir el `aprobar` | muerto (F-059) | `test_f059_r3_en_duda_sin_un_aprobar_detras_no_es_candidata` |
+| M22 | `domain/models/revision.py` | _pasa `in` -> `not in` | muerto (F-059) | `test_f059_r4_d7_activas_sin_descartada_ni_volcada` |
+| M23 | `domain/models/revision.py` | EstadoRevision.VOLCADA = 'volcado' | muerto (F-059) | `test_f059_r1_seis_estados_en_su_orden` |
+| M24 | `domain/models/revision.py` | FiltroEstado sin volcada | muerto (F-059) | `test_f059_r4_los_dos_filtros_nuevos[volcada-esperado0]` |
+| M25 | `domain/models/revision.py` | SituacionDeRevision.volcado sin valor por defecto | muerto (F-059) | `test_f059_r1_la_tabla_de_cuatro_uno` |
+| M26 | `domain/models/volcado.py` | prefijo en minúsculas | muerto (F-059) | `test_f059_r5_la_referencia_es_pvi_y_el_uuid_canonico` |
+| M27 | `domain/models/volcado.py` | tipo 0001 | muerto (F-059) | `test_f059_r6_el_parte_clave_a_clave` |
+| M28 | `domain/models/volcado.py` | cod con 3 o 4 cifras | muerto (F-059) | `test_f059_r22_con_parte_sin_cod_bien_formado[RS26.10/001-creado]` |
+| M29 | `domain/models/volcado.py` | cod: punto sin escapar | muerto (F-059) | `test_f059_r22_con_parte_sin_cod_bien_formado[RS26-10/0001-creado]` |
+| M30 | `domain/models/volcado.py` | cod con \d | muerto (F-059) | `test_f059_r22_con_parte_sin_cod_bien_formado[RS\uff12\uff16.10/0001-creado]` |
+| M31 | `domain/models/volcado.py` | cod sin distinguir mayúsculas | muerto (F-059) | `test_f059_r22_con_parte_sin_cod_bien_formado[rs26.10/0001-creado]` |
+| M32 | `domain/models/volcado.py` | cod con match en vez de fullmatch | muerto (F-059) | `test_f059_r22_con_parte_sin_cod_bien_formado[RS26.10/00011-creado]` |
+| M33 | `domain/models/volcado.py` | motivo hasta 65 | muerto (F-059) | `test_f059_r22_r35_sin_codigo_de_motivo_admisible[motivo8-rechazado]` |
+| M34 | `domain/models/volcado.py` | motivo sin cifras | muerto (F-059) | `test_f059_r35_el_codigo_de_motivo_de_64_y_con_cifras_vale` |
+| M35 | `domain/models/volcado.py` | motivo con mayúsculas, blancos y guiones | muerto (F-059) | `test_f059_r22_r35_sin_codigo_de_motivo_admisible[motivo5-rechazado]` |
+| M36 | `domain/models/volcado.py` | motivo con match | muerto (F-059) | `test_f059_r22_r35_sin_codigo_de_motivo_admisible[motivo6-rechazado]` |
+| M37 | `domain/models/volcado.py` | precondición sin base_de_datos_no_permitida | muerto (F-059) | `test_f059_r24_todos_no_procesados_con_el_codigo_de_lote[base_de_datos_no_permitida]` |
+| M38 | `domain/models/volcado.py` | rechazo sin lote_demasiado_grande | muerto (F-059) | `test_f059_r24_todos_no_procesados_con_el_codigo_de_lote[lote_demasiado_grande]` |
+| M39 | `domain/models/volcado.py` | rechazo con un código de parte | muerto (F-059) | `test_f059_r24_r35_un_codigo_que_no_es_de_lote_no_se_guarda[oficio_no_esta_en_la_obra]` |
+| M40 | `domain/models/volcado.py` | ensayo admite creado | muerto (F-059) | `test_f059_r14_en_el_ensayo_un_estado_de_escritura_es_sin_respuesta[creado]` |
+| M41 | `domain/models/volcado.py` | volcado admite previsto | muerto (F-059) | `test_f059_r22_un_estado_que_no_es_de_los_cuatro[previsto]` |
+| M42 | `domain/models/volcado.py` | volcado sin idempotente | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| M43 | `domain/models/volcado.py` | ensayo sin rechazado | muerto (F-059) | `test_f059_r12_r13_en_el_ensayo_idempotente_rechazado_y_no_procesado_valen` |
+| M44 | `domain/models/volcado.py` | orden del resumen del ensayo | muerto (F-059) | `test_f059_r12_el_resumen_del_ensayo` |
+| M45 | `domain/models/volcado.py` | resumen del volcado sin sin_respuesta | muerto (F-059) | `test_f059_r22_el_resumen_del_volcado` |
+| M46 | `domain/models/volcado.py` | referencia con el hex sin guiones | muerto (F-059) | `test_f059_r5_la_referencia_es_pvi_y_el_uuid_canonico` |
+| M47 | `domain/models/volcado.py` | referencia admite un texto | muerto (F-059) | `test_f059_r5_solo_sale_de_un_uuid[texto]` |
+| M48 | `domain/models/volcado.py` | intervinientes al revés | muerto (F-059) | `test_f059_r6_el_parte_clave_a_clave` |
+| M49 | `domain/models/volcado.py` | descripción larga = descripción | muerto (F-059) | `test_f059_r6_el_parte_clave_a_clave` |
+| M50 | `domain/models/volcado.py` | ubicación = unidad | muerto (F-059) | `test_f059_r6_el_parte_clave_a_clave` |
+| M51 | `domain/models/volcado.py` | oficio del interviniente = proveedor | muerto (F-059) | `test_f059_r6_el_parte_clave_a_clave` |
+| M52 | `domain/models/volcado.py` | descripcion_larga siempre en el cuerpo | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| M53 | `domain/models/volcado.py` | commit siempre false | muerto (F-059) | `test_f059_r6_commit_siempre_explicito[True]` |
+| M54 | `domain/models/volcado.py` | interviniente sin causante explícito | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| M55 | `domain/models/volcado.py` | sin forma_comunicacion | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| M56 | `domain/models/volcado.py` | sin database | muerto (F-059) | `test_f059_r6_el_cuerpo_clave_a_clave` |
+| M57 | `domain/models/volcado.py` | ya_volcada sin su código (ensayo) | muerto (F-059) | `test_f059_r11_ya_volcada_con_su_codigo` |
+| M58 | `domain/models/volcado.py` | ensayo sin mirar la obra | muerto (F-059) | `test_f059_r11_de_otra_obra` |
+| M59 | `domain/models/volcado.py` | ensayo: candidata solo por la lista | muerto (F-059) | `test_f059_r11_no_es_candidata_si_la_situacion_no_lo_es_aunque_la_lista_la_traiga` |
+| M60 | `domain/models/volcado.py` | ensayo: candidata solo por la situación | muerto (F-059) | `test_f059_r11_no_es_candidata_si_la_lista_no_la_trae` |
+| M61 | `domain/models/volcado.py` | causa de otra persona = de otra obra | muerto (F-059) | `test_f059_r17_de_otra_persona` |
+| M62 | `domain/models/volcado.py` | volcado no exige previsto | muerto (F-059) | `test_f059_r18_fuera_del_ensayo_si_no_salio_previsto[idempotente]` |
+| M63 | `domain/models/volcado.py` | volcado no exige el aprobar | muerto (F-059) | `test_f059_r20_revision_desactualizada_si_la_ultima_no_es_aprobar[editar]` |
+| M64 | `domain/models/volcado.py` | ya_volcada sin su código (volcado) | muerto (F-059) | `test_f059_r20_r27_ya_volcada_con_su_codigo` |
+| M65 | `domain/models/volcado.py` | volcado: `is not None` -> `is None` | muerto (F-059) | `test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo` |
+| M66 | `domain/models/volcado.py` | volcado en el orden pedido y no en el del ensayo | muerto (F-059) | `test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo` |
+| M67 | `domain/models/volcado.py` | mandadas `in` -> `not in` | muerto (F-059) | `test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo` |
+| M68 | `domain/models/volcado.py` | entero admite float | muerto (F-059) | `test_f059_r22_con_parte_sin_ide_entero[700001.0-creado]` |
+| M69 | `domain/models/volcado.py` | con parte `in` -> `not in` | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| M70 | `domain/models/volcado.py` | previsto `is` -> `is not` | muerto (F-059) | `test_f059_r22_r35_rechazado_y_no_procesado_solo_con_el_codigo` |
+| M71 | `domain/models/volcado.py` | previsto con ide y cod provisionales (D-13) | muerto (F-059) | `test_f059_r12_d13_el_previsto_sin_cod_ni_ide_provisionales_ni_filas` |
+| M72 | `domain/models/volcado.py` | motivo entero en vez del código (R35) | muerto (F-059) | `test_f059_r22_r35_rechazado_y_no_procesado_solo_con_el_codigo` |
+| M73 | `domain/models/volcado.py` | motivo en texto suelto aceptado | muerto (F-059) | `test_f059_r22_r35_sin_codigo_de_motivo_admisible[oficio_no_esta_en_la_obra-rechazado]` |
+| M74 | `domain/models/volcado.py` | índice repetido aceptado | muerto (F-059) | `test_f059_r22_r23_de_mas_o_indices_imposibles[indice_repetido]` |
+| M75 | `domain/models/volcado.py` | dry_run al revés | muerto (F-059) | `test_f059_r22_creado_e_idempotente_con_su_ide_y_su_cod` |
+| M76 | `domain/models/volcado.py` | válidos siempre los del volcado | muerto (F-059) | `test_f059_r12_d13_el_previsto_sin_cod_ni_ide_provisionales_ni_filas` |
+| M77 | `domain/models/volcado.py` | todos sin respuesta -> enviado | muerto (F-059) | `test_f059_r23_todos_sin_respuesta` |
+| M78 | `domain/models/volcado.py` | no procesados: `is None` -> `is not None` | muerto (F-059) | `test_f059_r24_todos_no_procesados_con_el_codigo_de_lote[escritura_reclamaciones_deshabilitada]` |
+| M79 | `domain/models/volcado.py` | duplicado con cualquier estado | muerto (F-059) | `test_f059_r26_solo_un_creado[idempotente]` |
+| M80 | `domain/models/volcado.py` | duplicado: cod anterior = el nuevo | muerto (F-059) | `test_f059_r26_un_creado_con_otro_ide_es_un_posible_duplicado` |
+| M81 | `domain/models/volcado.py` | precondición -> rechazo | muerto (F-059) | `test_f059_r14_r24_los_de_precondicion[escritura_reclamaciones_deshabilitada]` |
+| M82 | `domain/models/volcado.py` | resumen: `not in` -> `in` | muerto (F-059) | `test_f059_r12_el_resumen_del_ensayo` |
+| M83 | `domain/models/volcado.py` | resumen sin excluidas | muerto (F-059) | `test_f059_r12_el_resumen_del_ensayo` |
+| M84 | `domain/models/volcado.py` | resumen sin la comprobación del modo | muerto (F-059) | `test_f059_r12_r22_un_estado_que_no_es_del_modo_no_se_cuenta_a_escondidas[creado-ensayo]` |
+| M85 | `domain/models/volcado.py` | N siempre 5 | muerto (F-059) | `test_f059_r30_n_de_1_a_50[1]` |
+| M86 | `domain/models/errores.py` | EnsayoNoValido.causa = motivo | muerto (F-059) | `test_f059_r17_no_existe` |
+| M87 | `domain/models/errores.py` | VolcadoSinRespuesta sin en_duda | muerto (F-059) | `test_f059_los_ocho_errores_del_volcado` |
+| M88 | `domain/models/errores.py` | VolcadoRechazadoPorLaPasarela sin su código | muerto (F-059) | `test_f059_los_ocho_errores_del_volcado` |
+
+#### Cobertura
+
+Medida con `coverage run` sobre los tests de F-059, `test_f056_revision_dominio.py` y las dos guardias de F-006
+(no forma parte de `init.sh`, que este bloque no exige): `domain/models/volcado.py` **100 %** (280 sentencias) y
+`domain/models/situacion_volcado.py` **100 %** (47); en `errores.py` y `revision.py`, todas las líneas que añade
+F-059 están cubiertas (las que faltan en `revision.py` son el cursor de F-056, que ese subconjunto no recorre).
+La puerta `PUERTA COBERTURA` de `init.sh` la dará T23.
+
+## Evidencias del Bloque 1
+
+| Evidencia | Valor |
+|---|---|
+| Tests de F-059 | `test_f059_volcado_dominio.py` + `test_f059_estados.py`: **304 passed in 2.38s** (con el test de T3) |
+| RED (T1) | 296 failed, 7 passed contra el esqueleto neutro (traza arriba) |
+| Verificación de T2 | 1144 passed in 28.11s (los diez ficheros de `tasks.md`) |
+| Suite entera del servicio | 8425 passed, 2 failed, 129 skipped in **1563.18 s** (tras T2); los 2 rojos, la guardia R26 de F-006 por un GUID sintético mío, corregido: guardias + F-059, 369 passed |
+| Cobertura de lo nuevo | `volcado.py` 100 %, `situacion_volcado.py` 100 %; líneas cambiadas de `revision.py` y `errores.py` cubiertas |
+| Mutación (herramienta) | **85 generados, 85 muertos, 0 supervivientes, 0 timeouts**, 13042.6 s, 8 workers |
+| Reverificación contra F-059 solos | 85/85 sobre `e0e93db` (79/85 sobre `c84e979`: 6 `frozen` → test nuevo) |
+| Mutación a mano | **88/88** muertos por tests de F-059 |
+| Supervivientes abiertos | **0** |
+| Tests ajenos tocados | Solo los del grupo C de §21.3 que se pusieron rojos (tabla de T2) y la enmienda de `ARCHITECTURE.md` |
+
+## Commits del Bloque 1
+
+| Tarea | Commit |
+|---|---|
+| T0 | `477e596` |
+| T1 | `ffaf804` |
+| T2 | `c84e979` |
+| T3 | `e0e93db` (el test de inmutabilidad) y el de este informe con `progress/mutacion_F-059_bloque1.md` |
+
+**Parado aquí: review del Bloque 1.** Lo que el reviewer debería mirar primero: las decisiones de diseño 1 y 2
+de T2 (la fuente de `situaciones` del ensayo y el `None` de `interpretar_respuesta`), que condicionan los
+Bloques 2 y 4, y la observación sobre `envio` para T15.

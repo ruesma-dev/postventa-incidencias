@@ -351,6 +351,10 @@ CUERPOS_DE_ENSAYO_INVALIDOS = [
     ("incidencias-repetidas", _cuerpo_ensayo(1, 1)),
     ("incidencia-no-uuid", _cuerpo_ensayo(incidencias=["no-es-un-uuid-de-incidencia"])),
     ("incidencia-numero", _cuerpo_ensayo(incidencias=[1])),
+    # T17 (A13): un UUID que `UUID()` lee pero no en su forma canónica con guiones.
+    ("incidencia-sin-guiones", _cuerpo_ensayo(incidencias=[ID(1).hex])),
+    ("incidencia-con-llaves", _cuerpo_ensayo(incidencias=["{" + str(ID(1)) + "}"])),
+    ("incidencia-urn", _cuerpo_ensayo(incidencias=[ID(1).urn])),
 ]
 
 
@@ -427,6 +431,12 @@ CUERPOS_DE_VOLCADO_INVALIDOS = [
             ENSAYO, [], incidencias=[{"incidencia_id": "no-es-un-uuid-de-incidencia", "revision_id": 1}]
         ),
     ),
+    # T17 (A13): el ensayo y la incidencia, sin su forma canónica.
+    ("ensayo-sin-guiones", _cuerpo_volcado(ID(4242).hex, [(1, 1)])),
+    (
+        "incidencia-sin-guiones",
+        _cuerpo_volcado(ENSAYO, [], incidencias=[{"incidencia_id": ID(1).hex, "revision_id": 1}]),
+    ),
 ]
 
 
@@ -470,8 +480,13 @@ def test_f059_r10_d4_el_ensayo_no_mira_la_ventana(monkeypatch, mundo):
         (_completos(VOLCADO_PARTES_POR_LLAMADA="cinco"), "configuracion_de_volcado_invalida"),
         (_completos(VOLCADO_PARTES_POR_LLAMADA="0"), "configuracion_de_volcado_invalida"),
         (_completos(VOLCADO_PARTES_POR_LLAMADA="51"), "configuracion_de_volcado_invalida"),
+        # T17 (A17): con el entorno y `N` mal, manda el entorno (§8.3).
+        (
+            _ajustes(ENTORNO="test", VOLCADO_PARTES_POR_LLAMADA="cinco", **CONFIGURACION_INVENTADA),
+            "volcado_deshabilitado",
+        ),
     ],
-    ids=["entorno-test", "entorno-local", "sin-configuracion", "n-cinco", "n-cero", "n-51"],
+    ids=["entorno-test", "entorno-local", "sin-configuracion", "n-cinco", "n-cero", "n-51", "entorno-y-n"],
 )
 def test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer(
     monkeypatch, ajustes, codigo
@@ -503,8 +518,18 @@ def test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer(
             _completos(VOLCADO_HABILITADO="true", VOLCADO_PARTES_POR_LLAMADA="cinco"),
             "configuracion_de_volcado_invalida",
         ),
+        # T17 (A17): la ventana cerrada y `N` mal: manda la ventana (§8.3).
+        (_completos(VOLCADO_PARTES_POR_LLAMADA="cinco"), "volcado_deshabilitado"),
     ],
-    ids=["entorno-test", "ventana-cerrada", "ventana-por-defecto", "otras-ventanas", "sin-configuracion", "n-cinco"],
+    ids=[
+        "entorno-test",
+        "ventana-cerrada",
+        "ventana-por-defecto",
+        "otras-ventanas",
+        "sin-configuracion",
+        "n-cinco",
+        "ventana-y-n",
+    ],
 )
 def test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base(
     monkeypatch, ajustes, codigo
@@ -602,6 +627,8 @@ def test_f059_r12_la_respuesta_del_ensayo(mundo):
     assert dos["envio"]["descripcion_larga"] == DETALLE
     assert "descripcion_larga" not in uno["envio"]
     assert "usu" not in uno["envio"]
+    # El lote, a la base de la configuración (T17, A18).
+    assert mundo.sigrid.ensayados[0]["database"] == BASE
     texto = _texto(respuesta)
     # D-13 y R34: ni los provisionales del `previsto`, ni las `filas`, ni el mensaje.
     for nada in ("RS26.10/99", "990001", "filas", NOMBRE_INVENTADO, DNI_INVENTADO, MENSAJE_DE_LA_PASARELA, LOGIN):
@@ -1179,3 +1206,24 @@ def test_f059_r4_el_mensaje_del_filtro_nombra_los_seis_estados(mundo):
     for valor in ("activas", "todas", "nueva", "editada", "aprobada", "descartada", "volcada", "en_duda"):
         assert valor in datos["error"]
     assert "pendiente" not in datos["error"]
+
+
+# ==========================================================================
+# T17 · lo que pidieron los mutantes a mano (progress/impl_F-059.md, Bloque 4)
+# ==========================================================================
+
+
+@pytest.mark.parametrize("ruta", ["ensayo", "volcar"])
+def test_f059_r9_r15_t17_con_n_invalido_mas_de_50_sigue_siendo_400(nada_se_construye, monkeypatch, ruta):
+    """A14: el tope de la pasarela (50) se mira sin `N`; con `N` mal, el 400 llega
+    antes que el 503 de la fábrica."""
+    monkeypatch.setattr(modulo, "obtener_ajustes", lambda: _completos(VOLCADO_PARTES_POR_LLAMADA="cinco"))
+    cuerpo = (
+        _cuerpo_ensayo(*range(1, 52))
+        if ruta == "ensayo"
+        else _cuerpo_volcado(ENSAYO, [(n, 1) for n in range(1, 52)])
+    )
+
+    estado, datos = _leer(_ensayo(cuerpo) if ruta == "ensayo" else _volcar(cuerpo))
+
+    assert (estado, datos.get("codigo")) == (400, "peticion_invalida")

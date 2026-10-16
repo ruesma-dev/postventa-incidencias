@@ -35,6 +35,7 @@ correos `@ejemplo.invalid`; los identificadores, `UUID(int=n)`.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from datetime import timedelta
 from typing import Any
 from uuid import UUID
@@ -996,3 +997,109 @@ def test_f059_r28_el_panel_no_usa_sigrid_ni_los_eventos():
         pipeline.panel_de_volcado(
             OBRA, revision=mundo.revision, partes_por_llamada=5, sigrid=Prohibido("sigrid")
         )
+
+
+# ==========================================================================
+# T17 · lo que pidieron los mutantes a mano (progress/impl_F-059.md, Bloque 4)
+# ==========================================================================
+
+
+def test_f059_r30_t17_una_peticion_sin_incidencias_ni_se_ensaya_ni_se_vuelca():
+    """H01: de 1 a `N`, también en la aplicación (el borde ya lo miró)."""
+    mundo, _, ensayo_id = _ensayadas(1)
+
+    with pytest.raises(CuerpoDeVolcadoInvalido):
+        mundo.ensayar()
+    with pytest.raises(CuerpoDeVolcadoInvalido):
+        mundo.volcar(ensayo_id)
+
+    assert mundo.llamadas == []
+
+
+def _con_aprobadas(mundo: Mundo, cambiar) -> None:
+    """`aprobadas` devuelve lo que diga `cambiar` sobre las de verdad."""
+    original = mundo.revision.aprobadas
+
+    def aprobadas(*, obra_codigo: str):
+        return tuple(cambiar(original(obra_codigo=obra_codigo)))
+
+    mundo.revision.aprobadas = aprobadas  # type: ignore[method-assign]
+
+
+def test_f059_r20_t17_una_candidata_de_otra_revision_no_se_manda():
+    """H16: defensa. Con datos coherentes no puede pasar (la transacción ya mira
+    la revisión con la fila bloqueada), pero si la candidata leída no es la de
+    la revisión del ensayo, su parte no es el ensayado: fuera, sin `enviado`."""
+    mundo, revisiones, ensayo_id = _ensayadas(1, 2)
+    _con_aprobadas(
+        mundo,
+        lambda cs: (
+            replace(c, revision_id=c.revision_id + 100) if c.incidencia_id == ID(2) else c
+            for c in cs
+        ),
+    )
+
+    resultado = mundo.volcar(ensayo_id, (1, revisiones[1]), (2, revisiones[2]))
+
+    assert [(e.incidencia_id, e.motivo) for e in resultado.excluidas] == [
+        (ID(2), MX.REVISION_DESACTUALIZADA)
+    ]
+    assert [p["referencia_externa"] for p in mundo.sigrid.volcados_mandados[0]["partes"]] == [
+        referencia_de(ID(1))
+    ]
+    assert mundo.eventos(2) == [(ModoVolcado.ENSAYO, EV.PREVISTO)]
+
+
+def test_f059_r20_t17_sin_candidata_no_se_manda():
+    """H17: defensa, como la de arriba, si la candidata no está."""
+    mundo, revisiones, ensayo_id = _ensayadas(1, 2)
+    _con_aprobadas(mundo, lambda cs: (c for c in cs if c.incidencia_id != ID(2)))
+
+    resultado = mundo.volcar(ensayo_id, (1, revisiones[1]), (2, revisiones[2]))
+
+    assert [(e.incidencia_id, e.motivo) for e in resultado.excluidas] == [
+        (ID(2), MX.NO_ES_CANDIDATA)
+    ]
+    assert mundo.eventos(2) == [(ModoVolcado.ENSAYO, EV.PREVISTO)]
+
+
+def test_f059_r18_r20_t17_las_excluidas_salen_en_el_orden_pedido():
+    """H20: la huella (decidida tras `seleccionar_para_volcado`) y lo de R18,
+    juntas en el orden en que se pidieron."""
+    mundo, revisiones, ensayo_id = _ensayadas(1, 2)
+    mundo.revision.anadir(incidencia(3))
+    mundo.revision.aprobar(3)
+    mundo.revision.falsear_valores(revisiones[2], ubicacion="Cocina")
+
+    resultado = mundo.volcar(ensayo_id, (2, revisiones[2]), (3, 1), (1, revisiones[1]))
+
+    assert [(e.incidencia_id, e.motivo) for e in resultado.excluidas] == [
+        (ID(2), MX.HUELLA_NO_COINCIDE),
+        (ID(3), MX.FUERA_DEL_ENSAYO),
+    ]
+
+
+def test_f059_r25_t17_cualquier_fallo_al_guardar_tras_sigrid_es_sin_traza(caplog):
+    """H27: R25 dice «si guardar los resultados falla», no solo si la base cae."""
+    mundo, revisiones, ensayo_id = _ensayadas(1)
+    mundo.volcados.fallos["guardar_resultados"] = RuntimeError("un fallo que no es de la base")
+
+    with caplog.at_level(logging.DEBUG), pytest.raises(VolcadoSinTraza):
+        mundo.volcar(ensayo_id, (1, revisiones[1]))
+
+    errores = "\n".join(r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR)
+    assert "RuntimeError" in errores and referencia_de(ID(1)) in errores
+
+
+def test_f059_r28_t17_el_panel_lee_justo_el_tope():
+    """H35: con exactamente 10.000, no se pasa del tope."""
+    mundo = Mundo(1)
+    mundo.revision.aprobar(1)
+    situaciones = mundo.revision.listar(obra_codigo=OBRA, tope=1)
+    mundo.revision.listar_devuelve = situaciones * TOPE_LECTURA_OBRA
+    mundo.llamadas.clear()
+
+    panel = pipeline.panel_de_volcado(OBRA, revision=mundo.revision, partes_por_llamada=5)
+
+    assert mundo.llamadas == ["revision.listar"]
+    assert panel.aprobadas == TOPE_LECTURA_OBRA

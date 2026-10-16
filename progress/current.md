@@ -1,6 +1,9 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-059 · desbloqueada (humano, 2026-10-16, «ok a b1 y b2»)** · B-1 (a) y B-2 sí. El spec-author enmienda la spec; luego el
+> implementer retoma el Bloque 2 desde T4.
+
 > **F-059 · `blocked` antes de T4 (implementer, 2026-10-16)** · Bloque 1 (dominio) **APPROVED** tras re-review
 > (`9fdb222`; C-B1-1..3 corregidos en `583e6d3`). Bloque 2 parado sin código: **B-1** R17 (misma persona del
 > ensayo) choca con R33 (ninguna lectura selecciona `actor_oid`); recomendado (a) la base compara y el dominio

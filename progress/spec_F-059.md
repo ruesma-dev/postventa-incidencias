@@ -221,3 +221,23 @@ otra cosa», puntos 1–3). Anotadas en `design.md` §20 (filas B-1 y B-2).
   `sentencias_volcado.py`, importada por `repositorio_revision_pg.py` (puerto
   de §8.1 y T6).
 - Commit local: `F-059: B-1 (a) y B-2 en la spec (decisión del humano)`.
+
+## O-B2-1 · La letra de `aprobadas` (2026-10-16, mecánico derivado de la review)
+
+Pedido por la review del Bloque 2 (`progress/review_F-059.md`, punto (1) y
+O-B2-1). `design.md` §12 decía «`aprobadas` filtra con `es_candidata`»; con
+esa letra, una fila imposible (última revisión que no es un `aprobar`) se
+descartaría en silencio y habría que relajar
+`test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa`, que R41
+no deja tocar. Ahora dice lo que hace el código: **deja fuera la `volcada`
+antes de `candidata_de`; lo que no sea un `aprobar` sigue llegando a
+`candidata_de`, que lo rechaza** (doble defensa de R34 de F-056).
+
+- **Por qué es mecánico**: sobre lo que el SQL puede devolver (todas con
+  última revisión `aprobar`), los dos filtros dan lo mismo (pasan `aprobada`
+  y `en_duda`, queda fuera la `volcada`); R3 no cambia y ninguna decisión se
+  reabre. No he visto nada de fondo.
+- **Aplicado en**: `design.md` §12 (fila de `repositorio_revision_pg.py`), la
+  nota de §20 y una fila O-B2-1 en su tabla; `tasks.md` T4. §18 y T6 no
+  nombraban el filtro y no cambian.
+- Commit local: `F-059: O-B2-1, la letra de aprobadas en la spec`.

@@ -121,7 +121,8 @@
   insertar (R2, R29); `listar`/`situacion`/`aprobadas` traen la situación de
   volcado (`_select_situaciones`, `fila_a_situacion`); las filas falsas con el
   ancho nuevo; `aprobadas` con una `volcada` en la obra no falla y no la
-  devuelve. Añadir `16_` a `test_f005_ddl_idempotente_texto.py` y a
+  devuelve (la deja fuera antes de `candidata_de`; una fila que no sea un
+  `aprobar` sigue llegando a `candidata_de`, que la rechaza: O-B2-1). Añadir `16_` a `test_f005_ddl_idempotente_texto.py` y a
   `test_f056_ddl.py` (`nombres[-1]`), sin quitar nada; y ampliar igual el
   resto del grupo A de `design.md` §21.3 (excepciones de R41, F-1 (a))
   (F-028, F-030–F-034, `test_f036_t14_…`, `test_f056_r12_…` y

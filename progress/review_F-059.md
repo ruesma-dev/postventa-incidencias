@@ -392,3 +392,242 @@ Desde el scratchpad, sin `.env`:
 
 O-B1-1 (R7 recalculado en el camino del volcado, Bloque 4), O-B1-2 (`causa` → `motivo` en T15) y las propuestas
 P-1 y P-2 siguen como se escribieron arriba.
+
+## Review del Bloque 2 (la tabla y los repositorios) · 2026-10-16
+
+- **Veredicto:** **APPROVED** (sin hallazgos que corregir; cuatro observaciones para el líder y para bloques
+  posteriores).
+- **Alcance revisado:** `git diff 9fdb222..cf1c451`, sin `harness/features.json`, `BACKLOG.md` ni
+  `progress/current.md`, que son del líder. Commits: el bloqueo y su resolución (`2203879`, `3816511`, `238cfe6`, y
+  `13f9f51`, la spec con B-1 (a) y B-2, decisión del humano «ok a b1 y b2»), T4 `f50281b`, T5 `54c3278`, T6
+  `cf3b7a2`, T7 `9b4c8d5`, y T9 `64b25b8`, `42be797`, `55f27f5` y `cf1c451`.
+- **Nivel de rigor:** `critico`. Las mismas puertas que en el Bloque 1.
+
+### Qué he verificado yo, y cómo
+
+Desde el scratchpad, sin `.env`, con `services/postventa-api/.venv/Scripts/python.exe -m pytest` y rutas
+absolutas. Los mutantes, en un worktree desechable de `cf1c451`, ya retirado: `git worktree list` sin ninguno del
+scratchpad y `git status` limpio.
+
+| Verificación | Resultado |
+|---|---|
+| **Suite entera del servicio** (`tests` y `tests_bbdd`) | **8597 passed, 233 skipped in 704.37s**, las mismas cifras que el implementer. Los de base se saltan sin DSN |
+| `tests_bbdd/tests/test_f059_bbdd_volcado.py`, `--collect-only` | **46 tests collected**, como dice el informe |
+| `ruff check` (desde la raíz) sobre los 7 ficheros de producción del bloque, los 3 tests nuevos y `test_f056_repositorio_revision.py`/`test_f056_ddl.py` | `All checks passed!` |
+| Recálculo puro del alcance (`alcance_de_feature("F-059", base="13f9f51")`) | 7 ficheros, **848** líneas (13 + 116 + 17 + 49 + 290 + 33 + 330). Coincide |
+| Recálculo de los mutantes (`generar_mutantes`) | **26** (1 + 0 + 0 + 2 + 6 + 2 + 15). Coincide; los n.º 1, 3, 9, 15, 21 y 26 salen idénticos a la tabla del informe |
+| Ocho mutantes de la herramienta (n.º 2, 4, 6, 10, 11, 13, 17 y 21), contra los tests de F-059 solos | 8/8 muertos, cada uno por el mismo test que da la tabla del implementer |
+| Mutantes a mano del reviewer (21), contra los tests de F-059 solos | 21/21 muertos (abajo) |
+| Barrido de datos sensibles en el diff | Ver «Datos sensibles» |
+
+**Campaña no reejecutada: 75 min según el informe** (4484.1 s, por encima de los 5 minutos del protocolo). Me
+quedo en el recálculo puro, en la reverificación de ocho mutantes de la herramienta y en mis mutantes a mano. El
+coste por mutante, 4484.1 × 8 ÷ 26 ≈ **1380 s**, es coherente con una suite que tarda entre 700 y 1300 s según la
+carga: nada sospechoso.
+
+### Lo que el líder pidió mirar primero
+
+**(1) `aprobadas` deja fuera solo la `volcada`, no filtra con `es_candidata` (§12). Es una desviación aceptable, y
+no hace falta volver al spec-author por el fondo, pero sí por la letra (O-B2-1).** El razonamiento:
+
+- Las filas que devuelve `select_aprobadas` tienen todas como última revisión un `aprobar` (lo filtra el SQL).
+  Para ellas, `estado_de` solo puede dar `aprobada`, `en_duda` o `volcada`. Así que «no es `volcada`» y
+  `es_candidata` **dan lo mismo en todo lo que el SQL puede devolver**: pasan la `aprobada` y la `en_duda`, y
+  queda fuera la `volcada`. R3 se cumple al pie de la letra.
+- Solo se diferencian ante una fila **imposible** (una última revisión que no es `aprobar`). Con `es_candidata` se
+  la tragaría en silencio. Con el filtro estrecho llega a `candidata_de` y explota, que es lo que exige
+  `test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa`. Ese test no está en las excepciones de
+  R41, así que la letra de §12 obligaba a **relajar** un test que R41 no deja tocar: la spec se contradecía, y el
+  implementer ha elegido la lectura que cumple R3 y R41 a la vez. Me parece la correcta.
+- Lo comprueban mis A01 (dejar fuera también la `en_duda`: muerto) y los A04 y A05 del implementer.
+- Queda un matiz, sin efecto práctico: una fila imposible **y** `volcada` se descarta sin explotar, porque la
+  precedencia de §4.1 la pone en `volcada` antes de mirar la revisión. El SQL no puede devolverla.
+
+**(2) B-1 (a): R33 al pie de la letra y R17 entero.**
+- **R33:** ninguna lista de columnas lee `actor_oid`. La única sentencia que lo nombra fuera de los `INSERT` es
+  `select_ensayo`, y solo dentro de la comparación `(actor_oid = %s)`, con el `oid` de quien pide como
+  **parámetro**. El orden de los parámetros es correcto: `(actor_oid, ensayo_id, modo)`, que casa con los tres
+  `%s`; mi H07, que los cruza, muere. `test_f059_r33_ninguna_lectura_selecciona_actor_oid` mira cada lectura
+  (las de F-059 y las tres de F-056 que ganan las `LATERAL`) **y su texto entero**, y tiene su control no ciego.
+  Mis H08 (`ORDER BY …, actor_oid`) y H09 (`v.actor_oid` dentro de una `LATERAL`, sin que salga en la lista de
+  fuera) **mueren**: el control no se deja engañar por un `actor_oid` escondido en una subconsulta. Ningún log ni
+  mensaje lleva el `oid` (`test_f059_r34_ningun_log_del_repositorio_lleva_oid_ni_correo`, y el
+  `PersistenciaNoDisponible` de `_Transaccional` no lleva parámetros).
+- **R17:** siguen los cuatro motivos, en su orden (`test_f059_r17_el_orden_obra_persona_caducidad`; D02 del
+  implementer), el 29:59 frente al 30:00 (`test_f059_r17_a_los_30_minutos_caduca`) y `de_otra_persona`, que sale
+  ahora de `not ensayo.de_la_persona`. `de_la_persona` es la conjunción de **todas** las filas
+  (`all(fila[2] …)`). Mis H05 (`is not None`, que daría por buena una comparación `False`) y H06 (`any`) mueren.
+  `test_f059_r17_r33_b1_el_dominio_no_ve_ningun_oid` fija que ni `Ensayo` ni `validar_ensayo` tienen un `oid`.
+  Los tests de R17 del Bloque 1 se han **adaptado** a la firma nueva (`de_la_persona`) sin quitar ningún caso: es
+  lo que decidió el humano en B-1 (a).
+
+**(3) V05d (`if estado:` en vez de `estado in _BLOQUEAN_LA_REVISION`).** Estoy de acuerdo: **no cambia el
+programa.** `estado` sale de `estado_de_volcado`, que solo devuelve `None` o uno de los dos miembros de
+`EstadoVolcado` (textos no vacíos, verdaderos), y los dos están en el conjunto. Es la misma categoría que A5 y A8
+de la re-review del Bloque 1, y vale el mismo párrafo: si el humano quiere la regla literal, basta con su visto
+bueno. Escribir los dos estados uno a uno, con sus mutantes V05a a V05c muertos, es mejor código que el
+`estado is not None` de antes. Mi A02 (bloquear solo la `volcada`) también muere.
+
+**(4) La primera campaña, parada con un mutante equivalente dado por muerto bajo carga.** El informe lo cuenta
+sin maquillar, y la consecuencia está bien sacada: el veredicto «muerto» de la herramienta no dice **qué test**
+lo mató, y bajo carga puede contar como muerto un fallo que no tiene que ver con el mutante. Ya pasó en el Bloque
+1 con `PosibleDuplicado`. La defensa que ha aplicado el implementer, reverificar cada mutante contra los tests de
+la feature, es la correcta, y la he comprobado con ocho muestras. El mutante en cuestión (`strict=False` en el
+`zip` de `guardar_ensayo`) ya no existe en el código final: ese `strict` se quitó por redundante. Lo convierto en
+una propuesta de mejora del arnés (P-3, abajo).
+
+**(5) Excepciones de R41 (el grupo A y el r12 de B-2), comparadas con `9fdb222`.** Los once tests del grupo A más
+el de B-2, y nada más. Cada cambio sustituye una igualdad exacta por otra igualdad exacta con el `16_` (o con
+`volcados_sigrid.actor_correo`) añadido, y lleva su comentario
+`F-059 (R41, F-1 (a); design.md §21.3 A)`:
+
+| Test | Cambio | ¿Amplía sin relajar? |
+|---|---|---|
+| `test_f005_…::test_f005_r1_…`, `test_f028_…`, `test_f036_ddl.py::test_f036_t14_…` | + `"16_volcados_sigrid.sql"` al final de la lista exacta | Sí |
+| `test_f030_…`, `test_f031_…`, `test_f032_…`, `test_f033_…`, `test_f034_…` (`no_hay_ni_un_fichero_de_ddl_nuevo`) | `== DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056 + ("16_…",)`, dentro de la función; las constantes, sin tocar | Sí |
+| `test_f056_ddl.py::test_f056_r36_…` | `nombres[-1] == 15_` pasa a `nombres[-2] == 15_` **y** `nombres[-1] == 16_` | Sí: más estricta |
+| `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_…` (B-2) | La igualdad exacta pasa a las dos columnas | Sí |
+| `test_f056_alcance_cerrado.py::test_f056_r12_solo_15_…` | `== ["15_…", "16_…"]` | Sí |
+| `test_f060_alcance_cerrado.py::test_f060_r37_los_sql_son_los_quince_de_antes` | `== (*SQL_DE_LA_BASE, "16_…")`; la constante, sin tocar | Sí |
+
+`test_f056_repositorio_revision.py` (grupo C: «el ancho de las filas falsas de `_select_situaciones`, `aprobadas`
+y `registrar`»): las cinco líneas que se quitan se sustituyen por la misma aserción con la cifra nueva o en la
+posición nueva (`count("LEFT JOIN LATERAL") == 4`, `len(sql) == 4`, el `INSERT` en `sql[3]`), y cada una gana
+además una aserción sobre lo nuevo. Los casos añadidos se llaman `test_f059_*`. Lo demás del fichero (la fila con
+el ancho nuevo, `LEIDAS_DEL_VOLCADO` escrita a mano) es lo que R41 autoriza. `test_f056_r34_…` y
+`test_f056_r7_r22_bloquea_las_dos_en_orden_fijo_y_mira_las_dos` **no** se tocan, y pasan. Ningún otro test ajeno
+aparece en el diff.
+
+### El código, contra la spec
+
+- **`16_volcados_sigrid.sql`** es literal con `design.md` §9: las 16 columnas, los dos `CHECK` de dominio, los
+  cuatro de fila y los dos índices. Lleva la cabecera de §9, solo el esquema `postventa`, nada de servidor y nada
+  aplicado contra ninguna base. El `%` del `LIKE 'PVI-%'` es seguro: `arranque._aplicar` ejecuta cada sentencia
+  **sin parámetros**, y psycopg 3 no interpreta los `%` sin parámetros. T8 lo confirmará contra la base.
+- **`sentencias_volcado.py`** es puro y hoja. Ningún valor recibido se interpola; las dos `LATERAL` (el **primer**
+  `creado`/`idempotente` de cualquier modo, por `evento_id` ascendente, y el **último** de modo `volcado`, por
+  `evento_id` descendente) son §4.1 y R4.
+- **`anotar_enviados`** hace R20 en **una** transacción: `select_bloquear` de F-056 (la misma sentencia y el mismo
+  orden que `registrar` y `registrar_lote`, §21.5), después la lectura, la decisión **dentro**, los `INSERT` de los
+  `enviado` y el `COMMIT`. Nunca `pg_advisory_lock`.
+- **R2 en `_registrar`**: el orden es bloqueo → últimas → situación de volcado → R2 → frescura → `INSERT` (decisión
+  2 del implementer). La lectura va tras el `FOR UPDATE` y dentro de la transacción, y R2 manda sobre la frescura,
+  como pide §12. `registrar_lote` y `_registrar_lote` (F-060) no cambian.
+- `RevisionPort` no cambia. Lo nuevo va en `RepositorioVolcadoPort`, con las cinco operaciones de §8.1 enmendado.
+- La hexagonal se respeta: `domain/ports/volcado.py` solo importa del dominio, y la infraestructura importa de la
+  infraestructura y del dominio. Todos los ficheros llevan la ruta en la primera línea, y no hay `print`, `TODO` ni
+  dependencias nuevas.
+
+### Orden (punto 7 del protocolo): aplicado
+
+R2 y R20 son requisitos de **orden** en una feature `critico` («dentro de la transacción que bloquea», «solo tras el
+`COMMIT` se llama a Sigrid»). He bajado cada puerta un paso por cada colaborador al que precede, en la copia
+desechable y solo con los tests de F-059 (`-k test_f059` sobre los cinco ficheros del bloque):
+
+| Id | Mutación de orden | Resultado | Test de F-059 que la caza |
+|---|---|---|---|
+| O01 | `_registrar` sin la comprobación de R2 | muerto | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| O02 | La lectura de R2 **antes** del `FOR UPDATE` | muerto | `test_f059_r2_se_lee_tras_el_bloqueo_y_solo_la_de_la_propia` |
+| O03 | La lectura de R2 entre el bloqueo y la de las últimas | muerto | `test_f059_r2_se_lee_tras_el_bloqueo_y_solo_la_de_la_propia` |
+| O07 | R2 **después** del `INSERT` de la revisión | muerto | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| O04 | `anotar_enviados`: leer antes de bloquear (el bloqueo después) | muerto | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| O06 | `anotar_enviados` sin bloquear | muerto | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| O05 | `anotar_enviados`: decidir **fuera** de la transacción (bloqueo y lectura en una, `INSERT` en otra) | muerto | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+
+Los siete los caza un test **de F-059**, no una suite vecina. La serialización real entre conexiones (que el que
+entra segundo espere y vea al primero) solo la puede probar T8.
+
+### Mutantes a mano del reviewer (además de los de orden)
+
+Incluyen el encargo pendiente del humano: `x is not None` → `x` y `x is None` → `not x` en las líneas nuevas.
+Las líneas nuevas con esa forma son cuatro, todas en `sentencias_volcado.py`, y son H01 a H04:
+
+| Id | Mutación | Resultado | Test de F-059 que lo caza |
+|---|---|---|---|
+| H01 | `fila_a_volcado`: `if ide is not None` → `if ide` | muerto | `test_f059_r1_lo_que_decide_que_haya_parte_es_la_fila_y_no_su_valor` |
+| H02 | `fila_a_volcado`: `if estado is not None` → `if estado` | muerto | `test_f059_r1_lo_que_decide_que_haya_parte_es_la_fila_y_no_su_valor` |
+| H03 | `fila_a_bloqueada`: `accion is None` → `not accion` | muerto | `test_f059_r20_una_accion_vacia_no_es_sin_revision` |
+| H04 | `_con_zona`: `tzinfo is None` → `not tzinfo` | muerto | `test_f059_r32_lo_que_decide_la_zona_es_que_la_haya_y_no_su_veracidad` |
+| H05 | `de_la_persona` con `is not None` (un `False` contaría) | muerto | `test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[una-de-otra]` |
+| H06 | `de_la_persona` con `any` | muerto | `…_de_la_persona_solo_si_lo_es_en_todas_las_filas[la-ultima-de-otra]` |
+| H07 | `select_ensayo` con los parámetros cruzados | muerto | `test_f059_r17_b1_el_ensayo_compara_la_persona_en_la_base` |
+| H08 | `ORDER BY evento_id, actor_oid` | muerto | `test_f059_r17_b1_el_ensayo_compara_la_persona_en_la_base` |
+| H09 | `v.actor_oid` dentro de la `LATERAL` del último | muerto | `test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision` |
+| A01 | `aprobadas` deja fuera también la `en_duda` | muerto | `test_f059_r3_aprobadas_con_una_volcada_no_falla_y_no_la_devuelve` |
+| A02 | R2 solo con la `volcada` | muerto | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| A04 | El `enviado` con la referencia en minúsculas | muerto | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| A05 | `situaciones` abre la base sin pedidas | muerto | `test_f059_t6_situaciones_de_ninguna_no_abre_nada` |
+
+Hubo dos más que descarto por errata mía, no por equivalencia del código: un `[::-1][::-1]` y un diccionario por
+comprensión sobre una lista vacía, que son la identidad y no mutan nada. Los he sustituido por O07 y A05.
+
+**En total, 21 mutantes míos que cambian el programa, y los 21 mueren con un test de F-059.** Con los 83 a mano
+del implementer y los 26 de la herramienta (reverificados: 26/26 contra F-059 solos, ocho de ellos comprobados
+por mí), no queda **ningún superviviente** abierto. V05d está razonado en el punto (3).
+
+### T7 y lo que necesita T8
+
+T7 está lista para T8:
+- Recoge 46 casos y se salta entero sin `POSTVENTA_PG_TEST_DSN`. El conftest aborta con un DSN que no sea local.
+- `infra/pruebas_bbdd_efimera.ps1` ejecuta `pytest tests_bbdd` entero, así que lo incluye.
+- Borra sus filas de `volcados_sigrid` antes y después de cada test, para no romper la limpieza de
+  `test_f060_bbdd_lote.py`.
+- Usa datos ficticios (obra `9904`, `uuid4`, `@ejemplo.invalid`).
+- Los tres casos de dos conexiones esperan con `ESPERA = 1.0` y `join(timeout=10)`. El informe ya avisa de qué
+  rojo es carga (repetir) y cuál es defecto (`DeadlockDetected`, o un hilo que no termina).
+
+T8 sigue siendo MANUAL del humano y **bloquea el cierre**.
+
+### Datos sensibles
+
+Patrones: GUID, correos, IPv4 y `password|secret|token|AccountKey`, sobre el diff entero.
+- **GUID:** ninguno.
+- **Correos:** `persona.volcado@ejemplo.invalid` y `otra.persona@ejemplo.invalid`.
+- **IPs:** ninguna.
+- **«password»:** solo `contrasena-inventada` en los tests de la fábrica, la firma `conectar(dsn, *, password)` del
+  doble y la línea del barrido del propio informe.
+- **Obras:** `9901`, `9902` y `9904`.
+
+### Checkpoints (los que cambian respecto al Bloque 1)
+
+- N/A · **C1 `init.sh`**: fuera del encargo, por la regla del `.env`. La puerta completa es T23. En su lugar, la
+  suite entera, en verde, desde un directorio sin `.env`.
+- N/A · **C2 / C4 `progress/current.md`**: es del líder. **Para el líder:** T8 todavía no figura allí como MANUAL
+  pendiente con su comando (`powershell -ExecutionPolicy Bypass -File infra\pruebas_bbdd_efimera.ps1`, 46 casos
+  de F-059 esperados); hay que añadirla (O-B2-3).
+- [x] **C3**: hexagonal, primeras líneas, sin `print` ni secretos, append-only (ningún `UPDATE`/`DELETE`/`TRUNCATE`
+  en el código del servicio; R33), nunca consultivo, solo el esquema propio.
+- [x] **C4**: R1–R4 (situación de volcado en la fila), R2/R29, R3, R13 y R22–R24 (guardar), R17 (B-1 (a)), R20,
+  R32 y R33, cada uno con sus `test_f059_*`; los unit tests no tocan red ni base (`ConexionDoble`).
+- [x] **C4 bis · RED**: traza pegada (171 failed, 328 passed, más los 12 del grupo A rojos por el `16_`).
+- [x] **C4 bis · cobertura**: 100 % de lo nuevo según el informe; todas las líneas de F-059 de
+  `repositorio_revision_pg.py` y `fabrica.py` cubiertas. La `PUERTA COBERTURA` es de T23.
+- [x] **C4 bis · mutación**: informe de la herramienta 26/26/0/0, recalculado; los muertos, comprobados por
+  muestreo y con mutantes propios; cero supervivientes abiertos.
+- [x] **C4 bis · orden**: aplicado (siete mutantes de orden, todos muertos por F-059).
+- [x] **C4 bis · «Evidencias»**: con los workers (8).
+- N/A · **C4 ter**: no hay `harness/rutas_sensibles.json`.
+- [x] **C5**: T4–T7 y T9 con sus commits `F-059 Tn:`; T8, MANUAL pendiente; árbol limpio.
+
+### Observaciones (no bloquean)
+
+- **O-B2-1 · `design.md` §12 tiene que decir lo que hace el código.** Que un spec-author cambie «`aprobadas` filtra
+  con `es_candidata`» por «deja fuera la `volcada` antes de `candidata_de`; lo que no sea un `aprobar` sigue
+  llegando a `candidata_de`, que lo rechaza (doble defensa de R34 de F-056, que R41 no deja relajar)». Es un cambio
+  mecánico (R3 no cambia) y conviene hacerlo antes de T20.
+- **O-B2-2 · Para el Bloque 4: `guardar_ensayo` no debe recibir un `sin_respuesta`.** El `CHECK` de fila lo
+  rechaza en un ensayo (T7 lo prueba) y el resultado sería un `CheckViolation`, que `_Transaccional` traduce a
+  503, cuando R14 pide **502 sin guardar nada**. La aplicación tiene que convertir antes cualquier `sin_respuesta`
+  del ensayo en `EnsayoSinRespuesta` (la nota de `interpretar_respuesta` ya lo dice), con su test en el pipeline.
+- **O-B2-3 · T8 en `progress/current.md`** (el punto de C2/C4 de arriba).
+- **O-B1-1 sigue abierta.** `anotar_enviados` decide con `seleccionar_para_volcado`, que compara las huellas
+  guardadas. El recálculo de R7 sobre los valores del parte que se manda es del Bloque 4.
+
+### Propuesta de automejora (no aplicada)
+
+- **P-3 · Que `harness.mutacion` anote el test que mata cada mutante** (vale para cualquier proyecto: si se
+  aprueba, se porta a `arnes-base`). Por ejemplo, el primer `FAILED` de la salida de `pytest -x` en una columna
+  del informe. Hoy un «muerto» no distingue entre lo que vigila un test y un fallo ajeno bajo carga; en este
+  proyecto ha pasado ya dos veces (`PosibleDuplicado` en el Bloque 1 y `strict=False` en la primera campaña del
+  Bloque 2). Con esa columna, la reverificación contra los tests de la feature, que hoy hace a mano el implementer
+  y comprueba por muestreo el reviewer, pasaría a ser una lectura del informe. Complementa P-1 y P-2.

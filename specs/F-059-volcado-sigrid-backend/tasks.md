@@ -144,7 +144,7 @@
   `validar_ensayo(ensayo, *, obra, ahora)` (piezas aprobadas del Bloque 1,
   citadas en el informe). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_repositorio_volcado.py tests/test_f059_volcado_dominio.py tests/test_f056_repositorio_revision.py tests/test_f060_repositorio_lote.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
-- [ ] **T7**: `tests_bbdd/tests/test_f059_bbdd_volcado.py`: DDL dos veces y
+- [x] **T7**: `tests_bbdd/tests/test_f059_bbdd_volcado.py`: DDL dos veces y
   nada en `public`; cada `CHECK` (estado desconocido, `creado` sin `cod`,
   `rechazado` sin motivo, `ensayo` con `ensayo_id`, referencia sin `PVI-`);
   claves ajenas; append-only; **dos conexiones**: (a) `anotar_enviados` y

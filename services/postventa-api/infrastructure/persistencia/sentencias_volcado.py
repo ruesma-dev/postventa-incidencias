@@ -243,40 +243,40 @@ def fila_a_volcado(fila: Sequence[Any]) -> SituacionDeVolcado:
     """Las columnas de las dos `LATERAL`: el parte, si lo hay, y el último de
     modo `volcado`, si lo hay. Sin eventos, `SituacionDeVolcado(None, None)`.
 
-    Una fila con columnas de más o de menos no se lee a medias: los dos `zip`
-    son estrictos (`ValueError`).
+    Las columnas, en el orden de `_LEIDAS_DEL_PARTE` y `_LEIDAS_DEL_ULTIMO`.
+    Una fila con columnas de más o de menos no se lee a medias: no se puede
+    desempaquetar (`ValueError`).
     """
-    parte = dict(zip(_LEIDAS_DEL_PARTE, fila[: len(_LEIDAS_DEL_PARTE)], strict=True))
-    ultimo = dict(zip(_LEIDAS_DEL_ULTIMO, fila[len(_LEIDAS_DEL_PARTE) :], strict=True))
+    ide, cod, at_parte, correo_parte, estado, motivo, at_ultimo, correo_ultimo = fila
     volcada = None
-    if parte["sigrid_ide"] is not None:
+    if ide is not None:
         volcada = ParteEnSigrid(
-            sigrid_ide=parte["sigrid_ide"],
-            sigrid_cod=parte["sigrid_cod"],
-            at_utc=_con_zona(parte["at_utc"]),
-            correo=parte["actor_correo"],
+            sigrid_ide=ide,
+            sigrid_cod=cod,
+            at_utc=_con_zona(at_parte),
+            correo=correo_parte,
         )
-    ultimo_evento = None
-    if ultimo["estado"] is not None:
-        ultimo_evento = UltimoEvento(
-            estado=EstadoEvento(ultimo["estado"]),
-            motivo=ultimo["motivo_codigo"],
-            at_utc=_con_zona(ultimo["at_utc"]),
-            correo=ultimo["actor_correo"],
+    ultimo = None
+    if estado is not None:
+        ultimo = UltimoEvento(
+            estado=EstadoEvento(estado),
+            motivo=motivo,
+            at_utc=_con_zona(at_ultimo),
+            correo=correo_ultimo,
         )
-    return SituacionDeVolcado(volcada=volcada, ultimo=ultimo_evento)
+    return SituacionDeVolcado(volcada=volcada, ultimo=ultimo)
 
 
 def fila_a_bloqueada(fila: Sequence[Any]) -> tuple[UUID, SituacionBloqueada]:
     """Una fila de `select_volcado_de`: la incidencia, su última revisión —todo
     `None` si no tiene— y su situación de volcado (R20). Con columnas de más o
     de menos, `ValueError` (lo que sobra o falta cae en la de volcado)."""
-    revision_id, accion, huella = fila[1 : 1 + len(_LEIDAS_DE_LA_ULTIMA)]
-    return como_uuid(fila[0]), SituacionBloqueada(
+    incidencia, revision_id, accion, huella, *volcado = fila
+    return como_uuid(incidencia), SituacionBloqueada(
         revision_id=revision_id,
         accion=None if accion is None else AccionRevision(accion),
         huella=huella,
-        volcado=fila_a_volcado(fila[1 + len(_LEIDAS_DE_LA_ULTIMA) :]),
+        volcado=fila_a_volcado(volcado),
     )
 
 

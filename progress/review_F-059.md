@@ -813,3 +813,86 @@ Barrido del diff de `services/`:
 - **O-B3-5 · `CORRECTOS` acepta 201 (§1) y R23 dice «no es 200».** La pasarela devuelve siempre 200 en §8.9, e
   `interpretar_respuesta` sigue exigiendo la forma completa, así que no tiene efecto práctico. Si el spec-author
   toca §11, que deje dicho que vale lo de `CORRECTOS`.
+
+## Re-review del Bloque 3 · 2026-10-16
+
+- **Veredicto:** **APPROVED**
+- **Revisado:** `cd4b0d0` (C-B3-1 y C-B3-2, solo tests de F-059) y `74f3a94` (O-B3-1, O-B3-2, O-B3-4 y O-B3-5 en
+  la spec), sobre `e7f059c`. A09 lo **aceptó por escrito el humano** (2026-10-16): queda cerrado.
+- **Nivel de rigor:** `critico`.
+
+### Las correcciones
+
+- **C-B3-1.** `test_f059_r23_cualquier_otro_codigo_es_sin_respuesta` añade 202, 204, 301 y 302 (con un objeto
+  JSON detrás) → `sin_respuesta`. `test_f059_r8_un_definitivo_no_se_reintenta` añade 202, 204 y 302 →
+  `EnsayoSinRespuesta` sin reintentar. Es la misma línea de `CORRECTOS` en la lectura del login, un hueco gemelo que
+  yo no había señalado y el implementer ha cerrado igual.
+- **C-B3-2.** `truncated=1` y `truncated="true"` cuentan como truncado. Un test nuevo,
+  `test_f059_r8_c_b3_2_una_lectura_no_truncada_si_decide`, fija el otro lado: con `False`, nulo, `0` o `""` el login
+  sí se decide.
+- Comparado con `e7f059c`, solo cambia `tests/test_f059_adaptador_volcado.py` (+17 −3): se amplían dos
+  parametrizaciones y se añade un test, sin quitar ningún caso. **Ningún cambio en el código de producción** ni en
+  ningún test ajeno.
+
+### Los mutantes, repetidos
+
+En un worktree desechable de `cd4b0d0` (ya retirado; el árbol de trabajo no se ha mutado y su `git status` queda
+limpio), con los dos ficheros de F-059 del bloque y `-x`:
+
+| Id | Mutación | Resultado | Test de F-059 que lo caza |
+|---|---|---|---|
+| M05 | El lote: `not in CORRECTOS` → `>= 300` | muerto | `test_f059_r23_cualquier_otro_codigo_es_sin_respuesta[202]` |
+| M05b | La misma línea en `_leer_una_vez` (el login) | muerto | `test_f059_r8_un_definitivo_no_se_reintenta[202]` |
+| M07 | `truncated` → `is True` | muerto | `test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada[truncada-uno]` |
+| M15 | `truncated` → `== True` | muerto | `…_no_decide_nada[truncada-texto]` |
+| M16 | `truncated` por presencia de la clave (`"truncated" in datos`) | muerto | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+| M17 | El lote: solo 200 es correcto (sin el 201) | muerto | `test_f059_r22_un_200_devuelve_los_datos_sin_interpretar[201]` |
+
+Los seis mueren con un test de F-059: los cuatro pedidos y dos vecinos, el del otro lado de `truncated` y el de
+O-B3-5.
+
+### La enmienda de la spec (`74f3a94`)
+
+- **O-B3-1** (§7, §11 y la nota bajo R8): un login sin verificar es 502 `ensayo_sin_respuesta` en `ensayo` y en
+  `volcar`, sin escribir nada. Es lo que propuse. **Conforme.**
+- **O-B3-2** (§13): `int | str` de izquierda a derecha, con el porqué (R30 y `/health`). **Conforme.**
+- **O-B3-5** (§11 y la nota bajo R23): «200» se lee como `CORRECTOS`. **Conforme.**
+- **O-B3-4** (§6.2, §11, la nota bajo R23 y T13): un `lote_400` sin código de lote, o con uno desconocido, va por
+  R14 en el ensayo (502, sin guardar) y por R23 en el volcado (`sin_respuesta` para cada parte, `en_duda`, 502
+  `volcado_sin_respuesta`). **Estoy de acuerdo en que es mecánico, y en el fondo:**
+  - R23 ya cubría «no tiene la forma de §8.9», y el Bloque 1 dejó aprobada la misma regla en
+    `clasificar_codigo_de_lote`: un código que no es de los de §8.9 no tiene clase, y quien llama lo trata como una
+    respuesta que no se entiende.
+  - R24 no puede aplicarse: `no_procesado` exige un código de motivo (el `CHECK` de §9) y de un 400 solo se guarda
+    `details.codigo` (R35), que aquí no hay.
+  - `en_duda` es el lado seguro. El coste está dicho en §6.2: quedan en duda hasta reintentar, y reintentar con la
+    misma referencia no duplica.
+  - Un matiz para el Bloque 4: un «Solicitud invalida.» (cuerpo mal formado) se repetiría en cada reintento. Como
+    el cuerpo lo compone `cuerpo_de_lote`, eso sería un defecto nuestro y no un dato. Conviene que el log de ese
+    camino lo deje claro (la familia y que no traía código), para que no se confunda con un corte de red.
+- Datos sensibles: el diff no trae ningún GUID, correo ni IP.
+
+### Verificación
+
+Desde el scratchpad, sin `.env`:
+
+| Verificación | Resultado |
+|---|---|
+| `test_f059_adaptador_volcado.py` + `test_f059_fabrica.py` en el worktree | **183 passed** |
+| Los dos de F-059, los de F-009 y F-012 (la verificación de T11) y las dos guardias R26 de F-006 | **1078 passed in 85.00s** |
+| `ruff check` del test tocado (desde la raíz) | `All checks passed!` |
+
+No relanzo la suite entera: desde la review (8768 passed, 233 skipped) solo cambia un fichero de tests de F-059 y
+la spec en Markdown.
+
+### Checkpoints que cambian
+
+- [x] **C4 bis · Cero supervivientes, también a mano**: M05, M05b, M07 y M15, muertos con tests de F-059; A09,
+  aceptado por escrito por el humano; V05d (Bloque 2), aceptado antes.
+- El resto, como en la review del Bloque 3 (los N/A, con su motivo allí).
+
+### Observaciones que siguen abiertas (para bloques posteriores, no bloquean)
+
+- **O-B3-3** (T16): que solo `fabrica.py` construya el adaptador con `escritura_habilitada=True`.
+- **Bloque 4**: O-B2-2, O-B1-1 y el camino de O-B3-4, ya fijado en T13.
+- **P-1 a P-3**: mejoras de `harness.mutacion`, pendientes del humano.

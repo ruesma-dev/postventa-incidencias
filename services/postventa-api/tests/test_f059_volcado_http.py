@@ -1042,7 +1042,9 @@ def test_f059_r4_cada_fila_del_listado_lleva_su_objeto_volcado(mundo):
     assert estado == 200
     filas = _filas(datos)
     assert filas[str(ID(1))]["volcado"] is None
-    assert {set(f["volcado"]) for k, f in filas.items() if k != str(ID(1))} == {CLAVES_DEL_OBJETO_VOLCADO}
+    assert {frozenset(f["volcado"]) for k, f in filas.items() if k != str(ID(1))} == {
+        frozenset(CLAVES_DEL_OBJETO_VOLCADO)
+    }
     assert filas[str(ID(2))]["volcado"] == {
         "estado": "volcada",
         "sigrid_cod": "RS26.09/0002",

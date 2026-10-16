@@ -223,7 +223,7 @@
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_pipeline_volcado.py tests/test_f059_volcado_http.py tests/test_f056_revision_http.py` **falla**
 - [x] **T14**: `application/pipelines/volcado.py` (§10). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_pipeline_volcado.py`
-- [ ] **T15**: `interface_adapters/api/volcado.py`; en
+- [x] **T15**: `interface_adapters/api/volcado.py`; en
   `interface_adapters/api/revision.py`, el objeto `volcado` en `_fila`, que
   lo lleva al listado y a la respuesta de `POST /api/revision/acciones`
   (F-2 (a); sin parametrizar ni duplicar `_fila`), y los filtros en `_filtro`

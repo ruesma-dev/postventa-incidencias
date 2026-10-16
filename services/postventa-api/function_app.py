@@ -276,6 +276,18 @@ devuelve ningún dato de fuera, solo recuentos (ni textos, ni identificadores,
 ni correos), y lo que escribe son revisiones del sistema en el esquema propio.
 Con él los anónimos son veintiuno.
 
+`GET /api/volcado`, `POST /api/volcado/ensayo` y `POST /api/volcado/volcar`
+(F-059) son los que **crean partes de reclamación en el ERP de producción**.
+Lo que añaden a este cuadro: una ventana **propia**, `VOLCADO_HABILITADO`,
+aparte de la del archivo y la del cierre, que se despliega **cerrada** y solo
+mira el volcado (el ensayo no, porque solo lee); el entorno `dev` o `pro`; un
+**ensayo previo guardado** de la misma persona, de menos de 30 minutos; y la
+confirmación con el booleano de JSON. El ensayo devuelve en `envio` lo que se
+mandaría a Sigrid —las descripciones de la propiedad incluidas—, a quien ya
+ve la bandeja; nunca el `oid` ni el login de Sigrid. El panel solo lee la
+base. En el log, la obra, la llamada, los recuentos y, por parte, la
+referencia, el estado y los códigos. Con ellos los anónimos son veinticuatro.
+
 **Descartado a propósito: exigir `x-ms-client-principal`.** Parece subir el
 listón y no lo sube —va sin firma, se fabrica— y encima de algo que ya protege
 la plataforma sólo consigue **confundir qué protege de verdad**: quien lo lea
@@ -309,6 +321,7 @@ from domain.models.errores import (
     CodigoNoConsta,
     CodigoNoEsDeLaObra,
     CodigosNoCoinciden,
+    ConfiguracionDeVolcadoInvalida,
     ConfiguracionPgIncompleta,
     ConfiguracionPlantillaInvalida,
     ConfiguracionSharePointIncompleta,
@@ -317,7 +330,10 @@ from domain.models.errores import (
     CuerpoDeCierreInvalido,
     CuerpoDeGraficoInvalido,
     CuerpoDeValidacionInvalido,
+    CuerpoDeVolcadoInvalido,
     DestinoNoResuelto,
+    EnsayoNoValido,
+    EnsayoSinRespuesta,
     EscrituraDocumentalDeshabilitada,
     EstadoCambiadoDesdeElDryRun,
     EstadoDeCierreNoResoluble,
@@ -357,6 +373,10 @@ from domain.models.errores import (
     UsuarioSigridInexistente,
     UsuarioSigridNoMapeado,
     ValoresNoValidos,
+    VolcadoDeshabilitado,
+    VolcadoRechazadoPorLaPasarela,
+    VolcadoSinRespuesta,
+    VolcadoSinTraza,
 )
 from domain.models.remesa import DocumentoEntrada
 from interface_adapters.api.adjuntar import adjuntar_grafico
@@ -384,6 +404,12 @@ from interface_adapters.api.revision import (
 )
 from interface_adapters.api.split import trocear_remesa
 from interface_adapters.api.validar import validar as validar_parte_http
+from interface_adapters.api.volcado import (
+    ensayar_volcado,
+    estado_http_del_rechazo,
+    leer_panel_de_volcado,
+    volcar_a_sigrid,
+)
 
 configurar_logging()
 log = logging.getLogger("function_app")
@@ -1815,4 +1841,174 @@ def revision_normalizar(req: func.HttpRequest) -> func.HttpResponse:
     ) as error:
         log.warning("revision/normalizar sin Sigrid o sin base: %s", error.motivo)
         return _sin_sigrid_o_sin_base("normalizar las ubicaciones", error)
+    return _json(cuerpo, 200)
+
+
+# --------------------------------------------------------------------------
+# F-059 · el volcado a Sigrid (`design.md` §7, §11)
+# --------------------------------------------------------------------------
+
+#: El código de cada error del volcado: viaja en el cuerpo con el motivo, para
+#: que el front (F-040) sepa qué pasa sin interpretar el texto. Es una
+#: traducción **propia**: la de la revisión (`_error_de_revision`) no cambia.
+CODIGOS_DEL_VOLCADO = {
+    CuerpoDeVolcadoInvalido: "peticion_invalida",
+    VolcadoDeshabilitado: "volcado_deshabilitado",
+    ConfiguracionDeVolcadoInvalida: "configuracion_de_volcado_invalida",
+    ConfiguracionSigridIncompleta: "configuracion_sigrid_incompleta",
+    ConfiguracionPgIncompleta: "base_de_datos_no_disponible",
+    PersistenciaNoDisponible: "base_de_datos_no_disponible",
+    EnsayoNoValido: "ensayo_no_valido",
+    VolcadoRechazadoPorLaPasarela: "volcado_rechazado_por_la_pasarela",
+    EnsayoSinRespuesta: "ensayo_sin_respuesta",
+    VolcadoSinRespuesta: "volcado_sin_respuesta",
+    VolcadoSinTraza: "volcado_sin_traza",
+    UsuarioSigridNoMapeado: "usuario_sigrid_no_mapeado",
+    UsuarioSigridInexistente: "usuario_sigrid_inexistente",
+    BandejaDemasiadoGrande: "bandeja_demasiado_grande",
+}
+
+#: El HTTP de cada uno; el del rechazo de la pasarela depende de su código.
+HTTP_DEL_VOLCADO = {
+    CuerpoDeVolcadoInvalido: 400,
+    VolcadoDeshabilitado: 503,
+    ConfiguracionDeVolcadoInvalida: 503,
+    ConfiguracionSigridIncompleta: 503,
+    ConfiguracionPgIncompleta: 503,
+    PersistenciaNoDisponible: 503,
+    EnsayoNoValido: 409,
+    EnsayoSinRespuesta: 502,
+    VolcadoSinRespuesta: 502,
+    VolcadoSinTraza: 500,
+    UsuarioSigridNoMapeado: 409,
+    UsuarioSigridInexistente: 409,
+    BandejaDemasiadoGrande: 409,
+}
+
+#: Los dos de F-009 nombran el correo y el login en su motivo: aquí no viajan
+#: (el login no sale en ninguna respuesta, `design.md` §15).
+MENSAJES_DEL_LOGIN = {
+    UsuarioSigridNoMapeado: (
+        "no hay correspondencia con un usuario de Sigrid para quien pide ni un "
+        "correo del que derivarla, así que no se ha mandado nada a Sigrid: hay que "
+        "dar de alta la correspondencia con infra/07_alta_usuario_sigrid.ps1"
+    ),
+    UsuarioSigridInexistente: (
+        "el usuario de Sigrid de quien pide no existe exactamente una vez en el "
+        "maestro de usuarios del ERP, así que no se ha mandado nada a Sigrid: hay "
+        "que dar de alta la correspondencia con infra/07_alta_usuario_sigrid.ps1"
+    ),
+}
+
+#: Lo que el borde del volcado traduce; cualquier otra cosa sube tal cual.
+ERRORES_DEL_VOLCADO = tuple(CODIGOS_DEL_VOLCADO)
+
+
+def _error_del_volcado(que: str, error: Exception) -> func.HttpResponse:
+    """`{error, codigo}` y lo propio de cada error; al log, solo el código (R34).
+
+    El motivo va a quien hizo la petición y **no** al log; los de F-009 ni
+    siquiera a quien la hizo (llevan el login).
+    """
+    codigo = CODIGOS_DEL_VOLCADO[type(error)]
+    if isinstance(error, VolcadoRechazadoPorLaPasarela):
+        estado = estado_http_del_rechazo(error.codigo_pasarela)
+    else:
+        estado = HTTP_DEL_VOLCADO[type(error)]
+    mensaje = MENSAJES_DEL_LOGIN.get(type(error), error.motivo)  # type: ignore[attr-defined]
+    cuerpo: dict = {"error": mensaje, "codigo": codigo}
+    if isinstance(error, EnsayoNoValido):
+        cuerpo["motivo"] = error.causa
+    elif isinstance(error, VolcadoRechazadoPorLaPasarela):
+        cuerpo["codigo_pasarela"] = error.codigo_pasarela
+    elif isinstance(error, VolcadoSinRespuesta):
+        cuerpo["en_duda"] = [str(i) for i in error.en_duda]
+    elif isinstance(error, BandejaDemasiadoGrande):
+        cuerpo["total"] = error.total
+    log.info("%s no procede: %s (%d)", que, codigo, estado)
+    return _json(cuerpo, estado)
+
+
+def _cuerpo_del_volcado_no_es_json(que: str) -> func.HttpResponse:
+    log.info("%s no procede: el cuerpo no es JSON", que)
+    return _json(
+        {"error": "el cuerpo de la petición no es JSON válido", "codigo": "peticion_invalida"},
+        400,
+    )
+
+
+@app.route(route="volcado", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def volcado(req: func.HttpRequest) -> func.HttpResponse:
+    """El panel del volcado de una obra (F-059, R28). Solo lee la base.
+
+    - **200** · `{obra, partes_por_llamada, resumen, candidatas}`;
+    - **400** · `peticion_invalida`: la obra no vale, sin leer nada;
+    - **409** · `bandeja_demasiado_grande`, con el recuento;
+    - **503** · `VOLCADO_PARTES_POR_LLAMADA` no vale, o sin base.
+
+    Nunca lee Sigrid. El log lo pone el handler: obra y recuentos.
+    """
+    try:
+        cuerpo = leer_panel_de_volcado(req.params.get("obra"))
+    except ERRORES_DEL_VOLCADO as error:
+        return _error_del_volcado("volcado", error)
+    return _json(cuerpo, 200)
+
+
+@app.route(route="volcado/ensayo", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def volcado_ensayo(req: func.HttpRequest) -> func.HttpResponse:
+    """El ensayo del volcado: `commit: false`, guardado (F-059, R9–R14).
+
+    Solo traduce (§11):
+
+    - **200** · `{ensayo_id, obra, caduca_at_utc, resumen, partes, excluidas}`;
+    - **400** · `peticion_invalida`, antes de construir nada (R9);
+    - **409** · el login de Sigrid (`usuario_sigrid_no_mapeado`,
+      `usuario_sigrid_inexistente`) o `volcado_rechazado_por_la_pasarela`, sin
+      guardar nada;
+    - **502** · `ensayo_sin_respuesta`: la pasarela, o el login que no se puede
+      verificar; es una lectura y repetirla es inocuo;
+    - **503** · entorno, configuración, `N`, base, o un rechazo de la pasarela
+      que es configuración de su dueño.
+
+    No mira la ventana del volcado (D-4): no escribe en el ERP.
+    """
+    try:
+        datos = req.get_json()
+    except ValueError:
+        return _cuerpo_del_volcado_no_es_json("volcado/ensayo")
+    try:
+        cuerpo = ensayar_volcado(datos)
+    except ERRORES_DEL_VOLCADO as error:
+        return _error_del_volcado("volcado/ensayo", error)
+    return _json(cuerpo, 200)
+
+
+@app.route(route="volcado/volcar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def volcado_volcar(req: func.HttpRequest) -> func.HttpResponse:
+    """El volcado: crea en Sigrid los partes que el ensayo dio `previsto` (F-059, R15–R27).
+
+    Solo traduce (§11):
+
+    - **200** · `{llamada_id, obra, resumen, partes, excluidas, avisos}`;
+    - **400** · `peticion_invalida`, antes de construir nada (R15);
+    - **409** · `ensayo_no_valido` (con su `motivo`), el login de Sigrid o
+      `volcado_rechazado_por_la_pasarela` (los partes quedan `no_procesado`);
+    - **502** · `ensayo_sin_respuesta` (el login que no se puede verificar:
+      **antes** de escribir nada) o `volcado_sin_respuesta` (tras mandar el
+      lote: las incidencias quedan en duda y reintentar es seguro);
+    - **500** · `volcado_sin_traza`: Sigrid respondió y no se pudo guardar;
+    - **503** · `volcado_deshabilitado` (entorno o ventana), configuración,
+      `N`, base, o un rechazo que es configuración del dueño de la pasarela.
+
+    El `oid` y el correo salen del **cuerpo**; ni ellos ni el login van al log.
+    """
+    try:
+        datos = req.get_json()
+    except ValueError:
+        return _cuerpo_del_volcado_no_es_json("volcado/volcar")
+    try:
+        cuerpo = volcar_a_sigrid(datos)
+    except ERRORES_DEL_VOLCADO as error:
+        return _error_del_volcado("volcado/volcar", error)
     return _json(cuerpo, 200)

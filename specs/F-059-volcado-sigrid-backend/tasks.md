@@ -233,7 +233,7 @@
   anónimos). Nada nuevo carga `openpyxl`, `pymupdf` ni `google.genai` al
   importar `function_app`. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_volcado_http.py tests/test_f056_revision_http.py tests/test_f010_endpoints_protegidos.py tests/test_f060_importacion_diferida.py tests/test_f060_normalizar_http.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
-- [ ] **T16**: `tests/test_f059_alcance_cerrado.py` con el patrón de
+- [x] **T16**: `tests/test_f059_alcance_cerrado.py` con el patrón de
   `test_f060_alcance_cerrado.py` (piezas por definición, base fija y no
   `merge-base`, las tres guardas de F-030) con `BASE_FIJA = "2d2efd7"` y
   `RAMA_DE_LA_FEATURE = "feature/F-059-volcado-sigrid-backend"`: R36 (rutas

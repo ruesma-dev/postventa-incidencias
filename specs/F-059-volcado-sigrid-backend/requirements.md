@@ -151,6 +151,13 @@ Lo que ya existe y se **consume sin cambiar**:
   `partes-reclamacion`. Ningún login es fijo ni técnico. Puede ensayar y volcar
   cualquier miembro de `posventa-usuarios` con login de Sigrid (Q-7).
 
+  > **O-B3-1** (review del Bloque 3, 2026-10-16; mecánico): si el login **no
+  > se puede verificar** porque la lectura de `dbo.usu` no responde o no se
+  > entiende, no es ninguno de los dos 409: es una lectura fallida, y en el
+  > ensayo **y en el volcado** (donde R19 la pone antes de la escritura
+  > anticipada) se responde **502 `ensayo_sin_respuesta`** sin escribir nada
+  > (R14: repetirla es inocuo). `design.md` §7 y §11.
+
 ## 3 · El ensayo: `POST /api/volcado/ensayo`
 
 - **R9.** El cuerpo debe ser un objeto JSON con **exactamente** `obra`,
@@ -246,6 +253,13 @@ Lo que ya existe y se **consume sin cambiar**:
   mandado y responder **502 `volcado_sin_respuesta`** con la lista de
   incidencias en duda y un mensaje que diga que **reintentar es seguro** (la
   referencia `PVI-` no deja duplicar) y que no hay que tocar Sigrid a mano.
+
+  > **Lectura de la letra** (O-B3-4 y O-B3-5, review del Bloque 3,
+  > 2026-10-16; mecánicos, `design.md` §11): «200» son los códigos de
+  > `CORRECTOS` (200 y 201); y un 400 **que no trae un código de lote de
+  > §8.9** (el «Solicitud invalida.» de un cuerpo mal formado, una lectura
+  > truncada, o un código que no es de la lista) no es un «400 de lote» de
+  > R24: no tiene su forma, así que va por este requisito.
 - **R24.** SI la pasarela responde 400 de lote en el volcado, nada se ha escrito
   en Sigrid: el sistema debe guardar **`no_procesado`** con ese código para
   cada parte mandado y responder **503** si el código es

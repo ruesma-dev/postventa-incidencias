@@ -203,7 +203,12 @@
   orden de §10 —puertas, base, lectura de Sigrid, escritura anticipada,
   escritura en Sigrid, base—; el doble de la pasarela comprueba que los
   `enviado` ya están al recibir el `commit: true`; ninguna llamada de lote sin
-  login; R7, R11, R17, R18, R20–R27 con lo que se guarda en cada caso;
+  login; R7, R11, R17, R18, R20–R27 con lo que se guarda en cada caso; el
+  login sin verificar → `EnsayoSinRespuesta` en el ensayo **y** en el volcado,
+  sin escribir (O-B3-1); un `lote_400` sin código o con uno desconocido →
+  `EnsayoSinRespuesta` sin guardar en el ensayo, y en el volcado
+  `sin_respuesta` para cada parte con `VolcadoSinRespuesta` (O-B3-4,
+  `design.md` §11);
   `VolcadoSinTraza` deja los `enviado`; los `ParteAVolcar` del volcado salen
   de la candidata) y `tests/test_f059_volcado_http.py` (R9, R15 con fábricas
   que fallan si se llaman; R10 y R16 con un repositorio que falla si se usa;

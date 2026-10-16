@@ -217,6 +217,7 @@ seguro.
 | Un parte `no_procesado` | Nada de ese parte | `no_procesado` + código | `aprobada` | Reintentar |
 | 400 de lote | Nada | `no_procesado` + código de lote | `aprobada` | Lo que diga el código (R24) |
 | **Tiempo agotado / corte / 5xx / respuesta rara** | **No se sabe**: la pasarela sigue con el lote hasta 150 s | `sin_respuesta` | **`en_duda`** | Volver a ensayar y volcar: lo creado vuelve `idempotente` |
+| Un 400 **sin código de lote** de §8.9 («Solicitud invalida.», lectura truncada, código desconocido) | Nada, según §8.9; pero este servicio no lo puede comprobar con un código que no entiende | `sin_respuesta` (en el ensayo, nada) | **`en_duda`** (en el ensayo, igual) | Igual que la fila de arriba (R23; O-B3-4, §11) |
 | Respondió y no se pudo guardar el resultado | Lo que diga la respuesta (perdida) | Solo `enviado` | **`en_duda`** | Igual: el ensayo lo encuentra `idempotente` |
 | El proxy corta al front (> 45 s) | Lo que sea; la Function sigue | Lo que la Function termine | según la Function | Recargar el panel |
 | La Function muere a medias | Desconocido | `enviado` | **`en_duda`** | Reintentar |
@@ -329,7 +330,7 @@ Errores nuevos en `domain/models/errores.py`, traducidos en `function_app.py`:
 | `ConfiguracionDeVolcadoInvalida` | 503 | `{error, codigo: "configuracion_de_volcado_invalida"}` |
 | `EnsayoNoValido` | 409 | `{error, codigo: "ensayo_no_valido", motivo}` |
 | `VolcadoRechazadoPorLaPasarela` | 409 / 503 | `{error, codigo: "volcado_rechazado_por_la_pasarela", codigo_pasarela}` |
-| `EnsayoSinRespuesta` | 502 | `{error, codigo: "ensayo_sin_respuesta"}` |
+| `EnsayoSinRespuesta` | 502 | `{error, codigo: "ensayo_sin_respuesta"}`. Lo da el ensayo que no recibe una respuesta que se entienda (R14), y también **el login que no se puede verificar**, en `ensayo` **y en `volcar`** (la lectura de `dbo.usu` no responde o no se entiende): nada escrito, repetir es inocuo (O-B3-1) |
 | `VolcadoSinRespuesta` | 502 | `{error, codigo: "volcado_sin_respuesta", en_duda: [incidencia_id…]}` |
 | `VolcadoSinTraza` | 500 | `{error, codigo: "volcado_sin_traza"}` |
 
@@ -539,8 +540,42 @@ propia; `_error_de_revision` (F-056, que también usa F-060) no cambia.
 | Ruta | Éxito | Errores |
 |---|---|---|
 | `GET /api/volcado?obra=` | 200 | 400; 409 `bandeja_demasiado_grande`; 503 base |
-| `POST /api/volcado/ensayo` | 200 | 400; 409 login, `volcado_rechazado_por_la_pasarela`; 502; 503 entorno, configuración, base, `base_de_datos_no_permitida` |
-| `POST /api/volcado/volcar` | 200 | 400; 409 `ensayo_no_valido`, login, pasarela; 502 `volcado_sin_respuesta`; 500 `volcado_sin_traza`; 503 `volcado_deshabilitado`, configuración, base |
+| `POST /api/volcado/ensayo` | 200 | 400; 409 login, `volcado_rechazado_por_la_pasarela`; 502 `ensayo_sin_respuesta` (la pasarela, o el login sin verificar); 503 entorno, configuración, base, `base_de_datos_no_permitida` |
+| `POST /api/volcado/volcar` | 200 | 400; 409 `ensayo_no_valido`, login, pasarela; 502 `ensayo_sin_respuesta` (login sin verificar: **antes** de la escritura anticipada, nada escrito) y 502 `volcado_sin_respuesta` (tras mandar el lote); 500 `volcado_sin_traza`; 503 `volcado_deshabilitado`, configuración, base |
+
+**Tres precisiones de la review del Bloque 3** (2026-10-16, mecánicas; §20):
+
+- **O-B3-1 · El login sin verificar.** `existe_usuario` que no obtiene una
+  respuesta que se entienda (tras los reintentos de lectura de §8.2) es
+  `EnsayoSinRespuesta`, en los dos endpoints. En `volcar` no puede ser
+  `volcado_sin_respuesta`: R19 pone el login antes de la escritura anticipada,
+  no se ha escrito ni mandado nada y no hay incidencias en duda. Los
+  reintentos pueden pasar, en el peor caso, de los 45 s del proxy: el front
+  vería un corte y repetir sigue siendo inocuo.
+- **O-B3-5 · «200» es `CORRECTOS`.** El adaptador acepta como respuesta los
+  códigos de `CORRECTOS` de `cliente.py` (200 y 201), como el resto de
+  `infrastructure/sigrid/`; la pasarela responde siempre 200 en §8.9 e
+  `interpretar_respuesta` exige igualmente la forma entera, así que no tiene
+  efecto práctico. Donde R23 dice «un código que no es 200 ni 400», se lee
+  «que no está en `CORRECTOS` ni es 400».
+- **O-B3-4 · Un 400 sin código de lote.** El adaptador lo devuelve como
+  `lote_400` sin código (§8.2; de un 400 solo se coge `details.codigo`, R35).
+  Lo resuelve la aplicación con lo que la spec ya dice: un «400 de lote» es el
+  que trae uno de los códigos de §8.9 (R14, R24), y lo demás es una respuesta
+  que no tiene la forma de §8.9 —la misma regla que dejó aprobada el
+  Bloque 1 en `clasificar_codigo_de_lote`: «un código que no es de los de
+  §8.9 no tiene clase; quien llama lo trata como una respuesta que no se
+  entiende»—. Así, con código ausente **o** desconocido:
+  - en el **ensayo**, **502 `ensayo_sin_respuesta`** sin guardar nada (R14);
+  - en el **volcado**, **R23**: `sin_respuesta` para cada parte mandado
+    (`todos_sin_respuesta`; los `enviado` de R20 ya estaban), la incidencia
+    `en_duda` y **502 `volcado_sin_respuesta`** con «reintentar es seguro».
+    No puede ser R24: `no_procesado` exige un código de motivo (`CHECK` de
+    §9) y de un 400 solo se guarda `details.codigo` (R35), que no hay;
+    `todos_no_procesados` lo rechaza a propósito.
+  El coste es el de toda respuesta rara (§6.2): §8.9 dice que no escribió
+  nada, pero quedan `en_duda` hasta reintentar, y el reintento con la misma
+  referencia es seguro.
 
 Ensayo (datos ficticios):
 
@@ -611,7 +646,13 @@ tabla»; hoy, esta ficha).
 ## 13 · Interruptor, ventana y despliegue (D-3, D-4)
 
 - `config/settings.py`: `volcado_habilitado: bool` (`VOLCADO_HABILITADO`,
-  **`False` por defecto**) y `volcado_partes_por_llamada: int`
+  **`False` por defecto**) y `volcado_partes_por_llamada: int | str`
+  con unión **de izquierda a derecha** (`union_mode="left_to_right"`;
+  O-B3-2, review del Bloque 3): un `"12"` se carga como el entero 12 y un
+  «cinco» se queda como texto, que `validar_partes_por_llamada` rechaza en la
+  fábrica con 503 (R30). Con `int` a secas, un valor que no es un entero
+  tumbaría la carga de los ajustes y con ella `/health`, que es justo lo que
+  esta línea quiere evitar
   (`VOLCADO_PARTES_POR_LLAMADA`, 5), con el mismo patrón que
   `cierre_habilitado`. El rango de `N` se valida en la fábrica (503), no al
   cargar los ajustes: `/health` tiene que arrancar igual.
@@ -770,7 +811,7 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | R5 | 40 caracteres, minúsculas, prefijo exacto `PVI-`; la misma para la misma incidencia |
 | R6 | El cuerpo **clave a clave** (`tipo` `"0002"` con `listado` `primero`, `segundo` y nulo; `causante: false`; sin `clase`; sin `descripcion_larga` con detalle nulo; `commit` siempre presente; `forma_comunicacion` 1; `[]` sin proveedor); ninguna clave de propietario, persona, urgencia, `ide`, `cod`, `emp`, `est`, `pos` |
 | R7 | Un valor cambiado en la base con la huella vieja → excluida, no se manda |
-| R8 | Sin login → 409 y el doble de la pasarela **no** recibe la llamada de lote |
+| R8 | Sin login → 409 y el doble de la pasarela **no** recibe la llamada de lote; login sin verificar (la lectura no responde o no se entiende) → 502 `ensayo_sin_respuesta` en `ensayo` **y en `volcar`**, sin escribir nada ni llamar al lote (O-B3-1) |
 | R9, R15 | Cada forma inválida (también `confirmado: "true"`, `1`, `commit` en el ensayo, ids repetidos, `N+1` ids) → 400 con fábricas que fallan si se llaman; el mensaje no lleva `oid` ni correo |
 | R10, R16 | Ventana cerrada: ensayo sí, volcado 503 **sin** abrir la base (repositorio que falla si se usa); entorno `test`/`local` → 503; el adaptador con `escritura_habilitada=False` se niega a volcar aunque se llame directo; un cuerpo sin `commit:True` no se manda por `volcar` |
 | R11–R14 | Cada exclusión; orden pedido; `filas` no aparece en ninguna respuesta ni registro; los `cod` provisionales tampoco; cada código de lote a su HTTP; 502 sin guardar |
@@ -778,7 +819,7 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | R20 | La TX: `FOR UPDATE` en orden, re-chequeo, `enviado` insertados **antes** de la llamada (el doble de la pasarela comprueba que ya están), `COMMIT` antes de llamar; ninguno elegible → sin llamada |
 | R21 | Un solo `post` incluso ante `httpx.TimeoutException` |
 | R22 | Partes desordenados, de menos, de más, con referencia cambiada, `previsto` en commit, `creado` sin `cod` o con `cod` mal formado → `sin_respuesta`; `committed:false` con un `idempotente` es éxito |
-| R23–R25 | Cada familia de fallo con lo que se guarda y el HTTP; `guardar_resultados` que falla → 500 y quedan `enviado` |
+| R23–R25 | Cada familia de fallo con lo que se guarda y el HTTP; `guardar_resultados` que falla → 500 y quedan `enviado`; un `lote_400` sin código y uno con un código desconocido → en el ensayo 502 `ensayo_sin_respuesta` sin guardar nada, en el volcado `sin_respuesta` para cada parte y 502 `volcado_sin_respuesta` (O-B3-4); un 201 con la forma de §8.9 se interpreta como un 200 (O-B3-5) |
 | R26 | El segundo `creado` con otro `ide` se guarda, sale en `avisos` y en un `log.error` |
 | R30, R31 | `N` 0, 51, «cinco» → 503; un solo intento; la duración en el log |
 | R32, R33 | La guarda real acepta el `.sql`; idempotente; `CHECK` = `Enum`; los cuatro `CHECK` de fila; ningún `UPDATE`/`DELETE`/`TRUNCATE`; ninguna lectura selecciona `actor_oid` (fuera de los `INSERT`, la única sentencia que lo nombra es la de `leer_ensayo`, y solo dentro de la comparación `(actor_oid = %s)`: el test lo fija sobre las columnas que devuelve cada `SELECT`) |
@@ -882,6 +923,7 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | **F-1** | **Decisión del humano del 2026-10-15, literal: «a en las 2»** → opción (a). R41 gana el bloque «Excepciones, ampliando sin relajar» con la lista test a test de §21.3 (como R45 de F-056); cada una declarada **función a función** en `test_f059_alcance_cerrado.py` (T16), que vigila que no se pierde ninguna aserción |
 | **F-2** | **Decisión del humano del 2026-10-15, literal: «a en las 2»** → opción (a). El objeto `volcado` va en las **dos** respuestas que serializa `_fila`: el listado de `GET /api/revision` y la respuesta de `POST /api/revision/acciones` (R4, §12) |
 | **B-1** | **Decisión del humano del 2026-10-16, literal: «ok a b1 y b2»** → opción (a) del implementer (`progress/impl_F-059.md`, Bloque 2). R17 frente a R33: la persona del ensayo la compara **la base** y el `oid` nunca vuelve. `leer_ensayo(*, ensayo_id, actor_oid)` con `(actor_oid = %s)` en el `SELECT` y sin la columna; `Ensayo.actor_oid: str` → `Ensayo.de_la_persona: bool`; `validar_ensayo(ensayo, *, obra, ahora)`, mismo orden de motivos. R33, §9 y §15, al pie de la letra (nota bajo R17; §7, §8.1, §18; T4, T6, T9). **Toca dos piezas aprobadas del Bloque 1** (`Ensayo` y `validar_ensayo`, con sus tests de R17), por esta decisión |
+| **O-B3** | **Mecánicos derivados de la review del Bloque 3** (2026-10-16, `progress/review_F-059.md`, «Review del Bloque 3», puntos (1) y (2) y «Observaciones»). **O-B3-1**: un login que no se puede verificar es 502 `ensayo_sin_respuesta` en `ensayo` y en `volcar`, sin escribir (§7, §11; nota bajo R8). **O-B3-2**: `volcado_partes_por_llamada: int | str`, de izquierda a derecha, por R30 y `/health` (§13). **O-B3-4**: un `lote_400` sin código de lote (o con uno desconocido) va por R14 en el ensayo (502) y por R23 en el volcado (`sin_respuesta`, `en_duda`, 502); se resuelve con lo que la spec ya decía, sin decisión nueva (§6.2, §11; nota bajo R23). **O-B3-5**: «200» son los de `CORRECTOS` (200 y 201) (§11; nota bajo R23). Ninguna decisión se reabre |
 | **O-B2-1** | **Mecánico derivado de la review del Bloque 2** (2026-10-16, `progress/review_F-059.md`, «Review del Bloque 2», punto (1) y O-B2-1). §12 decía «`aprobadas` filtra con `es_candidata`», y eso obligaba a relajar `test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa`, que R41 no deja tocar. Pasa a decir lo que hace el código: deja fuera la `volcada` antes de `candidata_de`, y lo que no sea un `aprobar` sigue llegando a `candidata_de`, que lo rechaza. R3 no cambia; ninguna decisión se reabre |
 | **B-2** | **Decisión del humano del 2026-10-16, literal: «ok a b1 y b2»**. `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo` entra en las excepciones de R41 (grupo A de §21.3), ampliado sin relajar como su gemelo de `test_f056_alcance_cerrado.py`; declarado en T16. Con la misma enmienda se recogen en §8.1 los tres puntos de implementación del implementer (`guardar_resultados` con `obra` y `partes`; `Quien` de F-056 y `situaciones`; la sentencia de R2 en `sentencias_volcado.py`), mecánicos |
 

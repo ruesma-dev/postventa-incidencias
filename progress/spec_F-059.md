@@ -241,3 +241,43 @@ antes de `candidata_de`; lo que no sea un `aprobar` sigue llegando a
   nota de §20 y una fila O-B2-1 en su tabla; `tasks.md` T4. §18 y T6 no
   nombraban el filtro y no cambian.
 - Commit local: `F-059: O-B2-1, la letra de aprobadas en la spec`.
+
+## O-B3-1, O-B3-2, O-B3-4 y O-B3-5 (2026-10-16, mecánicos derivados de la review del Bloque 3)
+
+Pedidos por la review del Bloque 3 (`progress/review_F-059.md`, puntos (1) y
+(2) y «Observaciones»). Los cuatro son **mecánicos**: ninguno abre una
+decisión. Anotados en `design.md` §20 (fila O-B3).
+
+- **O-B3-1 · El login sin verificar** es **502 `ensayo_sin_respuesta`** en
+  `ensayo` y en `volcar`, sin escribir nada (R14: repetir es inocuo; R19: en
+  el volcado va antes de la escritura anticipada, así que no puede ser
+  `volcado_sin_respuesta`). En `design.md` §7 (tabla de errores), §11 (tabla de
+  rutas y precisión), §18 (fila de R8); nota bajo R8; T13.
+- **O-B3-2 · `volcado_partes_por_llamada: int | str`**, unión de izquierda a
+  derecha, con el porqué: un `N` que no es entero tiene que dar 503 en la
+  fábrica (R30) y no tumbar la carga de los ajustes ni `/health`. En
+  `design.md` §13.
+- **O-B3-5 · «200» es `CORRECTOS`** (200 y 201): sin efecto práctico (§8.9
+  responde 200 e `interpretar_respuesta` exige la forma entera); R23 se lee
+  «un código que no está en `CORRECTOS` ni es 400». En `design.md` §11 y §18;
+  nota bajo R23.
+- **O-B3-4 · Un `lote_400` sin código de lote** (el «Solicitud invalida.» de
+  §8.9, una lectura truncada o un código desconocido). **Resuelto con lo que
+  la spec ya decía, sin decisión nueva**: un «400 de lote» es el que trae un
+  código de §8.9 (R14, R24), y lo demás «no tiene la forma de §8.9», que es la
+  regla del Bloque 1 ya aprobada en `clasificar_codigo_de_lote` («quien llama
+  lo trata como una respuesta que no se entiende»). Así: en el **ensayo**,
+  502 `ensayo_sin_respuesta` sin guardar (R14); en el **volcado**, **R23**:
+  `sin_respuesta` para cada parte (los `enviado` ya estaban), `en_duda` y 502
+  `volcado_sin_respuesta`. R24 no puede ser: `no_procesado` exige un código
+  de motivo (`CHECK` de §9) y de un 400 solo se guarda `details.codigo` (R35),
+  que no hay. En `design.md` §6.2 (fila nueva), §11, §18; nota bajo R23; T13.
+  - **Para que el líder lo sepa** (no lo aplico como decisión, porque la spec
+    ya lo resuelve): el coste es que una incidencia de la que §8.9 dice que no
+    se escribió nada queda `en_duda` hasta reintentar. La alternativa —dejarla
+    `aprobada` con `no_procesado` y un código propio, p. ej.
+    `solicitud_invalida`— cambiaría R24, R35 y el `CHECK` de §9: esa sí sería
+    una decisión del humano. No la recomiendo: el caso es un cuerpo mal
+    formado nuestro (un defecto del código, que la suite vigila), y tratarlo
+    como respuesta rara es lo conservador.
+- Commit local: `F-059: O-B3-1, O-B3-2, O-B3-4 y O-B3-5 en la spec`.

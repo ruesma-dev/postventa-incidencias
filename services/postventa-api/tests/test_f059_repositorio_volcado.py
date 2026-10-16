@@ -33,6 +33,7 @@ import ast
 import inspect
 import logging
 import re
+from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime, timedelta, timezone, tzinfo
 from pathlib import Path
 from uuid import UUID
@@ -420,6 +421,14 @@ def test_f059_r32_el_insert_de_un_ensayo_sin_ensayo_id_y_con_motivo():
     assert (d["llamada_id"], d["modo"], d["ensayo_id"]) == (ENSAYO_ID, "ensayo", None)
     assert (d["estado"], d["motivo_codigo"]) == ("rechazado", "oficio_no_esta_en_la_obra")
     assert (d["sigrid_ide"], d["sigrid_cod"]) == (None, None)
+
+
+def test_f059_r32_el_evento_por_escribir_es_inmutable():
+    """Lo que se va a escribir no cambia entre que se compone y se inserta."""
+    evento = _evento_nuevo()
+
+    with pytest.raises(FrozenInstanceError):
+        evento.estado = EstadoEvento.ENVIADO  # type: ignore[misc]
 
 
 def test_f059_r32_no_se_escribe_una_hora_sin_zona():

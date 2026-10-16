@@ -120,7 +120,7 @@ class RepositorioVolcadoPostgres(_Transaccional):
                 quien=quien,
                 ahora=ahora,
             )
-            for parte, resultado in zip(partes, resultados, strict=True)
+            for parte, resultado in zip(partes, resultados)
         ]
         self._insertar("guardar_ensayo", eventos)
         log.info(
@@ -222,7 +222,7 @@ class RepositorioVolcadoPostgres(_Transaccional):
                 quien=quien,
                 ahora=ahora,
             )
-            for parte, resultado in zip(partes, resultados, strict=True)
+            for parte, resultado in zip(partes, resultados)
         ]
         self._insertar("guardar_resultados", eventos)
         log.info(
@@ -250,7 +250,9 @@ def _exigir_que_casen(
     """Uno a uno: misma incidencia y misma referencia, en el mismo orden (§8.1)."""
     if not partes or len(partes) != len(resultados):
         raise ValueError("cada parte mandado lleva su resultado, y al menos hay uno")
-    for parte, resultado in zip(partes, resultados, strict=True):
+    # Con las longitudes ya iguales, los `zip` de aquí y de quien llama no
+    # necesitan `strict`.
+    for parte, resultado in zip(partes, resultados):
         if (parte.incidencia_id, parte.referencia_externa) != (
             resultado.incidencia_id,
             resultado.referencia_externa,

@@ -588,7 +588,8 @@ def test_f056_r12_solo_15_declara_una_columna_de_correo():
         if re.search(r"correo", _codigo_que_se_ejecuta(f"infrastructure/persistencia/sql/{f.name}"), re.IGNORECASE)
     )
 
-    assert con_correo == ["15_revisiones_bandeja.sql"]
+    # F-059 (R41, F-1 (a); design.md §21.3 A): el `16_` trae `actor_correo` (D-8).
+    assert con_correo == ["15_revisiones_bandeja.sql", "16_volcados_sigrid.sql"]
 
 
 def test_f056_r12_la_rama_no_toca_otro_sql():

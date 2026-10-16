@@ -185,13 +185,14 @@ def test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden()
 
     Eran los últimos hasta F-056 (T4), que añade detrás
     `15_revisiones_bandeja.sql` (lee de 13): la aserción se amplía, sin
-    relajarla.
+    relajarla. F-059 (T4) añade `16_volcados_sigrid.sql` (lee de 13 y 15): igual.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
     assert nombres[nombres.index("11_historico_estado.sql") + 1 :] == [
         *FICHEROS,
         "15_revisiones_bandeja.sql",
+        "16_volcados_sigrid.sql",  # F-059 (R41, F-1 (a); design.md §21.3 A)
     ]
     assert nombres.index("11_historico_estado.sql") < nombres.index(IMPORTACIONES)
 

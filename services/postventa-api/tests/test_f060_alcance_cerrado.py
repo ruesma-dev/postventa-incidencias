@@ -549,10 +549,15 @@ def test_f060_r37_la_rama_no_toca_ningun_sql():
 
 
 def test_f060_r37_los_sql_son_los_quince_de_antes():
-    """La mitad que no depende de `git`: ni un `16_…sql`."""
+    """La mitad que no depende de `git`: ni un `16_…sql` de F-060 (el único, el de
+    F-059, ampliado por F-1 (a))."""
     carpeta = RAIZ_DEL_SERVICIO / "infrastructure" / "persistencia" / "sql"
 
-    assert tuple(sorted(f.name for f in carpeta.glob("*.sql"))) == SQL_DE_LA_BASE
+    # F-059 (R41, F-1 (a); design.md §21.3 A): el `16_` de F-059, y ninguno más.
+    assert tuple(sorted(f.name for f in carpeta.glob("*.sql"))) == (
+        *SQL_DE_LA_BASE,
+        "16_volcados_sigrid.sql",
+    )
 
 
 def test_f060_r37_el_codigo_de_f060_no_tiene_ddl_ni_actualiza_ni_borra():

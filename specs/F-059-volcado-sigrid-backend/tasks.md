@@ -99,7 +99,7 @@
 
 ## Bloque 2 · La tabla y los repositorios
 
-- [ ] **T4 · RED**: `tests/test_f059_ddl.py` (R32: la guarda real de
+- [x] **T4 · RED**: `tests/test_f059_ddl.py` (R32: la guarda real de
   `ddl.py`, idempotente, `CHECK` de `modo` y `estado` = los `Enum`, los cuatro
   `CHECK` de fila, claves ajenas, sin binarias ni JSON, sin índice único) y
   `tests/test_f059_repositorio_volcado.py` con conexión falsa

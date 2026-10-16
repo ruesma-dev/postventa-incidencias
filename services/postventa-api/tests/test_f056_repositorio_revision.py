@@ -39,6 +39,7 @@ import psycopg
 import pytest
 from config.settings import Ajustes
 from domain.models.errores import (
+    AccionNoPermitida,  # F-059 (R41, F-1 (a); design.md §21.3 C)
     ConfiguracionPgIncompleta,
     DdlInseguro,
     PersistenciaNoDisponible,
@@ -54,7 +55,15 @@ from domain.models.revision import (
     RevisionNueva,
     SituacionDeRevision,
     ValoresIncidencia,
+    estado_de,  # F-059 (R41, F-1 (a); design.md §21.3 C)
     huella_de_valores,
+)
+from domain.models.revision import EstadoRevision as E  # F-059 (R41, F-1 (a); design.md §21.3 C)
+from domain.models.situacion_volcado import (  # F-059 (R41, F-1 (a); design.md §21.3 C)
+    EstadoEvento,
+    ParteEnSigrid,
+    SituacionDeVolcado,
+    UltimoEvento,
 )
 from domain.ports.revision import RevisionPort
 from infrastructure.persistencia import fabrica, sentencias_revision
@@ -127,6 +136,19 @@ LEIDAS_DE_LA_REVISION = (
     "motivo",
     "revisado_correo",
     "revisado_at_utc",
+)
+#: F-059 (R41, F-1 (a); design.md §21.3 C): las que gana `_select_situaciones`
+#: con sus dos `LEFT JOIN LATERAL` sobre `volcados_sigrid` (§12 de F-059): el
+#: primer evento con parte y el último de modo `volcado`, **sin** `actor_oid`.
+LEIDAS_DEL_VOLCADO = (
+    "vp.sigrid_ide",
+    "vp.sigrid_cod",
+    "vp.at_utc",
+    "vp.actor_correo",
+    "vu.estado",
+    "vu.motivo_codigo",
+    "vu.at_utc",
+    "vu.actor_correo",
 )
 #: Las que escribe el `INSERT`: todas las de §6 menos `revision_id` (la pone la base).
 ESCRITAS = (
@@ -230,6 +252,7 @@ def _fila_revision(
 
 SIN_BANDEJA = (None,) * len(LEIDAS_DE_LA_BANDEJA)
 SIN_REVISION = (None,) * len(LEIDAS_DE_LA_REVISION)
+SIN_VOLCADO = (None,) * len(LEIDAS_DEL_VOLCADO)  # F-059 (R41, F-1 (a); design.md §21.3 C)
 
 
 def _fila(
@@ -237,8 +260,9 @@ def _fila(
     ultima: tuple = SIN_REVISION,
     original: tuple = SIN_BANDEJA,
     ultima_original: tuple = SIN_REVISION,
+    volcado: tuple = SIN_VOLCADO,  # F-059 (R41, F-1 (a); design.md §21.3 C)
 ) -> tuple:
-    return (*bandeja, *ultima, *original, *ultima_original)
+    return (*bandeja, *ultima, *original, *ultima_original, *volcado)
 
 
 def _incidencia(n: int, *, duplicada_de: UUID | None = None) -> IncidenciaEnBandeja:
@@ -452,7 +476,8 @@ def test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original(nombre):
     sql = _plana(_todas_las_sentencias()[nombre][0])
     revisiones = f"{ESQUEMA}.revisiones_bandeja"
 
-    assert sql.count("LEFT JOIN LATERAL") == 2
+    assert sql.count("LEFT JOIN LATERAL") == 4  # F-059 (R41, F-1 (a); design.md §21.3 C): + las dos de volcados_sigrid
+    assert sql.count(f"FROM {ESQUEMA}.volcados_sigrid v WHERE v.incidencia_id = b.incidencia_id ") == 2  # F-059 (R41, F-1 (a); design.md §21.3 C)
     assert sql.count(f"FROM {revisiones} r WHERE r.incidencia_id = b.incidencia_id ") == 1
     assert sql.count(f"FROM {revisiones} r WHERE r.incidencia_id = o.incidencia_id ") == 1
     assert sql.count("ORDER BY r.revision_id DESC LIMIT 1") == 2
@@ -474,6 +499,7 @@ def test_f056_r10_las_situaciones_leen_estas_columnas_en_este_orden(nombre):
             *(f"u.{c}" for c in LEIDAS_DE_LA_REVISION),
             *(f"o.{c}" for c in LEIDAS_DE_LA_BANDEJA),
             *(f"uo.{c}" for c in LEIDAS_DE_LA_REVISION),
+            *LEIDAS_DEL_VOLCADO,  # F-059 (R41, F-1 (a); design.md §21.3 C)
         ]
     )
 
@@ -945,13 +971,15 @@ def test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma():
 
     assert revision_id == 8
     sql = conexion.sql_ejecutado
-    assert len(sql) == 3
+    assert len(sql) == 4  # F-059 (R41, F-1 (a); design.md §21.3 C): + la situación de volcado (R2)
     assert "FOR UPDATE" in sql[0]
     assert "max(revision_id)" in sql[1]
-    assert sql[2].startswith(f"INSERT INTO {ESQUEMA}.revisiones_bandeja ")
+    assert f"FROM {ESQUEMA}.volcados_sigrid v" in sql[2]  # F-059 (R41, F-1 (a); design.md §21.3 C)
+    assert sql[3].startswith(f"INSERT INTO {ESQUEMA}.revisiones_bandeja ")  # F-059 (R41, F-1 (a); design.md §21.3 C): era sql[2]
     assert conexion.ejecutadas[0].parametros == ([UUID(int=1)],)
     assert conexion.ejecutadas[1].parametros == ([UUID(int=1)],)
-    assert conexion.ejecutadas[2].parametros[0] == UUID(int=1)
+    assert conexion.ejecutadas[2].parametros == ([UUID(int=1)],)  # F-059 (R41, F-1 (a); design.md §21.3 C)
+    assert conexion.ejecutadas[3].parametros[0] == UUID(int=1)  # F-059 (R41, F-1 (a); design.md §21.3 C): era [2]
     assert (conexion.commits, conexion.rollbacks) == (1, 0)
 
 
@@ -1248,3 +1276,257 @@ def test_f056_t6_si_no_se_puede_conectar_es_503(monkeypatch):
 
     with pytest.raises(PersistenciaNoDisponible):
         fabrica.construir_revision(_ajustes())
+
+
+# ==========================================================================
+# F-059 (R41, F-1 (a); design.md §21.3 C) · la situación de volcado en la
+# fila (§12 de F-059): `fila_a_situacion`, `listar`/`situacion`/`aprobadas`
+# y la comprobación de R2 dentro de la transacción de `registrar` (R29)
+# ==========================================================================
+
+CORREO_DEL_VOLCADO = "persona.volcado@ejemplo.invalid"
+COD = "RS26.10/0001"
+
+
+def _volcado(
+    parte: tuple = (None, None, None, None), ultimo: tuple = (None, None, None, None)
+) -> tuple:
+    return (*parte, *ultimo)
+
+
+def _parte_en_sigrid() -> tuple:
+    return (77, COD, AHORA, CORREO_DEL_VOLCADO)
+
+
+def _ultimo(estado: str, motivo: str | None = None) -> tuple:
+    return (estado, motivo, AHORA, CORREO_DEL_VOLCADO)
+
+
+VOLCADA = _volcado(_parte_en_sigrid(), _ultimo("creado"))
+EN_DUDA = _volcado(ultimo=_ultimo("enviado"))
+
+
+def test_f059_r4_una_fila_sin_eventos_no_tiene_volcado():
+    """Sin eventos de volcado, `volcado` es `None`, como la construyen F-056 y
+    F-060 (R4: `null`)."""
+    situacion = sentencias_revision.fila_a_situacion(_fila(_fila_bandeja(1)))
+
+    assert situacion.volcado is None
+
+
+def test_f059_r1_r4_una_fila_volcada_trae_su_parte_y_su_ultimo():
+    fila = _fila(_fila_bandeja(1), _fila_aprobada(4, 1), volcado=VOLCADA)
+
+    situacion = sentencias_revision.fila_a_situacion(fila)
+
+    assert situacion.volcado == SituacionDeVolcado(
+        volcada=ParteEnSigrid(
+            sigrid_ide=77, sigrid_cod=COD, at_utc=AHORA, correo=CORREO_DEL_VOLCADO
+        ),
+        ultimo=UltimoEvento(
+            estado=EstadoEvento.CREADO, motivo=None, at_utc=AHORA, correo=CORREO_DEL_VOLCADO
+        ),
+    )
+    assert estado_de(situacion) is E.VOLCADA
+
+
+@pytest.mark.parametrize("estado", ("enviado", "sin_respuesta"))
+def test_f059_r1_una_fila_en_duda(estado):
+    fila = _fila(_fila_bandeja(1), _fila_aprobada(4, 1), volcado=_volcado(ultimo=_ultimo(estado)))
+
+    situacion = sentencias_revision.fila_a_situacion(fila)
+
+    assert estado_de(situacion) is E.EN_DUDA
+
+
+def test_f059_r4_un_ultimo_rechazado_deja_la_aprobada_con_su_motivo():
+    fila = _fila(
+        _fila_bandeja(1),
+        _fila_aprobada(4, 1),
+        volcado=_volcado(ultimo=_ultimo("rechazado", "oficio_no_esta_en_la_obra")),
+    )
+
+    situacion = sentencias_revision.fila_a_situacion(fila)
+
+    assert situacion.volcado is not None
+    assert situacion.volcado.ultimo is not None
+    assert situacion.volcado.ultimo.motivo == "oficio_no_esta_en_la_obra"
+    assert estado_de(situacion) is E.APROBADA
+
+
+def test_f059_r4_la_original_de_una_duplicada_queda_sin_volcado():
+    """§12 de F-059 · la situación de volcado es de la propia; la de la original
+    queda `None`."""
+    fila = _fila(
+        _fila_bandeja(2, duplicada_de=UUID(int=1)),
+        _fila_revision(9, 2),
+        _fila_bandeja(1),
+        volcado=EN_DUDA,
+    )
+
+    situacion = sentencias_revision.fila_a_situacion(fila)
+
+    assert situacion.volcado is not None
+    assert situacion.original is not None
+    assert situacion.original.volcado is None
+
+
+@pytest.mark.parametrize("cambio", (-1, 1), ids=("de-menos", "de-mas"))
+def test_f059_r36_una_fila_sin_el_ancho_del_volcado_no_se_lee_a_medias(cambio):
+    fila = _fila(_fila_bandeja(1), _fila_aprobada(4, 1), volcado=VOLCADA)
+    fila = fila[:-1] if cambio < 0 else (*fila, None)
+
+    with pytest.raises(ValueError):
+        sentencias_revision.fila_a_situacion(fila)
+
+
+def test_f059_r4_listar_y_situacion_traen_la_situacion_de_volcado():
+    conexion = (
+        ConexionDoble()
+        .responder(
+            "WHERE b.obra_codigo = %s",
+            [_fila(_fila_bandeja(1), _fila_aprobada(4, 1), volcado=VOLCADA)],
+        )
+        .responder(
+            "WHERE b.incidencia_id = %s",
+            [_fila(_fila_bandeja(2), _fila_aprobada(5, 2), volcado=EN_DUDA)],
+        )
+    )
+    repositorio = _repositorio(conexion)
+
+    (listada,) = repositorio.listar(obra_codigo=OBRA, tope=10)
+    una = repositorio.situacion(incidencia_id=UUID(int=2))
+
+    assert estado_de(listada) is E.VOLCADA
+    assert una is not None
+    assert estado_de(una) is E.EN_DUDA
+
+
+def test_f059_r3_aprobadas_con_una_volcada_no_falla_y_no_la_devuelve():
+    """§12 de F-059 · una `volcada` (última revisión `aprobar`) no es candidata;
+    una `en_duda` sí (R3). La `volcada` no hace fallar a las demás."""
+    conexion = ConexionDoble().responder(
+        "u.accion = %s",
+        [
+            _fila(_fila_bandeja(1), _fila_aprobada(4, 1), volcado=VOLCADA),
+            _fila(_fila_bandeja(2), _fila_aprobada(9, 2), volcado=EN_DUDA),
+            _fila(_fila_bandeja(3), _fila_aprobada(12, 3)),
+        ],
+    )
+
+    candidatas = _repositorio(conexion).aprobadas(obra_codigo=OBRA)
+
+    assert [c.incidencia_id for c in candidatas] == [UUID(int=2), UUID(int=3)]
+    assert [c.revision_id for c in candidatas] == [9, 12]
+
+
+def _fila_de_volcado(n: int, volcado: tuple) -> tuple:
+    """Una fila de `sentencias_volcado.select_volcado_de` (F-059)."""
+    return (UUID(int=n), 4, "aprobar", HUELLA, *volcado)
+
+
+def _conexion_con_volcado(volcado: tuple, n: int = 1) -> ConexionDoble:
+    return _conexion_de_registrar([(UUID(int=n), 7)]).responder(
+        "volcados_sigrid v", [_fila_de_volcado(n, volcado)]
+    )
+
+
+@pytest.mark.parametrize(
+    ("volcado", "estado"),
+    (
+        (EN_DUDA, "en_duda"),
+        (_volcado(ultimo=_ultimo("sin_respuesta")), "en_duda"),
+        (VOLCADA, "volcada"),
+        (_volcado(parte=_parte_en_sigrid()), "volcada"),
+    ),
+    ids=("enviado", "sin_respuesta", "creado", "idempotente-de-ensayo"),
+)
+def test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar(volcado, estado):
+    """R2, R29 · el volcado ganó la carrera: entre el primer chequeo (sin
+    eventos) y el `FOR UPDATE`, apareció un `enviado` (o el parte ya está en
+    Sigrid). Dentro de la transacción: 409 con el estado y sin acciones, nada
+    escrito y `ROLLBACK`."""
+    conexion = _conexion_con_volcado(volcado)
+
+    with pytest.raises(AccionNoPermitida) as error:
+        _repositorio(conexion).registrar(
+            revision=_revision_nueva(1), esperadas={UUID(int=1): 7}
+        )
+
+    assert error.value.estado == estado
+    assert error.value.acciones == ()
+    assert conexion.veces_con("INSERT INTO") == 0
+    assert (conexion.commits, conexion.rollbacks) == (0, 1)
+    for prohibido in (OID, CORREO, CORREO_DEL_VOLCADO, MOTIVO, DESCRIPCION, COD):
+        assert prohibido not in str(error.value)
+
+
+@pytest.mark.parametrize("estado", ("rechazado", "no_procesado"))
+def test_f059_r2_r27_un_ultimo_rechazado_si_admite_la_accion(estado):
+    """§4.2 de F-059 · una `aprobada` cuyo último resultado fue un rechazo se
+    edita: la comprobación no la para."""
+    conexion = _conexion_con_volcado(_volcado(ultimo=_ultimo(estado, "colision_de_clave")))
+
+    revision_id = _repositorio(conexion).registrar(
+        revision=_revision_nueva(1), esperadas={UUID(int=1): 7}
+    )
+
+    assert revision_id == 8
+    assert conexion.veces_con("INSERT INTO") == 1
+    assert conexion.commits == 1
+
+
+def test_f059_r2_se_lee_tras_el_bloqueo_y_solo_la_de_la_propia():
+    """Aprobar una duplicada bloquea las dos; la situación de volcado que se
+    mira es la de la propia, dentro de la transacción y antes del `INSERT`."""
+    conexion = _conexion_de_registrar([(UUID(int=1), 5), (UUID(int=7), 9)])
+
+    _repositorio(conexion).registrar(
+        revision=_revision_nueva(7), esperadas={UUID(int=7): 9, UUID(int=1): 5}
+    )
+
+    sql = conexion.sql_ejecutado
+    assert "FOR UPDATE" in sql[0]
+    assert f"FROM {ESQUEMA}.volcados_sigrid v" in sql[2]
+    assert conexion.ejecutadas[2].parametros == ([UUID(int=7)],)
+    assert sql[3].startswith("INSERT INTO")
+    assert len(sql) == 4
+
+
+def test_f059_r2_la_comprobacion_va_antes_que_la_frescura():
+    """Si además otra persona guardó entre medias, manda R2: lo que la persona
+    tiene que saber es que la incidencia ya no admite acciones."""
+    conexion = _conexion_de_registrar([(UUID(int=1), 8)]).responder(
+        "volcados_sigrid v", [_fila_de_volcado(1, EN_DUDA)]
+    )
+
+    with pytest.raises(AccionNoPermitida):
+        _repositorio(conexion).registrar(
+            revision=_revision_nueva(1), esperadas={UUID(int=1): 7}
+        )
+
+    assert conexion.veces_con("INSERT INTO") == 0
+
+
+def test_f059_r2_si_la_base_falla_al_leer_el_volcado_es_503_y_nada_a_medias():
+    conexion = _conexion_de_registrar([(UUID(int=1), 7)]).fallar(
+        "volcados_sigrid v", psycopg.errors.LockNotAvailable("inventado")
+    )
+
+    with pytest.raises(PersistenciaNoDisponible):
+        _repositorio(conexion).registrar(
+            revision=_revision_nueva(1), esperadas={UUID(int=1): 7}
+        )
+
+    assert conexion.veces_con("INSERT INTO") == 0
+    assert (conexion.commits, conexion.rollbacks) == (0, 1)
+
+
+@pytest.mark.parametrize("nombre", CON_SITUACIONES)
+def test_f059_r33_las_situaciones_no_seleccionan_actor_oid(nombre):
+    """R33 de F-059 · el `oid` de quien volcó no se lee; el correo, sí (R4)."""
+    sql, _ = _todas_las_sentencias()[nombre]
+
+    assert "actor_oid" not in sql
+    assert "vp.actor_correo" in sql
+    assert "vu.actor_correo" in sql

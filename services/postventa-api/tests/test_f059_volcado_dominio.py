@@ -10,7 +10,7 @@ sin reloj (la hora entra por parámetro).
 | el parte y el cuerpo, clave a clave; `tipo` `0002` con cualquier `listado`; `causante: false`; sin proveedor, `[]`; ninguna clave prohibida | R6, Q-1, Q-2, D-9, D-10 |
 | la huella recalculada | R7 |
 | la selección del ensayo: cada exclusión, en el orden pedido; `en_duda` y la rechazada se vuelven a mandar | R11, R27 |
-| el ensayo vigente: misma obra, misma persona, 29:59 vale y 30:00 no | R17 |
+| el ensayo vigente: misma obra, misma persona (lo dice la base, B-1 (a)), 29:59 vale y 30:00 no | R17 |
 | la selección del volcado: `previsto`, misma revisión, última `aprobar`, no volcada, huella; en el orden del ensayo | R18, R20, R27 |
 | la respuesta: emparejar por `indice` y referencia; cada incoherencia, `sin_respuesta`; nunca `committed`; solo el código del motivo; sin `cod` provisionales | R12, R14, R22, R23, R35, D-13 |
 | todos sin respuesta; todos no procesados, solo con un código de lote | R23, R24, R35 |
@@ -27,6 +27,7 @@ correos `@ejemplo.invalid`, base y login inventados; los identificadores,
 
 from __future__ import annotations
 
+import inspect
 import json
 from dataclasses import FrozenInstanceError, fields, replace
 from datetime import UTC, datetime, timedelta
@@ -249,12 +250,17 @@ def con_rechazo(
 
 
 def ensayo(
-    *eventos: EventoDeEnsayo, obra: str = OBRA, oid: str = OID, at: datetime = AHORA
+    *eventos: EventoDeEnsayo,
+    obra: str = OBRA,
+    de_la_persona: bool = True,
+    at: datetime = AHORA,
 ) -> Ensayo:
+    # B-1 (a), decisión del humano del 2026-10-16: la persona la compara la
+    # base; el dominio solo sabe si coincide (`de_la_persona`), nunca el `oid`.
     return Ensayo(
         ensayo_id=UUID(int=500),
         obra_codigo=obra,
-        actor_oid=oid,
+        de_la_persona=de_la_persona,
         at_utc=at,
         eventos=eventos,
     )
@@ -798,7 +804,7 @@ def test_f059_r11_pedidas_repetidas() -> None:
 
 
 def causa_de(ens: Ensayo | None, **cambios: object) -> str:
-    argumentos: dict[str, object] = {"obra": OBRA, "actor_oid": OID, "ahora": AHORA}
+    argumentos: dict[str, object] = {"obra": OBRA, "ahora": AHORA}
     argumentos.update(cambios)
     with pytest.raises(errores.EnsayoNoValido) as info:
         validar_ensayo(ens, **argumentos)  # type: ignore[arg-type]
@@ -808,9 +814,9 @@ def causa_de(ens: Ensayo | None, **cambios: object) -> str:
 
 
 def test_f059_r17_un_ensayo_vigente_vale() -> None:
-    assert validar_ensayo(ensayo(), obra=OBRA, actor_oid=OID, ahora=AHORA) is None
+    assert validar_ensayo(ensayo(), obra=OBRA, ahora=AHORA) is None
     casi = AHORA + timedelta(minutes=29, seconds=59)
-    assert validar_ensayo(ensayo(), obra=OBRA, actor_oid=OID, ahora=casi) is None
+    assert validar_ensayo(ensayo(), obra=OBRA, ahora=casi) is None
 
 
 def test_f059_r17_no_existe() -> None:
@@ -822,7 +828,24 @@ def test_f059_r17_de_otra_obra() -> None:
 
 
 def test_f059_r17_de_otra_persona() -> None:
-    assert causa_de(ensayo(oid=OID_2)) == "de_otra_persona"
+    assert causa_de(ensayo(de_la_persona=False)) == "de_otra_persona"
+
+
+def test_f059_r17_r33_b1_el_dominio_no_ve_ningun_oid() -> None:
+    """B-1 (a), decisión del humano del 2026-10-16: la persona del ensayo la
+    compara la base (R33: ninguna lectura selecciona `actor_oid`). El `Ensayo`
+    no tiene `oid` y `validar_ensayo` no lo recibe."""
+    assert [f.name for f in fields(Ensayo)] == [
+        "ensayo_id",
+        "obra_codigo",
+        "de_la_persona",
+        "at_utc",
+        "eventos",
+    ]
+    parametros = inspect.signature(validar_ensayo).parameters
+    assert list(parametros) == ["ensayo", "obra", "ahora"]
+    assert parametros["obra"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert parametros["ahora"].kind is inspect.Parameter.KEYWORD_ONLY
 
 
 @pytest.mark.parametrize(
@@ -835,8 +858,8 @@ def test_f059_r17_a_los_30_minutos_caduca(pasado: timedelta) -> None:
 
 def test_f059_r17_el_orden_obra_persona_caducidad() -> None:
     viejo = AHORA - timedelta(hours=1)
-    assert causa_de(ensayo(obra=OTRA_OBRA, oid=OID_2, at=viejo)) == "de_otra_obra"
-    assert causa_de(ensayo(oid=OID_2, at=viejo)) == "de_otra_persona"
+    assert causa_de(ensayo(obra=OTRA_OBRA, de_la_persona=False, at=viejo)) == "de_otra_obra"
+    assert causa_de(ensayo(de_la_persona=False, at=viejo)) == "de_otra_persona"
 
 
 def test_f059_r17_las_constantes_y_los_motivos() -> None:
@@ -1583,7 +1606,7 @@ def test_f059_los_tipos_son_inmutables() -> None:
     objetos = (
         (ms[0], "tipo"),
         (resultado(ms[0], EV.CREADO, ide=IDE, cod=COD), "estado"),
-        (ensayo(evento(1)), "actor_oid"),
+        (ensayo(evento(1)), "de_la_persona"),
         (evento(1), "estado"),
         (Excluida(UUID(int=1), MX.YA_VOLCADA, COD), "sigrid_cod"),
         (bloqueada(1), "accion"),

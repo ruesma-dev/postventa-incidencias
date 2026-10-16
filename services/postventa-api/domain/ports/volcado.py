@@ -34,8 +34,10 @@ El puerto de la pasarela (`VolcadoSigridPort`) es del Bloque 3 (T11).
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, runtime_checkable
+from enum import StrEnum
+from typing import Any, Protocol, runtime_checkable
 from uuid import UUID
 
 from domain.models.revision import Quien
@@ -50,7 +52,35 @@ from domain.models.volcado import (
     SituacionBloqueada,
 )
 
-__all__ = ["DecisionDelVolcado", "RepositorioVolcadoPort"]
+__all__ = [
+    "DecisionDelVolcado",
+    "FamiliaDeRespuesta",
+    "RepositorioVolcadoPort",
+    "RespuestaDeLote",
+    "VolcadoSigridPort",
+]
+
+
+class FamiliaDeRespuesta(StrEnum):  # F-059 T10: esqueleto neutro
+    OK = "ok"
+    LOTE_400 = "lote_400"
+    SIN_RESPUESTA = "sin_respuesta"
+
+
+@dataclass
+class RespuestaDeLote:  # F-059 T10: esqueleto neutro
+    tipo: FamiliaDeRespuesta
+    datos: Any = None
+    codigo: str | None = None
+
+
+@runtime_checkable
+class VolcadoSigridPort(Protocol):  # F-059 T10: esqueleto neutro
+    def existe_usuario(self, *, login: str) -> bool: ...
+
+    def ensayar(self, *, cuerpo: Mapping[str, Any]) -> RespuestaDeLote: ...
+
+    def volcar(self, *, cuerpo: Mapping[str, Any]) -> RespuestaDeLote: ...
 
 #: La decisión pura de R18 y R20 (`seleccionar_para_volcado`): las pedidas, el
 #: ensayo y lo leído con las filas bloqueadas.

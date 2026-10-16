@@ -170,7 +170,7 @@
 
 ## Bloque 3 · El adaptador de `sigrid-api` y las fábricas
 
-- [ ] **T10 · RED**: `tests/test_f059_adaptador_volcado.py` con cliente
+- [x] **T10 · RED**: `tests/test_f059_adaptador_volcado.py` con cliente
   falso: la ruta exacta; la cabecera con la clave y nunca en la URL; `volcar`
   con `escritura_habilitada=False` → `VolcadoDeshabilitado` **sin** `post`;
   `volcar` con un cuerpo sin `commit: True` y `ensayar` con uno sin

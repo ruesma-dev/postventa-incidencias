@@ -28,7 +28,7 @@ from typing import Protocol, runtime_checkable
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.persistencia import ResultadoGuardado
 
-__all__ = ["RepositorioUsuariosSigridPort"]
+__all__ = ["RepositorioUsuariosSigridPort", "VerificadorDeLoginPort"]
 
 
 @runtime_checkable
@@ -57,3 +57,8 @@ class RepositorioUsuariosSigridPort(Protocol):
         una segunda identidad para la misma persona.
         """
         ...
+
+
+@runtime_checkable
+class VerificadorDeLoginPort(Protocol):  # F-059 T10: esqueleto neutro
+    def existe_usuario(self, *, login: str) -> bool: ...

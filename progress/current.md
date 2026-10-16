@@ -1,6 +1,11 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-059 · Bloque 2 APPROVED (reviewer, 2026-10-16, `8e668b2`)** · T4–T7 y T9 (26/26 muertos; 83 a mano). **T8 pendiente
+> del humano y bloquea el cierre**: `infra/pruebas_bbdd_efimera.ps1` con Docker Desktop (deben pasar
+> `test_f059_bbdd_volcado.py` y los de F-036, F-056 y F-060). O-B2-1 (letra de `aprobadas` en design §12) al
+> spec-author; O-B2-2 y O-B1-1 para el Bloque 4. Siguiente: Bloque 3 (adaptador de `sigrid-api`, T10–T12).
+
 > **F-059 · desbloqueada (humano, 2026-10-16, «ok a b1 y b2»)** · B-1 (a) y B-2 sí. El spec-author enmienda la spec; luego el
 > implementer retoma el Bloque 2 desde T4.
 

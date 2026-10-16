@@ -969,3 +969,703 @@ test (la limpieza de `tests_bbdd` no es código del servicio: O-5 de F-056), sin
 Con B-1 y B-2 decididos, retomo el Bloque 2 desde T4 (RED) tal cual está en `tasks.md`. Si se elige B-1 (a), la
 RED de T4 incluirá además los casos de `Ensayo.de_la_persona` y de `validar_ensayo` que cambian, y T9 mutará esas
 líneas del Bloque 1.
+
+
+## Bloque 2 · La tabla y los repositorios · T4–T7 y T9 · 2026-10-16 (tras el desbloqueo)
+
+Desbloqueado por el humano el 2026-10-16 («ok a b1 y b2»): **B-1 (a)** (la base compara la persona del ensayo;
+`Ensayo.de_la_persona: bool`; `validar_ensayo(ensayo, *, obra, ahora)`), **B-2**
+(`test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo` entra en las
+excepciones de R41) y aceptados los tres puntos de «Lo que haré…». Lo escribió el spec-author en `13f9f51`
+(`design.md` §7, §8.1, §18, §20, §21.3; `tasks.md` T4, T6, T9, T16). Releído antes de empezar.
+
+**Hash anterior a T4 (base de T9): `13f9f51`.** Todo lanzado desde `<scratchpad>/f059` (sin `.env`) con rutas
+absolutas, y la mutación con `--raiz <repo>` desde el mismo directorio. **`bash harness/init.sh` no se ha
+lanzado**: su sección 7 bis ejecuta `pytest` desde `services/postventa-api`, donde está el `.env`, y el encargo
+prohíbe que ningún proceso mío lo lea. En su lugar, las verificaciones de cada tarea, la suite entera del
+servicio y `ruff` sobre lo tocado (abajo). La puerta completa es T23.
+
+### T4 · Fase RED (`f50281b`)
+
+**Tests nuevos:**
+
+- `tests/test_f059_ddl.py` (R32, R33, R26): el `16_` el último, detrás del `15_`; la guarda real acepta sus tres
+  sentencias; `cargar_ddl` lo carga; idempotente; ni semilla, ni `UPDATE`/`DELETE`/`TRUNCATE`, ni `CASCADE`; todo
+  cualificado y sin `public`; sin binarias ni JSON; el esquema configurado se sustituye entero; la cabecera
+  (ruta, «Construye», «Lee de» `13_` y `15_`, y quince frases: append-only, `evento_id`, el estado no se guarda,
+  sin índice único y R26, `actor_oid` que no se lee, el correo de un empleado interno que nunca va a un log,
+  `GET /api/revision`, `motivo.mensaje`, el login de Sigrid, sin cascada, F-048); las dieciséis columnas en
+  orden; cada declaración; los `CHECK` de `modo` y `estado` = `ModoVolcado` y `EstadoEvento`; los **cuatro**
+  `CHECK` de fila, literales, y diez `CHECK` en total; los literales de fila casan con el dominio
+  (`ESTADOS_CON_PARTE`, los estados de un ensayo, la longitud del motivo); ni `UNIQUE` ni columna de estado
+  de la incidencia; los dos índices.
+- `tests/test_f059_repositorio_volcado.py`, con `ConexionDoble`: el puerto (cinco operaciones, cada una solo por
+  nombre y con los parámetros de §8.1 enmendado) y que el repositorio lo cumple; el SQL **escrito a mano** de
+  `select_volcado_de` (las dos `LATERAL`: el **primer** `creado`/`idempotente` por `evento_id` ascendente y el
+  **último** de modo `volcado` por `evento_id` descendente, y la última revisión) y de `select_ensayo` (la
+  comparación `(actor_oid = %s)` con el `oid` como **parámetro**); el `INSERT` sin `RETURNING` ni
+  `ON CONFLICT`, en UTC y sin aceptar una hora sin zona; **R33**: en cada lectura (las de F-059 y las tres de
+  F-056 que ganan las `LATERAL`), ninguna lista de columnas ni ningún texto nombra `actor_oid` fuera de
+  `(actor_oid = %s)`, y solo la del ensayo lo compara, una vez (con su control negativo); el código de los dos
+  módulos sin `UPDATE`/`DELETE`/`TRUNCATE`/DDL/consultivo; esquema configurado y hostil; de fila a dominio
+  (`fila_a_volcado`, `fila_a_bloqueada`, `filas_a_ensayo`: `de_la_persona` solo si lo es en **todas** las
+  filas, filas que no casan en obra u hora → `ValueError`, UTC); `situaciones` (una entrada por cada una de la
+  bandeja, `SituacionDeVolcado(None, None)` sin eventos, sin pedidas no abre); `guardar_ensayo` y
+  `guardar_resultados` (un evento por parte, clave a clave, uno a uno o `ValueError` sin abrir, 503 sin nada a
+  medias); `leer_ensayo` (pasa el `oid` y no lo recibe); **`anotar_enviados`** (el orden: `select_bloquear`
+  **exacta** de F-056, la lectura, la decisión **dentro** —el doble apunta lo ejecutado cuando se le llama—,
+  los `INSERT` de los `enviado` y **un** `COMMIT`; con la decisión real del dominio; si la decisión falla,
+  `ROLLBACK` sin escribir; si la base falla en cualquiera de los tres pasos, 503 y `ROLLBACK`; sin pedidas no
+  abre; `select_bloquear` es el mismo objeto que el de `sentencias_revision`); R34 (ningún log con `oid`,
+  correo ni textos); `construir_volcados` (la receta de la fábrica, sin contraseña no abre, fuera de `__all__`).
+- `tests/test_f059_volcado_dominio.py` (B-1 (a)): el ayudante `ensayo()` pasa a `de_la_persona`; los casos de
+  R17 (`causa_de`, «vigente vale», `de_otra_persona`, el orden obra-persona-caducidad y la inmutabilidad) sin
+  `actor_oid`; y uno nuevo, `test_f059_r17_r33_b1_el_dominio_no_ve_ningun_oid` (los campos de `Ensayo` y la
+  firma de `validar_ensayo`, exactos). Ningún caso se quita.
+
+**Tests ajenos ampliados**, solo los de R41 (F-1 (a) y B-2), cada línea con su comentario `F-059 (R41, F-1 (a);
+design.md §21.3 …)`:
+
+| Test | Ampliación (sin quitar nada) | Grupo |
+|---|---|---|
+| `test_f005_ddl_idempotente_texto.py::test_f005_r1_se_aplican_todos_los_ficheros_en_orden` | + `"16_volcados_sigrid.sql"` al final de la lista exacta; una frase en el docstring | A |
+| `test_f028_ddl_historico.py::test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo` | + el `16_` en la cola exacta tras el `11_` | A |
+| `test_f030_veredicto_persistido.py::test_f030_r20_…`, `test_f031_…::test_f031_r17_…`, `test_f032_…::test_f032_r22_…`, `test_f033_…::test_f033_…`, `test_f034_…::test_f034_r23_…` (`no_hay_ni_un_fichero_de_ddl_nuevo`) | `== DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056 + ("16_volcados_sigrid.sql",)`, **dentro de la función** (la constante no se toca) | A |
+| `test_f036_ddl.py::test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden` | + el `16_` en la cola exacta | A |
+| `test_f056_ddl.py::test_f056_r36_el_fichero_va_detras_de_los_de_f036` | `nombres[-1] == 15_` pasa a `nombres[-2] == 15_` **y** `nombres[-1] == 16_` (más estricta: dice también cuál va detrás) | A |
+| `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo` | La igualdad exacta pasa a dos: `revisado_correo` y `volcados_sigrid.actor_correo` | **A, B-2** |
+| `test_f056_alcance_cerrado.py::test_f056_r12_solo_15_declara_una_columna_de_correo` | La igualdad exacta pasa a `["15_…", "16_…"]` | A |
+| `test_f060_alcance_cerrado.py::test_f060_r37_los_sql_son_los_quince_de_antes` | `== (*SQL_DE_LA_BASE, "16_volcados_sigrid.sql")` (la constante no se toca); el docstring dice que el único es el de F-059 | A |
+| `test_f056_repositorio_revision.py` | Ver abajo | C |
+
+En `test_f056_repositorio_revision.py` (grupo C: «el ancho de las filas falsas de `_select_situaciones`,
+`aprobadas` y `registrar`»):
+
+- **El ancho**: la constante nueva `LEIDAS_DEL_VOLCADO` (las ocho de las `LATERAL`, escritas a mano), `SIN_VOLCADO`
+  y el parámetro `volcado` (por defecto `SIN_VOLCADO`) del ayudante `_fila`.
+- `test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original`: `count("LEFT JOIN LATERAL") == 2` pasa
+  a `== 4` y **se añade** que dos de ellas son sobre `volcados_sigrid` de la propia. Las otras cuatro aserciones,
+  intactas.
+- `test_f056_r10_las_situaciones_leen_estas_columnas_en_este_orden`: la lista esperada gana, al final,
+  `LEIDAS_DEL_VOLCADO`.
+- `test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma`: `len(sql) == 3` pasa a `4`; el `INSERT` y sus
+  parámetros pasan de la posición 2 a la 3, y **se añade** que la 2 es la lectura de `volcados_sigrid` con la
+  propia como parámetro.
+- **Añadidos** al final, en su sección «F-059 …», con nombre `test_f059_*` (R1–R4, R29, R33): la fila sin eventos
+  sin `volcado`, la `volcada`, la `en_duda`, el último rechazado con su motivo, la original sin `volcado`, el
+  ancho de más o de menos, `listar` y `situacion` con la situación de volcado, **`aprobadas` con una `volcada`
+  que no falla y no la devuelve** (y sí la `en_duda`), **`registrar` con un volcado aparecido tras el primer
+  chequeo → `AccionNoPermitida` sin insertar y `ROLLBACK`** (enviado, sin_respuesta, creado, idempotente de
+  ensayo), el último rechazado que sí admite la acción, la lectura tras el bloqueo y solo de la propia, R2 antes
+  que la frescura, 503 si la lectura falla, las `LATERAL` de la propia (añadido en T9) y ninguna lectura con
+  `actor_oid`.
+- `test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa` **no se toca** (y sigue en verde: ver
+  la decisión 1 de T6).
+
+**El esqueleto neutro** (como en T1): `domain/ports/volcado.py` ya con el puerto (es una declaración);
+`sentencias_volcado.py` con `EventoNuevo` y las seis funciones con `raise NotImplementedError("F-059 T6")`;
+`repositorio_volcado_pg.py` con la clase y sus cinco métodos que levantan lo mismo (e importando
+`select_bloquear`). Sin `16_`, sin `construir_volcados`, y sin tocar `sentencias_revision.py`,
+`repositorio_revision_pg.py` ni `domain/models/volcado.py`.
+
+Comandos (desde `<scratchpad>/f059`, `R` = `<repo>/services/postventa-api`):
+
+```
+COLUMNS=400 $R/.venv/Scripts/python.exe -m pytest $R/tests/test_f059_ddl.py $R/tests/test_f059_repositorio_volcado.py \
+  $R/tests/test_f056_repositorio_revision.py $R/tests/test_f059_volcado_dominio.py -q -p no:cacheprovider --tb=no -rf
+```
+
+Resultado: **171 failed, 328 passed**. Por tipo: 65 `NotImplementedError` (el esqueleto), 40 `TypeError`
+(`Ensayo` sin `de_la_persona`, y `validar_ensayo` que aún exige `actor_oid`), 54 `AssertionError` (36 del `16_`
+que falta; los de `sentencias_revision.py` sin las `LATERAL` y `fila_a_situacion` sin el volcado; la firma de
+`Ensayo`), 7 `DID NOT RAISE` (R2 en `registrar` y el ancho de la fila), 2 `ValueError` (filas más anchas que la
+consulta vieja), 2 `AttributeError` (`construir_volcados`) y 1 `RevisionDesactualizada` (R2 aún no va antes que
+la frescura). **Los 328 que pasan** son los del dominio del Bloque 1 que no construyen un `Ensayo` y los de F-056
+que el cambio no toca, y **14** de los ficheros nuevos que no dependen de lo que falta: las enumeraciones
+escritas a mano (`test_f059_r32_los_modos_y_los_estados_son_los_de_la_spec`), el puerto (siete casos: es una
+declaración), los dos controles negativos, el R33 de código sobre los dos esqueletos (no tienen SQL), que el
+esqueleto importa `select_bloquear` de F-056 y que `construir_volcados` no está en `__all__`.
+
+Traza real, completa (solo se ha recortado el prefijo de la ruta hasta `services\`; ningún GUID):
+
+```
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_el_fichero_va_el_ultimo_detras_de_la_revision - AssertionError: assert '15_revisiones_bandeja.sql' == '16_volcados_sigrid.sql'
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_guarda_real_acepta_cada_sentencia_y_son_tres - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_el_ddl_real_entero_se_carga_con_el_fichero - AssertionError: assert 'CREATE TABLE IF NOT EXISTS postventa.volcados_sigrid ' in 'CREATE SCHEMA IF NOT EXISTS postventa CREATE TABLE IF NOT EXISTS postventa.remesas ( id uuid PRIMARY KEY, nombre_orig...INDEX IF NOT EXISTS...
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_todo_es_idempotente - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_r33_ni_datos_ni_escrituras_ni_borrados_en_el_ddl - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_todo_cualificado_sin_public_ni_ambito_de_servidor - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_sin_columnas_binarias_ni_json - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_un_esquema_configurado_distinto_se_sustituye_entero - AssertionError: assert 'CREATE TABLE IF NOT EXISTS otro_inventado.volcados_sigrid' in ''
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_dice_que_construye_y_de_que_lee - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[APPEND-ONLY] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[evento_id] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[NO SE GUARDA EL ESTADO] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[SIN INDICE UNICO] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[R26] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[actor_oid] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[NO SE LEE NUNCA] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[actor_correo] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[empleado interno] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[NUNCA va a un log] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[GET /api/revision] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[motivo.mensaje] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[login de Sigrid] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[ON DELETE CASCADE] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_la_cabecera_explica_la_tabla_el_oid_y_el_correo[F-048] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_las_columnas_son_las_del_diseno_y_ninguna_mas - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_declaraciones_de_las_columnas - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_el_check_de_modo_es_el_enum_del_dominio - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_el_check_de_estado_es_el_enum_del_dominio - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_los_cuatro_check_de_fila[CHECK ((modo = 'ensayo') = (ensayo_id IS NULL))] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_los_cuatro_check_de_fila[CHECK (modo = 'volcado' OR estado IN ('previsto', 'idempotente', 'rechazado', 'no_procesado'))] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_los_cuatro_check_de_fila[CHECK ((estado IN ('creado', 'idempotente')) = (sigrid_ide IS NOT NULL AND sigrid_cod IS NOT NULL))] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_los_cuatro_check_de_fila[CHECK (estado NOT IN ('rechazado', 'no_procesado') OR motivo_codigo IS NOT NULL)] - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_solo_los_cuatro_check_de_fila_y_diez_en_total - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_los_check_de_fila_casan_con_el_dominio - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r26_ni_unique_ni_estado_de_la_incidencia_guardado - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_ddl.py::test_f059_r32_los_dos_indices - AssertionError: falta 16_volcados_sigrid.sql
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_b1_el_ensayo_compara_la_persona_en_la_base - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_el_insert_es_una_fila_sin_on_conflict - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_el_insert_de_un_ensayo_sin_ensayo_id_y_con_motivo - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_no_se_escribe_una_hora_sin_zona - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_una_hora_con_otra_zona_se_escribe_en_utc - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_r33_la_unica_escritura_es_el_insert_en_volcados - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r33_ninguna_lectura_selecciona_actor_oid[volcado_de] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r33_ninguna_lectura_selecciona_actor_oid[ensayo] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r33_ninguna_lectura_selecciona_actor_oid[situaciones_de_obra] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r33_ninguna_lectura_selecciona_actor_oid[situacion] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r33_ninguna_lectura_selecciona_actor_oid[aprobadas] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r33_solo_la_lectura_del_ensayo_compara_la_persona - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r4_el_correo_si_se_lee - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_cada_sentencia_con_el_esquema_configurado[volcado_de] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_cada_sentencia_con_el_esquema_configurado[ensayo] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_cada_sentencia_con_el_esquema_configurado[insert] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_un_esquema_hostil_no_llega_al_sql[volcado_de] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_un_esquema_hostil_no_llega_al_sql[ensayo] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_un_esquema_hostil_no_llega_al_sql[insert] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r1_las_constantes_del_sql_son_las_del_dominio - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r1_sin_eventos_la_situacion_esta_vacia - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r1_r4_el_parte_y_el_ultimo - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r1_solo_el_ultimo_en_duda[enviado] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r1_solo_el_ultimo_en_duda[sin_respuesta] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r4_un_rechazo_con_su_codigo - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r1_un_idempotente_de_ensayo_es_parte_sin_ultimo_de_volcado - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r1_las_fechas_vuelven_en_utc_y_sin_zona_no_se_adivinan - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_una_situacion_con_columnas_de_mas_o_de_menos_no_se_lee[7] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r32_una_situacion_con_columnas_de_mas_o_de_menos_no_se_lee[9] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_la_fila_bloqueada_con_su_ultima_revision_y_su_volcado - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_una_fila_bloqueada_sin_revisiones - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_una_fila_bloqueada_con_columnas_de_mas_no_se_lee - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_el_ensayo_de_sus_filas - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_sin_filas_no_hay_ensayo - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[una-de-otra] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[todas-de-otra] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[la-ultima-de-otra] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[la-primera-de-otra] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_b1_de_la_persona_es_un_booleano_de_verdad - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_un_ensayo_cuyas_filas_no_casan_no_se_adivina[otra-obra] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_un_ensayo_cuyas_filas_no_casan_no_se_adivina[otra-hora] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_la_hora_del_ensayo_en_utc - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r4_r11_situaciones_una_entrada_por_cada_una_de_la_bandeja - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_situaciones_de_ninguna_no_abre_nada - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r13_guardar_ensayo_un_evento_por_parte_en_orden - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_ensayo_exige_partes_y_resultados_uno_a_uno[falta-un-resultado] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_ensayo_exige_partes_y_resultados_uno_a_uno[sobra-un-resultado] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_ensayo_exige_partes_y_resultados_uno_a_uno[cruzados] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_ensayo_exige_partes_y_resultados_uno_a_uno[otra-referencia] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_ensayo_exige_partes_y_resultados_uno_a_uno[vacio] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r13_si_la_base_falla_al_guardar_el_ensayo_es_503_y_nada_a_medias - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_b1_leer_ensayo_pasa_el_oid_y_no_lo_recibe - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_leer_un_ensayo_que_no_existe_es_none - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r17_b1_un_ensayo_de_otra_persona_lo_dice_la_base - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_si_la_base_no_responde_al_leer_es_503[situaciones] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_si_la_base_no_responde_al_leer_es_503[leer_ensayo] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_ninguna_elegida_no_inserta_y_cierra - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_r2_con_la_decision_real_del_dominio - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_si_la_decision_falla_no_se_escribe_y_se_deshace - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_si_la_base_falla_es_503_y_nada_a_medias[FOR UPDATE] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_si_la_base_falla_es_503_y_nada_a_medias[ORDER BY b.incidencia_id] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_si_la_base_falla_es_503_y_nada_a_medias[INSERT INTO] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r20_sin_pedidas_no_se_abre_nada - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r22_guardar_resultados_un_evento_por_parte_con_su_ensayo - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_resultados_exige_partes_y_resultados_uno_a_uno[falta-un-resultado] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_resultados_exige_partes_y_resultados_uno_a_uno[sobra-un-resultado] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_resultados_exige_partes_y_resultados_uno_a_uno[cruzados] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_resultados_exige_partes_y_resultados_uno_a_uno[otra-referencia] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_guardar_resultados_exige_partes_y_resultados_uno_a_uno[vacio] - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r25_si_la_base_falla_al_guardar_los_resultados_es_503_y_nada_a_medias - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_r34_ningun_log_del_repositorio_lleva_oid_ni_correo - NotImplementedError: F-059 T6
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_construir_volcados_abre_fija_la_sesion_y_asegura_el_esquema - AttributeError: module 'infrastructure.persistencia.fabrica' has no attribute 'construir_volcados'
+FAILED services\postventa-api\tests\test_f059_repositorio_volcado.py::test_f059_t6_sin_contrasena_construir_volcados_no_abre_nada - AttributeError: module 'infrastructure.persistencia.fabrica' has no attribute 'construir_volcados'
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original[situaciones_de_obra] - AssertionError: assert 2 == 4
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original[situacion] - AssertionError: assert 2 == 4
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original[aprobadas] - AssertionError: assert 2 == 4
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f056_r10_las_situaciones_leen_estas_columnas_en_este_orden[situaciones_de_obra] - AssertionError: assert False
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f056_r10_las_situaciones_leen_estas_columnas_en_este_orden[situacion] - AssertionError: assert False
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f056_r10_las_situaciones_leen_estas_columnas_en_este_orden[aprobadas] - AssertionError: assert False
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f056_r22_una_fila_con_su_ultima_y_su_original_con_la_suya - ValueError: zip() argument 2 is longer than argument 1
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma - AssertionError: assert 3 == 4
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r1_r4_una_fila_volcada_trae_su_parte_y_su_ultimo - AssertionError: assert None == SituacionDeVolcado(volcada=ParteEnSigrid(sigrid_ide=77, sigrid_cod='RS26.10/0001', at_utc=datetime.datetime(2026, 10, ... at_utc=datetime.datetime(2026, 10, 6, 9, 30, tzinf...
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r1_una_fila_en_duda[enviado] - AssertionError: assert <EstadoRevision.APROBADA: 'aprobada'> is <EstadoRevision.EN_DUDA: 'en_duda'>
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r1_una_fila_en_duda[sin_respuesta] - AssertionError: assert <EstadoRevision.APROBADA: 'aprobada'> is <EstadoRevision.EN_DUDA: 'en_duda'>
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r4_un_ultimo_rechazado_deja_la_aprobada_con_su_motivo - AssertionError: assert None is not None
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r4_la_original_de_una_duplicada_queda_sin_volcado - ValueError: zip() argument 2 is longer than argument 1
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r36_una_fila_sin_el_ancho_del_volcado_no_se_lee_a_medias[de-menos] - Failed: DID NOT RAISE ValueError
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r36_una_fila_sin_el_ancho_del_volcado_no_se_lee_a_medias[de-mas] - Failed: DID NOT RAISE ValueError
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r4_listar_y_situacion_traen_la_situacion_de_volcado - AssertionError: assert <EstadoRevision.APROBADA: 'aprobada'> is <EstadoRevision.VOLCADA: 'volcada'>
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r3_aprobadas_con_una_volcada_no_falla_y_no_la_devuelve - AssertionError: assert [UUID('000000...00000000003')] == [UUID('000000...00000000003')]
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado] - Failed: DID NOT RAISE AccionNoPermitida
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[sin_respuesta] - Failed: DID NOT RAISE AccionNoPermitida
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[creado] - Failed: DID NOT RAISE AccionNoPermitida
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[idempotente-de-ensayo] - Failed: DID NOT RAISE AccionNoPermitida
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r2_se_lee_tras_el_bloqueo_y_solo_la_de_la_propia - AssertionError: assert 'FROM postventa.volcados_sigrid v' in 'INSERT INTO postventa.revisiones_bandeja (incidencia_id, accion, unidad_codigo, unidad_nombre, ubicacion, descripcion...t_utc)\nVALUES (%s, %...
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r2_la_comprobacion_va_antes_que_la_frescura - domain.models.errores.RevisionDesactualizada: la incidencia ha cambiado desde que se leyó: vuelve a cargarla
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r2_si_la_base_falla_al_leer_el_volcado_es_503_y_nada_a_medias - Failed: DID NOT RAISE PersistenciaNoDisponible
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r33_las_situaciones_no_seleccionan_actor_oid[situaciones_de_obra] - AssertionError: assert 'vp.actor_correo' in 'SELECT b.incidencia_id, b.origen, b.importacion_id, b.fila_origen, b.obra_codigo, b.unidad_codigo, b.unidad_nombre, b...true\nWHERE b.obra_co...
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r33_las_situaciones_no_seleccionan_actor_oid[situacion] - AssertionError: assert 'vp.actor_correo' in 'SELECT b.incidencia_id, b.origen, b.importacion_id, b.fila_origen, b.obra_codigo, b.unidad_codigo, b.unidad_nombre, b...) uo ON true\nWHERE b.incidenci...
+FAILED services\postventa-api\tests\test_f056_repositorio_revision.py::test_f059_r33_las_situaciones_no_seleccionan_actor_oid[aprobadas] - AssertionError: assert 'vp.actor_correo' in 'SELECT b.incidencia_id, b.origen, b.importacion_id, b.fila_origen, b.obra_codigo, b.unidad_codigo, b.unidad_nombre, b...ERE b.obra_codigo = %s AND u.ac...
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_un_ensayo_vigente_vale - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_no_existe - TypeError: validar_ensayo() missing 1 required keyword-only argument: 'actor_oid'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_de_otra_obra - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_de_otra_persona - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_r33_b1_el_dominio_no_ve_ningun_oid - AssertionError: assert ['ensayo_id',...c', 'eventos'] == ['ensayo_id',...c', 'eventos']
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_a_los_30_minutos_caduca[pasado0] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_a_los_30_minutos_caduca[pasado1] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_a_los_30_minutos_caduca[pasado2] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r17_el_orden_obra_persona_caducidad - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r18_r21_lo_previsto_con_la_misma_revision_en_el_orden_del_ensayo - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r18_fuera_del_ensayo_si_no_esta - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r18_fuera_del_ensayo_si_no_salio_previsto[idempotente] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r18_fuera_del_ensayo_si_no_salio_previsto[rechazado] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r18_fuera_del_ensayo_si_no_salio_previsto[no_procesado] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r18_revision_desactualizada_si_la_pedida_no_es_la_del_ensayo - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r18_lo_del_ensayo_antes_que_lo_de_la_base - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_revision_desactualizada_si_hay_otra_revision_despues_del_ensayo - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_revision_desactualizada_si_la_ultima_no_es_aprobar[editar] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_revision_desactualizada_si_la_ultima_no_es_aprobar[descartar] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_revision_desactualizada_si_la_ultima_no_es_aprobar[recuperar] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_revision_desactualizada_si_la_ultima_no_es_aprobar[None] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_r27_ya_volcada_con_su_codigo - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_ya_volcada_antes_que_la_revision - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_volcar[volcado0] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_volcar[volcado1] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_volcar[volcado2] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r27_en_duda_y_aprobada_con_rechazo_se_vuelven_a_volcar[volcado3] - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r7_r20_huella_no_coincide - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_no_es_de_la_bandeja_si_no_se_pudo_bloquear - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_las_excluidas_en_el_orden_pedido - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r20_ninguna_elegible - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_r15_pedidas_repetidas - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+FAILED services\postventa-api\tests\test_f059_volcado_dominio.py::test_f059_los_tipos_son_inmutables - TypeError: Ensayo.__init__() got an unexpected keyword argument 'de_la_persona'
+171 failed, 328 passed in 6.92s
+```
+
+Y los doce del grupo A de R41, que en la RED se ponen rojos **porque piden el `16_`** (son exactamente los doce
+del inventario de B-2, ni uno más):
+
+```
+COLUMNS=400 $R/.venv/Scripts/python.exe -m pytest $R/tests/test_f005_ddl_idempotente_texto.py $R/tests/test_f056_ddl.py \
+  $R/tests/test_f028_ddl_historico.py $R/tests/test_f030_veredicto_persistido.py $R/tests/test_f031_alcance_cerrado.py \
+  $R/tests/test_f032_alcance_cerrado.py $R/tests/test_f033_alcance_cerrado.py $R/tests/test_f034_alcance_cerrado.py \
+  $R/tests/test_f036_ddl.py $R/tests/test_f056_alcance_cerrado.py $R/tests/test_f060_alcance_cerrado.py -q -p no:cacheprovider --tb=no -rf
+```
+
+```
+FAILED services\postventa-api\tests\test_f005_ddl_idempotente_texto.py::test_f005_r1_se_aplican_todos_los_ficheros_en_orden - AssertionError: assert ['01_esquema....res.sql', ...] == ['01_esquema....res.sql', ...]
+FAILED services\postventa-api\tests\test_f056_ddl.py::test_f056_r36_el_fichero_va_detras_de_los_de_f036 - AssertionError: assert '14_decisione...ivalencia.sql' == '15_revisiones_bandeja.sql'
+FAILED services\postventa-api\tests\test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo - AssertionError: assert ['postventa.r...isado_correo'] == ['postventa.r...actor_correo']
+FAILED services\postventa-api\tests\test_f028_ddl_historico.py::test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo - AssertionError: assert ['12_importac..._bandeja.sql'] == ['12_importac...s_sigrid.sql']
+FAILED services\postventa-api\tests\test_f030_veredicto_persistido.py::test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo - AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+FAILED services\postventa-api\tests\test_f031_alcance_cerrado.py::test_f031_r17_no_hay_ni_un_fichero_de_ddl_nuevo - AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+FAILED services\postventa-api\tests\test_f032_alcance_cerrado.py::test_f032_r22_no_hay_ni_un_fichero_de_ddl_nuevo - AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+FAILED services\postventa-api\tests\test_f033_alcance_cerrado.py::test_f033_no_hay_ni_un_fichero_de_ddl_nuevo - AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+FAILED services\postventa-api\tests\test_f034_alcance_cerrado.py::test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo - AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+FAILED services\postventa-api\tests\test_f036_ddl.py::test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden - AssertionError: assert ['12_importac..._bandeja.sql'] == ['12_importac...s_sigrid.sql']
+FAILED services\postventa-api\tests\test_f056_alcance_cerrado.py::test_f056_r12_solo_15_declara_una_columna_de_correo - AssertionError: assert ['15_revisiones_bandeja.sql'] == ['15_revision...s_sigrid.sql']
+FAILED services\postventa-api\tests\test_f060_alcance_cerrado.py::test_f060_r37_los_sql_son_los_quince_de_antes - AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+12 failed, 274 passed, 95 skipped in 57.26s
+```
+
+### T5 · `16_volcados_sigrid.sql` (`54c3278`)
+
+El `CREATE TABLE IF NOT EXISTS postventa.volcados_sigrid` y los dos `CREATE INDEX IF NOT EXISTS` de `design.md`
+§9, **literales**, y la cabecera de §9: qué construye y de qué lee (`13_` y `15_`); append-only y manda el
+`evento_id`; la escritura anticipada dentro de la transacción del `FOR UPDATE`, nunca consultivo; el estado de
+la incidencia no se guarda; los `CHECK` de `modo` y `estado` son los `Enum` y no se pueden ampliar después;
+qué dicen los cuatro de fila; **sin índice único a propósito** (R26); `actor_oid` seudónimo, que **no se lee
+nunca** (la base lo compara, B-1 (a)); `actor_correo` de un empleado interno, que solo devuelve
+`GET /api/revision` y nunca va a un log; ni textos, ni nombres, ni el login, ni el `motivo.mensaje`; sin
+`ON DELETE CASCADE`; listas para F-048. Sin tildes en los comentarios, como el `15_`. **Solo el esquema
+`postventa`; nada de servidor; nada se ha aplicado contra ninguna base** (eso es T8, con la efímera).
+
+Verificación de `tasks.md` T5 (los doce ficheros): **323 passed, 95 skipped in 58.85s** (los `skipped` son los
+controles de `git` de las ramas de F-030–F-036, F-056 y F-060, que fuera de la suya se saltan). La primera
+pasada dio un rojo mío: la frase «empleado interno» de la cabecera partida entre dos líneas; reajustado el
+comentario.
+
+### T6 · El puerto, los repositorios y lo de §12 (`cf3b7a2`)
+
+| Fichero | Qué |
+|---|---|
+| `domain/ports/volcado.py` (nuevo) | `RepositorioVolcadoPort` (las cinco operaciones de §8.1 enmendado) y el alias `DecisionDelVolcado` (la firma de `decidir`). Sin `VolcadoSigridPort`, que es T11 |
+| `infrastructure/persistencia/sentencias_volcado.py` (nuevo) | Puro y **hoja** (no importa `sentencias_revision.py`): `columnas_del_volcado` y `joins_del_volcado` (las dos `LATERAL`, que también usa `_select_situaciones`), `select_volcado_de`, `select_ensayo`, `insert_evento` con `EventoNuevo`, y `fila_a_volcado`, `fila_a_bloqueada`, `filas_a_ensayo` |
+| `infrastructure/persistencia/repositorio_volcado_pg.py` (nuevo) | `RepositorioVolcadoPostgres(_Transaccional)`: `situaciones`, `guardar_ensayo`, `leer_ensayo`, `anotar_enviados` (R20) y `guardar_resultados` |
+| `infrastructure/persistencia/fabrica.py` | `construir_volcados` (la receta de `construir_revision`; fuera de `__all__`) |
+| `infrastructure/persistencia/sentencias_revision.py` | `_select_situaciones` gana las dos `LATERAL` (de la propia, `b`) y sus ocho columnas al final; `fila_a_situacion` llena `volcado` (`None` sin eventos; la original, `None`). `select_bloquear`, `select_ultimas_revisiones` e `insert_revision`, **sin cambios** |
+| `infrastructure/persistencia/repositorio_revision_pg.py` | `_registrar`: tras `select_bloquear` y `select_ultimas_revisiones`, `_exigir_que_no_este_volcada` (la sentencia nueva de `sentencias_volcado.py`, solo de la propia) **antes** de la comprobación de frescura; `aprobadas`: deja fuera la `volcada` antes de `candidata_de`. `registrar_lote` y `_registrar_lote`, **sin cambios** |
+| `domain/models/volcado.py` (Bloque 1, por B-1 (a)) | `Ensayo.actor_oid: str` → `Ensayo.de_la_persona: bool`; `validar_ensayo(ensayo, *, obra, ahora)` con `if not ensayo.de_la_persona`, en el mismo orden de motivos |
+
+**Decisiones de diseño (para la review del Bloque 2):**
+
+1. **`aprobadas` deja fuera la `volcada` con `estado_de(s) is not VOLCADA`, no con `es_candidata`.** §12 dice
+   «filtra con `es_candidata` antes de `candidata_de`», y lo que busca es que una `volcada` (última `aprobar`)
+   no haga fallar a la obra entera. Filtrar con `es_candidata` lo conseguiría, pero se **tragaría en silencio**
+   una fila cuya última revisión no fuera un `aprobar` —que el SQL no debería devolver nunca—, y eso es justo
+   la doble defensa de R34 que fija `test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa`
+   (espera `ValueError`): con `es_candidata` ese test de F-056 se pondría rojo y habría que **relajarlo**. Con el
+   filtro estrecho, la `volcada` sale fuera, la `en_duda` pasa (R3) y lo imposible sigue explotando. Lo
+   distinguen los mutantes a mano A04 y A05. Si la review prefiere la letra de §12, el cambio es una línea, pero
+   obliga a relajar ese test.
+2. **R2 en `_registrar`, entre la lectura de las últimas y su comprobación.** El orden de las sentencias es
+   `FOR UPDATE` → `max(revision_id)` → la situación de volcado → (R2) → (frescura) → `INSERT`. Así la lectura va
+   tras el bloqueo y dentro de la transacción, y la comprobación de R2 va **antes** de la de frescura (§12):
+   si las dos fallan, manda la de R2. Y las dos primeras sentencias quedan donde estaban, que es lo que fija
+   `test_f056_r7_r22_bloquea_las_dos_en_orden_fijo_y_mira_las_dos` (sin tocar).
+3. **Los estados que bloquean, escritos uno a uno** (`_BLOQUEAN_LA_REVISION = {VOLCADA, EN_DUDA}`, D-14), en vez
+   de `estado is not None` (cambio de T9: ver «Mutantes a mano»).
+4. **Las `LATERAL` llevan literales** (`'creado', 'idempotente'` y `'volcado'`), compuestos con `valores_check`
+   desde `ESTADOS_CON_PARTE` y `ModoVolcado`: no son valores recibidos. Pasarlos como parámetros habría
+   desplazado los de `select_situaciones_de_obra`, `select_situacion` y `select_aprobadas`, que fijan tres
+   tests de F-056 que no están en R41.
+5. **`volcado` es `None` en una fila sin eventos**, no `SituacionDeVolcado(None, None)`: R4 dice `null`, y así
+   las igualdades de los tests de F-056 y F-060 que construyen la situación sin `volcado` siguen valiendo. En
+   `situaciones` del repositorio nuevo, en cambio, `SituacionDeVolcado(None, None)` (§8.1 enmendado).
+6. **`filas_a_ensayo`** exige que las filas casen en obra y hora (se guardan juntas); si no, `ValueError`: no se
+   elige una. `de_la_persona` = `all(...)` sobre la comparación de cada fila.
+7. **`guardar_ensayo` y `guardar_resultados` sin partes** → `ValueError` (uno a uno exige al menos uno); y
+   `anotar_enviados` sin pedidas, igual. Ninguno abre nada.
+8. **`anotar_enviados`** anota el `enviado` con la obra **del ensayo** (ya validada contra la petición por
+   `validar_ensayo`), su `ensayo_id`, la referencia de `referencia_de` y la revisión y la huella del evento del
+   ensayo (las que la decisión ha comprobado contra la fila bloqueada). Devuelve la decisión tal cual.
+9. **Los logs del repositorio**: la llamada, la obra y los recuentos. La referencia de cada parte la registrará
+   la aplicación (R34, Bloque 4).
+
+Verificación de `tasks.md` T6: **520 passed, 73 skipped in 21.91s** a la primera. **Suite entera del servicio**
+tras T6 (`pytest <repo>/services/postventa-api/tests -q`, desde el scratchpad): **8592 passed, 129 skipped in
+1285.55s**, sin un rojo.
+
+### T7 · `tests_bbdd/tests/test_f059_bbdd_volcado.py` (`9b4c8d5`)
+
+46 casos (16 funciones con su parametrización), con la base efímera y la limpieza de F-056 (que borra también
+`volcados_sigrid`, antes y después de cada test, para que `test_f060_bbdd_lote.py`, que va después, pueda vaciar
+`revisiones_bandeja`). Obra `9904`, identificadores `uuid4`.
+
+- DDL dos veces sin cambiar nada (16 columnas) y nada en `public`; ningún índice único salvo la clave primaria.
+- La fila válida entra; **26 que la base rechaza**: estado y modo desconocidos, `creado` sin `cod` o sin `ide`,
+  `enviado` con `ide` y `cod`, `rechazado` y `no_procesado` sin motivo, `ensayo` con `ensayo_id`, `volcado` sin
+  él, un ensayo `enviado`, `sin_respuesta` o `creado`, referencia sin `PVI-`, en minúsculas o de 81, motivo vacío
+  o de 65, `cod` de 25, correo de 255 o de 2, y los seis `NOT NULL`; y **6 que el dominio escribe y entran**.
+- Las dos claves ajenas (incidencia y revisión que no existen).
+- Append-only: un segundo ensayo añade y deja el primero igual.
+- **B-1 (a)**: `leer_ensayo` con el `oid` de quien ensayó → `de_la_persona` verdadero; con otro → falso; los
+  eventos en su orden; un ensayo que no existe → `None`.
+- La derivación de §4.1 leída de la base: aprobada → `enviado` = `en_duda` → `sin_respuesta` = `en_duda` (y
+  candidata) → `rechazado` = `aprobada` con su motivo y el correo → `creado` y luego `sin_respuesta` = `volcada`
+  (gana) y fuera de `aprobadas`; un `idempotente` de ensayo deja `volcada`, sin último de modo `volcado`;
+  `registrar` sobre una `en_duda` → 409 sin escribir.
+- **Dos conexiones**: (a) la edición tiene la fila bloqueada → la escritura anticipada **espera** y luego la
+  excluye `revision_desactualizada`; (a') la escritura anticipada tiene la fila bloqueada (la decisión real
+  espera dentro) → `registrar` **espera** y luego recibe 409 `en_duda`; (b) dos `anotar_enviados` → el segundo
+  espera y los dos anotan su `enviado`, con una sola referencia; (c) la escritura anticipada bloquea `[z, y]` y
+  el lote de F-060 `[y, z]`: el lote espera, **sin interbloqueo**, y salta `y` (ya no es su esperada) y escribe
+  `z`.
+
+Verificación de `tasks.md` T7 (desde el scratchpad):
+
+```
+$R/.venv/Scripts/python.exe -m pytest --collect-only -q -p no:cacheprovider $R/tests_bbdd/tests/test_f059_bbdd_volcado.py
+46 tests collected in 0.90s
+```
+
+No se ha ejecutado contra ninguna base (regla del encargo): sin `POSTVENTA_PG_TEST_DSN` todos se saltan.
+
+### T8 · MANUAL (humano) — preparada, **no ejecutada**
+
+Con Docker Desktop arrancado, desde la raíz del repositorio:
+
+```
+powershell -ExecutionPolicy Bypass -File infra\pruebas_bbdd_efimera.ps1
+```
+
+Debe salir **en verde** `tests_bbdd/tests/test_f059_bbdd_volcado.py` (**46** casos) junto con los de F-005,
+F-036, F-056 y `test_f060_bbdd_lote.py`. Lo que hay que mirar, por si algo sale rojo:
+
+- Los tres de dos conexiones esperan 1 s (`ESPERA`) a que la otra conexión esté de verdad esperando al
+  `FOR UPDATE`; si la máquina va muy cargada y un `assert hilo.is_alive()` falla, no es un defecto: repetir.
+  Si alguno acaba en `DeadlockDetected` o el hilo no termina en 10 s, **sí** lo es (§21.5).
+- `test_f060_bbdd_lote.py` corre **después** del de F-059: si su limpieza falla con `ForeignKeyViolation`, es
+  que alguna fila de `volcados_sigrid` quedó sin borrar.
+
+Anotar aquí: el número de tests que pasan y el tiempo. Bloquea el cierre de F-059.
+
+### T9 · Mutación del bloque (`64b25b8`, `42be797`, `55f27f5` y el de este informe)
+
+Base: **`13f9f51`** (el commit anterior a T4). El alcance incluye las líneas del Bloque 1 que cambia B-1 (a)
+(`domain/models/volcado.py`, 13 líneas: `Ensayo` y `validar_ensayo`).
+
+#### Cómo se llegó a la campaña final (sin maquillar)
+
+Antes de la campaña, **mutantes a mano** en un worktree desechable (lote 1, sobre `9b4c8d5`): 61, y 5 sobrevivían
+y 1 lo cazaba solo un test de F-056. Cada uno se resolvió **en el código o con un test de F-059**, no con una
+justificación:
+
+| Hallazgo | Qué se hizo |
+|---|---|
+| V04 · `_con_zona` con `not instante.tzinfo` sobrevive | Test nuevo: una zona válida que se evalúa como falsa sigue siendo una zona (`test_f059_r32_lo_que_decide_la_zona_es_que_la_haya_y_no_su_veracidad`) |
+| V05 · R2 con `if estado:` sobrevive | El código pasa a la lista explícita `_BLOQUEAN_LA_REVISION = {VOLCADA, EN_DUDA}` (D-14), cuyos mutantes sí se distinguen (lote 2: V05a–c muertos) |
+| F09, F10, G04 · las comprobaciones de ancho sobreviven | Eran **redundantes** (los `zip` estrictos ya lo comprobaban); se quitan, y las filas se leen **desempaquetando** (`ide, cod, … = fila`; `incidencia, revision_id, accion, huella, *volcado = fila`): un solo mecanismo, sin código muerto (`42be797`) |
+| G05 · las `LATERAL` sobre la original: solo lo cazaba la aserción que añadí **dentro** de `test_f056_r22_r38_…` | Test nuevo de F-059: `test_f059_r1_r4_las_lateral_del_volcado_son_de_la_propia` |
+
+Una **primera campaña de la herramienta** sobre `42be797` (29 mutantes) la **paré** a los 22: dos supervivientes
+(`repositorio_volcado_pg.py:253`, `strict=True` → `False` en `_exigir_que_casen`, y `sentencias_volcado.py:118`,
+`EventoNuevo` sin `frozen`). El primero era redundante (la longitud se comprueba justo antes) y se quita el
+`strict` de los tres `zip` que van detrás de esa comprobación; el segundo tenía un hueco real y gana
+`test_f059_r32_el_evento_por_escribir_es_inmutable` (`55f27f5`). **Hallazgo, para que conste**: esa misma
+campaña dio por **muerto** el mutante gemelo de la línea 123 (`strict=False` en `guardar_ensayo`), que es
+**equivalente** (mismo motivo: las longitudes ya son iguales). Lo tumbó otro test de la suite bajo carga, no uno
+que lo vigile, como ya pasó en el Bloque 1 con `PosibleDuplicado`. Por eso, abajo, cada mutante de la herramienta
+se **reverifica contra los tests de F-059 solos**. Al pararla, sus ocho worktrees los retiré (`git worktree
+remove --force` y `prune`); no quedó ningún `pytest` del venv de este proyecto (comprobado), y no toqué los
+procesos de otras sesiones.
+
+#### La campaña final de la herramienta
+
+```
+cd <scratchpad>/f059
+PYTHONPATH=<repo> python -m harness.mutacion --feature F-059 --base 13f9f51 --timeout 1800 --workers 8 \
+  --raiz <repo> --salida <repo>/progress/mutacion_F-059_bloque2.md
+26 mutantes evaluados, 26 muertos, 0 supervivientes, 0 timeouts en 4484.1 s
+```
+
+Sobre `HEAD` `55f27f5`; alcance: **848** líneas de producción en siete ficheros (`domain/models/volcado.py` 13,
+`domain/ports/volcado.py` 116, `fabrica.py` 17, `repositorio_revision_pg.py` 49, `repositorio_volcado_pg.py` 290,
+`sentencias_revision.py` 33, `sentencias_volcado.py` 330); **8 workers** (los de `harness/rigor.json`, pasados a
+mano porque se lanzó desde el scratchpad); ningún timeout que repasar. Informe completo:
+`progress/mutacion_F-059_bloque2.md` (su primera línea, que la herramienta escribió con la ruta absoluta del
+equipo, la he dejado relativa como las demás). Como en el Bloque 1 (P-2 de su review), la cabecera del informe
+no repite `--timeout 1800`. Pocos mutantes para tanto alcance: el puerto son declaraciones y casi todo lo demás
+es SQL en textos, que la herramienta no muta; por eso los mutantes a mano de abajo.
+
+#### Reverificación de cada mutante de la herramienta contra los tests de F-059 solos
+
+Con `generar_mutantes` y `aplicar_mutante` de la propia herramienta, el mismo alcance y la misma base, sobre
+`55f27f5` en un worktree desechable (retirado), ejecutando solo los `test_f059_*` de los cinco ficheros del
+bloque (`-k test_f059`, `-x`): **26 de 26 muertos por tests de F-059**.
+
+| N.º | Fichero:línea | Operador | Original → mutado | Resultado | Primer test de F-059 que lo caza |
+|---|---|---|---|---|---|
+| 1 | `volcado.py:541` | not | if not ensayo.de_la_persona: -> if ensayo.de_la_persona: | muerto (F-059) | `test_f059_r17_un_ensayo_vigente_vale` |
+| 2 | `repositorio_revision_pg.py:236` | not | if not filas: -> if filas: | muerto (F-059) | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| 3 | `repositorio_revision_pg.py:238` | entero | _, bloqueada = sentencias_volcado.fila_a_bloqueada(filas[0]) -> _, bloqueada = sentencias_volcado.fila_a_bloqueada(filas[1]) | muerto (F-059) | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| 4 | `repositorio_volcado_pg.py:85` | not | if not incidencias: -> if incidencias: | muerto (F-059) | `test_f059_r4_r11_situaciones_una_entrada_por_cada_una_de_la_bandeja` |
+| 5 | `repositorio_volcado_pg.py:156` | not | if not pedidas: -> if pedidas: | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| 6 | `repositorio_volcado_pg.py:251` | not | if not partes or len(partes) != len(resultados): -> if partes or len(partes) != len(resultados): | muerto (F-059) | `test_f059_r13_guardar_ensayo_un_evento_por_parte_en_orden` |
+| 7 | `repositorio_volcado_pg.py:251` | logico | if not partes or len(partes) != len(resultados): -> if not partes and len(partes) != len(resultados): | muerto (F-059) | `test_f059_t6_guardar_ensayo_exige_partes_y_resultados_uno_a_uno[falta-un-resultado]` |
+| 8 | `repositorio_volcado_pg.py:251` | comparacion | if not partes or len(partes) != len(resultados): -> if not partes or len(partes) == len(resultados): | muerto (F-059) | `test_f059_r13_guardar_ensayo_un_evento_por_parte_en_orden` |
+| 9 | `repositorio_volcado_pg.py:256` | comparacion | if (parte.incidencia_id, parte.referencia_externa) != ( -> if (parte.incidencia_id, parte.referencia_externa) == ( | muerto (F-059) | `test_f059_r13_guardar_ensayo_un_evento_por_parte_en_orden` |
+| 10 | `sentencias_revision.py:337` | aritmetico | fin_ultima_original = fin_original + _ANCHO_REVISION -> fin_ultima_original = fin_original - _ANCHO_REVISION | muerto (F-059) | `test_f059_r4_una_fila_sin_eventos_no_tiene_volcado` |
+| 11 | `sentencias_revision.py:346` | comparacion | volcado=None if volcado == _SIN_EVENTOS else volcado, -> volcado=None if volcado != _SIN_EVENTOS else volcado, | muerto (F-059) | `test_f059_r4_una_fila_sin_eventos_no_tiene_volcado` |
+| 12 | `sentencias_volcado.py:118` | booleano | @dataclass(frozen=True) -> @dataclass(frozen=False) | muerto (F-059) | `test_f059_r32_el_evento_por_escribir_es_inmutable` |
+| 13 | `sentencias_volcado.py:217` | aritmetico | f"VALUES ({', '.join(['%s'] * len(COLUMNAS_INSERT))})" -> f"VALUES ({', '.join(['%s'] // len(COLUMNAS_INSERT))})" | muerto (F-059) | `test_f059_r32_el_insert_es_una_fila_sin_on_conflict` |
+| 14 | `sentencias_volcado.py:290` | not | if not filas: -> if filas: | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| 15 | `sentencias_volcado.py:292` | entero | if len({(fila[0], fila[1]) for fila in filas}) != 1: -> if len({(fila[1], fila[1]) for fila in filas}) != 1: | muerto (F-059) | `test_f059_r17_un_ensayo_cuyas_filas_no_casan_no_se_adivina[otra-obra]` |
+| 16 | `sentencias_volcado.py:292` | entero | if len({(fila[0], fila[1]) for fila in filas}) != 1: -> if len({(fila[0], fila[2]) for fila in filas}) != 1: | muerto (F-059) | `test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[la-ultima-de-otra]` |
+| 17 | `sentencias_volcado.py:292` | comparacion | if len({(fila[0], fila[1]) for fila in filas}) != 1: -> if len({(fila[0], fila[1]) for fila in filas}) == 1: | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| 18 | `sentencias_volcado.py:292` | entero | if len({(fila[0], fila[1]) for fila in filas}) != 1: -> if len({(fila[0], fila[1]) for fila in filas}) != 2: | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| 19 | `sentencias_volcado.py:294` | entero | primera = filas[0] -> primera = filas[1] | muerto (F-059) | `test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[una-de-otra]` |
+| 20 | `sentencias_volcado.py:297` | entero | obra_codigo=primera[0], -> obra_codigo=primera[1], | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| 21 | `sentencias_volcado.py:298` | entero | de_la_persona=all(fila[2] for fila in filas), -> de_la_persona=all(fila[3] for fila in filas), | muerto (F-059) | `test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[una-de-otra]` |
+| 22 | `sentencias_volcado.py:299` | entero | at_utc=_con_zona(primera[1]), -> at_utc=_con_zona(primera[2]), | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| 23 | `sentencias_volcado.py:302` | entero | incidencia_id=como_uuid(fila[3]), -> incidencia_id=como_uuid(fila[4]), | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| 24 | `sentencias_volcado.py:303` | entero | revision_id=fila[4], -> revision_id=fila[5], | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| 25 | `sentencias_volcado.py:304` | entero | huella=fila[5], -> huella=fila[6], | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| 26 | `sentencias_volcado.py:305` | entero | estado=EstadoEvento(fila[6]), -> estado=EstadoEvento(fila[7]), | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+
+#### Mutantes a mano (lo que la herramienta no muta)
+
+La herramienta no genera `x is not None` → `x` ni `x is None` → `not x` (lección del Bloque 1), ni toca textos,
+alias, el orden de los argumentos, qué columna se usa ni qué se devuelve. Tres lotes, en worktrees desechables
+(retirados; el árbol de trabajo no se ha mutado nunca), solo con los `test_f059_*` de los cinco ficheros del
+bloque y, si sobrevivía, con los ficheros enteros.
+
+**Lote 1** (sobre `9b4c8d5`, 61 mutantes). Los cinco supervivientes y el de G05 son los de la tabla de arriba;
+V01, V02, F01–F03 se repiten en el lote 3 sobre el código reescrito (sus textos cambiaron), y V05, F09, F10 y
+G04 dejaron de existir con los cambios de T9.
+
+| Id | Fichero | Mutación | Resultado | Primer test de F-059 que lo caza |
+|---|---|---|---|---|
+| V01 | `infrastructure/persistencia/sentencias_volcado.py` | parte por veracidad del ide | muerto (F-059) | `test_f059_r1_lo_que_decide_que_haya_parte_es_la_fila_y_no_su_valor` |
+| V02 | `infrastructure/persistencia/sentencias_volcado.py` | último por veracidad del estado | muerto (F-059) | `test_f059_r1_lo_que_decide_que_haya_parte_es_la_fila_y_no_su_valor` |
+| V03 | `infrastructure/persistencia/sentencias_volcado.py` | acción vacía tomada por sin revisión | muerto (F-059) | `test_f059_r20_una_accion_vacia_no_es_sin_revision` |
+| V04 | `infrastructure/persistencia/sentencias_volcado.py` | _con_zona por veracidad | **sobrevive** | `` |
+| V05 | `infrastructure/persistencia/repositorio_revision_pg.py` | R2 por veracidad del estado | **sobrevive** | `` |
+| S01 | `infrastructure/persistencia/sentencias_volcado.py` | el parte: el último en vez del primero | muerto (F-059) | `test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision` |
+| S02 | `infrastructure/persistencia/sentencias_volcado.py` | el último: el primero | muerto (F-059) | `test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision` |
+| S03 | `infrastructure/persistencia/sentencias_volcado.py` | el último de modo ensayo | muerto (F-059) | `test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision` |
+| S04 | `infrastructure/persistencia/sentencias_volcado.py` | parte solo con creado | muerto (F-059) | `test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision` |
+| S05 | `infrastructure/persistencia/sentencias_volcado.py` | parte con cualquier estado | muerto (F-059) | `test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision` |
+| S06 | `infrastructure/persistencia/sentencias_volcado.py` | volcado_de sin orden fijo | muerto (F-059) | `test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision` |
+| S07 | `infrastructure/persistencia/sentencias_volcado.py` | la primera revisión en vez de la última | muerto (F-059) | `test_f059_r1_r4_la_situacion_de_volcado_con_dos_lateral_y_la_ultima_revision` |
+| S08 | `infrastructure/persistencia/sentencias_volcado.py` | ensayo leído de modo volcado | muerto (F-059) | `test_f059_r17_b1_el_ensayo_compara_la_persona_en_la_base` |
+| S09 | `infrastructure/persistencia/sentencias_volcado.py` | el ensayo selecciona actor_oid | muerto (F-059) | `test_f059_r17_b1_el_ensayo_compara_la_persona_en_la_base` |
+| S10 | `infrastructure/persistencia/sentencias_volcado.py` | el ensayo al revés | muerto (F-059) | `test_f059_r17_b1_el_ensayo_compara_la_persona_en_la_base` |
+| S11 | `infrastructure/persistencia/sentencias_volcado.py` | oid y correo cruzados | muerto (F-059) | `test_f059_r32_el_insert_es_una_fila_sin_on_conflict` |
+| S12 | `infrastructure/persistencia/sentencias_volcado.py` | insert sin pasar a UTC | muerto (F-059) | `test_f059_r32_no_se_escribe_una_hora_sin_zona` |
+| S13 | `infrastructure/persistencia/sentencias_volcado.py` | insert sin el motivo | muerto (F-059) | `test_f059_r32_el_insert_de_un_ensayo_sin_ensayo_id_y_con_motivo` |
+| S14 | `infrastructure/persistencia/sentencias_volcado.py` | ensayo sin filtrar el modo | muerto (F-059) | `test_f059_r17_b1_el_ensayo_compara_la_persona_en_la_base` |
+| F01 | `infrastructure/persistencia/sentencias_volcado.py` | correo del parte cruzado | muerto (F-059) | `test_f059_r1_r4_el_parte_y_el_ultimo` |
+| F02 | `infrastructure/persistencia/sentencias_volcado.py` | sin motivo | muerto (F-059) | `test_f059_r4_un_rechazo_con_su_codigo` |
+| F03 | `infrastructure/persistencia/sentencias_volcado.py` | parte sin UTC | muerto (F-059) | `test_f059_r1_las_fechas_vuelven_en_utc_y_sin_zona_no_se_adivinan` |
+| F04 | `infrastructure/persistencia/sentencias_volcado.py` | persona con una sola fila | muerto (F-059) | `test_f059_r17_b1_de_la_persona_solo_si_lo_es_en_todas_las_filas[la-ultima-de-otra]` |
+| F05 | `infrastructure/persistencia/sentencias_volcado.py` | ensayo sin comprobar que casan | muerto (F-059) | `test_f059_r17_un_ensayo_cuyas_filas_no_casan_no_se_adivina[otra-obra]` |
+| F06 | `infrastructure/persistencia/sentencias_volcado.py` | eventos del ensayo al revés | muerto (F-059) | `test_f059_r17_el_ensayo_de_sus_filas` |
+| F07 | `infrastructure/persistencia/sentencias_volcado.py` | ensayo sin UTC | muerto (F-059) | `test_f059_r17_la_hora_del_ensayo_en_utc` |
+| F08 | `infrastructure/persistencia/sentencias_volcado.py` | bloqueada sin huella | muerto (F-059) | `test_f059_r20_la_fila_bloqueada_con_su_ultima_revision_y_su_volcado` |
+| F09 | `infrastructure/persistencia/sentencias_volcado.py` | volcado sin comprobar el ancho | **sobrevive** | `` |
+| F10 | `infrastructure/persistencia/sentencias_volcado.py` | bloqueada sin comprobar el ancho | **sobrevive** | `` |
+| R01 | `infrastructure/persistencia/repositorio_volcado_pg.py` | anotar sin bloquear | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| R02 | `infrastructure/persistencia/repositorio_volcado_pg.py` | decidir sin lo leído | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| R03 | `infrastructure/persistencia/repositorio_volcado_pg.py` | enviado anotado como previsto | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| R04 | `infrastructure/persistencia/repositorio_volcado_pg.py` | enviado sin ensayo_id | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| R05 | `infrastructure/persistencia/repositorio_volcado_pg.py` | enviado con la llamada del ensayo | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| R06 | `infrastructure/persistencia/repositorio_volcado_pg.py` | enviado de modo ensayo | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| R07 | `infrastructure/persistencia/repositorio_volcado_pg.py` | no anota ningún enviado | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| R08 | `infrastructure/persistencia/repositorio_volcado_pg.py` | ensayo con ensayo_id | muerto (F-059) | `test_f059_r13_guardar_ensayo_un_evento_por_parte_en_orden` |
+| R09 | `infrastructure/persistencia/repositorio_volcado_pg.py` | resultado sin ensayo_id | muerto (F-059) | `test_f059_r22_guardar_resultados_un_evento_por_parte_con_su_ensayo` |
+| R10 | `infrastructure/persistencia/repositorio_volcado_pg.py` | casan sin mirar la referencia | muerto (F-059) | `test_f059_t6_guardar_ensayo_exige_partes_y_resultados_uno_a_uno[otra-referencia]` |
+| R11 | `infrastructure/persistencia/repositorio_volcado_pg.py` | casan admite vacío | muerto (F-059) | `test_f059_t6_guardar_ensayo_exige_partes_y_resultados_uno_a_uno[vacio]` |
+| R12 | `infrastructure/persistencia/repositorio_volcado_pg.py` | situaciones abre sin pedidas | muerto (F-059) | `test_f059_t6_situaciones_de_ninguna_no_abre_nada` |
+| R13 | `infrastructure/persistencia/repositorio_volcado_pg.py` | anotar sin pedidas abre | muerto (F-059) | `test_f059_r20_sin_pedidas_no_se_abre_nada` |
+| R14 | `infrastructure/persistencia/repositorio_volcado_pg.py` | evento con otra huella | muerto (F-059) | `test_f059_r13_guardar_ensayo_un_evento_por_parte_en_orden` |
+| R15 | `infrastructure/persistencia/repositorio_volcado_pg.py` | evento con otra obra | muerto (F-059) | `test_f059_r13_guardar_ensayo_un_evento_por_parte_en_orden` |
+| R16 | `infrastructure/persistencia/repositorio_volcado_pg.py` | enviado con otra obra | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| R17 | `infrastructure/persistencia/repositorio_volcado_pg.py` | enviado con otra revisión | muerto (F-059) | `test_f059_r20_anotar_bloquea_lee_decide_inserta_y_confirma` |
+| A01 | `infrastructure/persistencia/repositorio_revision_pg.py` | registrar sin R2 | muerto (F-059) | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| A02 | `infrastructure/persistencia/repositorio_revision_pg.py` | R2 después de la frescura | muerto (F-059) | `test_f059_r2_la_comprobacion_va_antes_que_la_frescura` |
+| A03 | `infrastructure/persistencia/repositorio_revision_pg.py` | R2 sobre más de la propia (se define _todas) | muerto (F-059) | `test_f059_r2_se_lee_tras_el_bloqueo_y_solo_la_de_la_propia` |
+| A04 | `infrastructure/persistencia/repositorio_revision_pg.py` | aprobadas filtra con es_candidata (pierde la doble defensa) | muerto (F-059) | `test_f059_r3_aprobadas_con_una_volcada_no_falla_y_no_la_devuelve` |
+| A05 | `infrastructure/persistencia/repositorio_revision_pg.py` | aprobadas sin filtro | muerto (F-059) | `test_f059_r3_aprobadas_con_una_volcada_no_falla_y_no_la_devuelve` |
+| A06 | `infrastructure/persistencia/repositorio_revision_pg.py` | R2 con otro estado | muerto (F-059) | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| A07 | `infrastructure/persistencia/repositorio_revision_pg.py` | R2 con acciones | muerto (F-059) | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| G01 | `infrastructure/persistencia/sentencias_revision.py` | volcado nunca None | muerto (F-059) | `test_f059_r4_una_fila_sin_eventos_no_tiene_volcado` |
+| G02 | `infrastructure/persistencia/sentencias_revision.py` | volcado siempre None | muerto (F-059) | `test_f059_r1_r4_una_fila_volcada_trae_su_parte_y_su_ultimo` |
+| G03 | `infrastructure/persistencia/sentencias_revision.py` | la original con volcado | muerto (F-059) | `test_f059_r4_la_original_de_una_duplicada_queda_sin_volcado` |
+| G04 | `infrastructure/persistencia/sentencias_revision.py` | situación sin comprobar el ancho | **sobrevive** | `` |
+| G05 | `infrastructure/persistencia/sentencias_revision.py` | las LATERAL de la original | muerto **solo por otra suite** | `test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original[situaciones_de_obra]` |
+| D01 | `domain/models/volcado.py` | persona nunca falla | muerto (F-059) | `test_f059_r17_de_otra_persona` |
+| D02 | `domain/models/volcado.py` | persona antes que obra | muerto (F-059) | `test_f059_r17_el_orden_obra_persona_caducidad` |
+| B01 | `infrastructure/persistencia/fabrica.py` | fábrica con el esquema fijo | muerto (F-059) | `test_f059_t6_construir_volcados_abre_fija_la_sesion_y_asegura_el_esquema` |
+
+**Lote 2** (sobre `64b25b8`, 9): lo que cambió T9.
+
+| Id | Fichero | Mutación | Resultado | Primer test de F-059 que lo caza |
+|---|---|---|---|---|
+| V04 | `infrastructure/persistencia/sentencias_volcado.py` | _con_zona por veracidad (con el test nuevo) | muerto (F-059) | `test_f059_r32_lo_que_decide_la_zona_es_que_la_haya_y_no_su_veracidad` |
+| V05a | `infrastructure/persistencia/repositorio_revision_pg.py` | R2: in por not in | muerto (F-059) | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| V05b | `infrastructure/persistencia/repositorio_revision_pg.py` | R2 sin en_duda | muerto (F-059) | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[enviado]` |
+| V05c | `infrastructure/persistencia/repositorio_revision_pg.py` | R2 sin volcada | muerto (F-059) | `test_f059_r2_r29_registrar_con_un_volcado_aparecido_es_409_sin_insertar[creado]` |
+| V05d | `infrastructure/persistencia/repositorio_revision_pg.py` | R2 por veracidad | **sobrevive** | `` |
+| F09a | `infrastructure/persistencia/sentencias_volcado.py` | zip del parte no estricto | **sobrevive** | `` |
+| F09b | `infrastructure/persistencia/sentencias_volcado.py` | zip del último no estricto | muerto (F-059) | `test_f059_r32_una_situacion_con_columnas_de_mas_o_de_menos_no_se_lee[7]` |
+| G05 | `infrastructure/persistencia/sentencias_revision.py` | las LATERAL de la original (con el test nuevo) | muerto (F-059) | `test_f059_r1_r4_las_lateral_del_volcado_son_de_la_propia[situaciones_de_obra]` |
+| G06 | `infrastructure/persistencia/sentencias_revision.py` | volcado recortado a 8 (columnas de más no se notan) | muerto (F-059) | `test_f059_r36_una_fila_sin_el_ancho_del_volcado_no_se_lee_a_medias[de-mas]` |
+
+**F09a** (el `zip` del parte sin `strict`) sobrevivía por lo mismo que F09 en el lote 1: la comprobación era
+redundante, porque el `zip` del último ya rechazaba cualquier ancho distinto. Es lo que llevó a reescribir la
+lectura desempaquetando (`42be797`): el mutante deja de existir, y lo que ahora vigila el ancho (desempaquetar)
+lo cazan F12 y F14 del lote 3.
+
+**V05d no es un superviviente: no cambia el programa.** Sustituye `estado in _BLOQUEAN_LA_REVISION` por
+`if estado:`. `estado` sale de `estado_de_volcado`, que solo devuelve `None`, `EstadoVolcado.VOLCADA` o
+`EstadoVolcado.EN_DUDA`; los dos miembros son textos no vacíos (verdaderos) y los dos están en el conjunto, y
+`None` es falso y no está. Para cualquier entrada posible las dos líneas hacen lo mismo: no hay comportamiento
+que un test pueda distinguir. Es la misma categoría que A5 y A8 de la re-review del Bloque 1. Lo dejo escrito
+para que el humano lo vea; si prefiere la regla al pie de la letra, basta con su visto bueno a este párrafo.
+
+**Lote 3** (sobre `42be797`, 13): las filas leídas desempaquetando.
+
+| Id | Fichero | Mutación | Resultado | Primer test de F-059 que lo caza |
+|---|---|---|---|---|
+| V01 | `infrastructure/persistencia/sentencias_volcado.py` | parte por veracidad del ide | muerto (F-059) | `test_f059_r1_lo_que_decide_que_haya_parte_es_la_fila_y_no_su_valor` |
+| V02 | `infrastructure/persistencia/sentencias_volcado.py` | último por veracidad del estado | muerto (F-059) | `test_f059_r1_lo_que_decide_que_haya_parte_es_la_fila_y_no_su_valor` |
+| V03 | `infrastructure/persistencia/sentencias_volcado.py` | acción vacía tomada por sin revisión | muerto (F-059) | `test_f059_r20_una_accion_vacia_no_es_sin_revision` |
+| F01 | `infrastructure/persistencia/sentencias_volcado.py` | correo del parte cruzado | muerto (F-059) | `test_f059_r1_r4_el_parte_y_el_ultimo` |
+| F01b | `infrastructure/persistencia/sentencias_volcado.py` | correo del último cruzado | muerto (F-059) | `test_f059_r1_r4_el_parte_y_el_ultimo` |
+| F02 | `infrastructure/persistencia/sentencias_volcado.py` | sin motivo | muerto (F-059) | `test_f059_r4_un_rechazo_con_su_codigo` |
+| F03 | `infrastructure/persistencia/sentencias_volcado.py` | parte sin UTC | muerto (F-059) | `test_f059_r1_las_fechas_vuelven_en_utc_y_sin_zona_no_se_adivinan` |
+| F03b | `infrastructure/persistencia/sentencias_volcado.py` | hora del último cruzada | muerto (F-059) | `test_f059_r1_solo_el_ultimo_en_duda[enviado]` |
+| F11 | `infrastructure/persistencia/sentencias_volcado.py` | ide y cod cruzados | muerto (F-059) | `test_f059_r1_r4_el_parte_y_el_ultimo` |
+| F12 | `infrastructure/persistencia/sentencias_volcado.py` | columnas de más ignoradas | muerto (F-059) | `test_f059_r32_una_situacion_con_columnas_de_mas_o_de_menos_no_se_lee[9]` |
+| F13 | `infrastructure/persistencia/sentencias_volcado.py` | acción y huella cruzadas | muerto (F-059) | `test_f059_r20_la_fila_bloqueada_con_su_ultima_revision_y_su_volcado` |
+| F14 | `infrastructure/persistencia/sentencias_volcado.py` | bloqueada ignora columnas de más | muerto (F-059) | `test_f059_r20_una_fila_bloqueada_con_columnas_de_mas_no_se_lee` |
+| F15 | `infrastructure/persistencia/sentencias_volcado.py` | bloqueada sin revision_id | muerto (F-059) | `test_f059_r20_la_fila_bloqueada_con_su_ultima_revision_y_su_volcado` |
+
+**En total, a mano: 61 + 9 + 13 = 83.** Sobre el código final, todos los que cambian el programa mueren con
+un test de F-059 y ninguno lo caza solo otra suite. Los siete que sobrevivieron por el camino (V04, V05, F09,
+F10, G04 del lote 1; V05d y F09a del lote 2) y G05, que solo cazaba una aserción dentro de un test de F-056, se
+resolvieron así: V04 y G05, con un test nuevo de F-059; V05, F09, F10, G04 y F09a, cambiando el código (ese
+mutante ya no existe, y los que lo sustituyen mueren: V05a–c, F12, F14); V05d, razonado arriba.
+
+#### Cobertura
+
+`coverage run` con los cinco ficheros del bloque (566 passed): `sentencias_volcado.py` **100 %** (86),
+`repositorio_volcado_pg.py` **100 %** (69), `sentencias_revision.py` **100 %** (92), `domain/ports/volcado.py`
+**100 %** (17), `domain/models/volcado.py` **100 %** (284), `situacion_volcado.py` **100 %** (47);
+`repositorio_revision_pg.py` 77 % y `fabrica.py` 93 %, pero **todas las líneas de F-059 cubiertas**: lo que falta
+es `registrar_lote`/`_registrar_lote` (F-060) y `construir_bandeja`/`construir_equivalencias`/`construir_revision`,
+que este subconjunto no recorre. La `PUERTA COBERTURA` de `init.sh` la dará T23.
+
+### Verificación final del bloque
+
+Desde el scratchpad, sobre `55f27f5`: las verificaciones de T4–T7 juntas (`test_f059_repositorio_volcado.py`, `test_f059_volcado_dominio.py`, `test_f059_estados.py`, `test_f059_ddl.py`, `test_f056_repositorio_revision.py`, `test_f060_repositorio_lote.py`, `test_f056_alcance_cerrado.py`, `test_f060_alcance_cerrado.py`): **624 passed, 73 skipped in 29.66s**. **La suite entera del servicio** (`pytest <repo>/services/postventa-api/tests <repo>/services/postventa-api/tests_bbdd -q`): **8597 passed, 233 skipped in 730.60s**, sin un rojo.
+
+`ruff check` (desde la raíz) sobre `infrastructure/persistencia/`, `domain/` y los tests de F-059 y los ajenos
+tocados: sin avisos en lo mío; los `I001` que quedan son de ficheros que no he tocado (`test_f036_*`) o
+anteriores a la rama (`test_f005_ddl_idempotente_texto.py`, `test_f028_ddl_historico.py`, ya en `13f9f51`).
+
+Barrido de datos sensibles sobre `13f9f51..HEAD` (GUID, correos, IPv4, `password|secret|token|…`): ningún GUID; correos, solo `persona.volcado@ejemplo.invalid` y `otra.persona@ejemplo.invalid`; ninguna IP; las seis «password» son la contraseña inventada de los tests de la fábrica (`contrasena-inventada`, como en F-056). Obras `9901` y `9904`, proveedor `EJ07`, textos «Ejemplo», códigos `RS26.10/000n` inventados.
+
+## Evidencias del Bloque 2
+
+| Evidencia | Valor |
+|---|---|
+| RED (T4) | 171 failed, 328 passed (traza arriba) + los 12 del grupo A, rojos por el `16_` |
+| Verificación de T5 | 323 passed, 95 skipped in 58.85s |
+| Verificación de T6 | 520 passed, 73 skipped in 21.91s (624 passed tras T9) |
+| T7 | 46 tests recogidos; ejecutados por el humano en T8 |
+| Suite entera del servicio | **8597 passed, 233 skipped in 730.60s** (`tests` y `tests_bbdd`, sobre `55f27f5`; los de base se saltan sin DSN). Tras T6: 8592 passed, 129 skipped in 1285.55s (solo `tests`) |
+| Cobertura de lo nuevo | 100 % de `sentencias_volcado.py`, `repositorio_volcado_pg.py`, `sentencias_revision.py`, `domain/ports/volcado.py` y `domain/models/volcado.py`; todas las líneas de F-059 de `repositorio_revision_pg.py` y `fabrica.py` |
+| Mutación (herramienta) | **26 generados, 26 muertos, 0 supervivientes, 0 timeouts**, 4484.1 s, 8 workers |
+| Reverificación contra F-059 solos | 26/26 |
+| Mutación a mano | 83 (61 + 9 + 13); supervivientes abiertos: **0** (V05d no cambia el programa, razonado) |
+| Tests ajenos tocados | Solo los del grupo A de §21.3 (con B-2) y `test_f056_repositorio_revision.py` (grupo C), tabla de T4 |
+
+## Commits del Bloque 2
+
+| Tarea | Commit |
+|---|---|
+| (bloqueo B-1/B-2) | `2203879` |
+| T4 | `f50281b` |
+| T5 | `54c3278` |
+| T6 | `cf3b7a2` |
+| T7 | `9b4c8d5` |
+| T8 | MANUAL (humano), pendiente |
+| T9 | `64b25b8`, `42be797`, `55f27f5` y el de este informe con `progress/mutacion_F-059_bloque2.md` |
+
+**Parado aquí: review del Bloque 2.** Lo que el reviewer debería mirar primero: la decisión 1 de T6 (`aprobadas`
+deja fuera solo la `volcada`, no filtra con `es_candidata`, para no relajar
+`test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa`), la 2 (dónde va R2 dentro de
+`_registrar`), V05d, y que `init.sh` no se ha lanzado por la regla del `.env`.

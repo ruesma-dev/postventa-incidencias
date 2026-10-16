@@ -160,7 +160,7 @@
   (`test_f060_bbdd_lote.py`). Anotar nº de
   tests y tiempo en `progress/impl_F-059.md`. Bloquea el cierre. |
   Verificación: MANUAL (humano)
-- [ ] **T9 · Mutación del bloque.** Con la base anterior a T4, la campaña
+- [x] **T9 · Mutación del bloque.** Con la base anterior a T4, la campaña
   muta también las líneas de `Ensayo` y `validar_ensayo` del Bloque 1 que
   cambia B-1 (a). |
   Verificación: `python -m harness.mutacion --feature F-059 --base <hash anterior a T4> --timeout 1800 --salida progress/mutacion_F-059_bloque2.md`

@@ -779,3 +779,91 @@ La puerta `PUERTA COBERTURA` de `init.sh` la dará T23.
 **Parado aquí: review del Bloque 1.** Lo que el reviewer debería mirar primero: las decisiones de diseño 1 y 2
 de T2 (la fuente de `situaciones` del ensayo y el `None` de `interpretar_respuesta`), que condicionan los
 Bloques 2 y 4, y la observación sobre `envio` para T15.
+
+## Correcciones de la review del Bloque 1 (C-B1-1 a C-B1-3) · 2026-10-16
+
+La review (`progress/review_F-059.md`, «Review del Bloque 1», CHANGES_REQUESTED) encontró tres mutantes vivos que
+la herramienta no genera. Los tres se corrigen con tests de F-059, y los dos primeros con un cambio pequeño de
+dominio en `domain/models/volcado.py`, dentro del Bloque 1.
+
+### C-B1-1 y C-B1-2 · un texto vacío es «sin valor»: una sola regla
+
+**El comportamiento elegido**: un `proveedor_codigo` o un `detalle` **vacío o solo de blancos** se tratan como
+nulos. Una función privada nueva, `_con_texto(texto)`, devuelve el texto **tal cual** (sin recortar) si dice
+algo, y `None` si es nulo, vacío o en blanco; la usan los tres sitios:
+
+- `parte_de`: sin proveedor que diga algo, `intervinientes = ()` (antes: `is not None`, que con `""` mandaba
+  `{"oficio": …, "proveedor": "", "causante": false}`);
+- `parte_de`: `descripcion_larga = _con_texto(detalle)` (antes copiaba `""` tal cual);
+- `cuerpo_de_parte`: la clave `descripcion_larga` solo va si `_con_texto` dice que hay texto (así tampoco la
+  manda un `ParteAVolcar` construido a mano con `""`).
+
+**Por qué este y no un error de programación**:
+
+- **D-9** dice «sin proveedor, sin intervinientes»; un código vacío no identifica a ningún proveedor de
+  `obrofc`. Mandarlo haría que la pasarela intentara resolver un interviniente con proveedor `""` contra los
+  `obrofc` de la obra (§8.9: `interviniente_no_esta_en_la_obra` o, peor, `interviniente_ambiguo`): un parte
+  rechazado por algo que la persona aprobó como «sin proveedor».
+- **R6** dice que `descripcion_larga` va «solo si no es nulo» y, si no va, §8.9 pone la descripción, **como el
+  alta manual** (`design.md` §5). Un `""` llegaría a `rcp.tex` como texto vacío: el parte tendría una
+  descripción larga en blanco, distinto del alta manual. Lo que la regla protege es eso, y un detalle vacío no
+  es un detalle.
+- Rechazarlo (`ValueError`) tumbaría el ensayo o el volcado de **todo el lote** (un 500) por un dato que no es
+  incoherente sino vacío, y `ValoresIncidencia` lo admite tal cual (`valores_importados` copia lo que trae la
+  bandeja de F-036; `validar_valores` ya convierte en `None` un detalle en blanco al editar). La regla nueva es
+  la misma idea que `validar_valores`, aplicada en la última puerta antes del ERP.
+- Lo que sí dice algo se manda **sin recortar** (`" EJ07"` va como `" EJ07"`): lo aprobado es lo que se manda
+  (R7); decidir si un código con blancos vale es de quien lo valida al aprobar (F-056), no de aquí.
+
+No cambia la huella (se calcula sobre los valores, no sobre el parte) ni ningún otro requisito.
+
+### C-B1-3 · el duplicado se decide por `sigrid_ide`
+
+Sin cambio de código: faltaban los casos que separan `ide` de `cod`. Dos tests nuevos: el mismo `sigrid_ide` con
+otro `cod` **no** es duplicado; otro `sigrid_ide` con el mismo `cod` **sí** lo es (con las dos referencias en el
+aviso).
+
+### Tests nuevos (todos en `tests/test_f059_volcado_dominio.py`)
+
+| Test | Fija |
+|---|---|
+| `test_f059_d9_c_b1_1_un_codigo_de_proveedor_vacio_es_sin_proveedor[vacio, blancos, tabulador]` | `""`, `"  "`, `"\t"` → `intervinientes == ()` y `[]` en el cuerpo |
+| `test_f059_d9_c_b1_1_un_codigo_de_proveedor_que_dice_algo_va_tal_cual` | `" EJ07"` → interviniente con `" EJ07"` |
+| `test_f059_r6_c_b1_2_un_detalle_vacio_no_es_descripcion_larga[vacio, blancos, salto]` | `descripcion_larga is None` y sin la clave |
+| `test_f059_r6_c_b1_2_el_cuerpo_no_manda_una_descripcion_larga_vacia[vacio, blancos]` | `cuerpo_de_parte` de un parte con `""`/`"   "` no lleva la clave |
+| `test_f059_r6_c_b1_2_un_detalle_que_dice_algo_va_tal_cual` | `"  Ejemplo de detalle  "` va sin recortar |
+| `test_f059_r26_c_b1_3_el_mismo_ide_con_otro_cod_no_lo_es` | sin aviso |
+| `test_f059_r26_c_b1_3_otro_ide_con_el_mismo_cod_si_lo_es` | un `PosibleDuplicado` con las dos referencias |
+
+### Los mutantes, repetidos en una copia desechable
+
+En un worktree desechable de `6864483` con los dos ficheros cambiados copiados encima (retirado al terminar; el
+árbol de trabajo no se mutó), solo con `test_f059_volcado_dominio.py` y `test_f059_estados.py`, `-x`. Además de
+los tres del reviewer, el comportamiento anterior de cada sitio y dos mutantes de la regla nueva:
+
+| Id | Mutación | Resultado | Test de F-059 que lo caza |
+|---|---|---|---|
+| C-B1-1 a | el del reviewer: `if v.proveedor_codigo:` | muerto | `test_f059_d9_c_b1_1_un_codigo_de_proveedor_vacio_es_sin_proveedor[blancos]` |
+| C-B1-1 b | el comportamiento anterior: `if v.proveedor_codigo is not None:` | muerto | `test_f059_d9_c_b1_1_un_codigo_de_proveedor_vacio_es_sin_proveedor[vacio]` |
+| C-B1-2 a | el del reviewer: `if parte.descripcion_larga:` | muerto | `test_f059_r6_c_b1_2_el_cuerpo_no_manda_una_descripcion_larga_vacia[blancos]` |
+| C-B1-2 b | el anterior en el cuerpo: `if parte.descripcion_larga is not None:` | muerto | `test_f059_r6_c_b1_2_el_cuerpo_no_manda_una_descripcion_larga_vacia[vacio]` |
+| C-B1-2 c | el anterior en `parte_de`: `descripcion_larga=v.detalle` | muerto | `test_f059_r6_c_b1_2_un_detalle_vacio_no_es_descripcion_larga[vacio]` |
+| C-B1-3 | el del reviewer: `parte.sigrid_cod != r.sigrid_cod` | muerto | `test_f059_r26_c_b1_3_el_mismo_ide_con_otro_cod_no_lo_es` |
+| regla a | `_con_texto` decide sin recortar (`not texto`) | muerto | `test_f059_d9_c_b1_1_un_codigo_de_proveedor_vacio_es_sin_proveedor[blancos]` |
+| regla b | `_con_texto` devuelve el texto recortado | muerto | `test_f059_r6_c_b1_2_un_detalle_que_dice_algo_va_tal_cual` |
+
+**8/8 muertos por tests de F-059.** La campaña de la herramienta no se relanza (indicación del líder): los
+cambios tocan líneas con `is`/`not`/`or` y una llamada; el `or` y el `not` de `_con_texto` sí los mutaría, y
+ambos los cazan los casos de arriba (regla a; y quitar el `not` deja pasar los vacíos).
+
+### Verificación
+
+Desde `<scratchpad>/f059` (sin `.env`), los diez ficheros de la verificación de T2 más las dos guardias de F-006:
+**1 failed, 1220 passed in 30.91s**. Los de F-059 solos: 333 passed.
+
+El rojo **no es de este cambio**: `test_f006_repo_sin_identificadores.py::test_f006_r26_ningun_fichero_del_repositorio_incrusta_un_identificador`
+encuentra **dos GUID en `progress/review_F-059.md`, línea 152** (commit `6864483` de la review): son los dos
+GUID sintéticos de mi T1 que el reviewer cita al comentar el incidente de la guardia R26. No he tocado ese
+fichero (no es mío); **para el líder**: hay que redactarlos allí o `init.sh` saldrá en rojo.
+
+Cobertura: `volcado.py` sigue al 100 % con los tests de F-059 (la función nueva, entera).

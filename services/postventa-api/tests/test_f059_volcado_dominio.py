@@ -28,7 +28,7 @@ correos `@ejemplo.invalid`, base y login inventados; los identificadores,
 from __future__ import annotations
 
 import json
-from dataclasses import FrozenInstanceError, fields
+from dataclasses import FrozenInstanceError, fields, replace
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -443,6 +443,26 @@ def test_f059_r6_con_detalle_va_como_descripcion_larga() -> None:
     assert parte_de(candidata(v=valores(detalle=DETALLE))).descripcion_larga == DETALLE
 
 
+@pytest.mark.parametrize(
+    "vacio", ["", "  ", "\t"], ids=["vacio", "blancos", "tabulador"]
+)
+def test_f059_d9_c_b1_1_un_codigo_de_proveedor_vacio_es_sin_proveedor(
+    vacio: str,
+) -> None:
+    # C-B1-1 (review del Bloque 1): un código vacío no es un proveedor (D-9).
+    v = valores(proveedor_codigo=vacio)
+    parte = parte_de(candidata(v=v))
+    assert parte.intervinientes == ()
+    assert cuerpo_de_parte(parte)["intervinientes"] == []
+
+
+def test_f059_d9_c_b1_1_un_codigo_de_proveedor_que_dice_algo_va_tal_cual() -> None:
+    parte = parte_de(candidata(v=valores(proveedor_codigo=" EJ07")))
+    assert parte.intervinientes == (
+        Interviniente(oficio="0046", proveedor=" EJ07", causante=False),
+    )
+
+
 def test_f059_d9_sin_proveedor_no_hay_intervinientes() -> None:
     assert parte_de(candidata(v=sin_proveedor())).intervinientes == ()
 
@@ -528,6 +548,29 @@ def test_f059_r6_commit_solo_booleano(commit: object) -> None:
             commit=commit,  # type: ignore[arg-type]
             base=BASE,
         )
+
+
+@pytest.mark.parametrize("vacio", ["", "   ", "\n"], ids=["vacio", "blancos", "salto"])
+def test_f059_r6_c_b1_2_un_detalle_vacio_no_es_descripcion_larga(vacio: str) -> None:
+    # C-B1-2 (review del Bloque 1): sin detalle que diga algo, la clave no va (R6)
+    # y la pasarela pone la descripción (§8.9), como el alta manual.
+    parte = parte_de(candidata(v=valores(detalle=vacio)))
+    assert parte.descripcion_larga is None
+    assert "descripcion_larga" not in cuerpo_de_parte(parte)
+
+
+@pytest.mark.parametrize("vacio", ["", "   "], ids=["vacio", "blancos"])
+def test_f059_r6_c_b1_2_el_cuerpo_no_manda_una_descripcion_larga_vacia(
+    vacio: str,
+) -> None:
+    parte = replace(parte_de(candidata()), descripcion_larga=vacio)
+    assert "descripcion_larga" not in cuerpo_de_parte(parte)
+
+
+def test_f059_r6_c_b1_2_un_detalle_que_dice_algo_va_tal_cual() -> None:
+    parte = parte_de(candidata(v=valores(detalle="  Ejemplo de detalle  ")))
+    assert parte.descripcion_larga == "  Ejemplo de detalle  "
+    assert cuerpo_de_parte(parte)["descripcion_larga"] == "  Ejemplo de detalle  "
 
 
 def test_f059_r6_detalle_nulo_sin_la_clave_y_con_detalle_con_ella() -> None:
@@ -1305,6 +1348,32 @@ def test_f059_r26_un_creado_con_otro_ide_es_un_posible_duplicado() -> None:
             sigrid_cod_anterior=COD,
             sigrid_ide=IDE_2,
             sigrid_cod=COD_2,
+        ),
+    )
+
+
+def test_f059_r26_c_b1_3_el_mismo_ide_con_otro_cod_no_lo_es() -> None:
+    # C-B1-3 (review del Bloque 1): R26 compara por `sigrid_ide`, no por `cod`.
+    ms = mandados(1)
+    resultados = (resultado(ms[0], EV.CREADO, ide=IDE, cod=COD_2),)
+    assert (
+        posibles_duplicados(resultados, {ms[0].incidencia_id: volcada(COD, IDE)}) == ()
+    )
+
+
+def test_f059_r26_c_b1_3_otro_ide_con_el_mismo_cod_si_lo_es() -> None:
+    ms = mandados(1)
+    resultados = (resultado(ms[0], EV.CREADO, ide=IDE_2, cod=COD),)
+    assert posibles_duplicados(
+        resultados, {ms[0].incidencia_id: volcada(COD, IDE)}
+    ) == (
+        PosibleDuplicado(
+            incidencia_id=UUID(int=1),
+            referencia_externa=ms[0].referencia_externa,
+            sigrid_ide_anterior=IDE,
+            sigrid_cod_anterior=COD,
+            sigrid_ide=IDE_2,
+            sigrid_cod=COD,
         ),
     )
 

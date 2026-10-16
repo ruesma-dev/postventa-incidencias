@@ -346,17 +346,31 @@ def referencia_de(incidencia_id: UUID) -> str:
     return PREFIJO_REFERENCIA + str(incidencia_id)
 
 
+def _con_texto(texto: str | None) -> str | None:
+    """El texto si dice algo; `None` si es nulo, vacío o solo blancos.
+
+    La regla de «no hay valor» del parte (C-B1-1 y C-B1-2 de la review del
+    Bloque 1): un detalle vacío no es una descripción larga (R6: la clave no va
+    y la pasarela pone la descripción, §8.9) y un código de proveedor vacío no
+    es un proveedor (D-9: sin intervinientes). El texto que sí dice algo se
+    devuelve **tal cual**, sin recortar: lo aprobado es lo que se manda.
+    """
+    if texto is None or not texto.strip():
+        return None
+    return texto
+
+
 def parte_de(candidata: CandidataAlVolcado) -> ParteAVolcar:
     """El parte de una candidata, campo a campo según la tabla de §5 (R6).
 
     El `tipo` es `TIPO_RECLAMACION` sin mirar el `listado` (Q-1); el detalle
-    nulo no tiene descripción larga; sin proveedor no hay intervinientes
-    (D-9), y con él, uno con el oficio del parte y sin causante (Q-2). La
-    urgencia no se manda (D-10).
+    nulo, vacío o en blanco no tiene descripción larga (R6); sin proveedor
+    —nulo, vacío o en blanco— no hay intervinientes (D-9), y con él, uno con
+    el oficio del parte y sin causante (Q-2). La urgencia no se manda (D-10).
     """
     v = candidata.valores
     intervinientes: tuple[Interviniente, ...] = ()
-    if v.proveedor_codigo is not None:
+    if _con_texto(v.proveedor_codigo) is not None:
         intervinientes = (
             Interviniente(
                 oficio=v.oficio_codigo,  # type: ignore[arg-type]
@@ -371,7 +385,7 @@ def parte_de(candidata: CandidataAlVolcado) -> ParteAVolcar:
         referencia_externa=referencia_de(candidata.incidencia_id),
         unidad_postventa=v.unidad_codigo,
         descripcion=v.descripcion,
-        descripcion_larga=v.detalle,
+        descripcion_larga=_con_texto(v.detalle),
         tipo=TIPO_RECLAMACION,
         oficio=v.oficio_codigo,  # type: ignore[arg-type]
         ubicacion=v.ubicacion,  # type: ignore[arg-type]
@@ -383,8 +397,9 @@ def parte_de(candidata: CandidataAlVolcado) -> ParteAVolcar:
 def cuerpo_de_parte(parte: ParteAVolcar) -> dict[str, Any]:
     """Lo que va de un parte en el lote de §8.9, clave a clave (R6).
 
-    `descripcion_larga` solo si hay detalle (sin la clave, la pasarela pone
-    la descripción, como el alta manual); `tipo`, `forma_comunicacion` y
+    `descripcion_larga` solo si hay detalle que diga algo —ni nulo, ni vacío,
+    ni en blanco— (sin la clave, la pasarela pone la descripción, como el alta
+    manual); `tipo`, `forma_comunicacion` y
     `causante`, explícitos. Ninguna otra clave: ni `clase`, ni las que
     reserva la pasarela (`ide`, `cod`, `emp`, `est`, `pos`), ni propietario,
     persona o urgencia (D-10).
@@ -394,7 +409,7 @@ def cuerpo_de_parte(parte: ParteAVolcar) -> dict[str, Any]:
         "unidad_postventa": parte.unidad_postventa,
         "descripcion": parte.descripcion,
     }
-    if parte.descripcion_larga is not None:
+    if _con_texto(parte.descripcion_larga) is not None:
         cuerpo["descripcion_larga"] = parte.descripcion_larga
     cuerpo["tipo"] = parte.tipo
     cuerpo["oficio"] = parte.oficio

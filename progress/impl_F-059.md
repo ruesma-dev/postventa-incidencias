@@ -1672,3 +1672,490 @@ Barrido de datos sensibles sobre `13f9f51..HEAD` (GUID, correos, IPv4, `password
 deja fuera solo la `volcada`, no filtra con `es_candidata`, para no relajar
 `test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa`), la 2 (dónde va R2 dentro de
 `_registrar`), V05d, y que `init.sh` no se ha lanzado por la regla del `.env`.
+
+
+## Bloque 3 · El adaptador de `sigrid-api` y las fábricas · T10–T12 · 2026-10-16
+
+Encargo del líder tras el APPROVED del Bloque 2 (`8e668b2`): T10, T11 y T12, y parar. Releídas las
+observaciones de la review del Bloque 2: O-B2-1 ya está en la spec (`f7bcf9b`); **O-B2-2** (`guardar_ensayo` no
+debe recibir un `sin_respuesta`: la aplicación lo convierte antes en `EnsayoSinRespuesta`) y **O-B1-1** (R7
+recalculado sobre el parte que se manda en el volcado) son del Bloque 4 y quedan pendientes para él. **V05d**, el
+mutante equivalente del Bloque 2, lo aceptó el humano por escrito el 2026-10-16: anotado como cerrado arriba
+(`5c0a6d2`).
+
+**Hash anterior a T10 (base de T12): `5c0a6d2`.** Todo desde `<scratchpad>/f059` (sin `.env`), con rutas
+absolutas; la mutación, con `--raiz <repo>` desde el mismo directorio. `bash harness/init.sh`, por la misma regla
+del `.env` que en el Bloque 2, no se ha lanzado: queda para T23. **Ningún test llama a la red ni a `sigrid-api`**:
+el adaptador se prueba con `ClienteFalso` (`tests/utiles_sigrid.py`), la guarda `sin_red` de `conftest.py`
+sigue puesta, las fábricas no reciben cliente y ningún test llama a `ensayar` ni a `volcar` sobre lo que
+construyen salvo para ver que se niega **antes** de componer nada. Ningún `commit: true` sale de este puesto.
+
+### T10 · Fase RED (`9bdc35c`)
+
+**Tests nuevos:**
+
+- `tests/test_f059_adaptador_volcado.py` (con `ClienteFalso`): la ruta exacta y la de lectura (R36); el cuerpo
+  tal cual, a la ruta, con la clave en `x-functions-key` y **nunca** en la URL; la raíz con barra final; **R16**:
+  `volcar` con `escritura_habilitada=False` → `VolcadoDeshabilitado` **sin** `post`, y antes de mirar el cuerpo;
+  **D-4**: sin la ventana sí se ensaya; **R6**: `volcar` solo con `commit` igual al booleano `True` (ni `False`,
+  ni nulo, ni `"true"`, ni `1`, ni sin la clave) y `ensayar` solo con `False`, sin `post` en otro caso; **R21,
+  R31**: **un** `post` ante un tiempo agotado de lectura o de conexión, un corte o un error de protocolo
+  (`sin_respuesta`, y la segunda respuesta preparada queda sin consumir), y tampoco se reintenta un 5xx, 408 ni
+  429; **las tres familias**: 200 y 201 → `ok` con los datos **sin interpretar**; 400 → `lote_400` con
+  `details.codigo` y **nada más** (ocho códigos, de lote y uno que no lo es); un 400 sin código de texto (no JSON,
+  lista, sin `details`, `details` no objeto, sin código, código numérico o nulo) → `lote_400` sin código; otro
+  código → `sin_respuesta`; un 200 que no es un objeto JSON → `sin_respuesta`; **R8**: `existe_usuario` por
+  `sql/read` (cuerpo exacto con `SQL_USUARIO`, el login como parámetro y `MAX_FILAS_LECTURA`), verdadero solo con
+  exactamente uno, los reintentos de lectura ante 503, 429 o un corte, agotados → `EnsayoSinRespuesta` sin el
+  login, un definitivo sin reintentar, una lectura sin forma o truncada no decide; **R31, R34**: el log de cada
+  llamada lleva obra, modo, `commit`, partes, familia, segundos y media, y **nada** del cuerpo, la respuesta, la
+  URL, la clave o el login (con un 400 lleno de ruido inventado: un nombre y un DNI ficticios); el entorno `test`,
+  `local` u otro → no se construye (`VolcadoDeshabilitado` con el entorno), y en `dev` y `pro` sí; la propiedad
+  `escritura_habilitada`; y el puerto y `RespuestaDeLote` (las tres familias, lo que lleva cada una, inmutable).
+- `tests/test_f059_fabrica.py`: los dos ajustes (por defecto, ventana cerrada y `N` = 5; por su alias; un `N` que
+  no es un entero **no** impide cargar los ajustes y no se cambia en silencio por el defecto); el **orden de las
+  puertas** de §8.3 (el entorno el primero en las dos, con la configuración completa y con todo mal; la ventana
+  del volcador la segunda, también con `false`, `0` o sin la variable, y antes que la configuración; la
+  configuración, que nombra **todas** las que faltan y ningún valor, con una en blanco como ausente, antes que
+  `N`; y `N` 0, 51, `cinco`, `5.5`, vacío, `-3`, `1e1` o `true` → `ConfiguracionDeVolcadoInvalida`, que nombra la
+  variable y no el valor; 1, 5 y 50 sí construyen); **D-4**: el ensayador se construye con la ventana abierta o
+  cerrada y **no** puede volcar; el volcador sí; las fábricas pasan la configuración, `SIGRID_TIMEOUT_S` (R31) y
+  los reintentos, y no construyen el cliente; lo que construyen cumple el puerto; **R37**: el volcado no mira
+  `CIERRE_HABILITADO`, la ventana del volcado no abre el cierre ni el gráfico y la del cierre no abre el volcado;
+  las fábricas nuevas se **añaden** sin quitar ninguna; **§8.4**: `VerificadorDeLoginPort` solo pide
+  `existe_usuario`, lo cumplen el adaptador del cierre y el del volcado, y `resolver_login_de_sigrid` lo pide en
+  `erp` con la misma firma; y los dos nombres en `.env.example` y `local.settings.json.example`, con la ventana
+  cerrada.
+
+**El esqueleto neutro**: `infrastructure/sigrid/volcado.py` con la clase, el constructor que no comprueba nada y
+deja `escritura_habilitada` en falso, los tres métodos con `raise NotImplementedError("F-059 T11")` y las dos
+rutas vacías; en `domain/ports/volcado.py`, `FamiliaDeRespuesta`, una `RespuestaDeLote` sin invariantes ni
+`frozen` y el `VolcadoSigridPort` (declaraciones); y `VerificadorDeLoginPort` en
+`domain/ports/usuarios_sigrid.py`. Ni las fábricas, ni los ajustes, ni la anotación de F-009, ni los ejemplos de
+entorno.
+
+Comando (desde `<scratchpad>/f059`, `R` = `<repo>/services/postventa-api`):
+
+```
+COLUMNS=400 $R/.venv/Scripts/python.exe -m pytest $R/tests/test_f059_adaptador_volcado.py $R/tests/test_f059_fabrica.py \
+  -q -p no:cacheprovider --tb=no -rf
+```
+
+Resultado: **157 failed, 7 passed**. Por tipo: 79 `NotImplementedError` (el esqueleto), 65 `AttributeError` (las
+fábricas y los dos ajustes, que no existen), 8 `DID NOT RAISE` (el entorno que no muerde y las invariantes de
+`RespuestaDeLote`), 5 `AssertionError` (la ruta vacía, `escritura_habilitada`, la anotación de F-009 y los dos
+ejemplos de entorno). **Los 7 que pasan** no dependen de lo que falta: el adaptador cumple el puerto y se
+construye en `dev` y `pro` (el esqueleto lo permite), `construir_erp` y `construir_graficos` siguen cerrados sin
+`CIERRE_HABILITADO` (caracterizan lo que F-059 **no** cambia, R37), y las dos declaraciones de
+`VerificadorDeLoginPort`. En la primera pasada había 7 `TypeError` más, de un ayudante mío (`_completos` pasaba
+`ENTORNO` dos veces): corregido el ayudante, no el código; y el test de «`N` que no es un entero no impide cargar
+los ajustes» pasaba en vacío (el campo no existía y `extra="ignore"` lo tragaba), así que gana la aserción de que
+el valor no se cambia en silencio por el defecto, y desde entonces falla en la RED. La traza de abajo es la
+definitiva.
+
+Traza real, completa (solo se ha recortado el prefijo de la ruta hasta `services\`; ningún GUID):
+
+```
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r36_la_ruta_es_la_de_partes_reclamacion - AssertionError: assert '' == '/api/sigrid/...s-reclamacion'
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_t11_las_tres_familias_y_lo_que_lleva_cada_una - Failed: DID NOT RAISE ValueError
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_t11_la_respuesta_es_inmutable - Failed: DID NOT RAISE FrozenInstanceError
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r36_la_raiz_con_barra_final_no_duplica_la_barra - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r16_sin_la_ventana_no_se_vuelca_y_no_se_llama - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r16_sin_la_ventana_se_niega_antes_de_mirar_el_cuerpo - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_d4_sin_la_ventana_si_se_ensaya - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_r16_volcar_exige_commit_true_de_verdad[false] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_r16_volcar_exige_commit_true_de_verdad[nulo] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_r16_volcar_exige_commit_true_de_verdad[texto] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_r16_volcar_exige_commit_true_de_verdad[uno] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_r16_volcar_exige_commit_true_de_verdad[sin-clave] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_ensayar_exige_commit_false_de_verdad[true] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_ensayar_exige_commit_false_de_verdad[nulo] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_ensayar_exige_commit_false_de_verdad[texto] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_ensayar_exige_commit_false_de_verdad[cero] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r6_ensayar_exige_commit_false_de_verdad[sin-clave] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[lectura-agotada-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[lectura-agotada-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[conexion-agotada-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[conexion-agotada-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[conexion-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[conexion-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[protocolo-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[protocolo-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[500-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[500-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[502-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[502-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[503-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[503-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[504-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[504-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[408-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[408-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[429-volcar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r21_r23_un_5xx_tampoco_se_reintenta[429-ensayar] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r22_un_200_devuelve_los_datos_sin_interpretar[200] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r22_un_200_devuelve_los_datos_sin_interpretar[201] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r24_r35_de_un_400_solo_details_codigo[obra_no_encontrada] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r24_r35_de_un_400_solo_details_codigo[usuario_no_valido] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r24_r35_de_un_400_solo_details_codigo[serie_no_encontrada] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r24_r35_de_un_400_solo_details_codigo[estado_inicial_no_encontrado] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r24_r35_de_un_400_solo_details_codigo[lote_demasiado_grande] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r24_r35_de_un_400_solo_details_codigo[base_de_datos_no_permitida] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r24_r35_de_un_400_solo_details_codigo[escritura_reclamaciones_deshabilitada] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r24_r35_de_un_400_solo_details_codigo[un_codigo_que_no_es_de_lote] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[no-json] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[lista] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[sin-details] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[details-texto] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[sin-codigo] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[codigo-numero] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[codigo-nulo] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_cualquier_otro_codigo_es_sin_respuesta[401] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_cualquier_otro_codigo_es_sin_respuesta[403] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_cualquier_otro_codigo_es_sin_respuesta[404] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_cualquier_otro_codigo_es_sin_respuesta[409] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_cualquier_otro_codigo_es_sin_respuesta[422] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_un_200_que_no_es_un_objeto_json_es_sin_respuesta[no-json] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_un_200_que_no_es_un_objeto_json_es_sin_respuesta[lista] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_un_200_que_no_es_un_objeto_json_es_sin_respuesta[texto] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r23_un_200_que_no_es_un_objeto_json_es_sin_respuesta[numero] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_existe_usuario_solo_con_exactamente_uno[ninguno] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_existe_usuario_solo_con_exactamente_uno[dos] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_existe_usuario_solo_con_exactamente_uno[sin-filas] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_la_lectura_del_login_se_reintenta[503] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_la_lectura_del_login_se_reintenta[429] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_la_lectura_del_login_se_reintenta[corte] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_agotados_los_reintentos_es_sin_respuesta_y_no_dice_el_login - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_un_definitivo_no_se_reintenta[400] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_un_definitivo_no_se_reintenta[401] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_un_definitivo_no_se_reintenta[403] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_un_definitivo_no_se_reintenta[404] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada[no-json] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada[lista] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada[truncada] - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r31_r34_el_log_de_cada_llamada_lleva_duracion_y_media_y_nada_mas - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r34_el_login_no_va_al_log - NotImplementedError: F-059 T11
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[True-test] - Failed: DID NOT RAISE VolcadoDeshabilitado
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[True-local] - Failed: DID NOT RAISE VolcadoDeshabilitado
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[True-otro] - Failed: DID NOT RAISE VolcadoDeshabilitado
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[False-test] - Failed: DID NOT RAISE VolcadoDeshabilitado
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[False-local] - Failed: DID NOT RAISE VolcadoDeshabilitado
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[False-otro] - Failed: DID NOT RAISE VolcadoDeshabilitado
+FAILED services\postventa-api\tests\test_f059_adaptador_volcado.py::test_f059_r16_el_adaptador_dice_si_puede_escribir - assert False is True
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r37_la_ventana_viene_cerrada_por_defecto_y_n_es_cinco - AttributeError: 'Ajustes' object has no attribute 'volcado_habilitado'. Did you mean: 'archivo_habilitado'?
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r37_r30_las_dos_variables_llegan_por_su_alias - AttributeError: 'Ajustes' object has no attribute 'volcado_habilitado'. Did you mean: 'archivo_habilitado'?
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_un_n_que_no_es_un_entero_no_impide_cargar_los_ajustes[cinco] - AttributeError: 'Ajustes' object has no attribute 'volcado_partes_por_llamada'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_un_n_que_no_es_un_entero_no_impide_cargar_los_ajustes[5.5] - AttributeError: 'Ajustes' object has no attribute 'volcado_partes_por_llamada'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_un_n_que_no_es_un_entero_no_impide_cargar_los_ajustes[] - AttributeError: 'Ajustes' object has no attribute 'volcado_partes_por_llamada'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_un_n_que_no_es_un_entero_no_impide_cargar_los_ajustes[  ] - AttributeError: 'Ajustes' object has no attribute 'volcado_partes_por_llamada'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_un_n_que_no_es_un_entero_no_impide_cargar_los_ajustes[1e1] - AttributeError: 'Ajustes' object has no attribute 'volcado_partes_por_llamada'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_un_n_que_no_es_un_entero_no_impide_cargar_los_ajustes[-3] - AttributeError: 'Ajustes' object has no attribute 'volcado_partes_por_llamada'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_r16_la_primera_puerta_es_el_entorno[local-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_r16_la_primera_puerta_es_el_entorno[local-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_r16_la_primera_puerta_es_el_entorno[test-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_r16_la_primera_puerta_es_el_entorno[test-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_r16_la_primera_puerta_es_el_entorno[otro-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_r16_la_primera_puerta_es_el_entorno[otro-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r16_el_entorno_va_antes_que_la_ventana_y_la_configuracion[construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r16_el_entorno_va_antes_que_la_ventana_y_la_configuracion[construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r16_d3_la_segunda_puerta_del_volcador_es_la_ventana[false] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r16_d3_la_segunda_puerta_del_volcador_es_la_ventana[cero] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r16_d3_la_segunda_puerta_del_volcador_es_la_ventana[sin-variable] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r16_la_ventana_va_antes_que_la_configuracion - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_r16_la_configuracion_nombra_todas_las_que_faltan_y_ningun_valor[construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_r16_la_configuracion_nombra_todas_las_que_faltan_y_ningun_valor[construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_una_variable_en_blanco_cuenta_como_ausente[SIGRID_API_BASE_URL-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_una_variable_en_blanco_cuenta_como_ausente[SIGRID_API_BASE_URL-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_una_variable_en_blanco_cuenta_como_ausente[SIGRID_API_KEY-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_una_variable_en_blanco_cuenta_como_ausente[SIGRID_API_KEY-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_una_variable_en_blanco_cuenta_como_ausente[SIGRID_BASE_DATOS-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r10_una_variable_en_blanco_cuenta_como_ausente[SIGRID_BASE_DATOS-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_configuracion_va_antes_que_n[construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_configuracion_va_antes_que_n[construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[0-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[0-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[51-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[51-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[cinco-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[cinco-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[5.5-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[5.5-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[-3-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[-3-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[1e1-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[1e1-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[true-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[true-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_n_de_1_a_50_si_se_construye[1-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_n_de_1_a_50_si_se_construye[1-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_n_de_1_a_50_si_se_construye[5-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_n_de_1_a_50_si_se_construye[5-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_n_de_1_a_50_si_se_construye[50-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r30_n_de_1_a_50_si_se_construye[50-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_d4_el_ensayador_no_mira_la_ventana_y_no_puede_volcar[true] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_d4_el_ensayador_no_mira_la_ventana_y_no_puede_volcar[false] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r16_el_volcador_si_puede_volcar - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r31_las_fabricas_pasan_la_configuracion_y_el_tiempo_de_sigrid[construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r31_las_fabricas_pasan_la_configuracion_y_el_tiempo_de_sigrid[construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_t11_lo_que_construyen_cumple_el_puerto[construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_t11_lo_que_construyen_cumple_el_puerto[construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r37_el_volcado_no_mira_cierre_habilitado[true-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r37_el_volcado_no_mira_cierre_habilitado[true-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r37_el_volcado_no_mira_cierre_habilitado[false-construir_ensayador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r37_el_volcado_no_mira_cierre_habilitado[false-construir_volcador] - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_r37_ni_la_ventana_del_cierre_abre_el_volcado - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_volcador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_t11_las_fabricas_nuevas_se_anaden_sin_quitar_ninguna - AttributeError: module 'infrastructure.sigrid.fabrica' has no attribute 'construir_ensayador'
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_t11_resolver_login_pide_un_verificador_de_login - assert 'ErpPort' in ('VerificadorDeLoginPort', <class 'domain.ports.usuarios_sigrid.VerificadorDeLoginPort'>)
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_t11_los_ejemplos_declaran_las_dos_variables_con_la_ventana_cerrada[.env.example] - AssertionError: assert 'VOLCADO_HABILITADO' in '# services/postventa-api/.env.example\n# Copia este fichero a .env y rellena los valores. El .env NUNCA se versiona.\...S, 10\n# MB): su...
+FAILED services\postventa-api\tests\test_f059_fabrica.py::test_f059_t11_los_ejemplos_declaran_las_dos_variables_con_la_ventana_cerrada[local.settings.json.example] - assert 'VOLCADO_HABILITADO' in '{\n  "IsEncrypted": false,\n  "Values": {\n    "AzureWebJobsStorage": "",\n    "FUNCTIONS_WORKER_RUNTIME": "python",\...ID_ZONA_HORARIA":...
+157 failed, 7 passed in 1.90s
+```
+
+### T11 · GREEN (`7705354`)
+
+| Fichero | Qué |
+|---|---|
+| `infrastructure/sigrid/volcado.py` | `AdaptadorVolcadoSigridApi` y `exigir_entorno_con_volcado`; `RUTA_PARTES_RECLAMACION` (vive **solo** aquí, R36) y `RUTA_LECTURA`. **Importa** de `cliente.py` (`CORRECTOS`, `ENTORNOS_CON_CIERRE`, `MAX_FILAS_LECTURA`, `ErrorDeSigrid`, `construir_cliente_http`, `es_transitorio`, `exigir_entorno_con_cierre`) y de `consultas.py` (`select_usuario`); no copia nada |
+| `domain/ports/volcado.py` | `FamiliaDeRespuesta`, `RespuestaDeLote` (inmutable, con sus invariantes) y `VolcadoSigridPort` (§8.1) |
+| `infrastructure/sigrid/fabrica.py` | `construir_ensayador` y `construir_volcador` **añadidas** (y en `__all__`), con `_adaptador_de_volcado`; enmienda fechada en la cabecera. Nada de las otras cinco cambia |
+| `config/settings.py` | `volcado_habilitado` (`VOLCADO_HABILITADO`, falso) y `volcado_partes_por_llamada` (`VOLCADO_PARTES_POR_LLAMADA`, 5) |
+| `domain/ports/usuarios_sigrid.py` | `VerificadorDeLoginPort` (solo `existe_usuario`) |
+| `application/pipelines/paso_cierre.py` | **Solo** la anotación de `erp` en `resolver_login_de_sigrid` (`ErpPort` → `VerificadorDeLoginPort`) y su importación, que `ruff` parte en tres líneas. Ni una línea de lógica |
+| `.env.example`, `local.settings.json.example` | `VOLCADO_HABILITADO=false` y `VOLCADO_PARTES_POR_LLAMADA=5`, con su comentario; el `.env.example` sigue en CRLF |
+
+**Decisiones de diseño (para la review del Bloque 3):**
+
+1. **El error del entorno es `VolcadoDeshabilitado`, no `CierreDeshabilitado`.** §8.2 dice
+   «`exigir_entorno_con_cierre(entorno)` (la misma lista `dev`, `pro`)», y R16 que si falla una de las puertas,
+   «503 `volcado_deshabilitado` o el de configuración incompleta». Las dos letras se cumplen:
+   `exigir_entorno_con_volcado` **llama** a `exigir_entorno_con_cierre` (una sola lista, una sola comprobación) y
+   traduce su `CierreDeshabilitado` en `VolcadoDeshabilitado` con un mensaje del volcado. Lo usan el constructor
+   del adaptador y las dos fábricas. Para el ensayo (R10, «503» sin código), el mismo error: desde un puesto de
+   trabajo no se ensaya ni se vuelca.
+2. **`existe_usuario` sin respuesta utilizable → `EnsayoSinRespuesta` (502).** La spec no dice qué error levanta
+   la lectura del login cuando la pasarela no responde (§8.2 solo da «con los reintentos de lectura de
+   siempre»). De los ocho errores de §7, es el que dice «502 sin guardar nada: es una lectura y repetirla es
+   inocuo», que es exactamente lo que pasa —tanto en el ensayo como en el volcado, el login se lee **antes** de
+   escribir nada (R19)—. El nombre encaja peor en el volcado; si la review o el Bloque 4 prefieren otro, el
+   cambio es una línea (`_sin_respuesta`). **Lo dejo señalado para el Bloque 4**, que es quien lo traduce a HTTP.
+3. **`VOLCADO_PARTES_POR_LLAMADA` es `int | str` (`union_mode="left_to_right"`), no `int`.** §13 dice «`int`» y,
+   a la vez, que el rango se valida en la fábrica (503) «y no al cargar los ajustes: `/health` tiene que arrancar
+   igual»; T10 pide «no entero → 503». Con `int`, un `cinco` en la App Setting tumbaría la carga de los ajustes
+   (y `/health`) en vez de dar el 503. Así, lo que es un entero llega como entero (`"12"` → 12, `" 7 "` → 7) y lo
+   demás se queda como texto, que `validar_partes_por_llamada` (Bloque 1) rechaza. Sin la unión de izquierda a
+   derecha, `"5"` llegaría como texto y ni el valor por defecto en Azure valdría (mutante C01, muerto).
+4. **`RespuestaDeLote`**: los datos, obligatorios en `ok` y solo en él; el código, solo en `lote_400` (y
+   opcional: un 400 «Solicitud invalida.» no lo trae); un `tipo` que no es `FamiliaDeRespuesta` →
+   `TypeError` (lo pidió `ruff`, TRY004; el test se separó en ese mismo commit). La presencia se decide con
+   `is not None`, y dos tests nuevos de T12 lo fijan (un `{}` es datos; un `""` es código).
+5. **Lo que es `ok`**: `CORRECTOS` de `cliente.py` (200 y 201, importado como dice §1) con un **objeto** JSON. Un
+   200 con una lista o con algo que no es JSON es `sin_respuesta`: no es la forma de §8.9, y así el dominio solo
+   ve objetos. Un 400 sin código de texto es `lote_400` sin código: el dominio no lo clasifica
+   (`clasificar_codigo_de_lote(None)`), y la aplicación lo tratará como respuesta que no se entiende.
+6. **El adaptador manda `dict(cuerpo)`**, una copia, tal cual: no compone ni toca nada.
+7. **El log de cada llamada (R31, R34)**: `obra`, `modo`, `commit`, `partes`, `familia`, `segundos` y
+   `media_por_parte`; los cortes y los códigos inesperados, en un `warning` con el tipo del corte o el código. La
+   referencia y el `sigrid_cod` de cada parte los registrará la aplicación (R34, Bloque 4), que es quien los
+   interpreta.
+8. **Las fábricas no devuelven `N`**: lo validan (503) y nada más. La aplicación del Bloque 4 lo leerá de los
+   ajustes ya validados para el panel y para el tope de las peticiones (R9, R15, R28).
+9. **`_HTTP_DEL_LOTE`, no `_ESTADO_DE_LOTE`**: la guardia de F-009 (`test_f009_r3_ninguna_constante_de_estado_de_produccion_es_un_numero`)
+   prohíbe constantes con «ESTADO» en el nombre y un número de valor (es un código HTTP, no un estado de
+   Sigrid). Renombrada en vez de tocar la guardia.
+
+Verificación de `tasks.md` T11 (`test_f059_adaptador_volcado.py`, `test_f059_fabrica.py`, `test_f009_*.py`,
+`test_f012_*.py`): **994 passed in 17.68s**. Además, F-005, F-006, F-013, F-036, F-056, F-060 y F-059 enteros
+(las guardias de arquitectura, de ejemplos de entorno, de importación diferida y de alcance): **6661 passed, 104
+skipped in 549.86s**. **Tests ajenos tocados: ninguno** (`git diff 5c0a6d2..HEAD -- services/postventa-api/tests`
+solo enseña los dos de F-059).
+
+### T12 · Mutación del bloque (`eb8d03b`, `93a3984` y el de este informe)
+
+Base **`5c0a6d2`**. Antes de la campaña, la reverificación pura y los mutantes a mano (abajo) pidieron cuatro
+tests más, todos de F-059 y sin tocar el código (`eb8d03b`): la duración y la media **medidas** con un reloj
+controlado (el mutante `time.monotonic() + arranque` sobrevivía a un log que solo miraba que hubiera
+«segundos=»), un lote sin partes que no divide entre cero, que con un cliente dado se use ese aunque se evalúe
+como falso (y que sin cliente se fabrique uno con `SIGRID_TIMEOUT_S`, una vez), y que la presencia de datos y de
+código se decide con `is not None`. La cobertura dejó una línea sin recorrer (el corte de red persistente en la
+lectura del login) y gana su test (`93a3984`).
+
+#### La campaña de la herramienta
+
+```
+cd <scratchpad>/f059
+PYTHONPATH=<repo> python -m harness.mutacion --feature F-059 --base 5c0a6d2 --timeout 1800 --workers 8 \
+  --raiz <repo> --salida <repo>/progress/mutacion_F-059_bloque3.md
+25 mutantes evaluados, 25 muertos, 0 supervivientes, 0 timeouts en 3012.2 s
+```
+
+Sobre `HEAD` `eb8d03b`; alcance: **509** líneas de producción en seis ficheros (`paso_cierre.py` 5, `settings.py`
+32, `usuarios_sigrid.py` 16, `domain/ports/volcado.py` 69, `infrastructure/sigrid/fabrica.py` 78,
+`infrastructure/sigrid/volcado.py` 309); **8 workers**; ningún timeout. Informe: `progress/mutacion_F-059_bloque3.md`
+(su primera línea, otra vez con la ruta absoluta del equipo, la he dejado relativa). Una sola campaña, sin
+paradas. El test de `93a3984` llegó después de lanzarla: no toca código de producción, y sus dos mutantes (A25,
+A26) van a mano.
+
+#### Reverificación de cada mutante de la herramienta contra los tests de F-059 solos
+
+Con `generar_mutantes` y `aplicar_mutante`, el mismo alcance y la misma base, sobre `eb8d03b` en un worktree
+desechable (retirado), ejecutando solo `test_f059_adaptador_volcado.py` y `test_f059_fabrica.py` (`-x`):
+**25 de 25 muertos por tests de F-059**.
+
+| N.º | Fichero:línea | Operador | Original → mutado | Resultado | Primer test de F-059 que lo caza |
+|---|---|---|---|---|---|
+| 1 | `settings.py:527` | booleano | default=False, -> default=True, | muerto (F-059) | `test_f059_r37_la_ventana_viene_cerrada_por_defecto_y_n_es_cinco` |
+| 2 | `settings.py:538` | entero | default=5, -> default=6, | muerto (F-059) | `test_f059_r37_la_ventana_viene_cerrada_por_defecto_y_n_es_cinco` |
+| 3 | `volcado.py:79` | booleano | @dataclass(frozen=True) -> @dataclass(frozen=False) | muerto (F-059) | `test_f059_t11_la_respuesta_es_inmutable` |
+| 4 | `volcado.py:93` | not | if not isinstance(self.tipo, FamiliaDeRespuesta): -> if isinstance(self.tipo, FamiliaDeRespuesta): | muerto (F-059) | `test_f059_t11_las_tres_familias_y_lo_que_lleva_cada_una` |
+| 5 | `volcado.py:95` | comparacion | if (self.datos is not None) != (self.tipo is FamiliaDeRespuesta.OK): -> if (self.datos is not None) == (self.tipo is FamiliaDeRespuesta.OK): | muerto (F-059) | `test_f059_t11_las_tres_familias_y_lo_que_lleva_cada_una` |
+| 6 | `volcado.py:97` | logico | if self.codigo is not None and self.tipo is not FamiliaDeRespuesta.LOTE_400: -> if self.codigo is not None or self.tipo is not FamiliaDeRespuesta.LOTE_400: | muerto (F-059) | `test_f059_t11_las_tres_familias_y_lo_que_lleva_cada_una` |
+| 7 | `fabrica.py:310` | booleano | return _adaptador_de_volcado(ajustes, escritura_habilitada=False) -> return _adaptador_de_volcado(ajustes, escritura_habilitada=True) | muerto (F-059) | `test_f059_d4_el_ensayador_no_mira_la_ventana_y_no_puede_volcar[true]` |
+| 8 | `fabrica.py:323` | not | if not ajustes.volcado_habilitado: -> if ajustes.volcado_habilitado: | muerto (F-059) | `test_f059_r16_d3_la_segunda_puerta_del_volcador_es_la_ventana[false]` |
+| 9 | `fabrica.py:333` | booleano | return _adaptador_de_volcado(ajustes, escritura_habilitada=True) -> return _adaptador_de_volcado(ajustes, escritura_habilitada=False) | muerto (F-059) | `test_f059_r16_el_volcador_si_puede_volcar` |
+| 10 | `volcado.py:96` | entero | _HTTP_DEL_LOTE = 400 -> _HTTP_DEL_LOTE = 401 | muerto (F-059) | `test_f059_r14_r24_r35_de_un_400_solo_details_codigo[obra_no_encontrada]` |
+| 11 | `volcado.py:173` | booleano | reraise=True, -> reraise=False, | muerto (F-059) | `test_f059_r8_agotados_los_reintentos_es_sin_respuesta_y_no_dice_el_login` |
+| 12 | `volcado.py:184` | not | if not filas: -> if filas: | muerto (F-059) | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+| 13 | `volcado.py:185` | booleano | return False -> return True | muerto (F-059) | `test_f059_r8_existe_usuario_solo_con_exactamente_uno[sin-filas]` |
+| 14 | `volcado.py:186` | entero | return int(filas[0][0]) == 1 -> return int(filas[1][0]) == 1 | muerto (F-059) | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+| 15 | `volcado.py:186` | entero | return int(filas[0][0]) == 1 -> return int(filas[0][1]) == 1 | muerto (F-059) | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+| 16 | `volcado.py:186` | comparacion | return int(filas[0][0]) == 1 -> return int(filas[0][0]) != 1 | muerto (F-059) | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+| 17 | `volcado.py:186` | entero | return int(filas[0][0]) == 1 -> return int(filas[0][0]) == 2 | muerto (F-059) | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+| 18 | `volcado.py:190` | booleano | if cuerpo.get("commit") is not False: -> if cuerpo.get("commit") is not True: | muerto (F-059) | `test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[ensayar]` |
+| 19 | `volcado.py:196` | not | if not self._escritura_habilitada: -> if self._escritura_habilitada: | muerto (F-059) | `test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[volcar]` |
+| 20 | `volcado.py:201` | booleano | if cuerpo.get("commit") is not True: -> if cuerpo.get("commit") is not False: | muerto (F-059) | `test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[volcar]` |
+| 21 | `volcado.py:213` | aritmetico | segundos = time.monotonic() - arranque -> segundos = time.monotonic() + arranque | muerto (F-059) | `test_f059_r31_la_duracion_y_la_media_son_las_medidas` |
+| 22 | `volcado.py:214` | logico | partes = len(cuerpo.get("partes") or ()) -> partes = len(cuerpo.get("partes") and ()) | muerto (F-059) | `test_f059_r31_r34_el_log_de_cada_llamada_lleva_duracion_y_media_y_nada_mas` |
+| 23 | `volcado.py:244` | comparacion | if respuesta.status_code == _HTTP_DEL_LOTE: -> if respuesta.status_code != _HTTP_DEL_LOTE: | muerto (F-059) | `test_f059_d4_sin_la_ventana_si_se_ensaya` |
+| 24 | `volcado.py:254` | not | if not isinstance(datos, dict): -> if isinstance(datos, dict): | muerto (F-059) | `test_f059_d4_sin_la_ventana_si_se_ensaya` |
+| 25 | `volcado.py:268` | not | if not isinstance(datos, dict): -> if isinstance(datos, dict): | muerto (F-059) | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+
+#### Mutantes a mano (lo que la herramienta no muta)
+
+En worktrees desechables (retirados; el árbol de trabajo no se ha mutado), con los dos ficheros de F-059 del
+bloque. Incluye los de veracidad frente a `is (not) None` y a `is True`/`is False` (V01–V06).
+
+**Lote principal** (sobre `eb8d03b`, 45):
+
+| Id | Fichero | Mutación | Resultado | Primer test de F-059 que lo caza |
+|---|---|---|---|---|
+| V01 | `domain/ports/volcado.py` | datos por veracidad | muerto (F-059) | `test_f059_t11_lo_que_decide_es_que_haya_datos_o_codigo_y_no_su_veracidad` |
+| V02 | `domain/ports/volcado.py` | código por veracidad | muerto (F-059) | `test_f059_t11_lo_que_decide_es_que_haya_datos_o_codigo_y_no_su_veracidad` |
+| V03 | `infrastructure/sigrid/volcado.py` | cliente por veracidad | muerto (F-059) | `test_f059_t11_lo_que_decide_es_que_haya_cliente_y_no_su_veracidad` |
+| V04 | `infrastructure/sigrid/volcado.py` | ensayo: commit por veracidad | muerto (F-059) | `test_f059_r6_ensayar_exige_commit_false_de_verdad[nulo]` |
+| V05 | `infrastructure/sigrid/volcado.py` | volcado: commit por veracidad | muerto (F-059) | `test_f059_r6_r16_volcar_exige_commit_true_de_verdad[texto]` |
+| V06 | `infrastructure/sigrid/volcado.py` | código de lote por veracidad | muerto (F-059) | `test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[codigo-numero]` |
+| A01 | `infrastructure/sigrid/volcado.py` | volcar sin la ventana | muerto (F-059) | `test_f059_r16_sin_la_ventana_no_se_vuelca_y_no_se_llama` |
+| A02 | `infrastructure/sigrid/volcado.py` | el cuerpo antes que la ventana | muerto (F-059) | `test_f059_r16_sin_la_ventana_se_niega_antes_de_mirar_el_cuerpo` |
+| A03 | `infrastructure/sigrid/volcado.py` | constructor sin el entorno | muerto (F-059) | `test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[True-test]` |
+| A04 | `infrastructure/sigrid/volcado.py` | entorno que no muerde | muerto (F-059) | `test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[True-test]` |
+| A05 | `infrastructure/sigrid/volcado.py` | el lote por sql/read | muerto (F-059) | `test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[volcar]` |
+| A06 | `infrastructure/sigrid/volcado.py` | la ruta de escritura genérica | muerto (F-059) | `test_f059_r36_la_ruta_es_la_de_partes_reclamacion` |
+| A07 | `infrastructure/sigrid/volcado.py` | otra cabecera | muerto (F-059) | `test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[volcar]` |
+| A08 | `infrastructure/sigrid/volcado.py` | sin quitar la barra | muerto (F-059) | `test_f059_r36_la_raiz_con_barra_final_no_duplica_la_barra` |
+| A09 | `infrastructure/sigrid/volcado.py` | el cuerpo retocado | **sobrevive** | `` |
+| A10 | `infrastructure/sigrid/volcado.py` | solo los tiempos agotados son sin_respuesta | muerto (F-059) | `test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[conexion-volcar]` |
+| A11 | `infrastructure/sigrid/volcado.py` | solo 200 es correcto | muerto (F-059) | `test_f059_r22_un_200_devuelve_los_datos_sin_interpretar[201]` |
+| A12 | `infrastructure/sigrid/volcado.py` | un 200 que no es objeto, ok | muerto (F-059) | `test_f059_r23_un_200_que_no_es_un_objeto_json_es_sin_respuesta[lista]` |
+| A13 | `infrastructure/sigrid/volcado.py` | el código fuera de details | muerto (F-059) | `test_f059_r14_r24_r35_de_un_400_solo_details_codigo[obra_no_encontrada]` |
+| A14 | `infrastructure/sigrid/volcado.py` | otro campo de details | muerto (F-059) | `test_f059_r14_r24_r35_de_un_400_solo_details_codigo[obra_no_encontrada]` |
+| A15 | `infrastructure/sigrid/volcado.py` | el login sin reintentos | muerto (F-059) | `test_f059_r8_la_lectura_del_login_se_reintenta[503]` |
+| A16 | `infrastructure/sigrid/volcado.py` | el login reintenta todo | muerto (F-059) | `test_f059_r8_un_definitivo_no_se_reintenta[400]` |
+| A17 | `infrastructure/sigrid/volcado.py` | otro techo de filas | muerto (F-059) | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+| A18 | `infrastructure/sigrid/volcado.py` | truncada vale | muerto (F-059) | `test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada[truncada]` |
+| A19 | `infrastructure/sigrid/volcado.py` | el login por la ruta del lote | muerto (F-059) | `test_f059_r8_existe_usuario_lee_por_sql_read_con_el_login_como_parametro` |
+| A20 | `infrastructure/sigrid/volcado.py` | log sin la obra | muerto (F-059) | `test_f059_r31_r34_el_log_de_cada_llamada_lleva_duracion_y_media_y_nada_mas` |
+| A21 | `infrastructure/sigrid/volcado.py` | log con otra familia | muerto (F-059) | `test_f059_r31_r34_el_log_de_cada_llamada_lleva_duracion_y_media_y_nada_mas` |
+| A22 | `infrastructure/sigrid/volcado.py` | el ensayo sin registrar | muerto (F-059) | `test_f059_r31_r34_el_log_de_cada_llamada_lleva_duracion_y_media_y_nada_mas` |
+| A23 | `infrastructure/sigrid/volcado.py` | el login: otro error | muerto (F-059) | `test_f059_r8_agotados_los_reintentos_es_sin_respuesta_y_no_dice_el_login` |
+| A24 | `infrastructure/sigrid/volcado.py` | el login: uno o más | muerto (F-059) | `test_f059_r8_existe_usuario_solo_con_exactamente_uno[dos]` |
+| B01 | `infrastructure/sigrid/fabrica.py` | ensayador sin el entorno | muerto (F-059) | `test_f059_r16_el_entorno_va_antes_que_la_ventana_y_la_configuracion[construir_ensayador]` |
+| B02 | `infrastructure/sigrid/fabrica.py` | volcador sin el entorno en la fábrica | muerto (F-059) | `test_f059_r16_el_entorno_va_antes_que_la_ventana_y_la_configuracion[construir_volcador]` |
+| B03 | `infrastructure/sigrid/fabrica.py` | volcador: configuración antes que la ventana | muerto (F-059) | `test_f059_r16_la_ventana_va_antes_que_la_configuracion` |
+| B04 | `infrastructure/sigrid/fabrica.py` | el ensayador mira la ventana | muerto (F-059) | `test_f059_d4_el_ensayador_no_mira_la_ventana_y_no_puede_volcar[false]` |
+| B05 | `infrastructure/sigrid/fabrica.py` | ensayador sin N | muerto (F-059) | `test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[0-construir_ensayador]` |
+| B06 | `infrastructure/sigrid/fabrica.py` | volcador sin N | muerto (F-059) | `test_f059_r30_la_cuarta_puerta_es_n_de_1_a_50[0-construir_volcador]` |
+| B07 | `infrastructure/sigrid/fabrica.py` | volcador: N antes que la configuración | muerto (F-059) | `test_f059_r30_la_configuracion_va_antes_que_n[construir_volcador]` |
+| B08 | `infrastructure/sigrid/fabrica.py` | timeout fijo | muerto (F-059) | `test_f059_r31_las_fabricas_pasan_la_configuracion_y_el_tiempo_de_sigrid[construir_ensayador]` |
+| B09 | `infrastructure/sigrid/fabrica.py` | reintentos fijos | muerto (F-059) | `test_f059_r31_las_fabricas_pasan_la_configuracion_y_el_tiempo_de_sigrid[construir_ensayador]` |
+| B10 | `infrastructure/sigrid/fabrica.py` | el cierre abre el volcado | muerto (F-059) | `test_f059_r37_ni_la_ventana_del_cierre_abre_el_volcado` |
+| C01 | `config/settings.py` | N en modo smart | muerto (F-059) | `test_f059_r37_r30_las_dos_variables_llegan_por_su_alias` |
+| C02 | `config/settings.py` | N solo entero | muerto (F-059) | `` |
+| C03 | `config/settings.py` | la ventana del volcado es la del cierre | muerto (F-059) | `test_f059_r37_la_ventana_del_volcado_no_abre_el_cierre_ni_el_grafico[construir_erp]` |
+| C04 | `application/pipelines/paso_cierre.py` | la anotación de antes | muerto (F-059) | `test_f059_t11_resolver_login_pide_un_verificador_de_login` |
+| C05 | `domain/ports/usuarios_sigrid.py` | el verificador pide más | muerto (F-059) | `test_f059_t11_el_verificador_de_login_solo_pide_existe_usuario` |
+
+**A09b y A09c** (sobre `eb8d03b`), en lugar de A09:
+
+| Id | Fichero | Mutación | Resultado | Primer test de F-059 que lo caza |
+|---|---|---|---|---|
+| A09b | `infrastructure/sigrid/volcado.py` | el cuerpo siempre con commit true | muerto (F-059) | `test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[ensayar]` |
+| A09c | `infrastructure/sigrid/volcado.py` | el cuerpo sin el usu | muerto (F-059) | `test_f059_r36_r6_manda_el_cuerpo_tal_cual_a_la_ruta_con_la_clave_en_la_cabecera[volcar]` |
+
+**A25 y A26** (sobre `93a3984`), el corte persistente en la lectura del login:
+
+| Id | Fichero | Mutación | Resultado | Primer test de F-059 que lo caza |
+|---|---|---|---|---|
+| A25 | `infrastructure/sigrid/volcado.py` | el login: solo los tiempos agotados | muerto (F-059) | `test_f059_r8_un_corte_que_no_se_arregla_es_sin_respuesta` |
+| A26 | `infrastructure/sigrid/volcado.py` | el login: sin el tipo del corte | muerto (F-059) | `test_f059_r8_un_corte_que_no_se_arregla_es_sin_respuesta` |
+
+**A09 no es un superviviente: no cambia el programa.** Sustituye `json=dict(cuerpo)` por
+`json={**cuerpo, "commit": cuerpo.get("commit") is True}`. A esa línea solo se llega desde `ensayar` (con
+`commit` **igual a** `False`) o desde `volcar` (con `commit` **igual a** `True`): en los dos casos
+`cuerpo.get("commit") is True` es el mismo valor que ya había, así que el cuerpo mandado es idéntico para
+cualquier entrada que llegue ahí. Es la categoría de V05d (que el humano aceptó para el Bloque 2) y de A5/A8 de la
+re-review del Bloque 1. Lo sustituyen A09b (el cuerpo siempre con `commit: true`) y A09c (sin el `usu`), que sí
+cambian el programa y mueren. **Lo dejo para que el humano lo vea**, como V05d.
+
+**En total, a mano: 45 + 2 + 2 = 49** (lote principal, A09b y A09c, A25 y A26); todos los que cambian el programa
+mueren con un test de F-059, y ninguno lo caza solo otra suite. A09, razonado arriba.
+
+#### Cobertura
+
+`coverage run` con los dos ficheros del bloque: `infrastructure/sigrid/volcado.py` **100 %** (109; la línea 180,
+la única que faltaba en la primera medida, la cubre el test de `93a3984`), `domain/ports/volcado.py` **100 %**
+(40), `domain/ports/usuarios_sigrid.py` **100 %** (12) y `config/settings.py` 98 % (lo que falta es
+`obtener_ajustes`, que no es de F-059). En `infrastructure/sigrid/fabrica.py` (69 %), **todas las líneas de F-059
+cubiertas**: lo que falta son las otras cinco fábricas, que estos dos ficheros no recorren (sus suites son las
+de F-009, F-012, F-013, F-036 y F-056).
+
+### Verificación final del bloque
+
+Desde el scratchpad, sobre `93a3984`: los dos ficheros de F-059 del bloque, **170 passed in 1.21s**. **La suite entera del servicio** (`pytest <repo>/services/postventa-api/tests <repo>/services/postventa-api/tests_bbdd -q`): **8768 passed, 233 skipped in 471.95s**, sin un rojo (los de base se saltan sin DSN)
+
+`ruff check` (desde la raíz) sobre los ficheros de producción y los dos tests del bloque: `All checks passed!`
+(el `I001` de `catalogo_obra.py` es anterior y no lo toco). Barrido de datos sensibles sobre `5c0a6d2..HEAD`:
+ningún GUID, ningún correo, ninguna IP; las URL, `https://pasarela-inventada.invalido` y `https://ejemplo-volcado.invalido`; las «api_key», nombres de parámetro y las claves inventadas de los tests (`clavedefuncioninventadaparaelvolcado`, `clave-de-mentira-para-el-volcado`); en los ejemplos de entorno, solo `false` y `5`. El ruido de los 400 de prueba es inventado (un nombre «Nombre Inventado» y un DNI `00000000T`).
+
+## Evidencias del Bloque 3
+
+| Evidencia | Valor |
+|---|---|
+| RED (T10) | 157 failed, 7 passed (traza arriba) |
+| Verificación de T11 | 994 passed in 17.68s; con las guardias de F-005, F-006, F-013, F-036, F-056 y F-060, 6661 passed, 104 skipped |
+| Tests de F-059 del bloque | `test_f059_adaptador_volcado.py` + `test_f059_fabrica.py`: **170 passed in 1.21s** |
+| Suite entera del servicio | **8768 passed, 233 skipped in 471.95s**, sin un rojo (los de base se saltan sin DSN) |
+| Cobertura de lo nuevo | 100 % de `infrastructure/sigrid/volcado.py`, `domain/ports/volcado.py` y `usuarios_sigrid.py`; todas las líneas de F-059 de `fabrica.py` y `settings.py` |
+| Mutación (herramienta) | **25 generados, 25 muertos, 0 supervivientes, 0 timeouts**, 3012.2 s, 8 workers |
+| Reverificación contra F-059 solos | 25/25 |
+| Mutación a mano | 49; supervivientes abiertos: **0** (A09 no cambia el programa, razonado, para que lo vea el humano) |
+| Tests ajenos tocados | **Ninguno** |
+
+## Commits del Bloque 3
+
+| Tarea | Commit |
+|---|---|
+| (V05d cerrado) | `5c0a6d2` |
+| T10 | `9bdc35c` |
+| T11 | `7705354` |
+| T12 | `eb8d03b`, `93a3984` y el de este informe con `progress/mutacion_F-059_bloque3.md` |
+
+**Parado aquí: review del Bloque 3.** Lo que el reviewer debería mirar primero: la decisión 2 (qué error levanta
+la lectura del login sin respuesta: `EnsayoSinRespuesta`, y el Bloque 4 tendrá que traducirlo), la 3 (`N` como
+`int | str` frente al `int` de §13), la 1 (`VolcadoDeshabilitado` para el entorno, envolviendo
+`exigir_entorno_con_cierre`), A09, y que `init.sh` no se ha lanzado por la regla del `.env`. Para el Bloque 4
+siguen abiertas O-B2-2 y O-B1-1.

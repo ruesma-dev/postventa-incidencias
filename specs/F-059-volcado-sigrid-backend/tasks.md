@@ -192,7 +192,7 @@
   `erp` de `resolver_login_de_sigrid` (§8.4); los dos nombres en
   `.env.example` y `local.settings.json.example` con placeholder. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_adaptador_volcado.py tests/test_f059_fabrica.py tests/test_f009_*.py tests/test_f012_*.py`
-- [ ] **T12 · Mutación del bloque.** |
+- [x] **T12 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-059 --base <hash anterior a T10> --timeout 1800 --salida progress/mutacion_F-059_bloque3.md`
 
 **Parar. Review del Bloque 3.**

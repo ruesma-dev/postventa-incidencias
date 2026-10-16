@@ -60,5 +60,15 @@ class RepositorioUsuariosSigridPort(Protocol):
 
 
 @runtime_checkable
-class VerificadorDeLoginPort(Protocol):  # F-059 T10: esqueleto neutro
-    def existe_usuario(self, *, login: str) -> bool: ...
+class VerificadorDeLoginPort(Protocol):
+    """Quien confirma contra el ERP que un login existe (F-059, design.md §8.4).
+
+    `resolver_login_de_sigrid` solo necesita esto del ERP. Lo cumplen el
+    adaptador del cierre (`ErpPort`) y el del volcado (`VolcadoSigridPort`):
+    así el volcado resuelve el login sin construir el adaptador del cierre, que
+    exige la otra ventana (`CIERRE_HABILITADO`).
+    """
+
+    def existe_usuario(self, *, login: str) -> bool:
+        """¿Ese login existe exactamente una vez en el ERP? (R30, R31 de F-009)."""
+        ...

@@ -157,10 +157,11 @@ def test_f059_t11_las_tres_familias_y_lo_que_lleva_cada_una():
         {"tipo": FamiliaDeRespuesta.LOTE_400, "datos": {"ok": True}},
         {"tipo": FamiliaDeRespuesta.SIN_RESPUESTA, "datos": {"ok": True}},
         {"tipo": FamiliaDeRespuesta.SIN_RESPUESTA, "codigo": "x"},
-        {"tipo": "ok", "datos": {"ok": True}},
     ):
         with pytest.raises(ValueError):
             RespuestaDeLote(**imposible)
+    with pytest.raises(TypeError):
+        RespuestaDeLote(tipo="ok", datos={"ok": True})  # type: ignore[arg-type]
 
 
 def test_f059_t11_la_respuesta_es_inmutable():

@@ -99,7 +99,10 @@ from domain.ports.persistencia import (
     RepositorioPartesPort,
     RepositorioPreferenciasPort,
 )
-from domain.ports.usuarios_sigrid import RepositorioUsuariosSigridPort
+from domain.ports.usuarios_sigrid import (
+    RepositorioUsuariosSigridPort,
+    VerificadorDeLoginPort,
+)
 
 from application.pipelines.codigos_del_parte import (
     CodigosDelParte,
@@ -684,7 +687,7 @@ def _dejar_constancia(
 
 def resolver_login_de_sigrid(
     usuarios: RepositorioUsuariosSigridPort,
-    erp: ErpPort,
+    erp: VerificadorDeLoginPort,
     *,
     usuario_oid: str,
     correo: str,

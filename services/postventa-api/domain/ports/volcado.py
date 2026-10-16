@@ -61,26 +61,63 @@ __all__ = [
 ]
 
 
-class FamiliaDeRespuesta(StrEnum):  # F-059 T10: esqueleto neutro
+class FamiliaDeRespuesta(StrEnum):
+    """Las tres familias de respuesta de `partes-reclamacion` (§8.1).
+
+    - `ok`: un 200 con un objeto JSON, que **no** se interpreta aquí (lo hace
+      `interpretar_respuesta`, puro, R22);
+    - `lote_400`: un 400 de lote; de su cuerpo, solo `details.codigo` (R35);
+    - `sin_respuesta`: todo lo demás —un corte, un tiempo agotado, otro código,
+      algo que no es un objeto JSON—: no consta qué ha pasado (R14, R23).
+    """
+
     OK = "ok"
     LOTE_400 = "lote_400"
     SIN_RESPUESTA = "sin_respuesta"
 
 
-@dataclass
-class RespuestaDeLote:  # F-059 T10: esqueleto neutro
+@dataclass(frozen=True)
+class RespuestaDeLote:
+    """Lo que el adaptador de la pasarela devuelve de una llamada de lote.
+
+    Los datos van **solo** en `ok` (y son obligatorios); el código, **solo** en
+    `lote_400` (y puede faltar: un 400 «Solicitud invalida.» no lo trae); en
+    `sin_respuesta`, nada. Otra combinación es un error de programación.
+    """
+
     tipo: FamiliaDeRespuesta
     datos: Any = None
     codigo: str | None = None
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.tipo, FamiliaDeRespuesta):
+            raise TypeError("el tipo de una respuesta de lote es una FamiliaDeRespuesta")
+        if (self.datos is not None) != (self.tipo is FamiliaDeRespuesta.OK):
+            raise ValueError("los datos van en una respuesta ok, y solo en ella")
+        if self.codigo is not None and self.tipo is not FamiliaDeRespuesta.LOTE_400:
+            raise ValueError("el código va en un 400 de lote, y solo en él")
+
 
 @runtime_checkable
-class VolcadoSigridPort(Protocol):  # F-059 T10: esqueleto neutro
-    def existe_usuario(self, *, login: str) -> bool: ...
+class VolcadoSigridPort(Protocol):
+    """Quien habla con `POST /api/sigrid/partes-reclamacion` de `sigrid-api` (§8.1).
 
-    def ensayar(self, *, cuerpo: Mapping[str, Any]) -> RespuestaDeLote: ...
+    Tres operaciones, y ninguna decide nada: el cuerpo lo compone
+    `cuerpo_de_lote` y la respuesta la interpreta `interpretar_respuesta`.
+    """
 
-    def volcar(self, *, cuerpo: Mapping[str, Any]) -> RespuestaDeLote: ...
+    def existe_usuario(self, *, login: str) -> bool:
+        """¿Ese login existe exactamente una vez en el ERP? (R8, por lectura)."""
+        ...
+
+    def ensayar(self, *, cuerpo: Mapping[str, Any]) -> RespuestaDeLote:
+        """El ensayo: **un** intento, con un cuerpo de `commit: false` (R10, R31)."""
+        ...
+
+    def volcar(self, *, cuerpo: Mapping[str, Any]) -> RespuestaDeLote:
+        """El volcado: **un** intento, con un cuerpo de `commit: true` y la
+        ventana abierta; nunca se reintenta (R16, R21)."""
+        ...
 
 #: La decisión pura de R18 y R20 (`seleccionar_para_volcado`): las pedidas, el
 #: ensayo y lo leído con las filas bloqueadas.

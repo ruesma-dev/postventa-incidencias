@@ -184,7 +184,7 @@
   nombrando variables sin valores; `construir_ensayador` con la ventana
   cerrada **sí** construye; `N` 0, 51 y no entero → 503. Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_adaptador_volcado.py tests/test_f059_fabrica.py` **falla**
-- [ ] **T11 · GREEN**: `infrastructure/sigrid/volcado.py`;
+- [x] **T11 · GREEN**: `infrastructure/sigrid/volcado.py`;
   `VolcadoSigridPort` en `domain/ports/volcado.py`; `construir_ensayador` y
   `construir_volcador` **añadidas** a `infrastructure/sigrid/fabrica.py`; los
   dos campos de `config/settings.py`; `VerificadorDeLoginPort` en

@@ -199,7 +199,7 @@
 
 ## Bloque 4 · La aplicación y los tres endpoints
 
-- [ ] **T13 · RED**: `tests/test_f059_pipeline_volcado.py` con dobles (el
+- [x] **T13 · RED**: `tests/test_f059_pipeline_volcado.py` con dobles (el
   orden de §10 —puertas, base, lectura de Sigrid, escritura anticipada,
   escritura en Sigrid, base—; el doble de la pasarela comprueba que los
   `enviado` ya están al recibir el `commit: true`; ninguna llamada de lote sin

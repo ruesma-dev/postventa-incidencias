@@ -111,6 +111,9 @@ CLAVES_DE_FILA = {
     "revisado_at_utc",
     "revisado_por",
     "motivos_no_aprobable",
+    # F-059 (R41, F-1 (a); design.md §21.3 C): el objeto `volcado` de R4, en el
+    # listado y en la respuesta de la acción, por la misma `_fila` (F-2 (a)).
+    "volcado",
 }
 
 #: Las claves de los valores, las de `GET /api/bandeja` (R29).

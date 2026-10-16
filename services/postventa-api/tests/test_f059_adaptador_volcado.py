@@ -640,3 +640,17 @@ def test_f059_r31_sin_cliente_se_fabrica_uno_con_el_tiempo_de_sigrid(monkeypatch
 
     assert pedidos == [33]
     assert len(cliente.peticiones) == 2
+
+
+def test_f059_r8_un_corte_que_no_se_arregla_es_sin_respuesta():
+    """Agotados los reintentos de la lectura del login por cortes de red: 502,
+    con el tipo del corte y nada más."""
+    cliente = ClienteFalso([httpx.ConnectError("inventado") for _ in range(3)])
+
+    with pytest.raises(EnsayoSinRespuesta) as error:
+        _adaptador(cliente, reintentos=3).existe_usuario(login=LOGIN)
+
+    assert len(cliente.peticiones) == 3
+    assert "ConnectError" in str(error.value)
+    for prohibido in (LOGIN, CLAVE, RAIZ):
+        assert prohibido not in str(error.value)

@@ -187,3 +187,37 @@ Literal del humano: **«a en las 2»** → F-1 (a) y F-2 (a).
   R4), §20 (fila F-2) y §21.6; `tasks.md` cabecera, T13 (`CLAVES_DE_FILA` de
   `test_f056_revision_http.py` en el listado y en la respuesta de la acción) y
   T15.
+
+## Enmienda del 2026-10-16: B-1 (a) y B-2 (decisión del humano)
+
+Literal del humano: **«ok a b1 y b2»**. Origen: `progress/impl_F-059.md`,
+«Bloque 2 · BLOQUEADO antes de T4» (B-1, B-2 y «Lo que haré salvo que se diga
+otra cosa», puntos 1–3). Anotadas en `design.md` §20 (filas B-1 y B-2).
+
+- **B-1 (a)**, R17 frente a R33: la persona del ensayo la compara la base y
+  el `oid` nunca vuelve. Aplicada en: nota bajo R17 (`requirements.md`; R33
+  sin cambios, igual que §9 y §15); `design.md` §7 (`Ensayo.de_la_persona:
+  bool` en lugar de `actor_oid: str`; `validar_ensayo(ensayo, *, obra, ahora)`
+  con el mismo orden de motivos), §8.1 (`leer_ensayo(*, ensayo_id,
+  actor_oid)`, el booleano `(actor_oid = %s)` en el `SELECT` y sin la
+  columna; con varias filas por ensayo, verdadero solo si lo es en todas) y
+  §18 (filas de R17 y de R33); `tasks.md` cabecera, T4 (la RED de
+  `leer_ensayo`, `Ensayo.de_la_persona` y `validar_ensayo`), T6 (el cambio de
+  `domain/models/volcado.py`) y T9 (muta esas líneas del Bloque 1). Se dice en
+  cada sitio que **toca dos piezas aprobadas del Bloque 1** por esta decisión.
+- **B-2**: `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo`
+  entra en las excepciones de R41 (grupo A de `design.md` §21.3), ampliado sin
+  relajar como su gemelo de `test_f056_alcance_cerrado.py` (igualdad exacta,
+  ahora con `revisiones_bandeja.revisado_correo` y
+  `volcados_sigrid.actor_correo`). Aplicada en R41, §21.3, T4 y T16. Se me
+  escapó en la conciliación: lo halló el inventario empírico del implementer.
+- **Los tres puntos de implementación**, recogidos en `design.md` §8.1 como
+  mecánicos (no he visto nada de fondo): `guardar_resultados(*, llamada_id,
+  ensayo_id, obra, partes, resultados, quien, ahora)` con la comprobación uno
+  a uno; `quien` = `Quien(oid, correo)` de F-056, y `situaciones` con una
+  entrada por cada incidencia pedida que está en la bandeja
+  (`SituacionDeVolcado(None, None)` sin eventos; la que no está en la bandeja
+  no tiene entrada: es `no_es_de_la_bandeja`); y la sentencia de R2 en
+  `sentencias_volcado.py`, importada por `repositorio_revision_pg.py` (puerto
+  de §8.1 y T6).
+- Commit local: `F-059: B-1 (a) y B-2 en la spec (decisión del humano)`.

@@ -15,6 +15,12 @@
 > que cada tarea amplía sin relajar en su bloque), y **F-2 (a)**, el objeto
 > `volcado` en el listado y en la respuesta de `POST /api/revision/acciones`.
 >
+> **Enmienda del 2026-10-16** (humano, «ok a b1 y b2»; `design.md` §20):
+> **B-1 (a)** —la persona del ensayo la compara la base; `Ensayo.de_la_persona`
+> y `validar_ensayo` sin `oid`, que el Bloque 2 cambia con su RED aunque sean
+> piezas aprobadas del Bloque 1— y **B-2** —`test_f056_r12_la_unica_columna_…`
+> en las excepciones de R41—.
+>
 > **Base fija: `2d2efd7`** (`dev` con F-056 y F-060 mergeadas), de la que nace
 > la rama (T0, commit de arranque `a9c2475`). El implementer la anota en
 > `progress/impl_F-059.md` antes de T1. Las guardias de alcance y la campaña
@@ -100,8 +106,16 @@
   (`situaciones` con los dos `LATERAL`; `guardar_ensayo`; `leer_ensayo`;
   `anotar_enviados` —`FOR UPDATE` en orden fijo, la decisión pura dentro,
   `INSERT` de los `enviado` y `COMMIT` en una transacción, `ROLLBACK` si
-  falla—; `guardar_resultados`; R33: ningún `UPDATE`/`DELETE`/`TRUNCATE`,
+  falla—; `guardar_resultados` con `obra` y `partes` y la comprobación uno a
+  uno (`design.md` §8.1); R33: ningún `UPDATE`/`DELETE`/`TRUNCATE`,
   ninguna lectura de `actor_oid`; el bloqueo es `select_bloquear` de F-056).
+  **B-1 (a)** (decisión del humano del 2026-10-16; toca dos piezas aprobadas
+  del Bloque 1 por esa decisión): `leer_ensayo(*, ensayo_id, actor_oid)`
+  devuelve `de_la_persona` con `(actor_oid = %s)` y sin la columna; y en
+  `tests/test_f059_volcado_dominio.py` los casos de R17 pasan a
+  `Ensayo.de_la_persona` y a `validar_ensayo(ensayo, *, obra, ahora)`, con el
+  mismo orden de motivos (el cambio de `domain/models/volcado.py`, en T6,
+  citado en el informe).
   Ampliar `tests/test_f056_repositorio_revision.py`: `registrar` con un
   `enviado` aparecido tras el primer chequeo → `AccionNoPermitida` sin
   insertar (R2, R29); `listar`/`situacion`/`aprobadas` traen la situación de
@@ -111,8 +125,10 @@
   `test_f056_ddl.py` (`nombres[-1]`), sin quitar nada; y ampliar igual el
   resto del grupo A de `design.md` §21.3 (excepciones de R41, F-1 (a))
   (F-028, F-030–F-034, `test_f036_t14_…`, `test_f056_r12_…` y
-  `test_f060_r37_los_sql_son_los_quince_de_antes`). Traza pegada. |
-  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_ddl.py tests/test_f059_repositorio_volcado.py tests/test_f056_repositorio_revision.py` **falla**
+  `test_f060_r37_los_sql_son_los_quince_de_antes`; y, por B-2,
+  `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo`).
+  Traza pegada. |
+  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_ddl.py tests/test_f059_repositorio_volcado.py tests/test_f056_repositorio_revision.py tests/test_f059_volcado_dominio.py` **falla**
 - [ ] **T5**: `infrastructure/persistencia/sql/16_volcados_sigrid.sql` con la
   cabecera de `design.md` §9. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_ddl.py tests/test_f005_ddl_idempotente_texto.py tests/test_f056_ddl.py tests/test_f028_ddl_historico.py tests/test_f030_veredicto_persistido.py tests/test_f031_alcance_cerrado.py tests/test_f032_alcance_cerrado.py tests/test_f033_alcance_cerrado.py tests/test_f034_alcance_cerrado.py tests/test_f036_ddl.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
@@ -122,8 +138,12 @@
   cambios de §12 en `sentencias_revision.py` (`_select_situaciones`,
   `fila_a_situacion`) y `repositorio_revision_pg.py` (`_registrar`,
   `aprobadas`); `registrar_lote`, `_registrar_lote`, `select_bloquear`,
-  `select_ultimas_revisiones` e `insert_revision` sin cambios. |
-  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_repositorio_volcado.py tests/test_f056_repositorio_revision.py tests/test_f060_repositorio_lote.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
+  `select_ultimas_revisiones` e `insert_revision` sin cambios; la sentencia
+  de R2, en `sentencias_volcado.py`. Y, por **B-1 (a)**, en
+  `domain/models/volcado.py`: `Ensayo.actor_oid` → `Ensayo.de_la_persona` y
+  `validar_ensayo(ensayo, *, obra, ahora)` (piezas aprobadas del Bloque 1,
+  citadas en el informe). |
+  Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_repositorio_volcado.py tests/test_f059_volcado_dominio.py tests/test_f056_repositorio_revision.py tests/test_f060_repositorio_lote.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py`
 - [ ] **T7**: `tests_bbdd/tests/test_f059_bbdd_volcado.py`: DDL dos veces y
   nada en `public`; cada `CHECK` (estado desconocido, `creado` sin `cod`,
   `rechazado` sin motivo, `ensayo` con `ensayo_id`, referencia sin `PVI-`);
@@ -140,7 +160,9 @@
   (`test_f060_bbdd_lote.py`). Anotar nº de
   tests y tiempo en `progress/impl_F-059.md`. Bloquea el cierre. |
   Verificación: MANUAL (humano)
-- [ ] **T9 · Mutación del bloque.** |
+- [ ] **T9 · Mutación del bloque.** Con la base anterior a T4, la campaña
+  muta también las líneas de `Ensayo` y `validar_ensayo` del Bloque 1 que
+  cambia B-1 (a). |
   Verificación: `python -m harness.mutacion --feature F-059 --base <hash anterior a T4> --timeout 1800 --salida progress/mutacion_F-059_bloque2.md`
 
 **Parar. Review del Bloque 2.**
@@ -213,7 +235,8 @@
   `infrastructure/sigrid/volcado.py`), R37, R41 (tests de F-009 sin diff; los
   de F-012, F-036 y F-053, y los demás de `design.md` §21.3, solo en sus
   funciones declaradas y sin perder aserciones —la lista de excepciones de
-  R41 (F-1 (a)), escrita a mano, función a función—; `paso_cierre.py`
+  R41 (F-1 (a)), escrita a mano, función a función, con el
+  `test_f056_r12_la_unica_columna_…` de B-2—; `paso_cierre.py`
   solo con el cambio de anotación) y los ficheros de «No se toca» sin
   cambios, `services/postventa-front/` y las piezas de F-060 incluidos. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_alcance_cerrado.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py tests/test_f036_alcance_cerrado.py`

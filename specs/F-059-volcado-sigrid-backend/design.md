@@ -288,7 +288,8 @@ class SituacionDeVolcado:             # lo que la base sabe de una incidencia
 @dataclass(frozen=True)
 class EventoDeEnsayo: incidencia_id: UUID; revision_id: int; huella: str; estado: EstadoEvento
 @dataclass(frozen=True)
-class Ensayo: ensayo_id: UUID; obra_codigo: str; actor_oid: str; at_utc: datetime; eventos: tuple[EventoDeEnsayo, ...]
+class Ensayo: ensayo_id: UUID; obra_codigo: str; de_la_persona: bool; at_utc: datetime; eventos: tuple[EventoDeEnsayo, ...]
+#   de_la_persona: lo dice la base (B-1 (a)); el oid de quien ensayó no llega nunca al dominio
 ```
 
 **Dónde vive cada tipo (conciliación 2026-10-15).** `domain/models/revision.py`
@@ -309,7 +310,7 @@ reexporta lo que necesite. El resto de este apartado vive en `volcado.py`.
 | `estado_de_volcado(situacion) -> EstadoVolcado | None` | §4.1 (`volcada`, `en_duda` o nada) | R1 |
 | `huella_intacta(candidata) -> bool` | `huella_de_valores(valores) == huella` | R7 |
 | `seleccionar_para_ensayo(pedidas, candidatas, situaciones, *, obra)` | Las que se mandan y las excluidas con motivo, en el orden pedido | R11 |
-| `validar_ensayo(ensayo, *, obra, actor_oid, ahora) -> None` | `EnsayoNoValido(motivo)`; caduca en `>= 30 min` | R17 |
+| `validar_ensayo(ensayo, *, obra, ahora) -> None` | `EnsayoNoValido(motivo)`, en el orden de R17: `no_existe` (`None`), `de_otra_obra`, `de_otra_persona` (`not ensayo.de_la_persona`), `caducado` (`>= 30 min`). Sin `oid` en la firma (B-1 (a)) | R17 |
 | `seleccionar_para_volcado(pedidas, ensayo, situaciones_actuales)` | R18 y R20: `previsto` en el ensayo, misma revisión, última revisión `aprobar`, no `volcada`, huella | R18, R20 |
 | `interpretar_respuesta(mandados, datos) -> tuple[ResultadoParte, ...]` | Emparejar por `indice` y referencia; `sin_respuesta` ante cualquier incoherencia; nunca mira `committed` | R22 |
 | `todos_sin_respuesta(mandados)` | R23 | R23 |
@@ -348,11 +349,38 @@ class VolcadoSigridPort(Protocol):
 class RepositorioVolcadoPort(Protocol):
     def situaciones(self, *, incidencias: Sequence[UUID]) -> Mapping[UUID, SituacionDeVolcado]: ...
     def guardar_ensayo(self, *, ensayo_id: UUID, obra: str, resultados, partes, quien, ahora) -> None: ...
-    def leer_ensayo(self, *, ensayo_id: UUID) -> Ensayo | None: ...
+    def leer_ensayo(self, *, ensayo_id: UUID, actor_oid: str) -> Ensayo | None: ...   # B-1 (a)
     def anotar_enviados(self, *, llamada_id, ensayo, pedidas, quien, ahora,
                         decidir: Callable[..., Seleccion]) -> Seleccion: ...      # R20, en UNA transacción
-    def guardar_resultados(self, *, llamada_id, ensayo_id, resultados, quien, ahora) -> None: ...
+    def guardar_resultados(self, *, llamada_id, ensayo_id, obra, partes, resultados, quien, ahora) -> None: ...
 ```
+
+**Enmienda del 2026-10-16** (humano, «ok a b1 y b2»; §20). Concretan este
+puerto sin cambiar ningún requisito:
+
+- **`leer_ensayo(*, ensayo_id, actor_oid)`** (B-1 (a)): el `SELECT` lleva el
+  booleano `(actor_oid = %s)` con el `oid` de quien pide como **parámetro** y
+  **no** la columna `actor_oid`; como un ensayo son varias filas (una por
+  parte, todas del mismo actor), `de_la_persona` es verdadero solo si lo es en
+  **todas** (`bool_and` en el SQL, o la conjunción de las filas). El `oid`
+  guardado no sale nunca de la base: R33, §9 y §15 se cumplen al pie de la
+  letra. El `oid` del parámetro no va a ningún log ni mensaje de error (R34).
+- **`guardar_resultados(*, llamada_id, ensayo_id, obra, partes, resultados,
+  quien, ahora)`**: la firma anterior no daba `revision_id`, `huella_valores`
+  ni `obra_codigo`, que son `NOT NULL` en §9, y `ResultadoParte` no los lleva;
+  se pasan como a `guardar_ensayo` (`obra` y los `ParteAVolcar` mandados), y el
+  repositorio comprueba que `resultados` y `partes` casan **uno a uno** (misma
+  `incidencia_id` y misma referencia; si no, `ValueError`, error de
+  programación, sin escribir).
+- **`quien`** es el `Quien(oid, correo)` de F-056 (`domain/models/revision.py`),
+  el mismo que ya devuelve `validar_quien`: no se crea otro tipo.
+- **`situaciones`** devuelve **una entrada por cada incidencia pedida que está
+  en la bandeja**; sin eventos, `SituacionDeVolcado(None, None)`. Una pedida
+  que no está en la bandeja no tiene entrada (es `no_es_de_la_bandeja`, R11).
+- **La sentencia de R2** que lee `_registrar` (§12) vive en
+  `sentencias_volcado.py` y la importa `repositorio_revision_pg.py`;
+  `select_bloquear`, `select_ultimas_revisiones` e `insert_revision` no
+  cambian.
 
 `RespuestaDeLote` es `{tipo: "ok" | "lote_400" | "sin_respuesta", datos | codigo}`:
 el adaptador **no interpreta** los partes (eso es `interpretar_respuesta`,
@@ -746,14 +774,14 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | R9, R15 | Cada forma inválida (también `confirmado: "true"`, `1`, `commit` en el ensayo, ids repetidos, `N+1` ids) → 400 con fábricas que fallan si se llaman; el mensaje no lleva `oid` ni correo |
 | R10, R16 | Ventana cerrada: ensayo sí, volcado 503 **sin** abrir la base (repositorio que falla si se usa); entorno `test`/`local` → 503; el adaptador con `escritura_habilitada=False` se niega a volcar aunque se llame directo; un cuerpo sin `commit:True` no se manda por `volcar` |
 | R11–R14 | Cada exclusión; orden pedido; `filas` no aparece en ninguna respuesta ni registro; los `cod` provisionales tampoco; cada código de lote a su HTTP; 502 sin guardar |
-| R17, R18 | Cada motivo de `ensayo_no_valido` (con 29:59 vale, con 30:00 no); fuera del ensayo; revisión distinta |
+| R17, R18 | Cada motivo de `ensayo_no_valido` (con 29:59 vale, con 30:00 no), en su orden; `de_otra_persona` sale de `Ensayo.de_la_persona` falso; `leer_ensayo` recibe el `oid` de quien pide y no devuelve ningún `oid`; un ensayo con una fila de otro actor no es `de_la_persona` (B-1 (a)); fuera del ensayo; revisión distinta |
 | R20 | La TX: `FOR UPDATE` en orden, re-chequeo, `enviado` insertados **antes** de la llamada (el doble de la pasarela comprueba que ya están), `COMMIT` antes de llamar; ninguno elegible → sin llamada |
 | R21 | Un solo `post` incluso ante `httpx.TimeoutException` |
 | R22 | Partes desordenados, de menos, de más, con referencia cambiada, `previsto` en commit, `creado` sin `cod` o con `cod` mal formado → `sin_respuesta`; `committed:false` con un `idempotente` es éxito |
 | R23–R25 | Cada familia de fallo con lo que se guarda y el HTTP; `guardar_resultados` que falla → 500 y quedan `enviado` |
 | R26 | El segundo `creado` con otro `ide` se guarda, sale en `avisos` y en un `log.error` |
 | R30, R31 | `N` 0, 51, «cinco» → 503; un solo intento; la duración en el log |
-| R32, R33 | La guarda real acepta el `.sql`; idempotente; `CHECK` = `Enum`; los cuatro `CHECK` de fila; ningún `UPDATE`/`DELETE`/`TRUNCATE`; ninguna lectura selecciona `actor_oid` |
+| R32, R33 | La guarda real acepta el `.sql`; idempotente; `CHECK` = `Enum`; los cuatro `CHECK` de fila; ningún `UPDATE`/`DELETE`/`TRUNCATE`; ninguna lectura selecciona `actor_oid` (fuera de los `INSERT`, la única sentencia que lo nombra es la de `leer_ensayo`, y solo dentro de la comparación `(actor_oid = %s)`: el test lo fija sobre las columnas que devuelve cada `SELECT`) |
 | R34, R35 | `caplog` en todos los caminos: ni descripción, ni ubicación, ni `oid`, ni correo, ni login; el `mensaje` de la pasarela no aparece |
 | R36, R37, R41, R42 | Alcance con la base fija: rutas nombradas; ninguna `sql/write` nueva; `VOLCADO_HABILITADO` no aparece en cierre/gráfico/archivo y estos no aparecen en volcado; «No se toca» sin cambios (front incluido); tests de F-009 sin diff; los de las excepciones de R41 (F-1 (a)) solo en su función o constante declarada y sin perder ninguna aserción; ningún otro test ajeno tocado |
 | R38, R39 | Texto de los scripts: sin parámetros solo lee; `-Cerrar` sin palabra; `-Abrir` con palabra; relee; `28_` solo `sql/read` y sin columnas de nombres; `desplegar_backend.ps1` con `VOLCADO_HABILITADO=false` en su línea, con y sin `-VentanasCerradas` |
@@ -852,6 +880,8 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | Q-8 | El primer volcado masivo de la 0677 y el ajuste de `N`: más adelante, fuera de esta ficha |
 | **F-1** | **Decisión del humano del 2026-10-15, literal: «a en las 2»** → opción (a). R41 gana el bloque «Excepciones, ampliando sin relajar» con la lista test a test de §21.3 (como R45 de F-056); cada una declarada **función a función** en `test_f059_alcance_cerrado.py` (T16), que vigila que no se pierde ninguna aserción |
 | **F-2** | **Decisión del humano del 2026-10-15, literal: «a en las 2»** → opción (a). El objeto `volcado` va en las **dos** respuestas que serializa `_fila`: el listado de `GET /api/revision` y la respuesta de `POST /api/revision/acciones` (R4, §12) |
+| **B-1** | **Decisión del humano del 2026-10-16, literal: «ok a b1 y b2»** → opción (a) del implementer (`progress/impl_F-059.md`, Bloque 2). R17 frente a R33: la persona del ensayo la compara **la base** y el `oid` nunca vuelve. `leer_ensayo(*, ensayo_id, actor_oid)` con `(actor_oid = %s)` en el `SELECT` y sin la columna; `Ensayo.actor_oid: str` → `Ensayo.de_la_persona: bool`; `validar_ensayo(ensayo, *, obra, ahora)`, mismo orden de motivos. R33, §9 y §15, al pie de la letra (nota bajo R17; §7, §8.1, §18; T4, T6, T9). **Toca dos piezas aprobadas del Bloque 1** (`Ensayo` y `validar_ensayo`, con sus tests de R17), por esta decisión |
+| **B-2** | **Decisión del humano del 2026-10-16, literal: «ok a b1 y b2»**. `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo` entra en las excepciones de R41 (grupo A de §21.3), ampliado sin relajar como su gemelo de `test_f056_alcance_cerrado.py`; declarado en T16. Con la misma enmienda se recogen en §8.1 los tres puntos de implementación del implementer (`guardar_resultados` con `obra` y `partes`; `Quien` de F-056 y `situaciones`; la sentencia de R2 en `sentencias_volcado.py`), mecánicos |
 
 ## 21 · Conciliación con `dev` 2d2efd7 (2026-10-15)
 
@@ -916,6 +946,7 @@ T5):
 | `test_f033_alcance_cerrado.py::test_f033_no_hay_ni_un_fichero_de_ddl_nuevo` | Ídem | F-033 |
 | `test_f034_alcance_cerrado.py::test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo` | Ídem | F-034 |
 | `test_f036_ddl.py::test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden` | Lo que va tras el `11_`: `12_`…`15_` | **F-036 (R41 lo da por intocable)** |
+| `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo` | La única columna de correo del esquema es `revisiones_bandeja.revisado_correo`; con D-8, la igualdad exacta pasa a esa y `volcados_sigrid.actor_correo` (**B-2**, humano, 2026-10-16; lo halló el inventario empírico del implementer, `progress/impl_F-059.md`, Bloque 2) | F-056 |
 | `test_f056_alcance_cerrado.py::test_f056_r12_solo_15_declara_una_columna_de_correo` | Solo el `15_` tiene una columna de correo; el `16_` trae `actor_correo` (D-8) | F-056 (fuera de «cuatro estados o acciones») |
 | `test_f060_alcance_cerrado.py::test_f060_r37_los_sql_son_los_quince_de_antes` | Los quince `.sql`, «ni un `16_`» | F-060 |
 

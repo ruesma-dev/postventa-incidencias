@@ -30,6 +30,10 @@
 > tomó el humano el mismo día («a en las 2»): **F-1 (a)**, las excepciones de
 > R41, y **F-2 (a)**, el objeto `volcado` también en la respuesta de la
 > acción (R4) (`design.md` §20 y §21.6).
+>
+> **Enmienda del 2026-10-16** (humano, «ok a b1 y b2»; `design.md` §20):
+> **B-1 (a)**, la persona del ensayo la compara la base y el `oid` no vuelve
+> (nota bajo R17); **B-2**, un duodécimo test en las excepciones de R41.
 
 ## 0 · De dónde sale
 
@@ -206,6 +210,12 @@ Lo que ya existe y se **consume sin cambiar**:
   mismo `usuario_oid`** y con menos de **30 minutos**. SI no, **409
   `ensayo_no_valido`** con `motivo` `no_existe`, `de_otra_obra`,
   `de_otra_persona` o `caducado`, sin llamar a Sigrid ni escribir.
+
+  > **B-1 (a)**, decisión del humano del 2026-10-16 («ok a b1 y b2»): «el
+  > mismo `usuario_oid`» lo **compara la base**. La lectura del ensayo
+  > recibe el `usuario_oid` de quien pide y devuelve solo **si coincide**
+  > (un booleano), nunca el `oid` guardado; así R33 se cumple al pie de la
+  > letra. El orden de los motivos no cambia (`design.md` §7, §8.1).
 - **R18.** Cada incidencia pedida tiene que haber salido **`previsto`** en ese
   ensayo **con la misma `revision_id`**; SI no, ENTONCES sale excluida
   (`fuera_del_ensayo` o `revision_desactualizada`) y no se manda.
@@ -367,7 +377,12 @@ Lo que ya existe y se **consume sin cambiar**:
   >   `test_f036_ddl.py::test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden`
   >   (de F-036); `test_f056_ddl.py::test_f056_r36_el_fichero_va_detras_de_los_de_f036`;
   >   `test_f056_alcance_cerrado.py::test_f056_r12_solo_15_declara_una_columna_de_correo`
-  >   (el `16_` trae `actor_correo`, D-8); y
+  >   (el `16_` trae `actor_correo`, D-8);
+  >   `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo`
+  >   (**B-2**, decisión del humano del 2026-10-16: la igualdad sigue
+  >   **exacta**, ahora con `revisiones_bandeja.revisado_correo` y
+  >   `volcados_sigrid.actor_correo`, como su gemelo de
+  >   `test_f056_alcance_cerrado.py`); y
   >   `test_f060_alcance_cerrado.py::test_f060_r37_los_sql_son_los_quince_de_antes`.
   > - **La cuenta de anónimos (21 → 24) y la cabecera de `INTEGRACION.md`**:
   >   `test_f010_endpoints_protegidos.py` (`ENDPOINTS` y

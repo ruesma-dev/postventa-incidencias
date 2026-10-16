@@ -564,6 +564,7 @@ def test_f059_r12_la_respuesta_del_ensayo(mundo):
     revisiones[2] = mundo.revision.ultima(ID(2)).revision_id
     mundo.volcados.sembrar(3, EV.CREADO, ide=700_003, cod="RS26.09/0003")
     mundo.sigrid.al_ensayar = responde(["idempotente", "previsto"])
+    candidatas = {c.incidencia_id: c for c in mundo.revision.aprobadas(obra_codigo=OBRA)}
     antes = datetime.now(UTC)
 
     respuesta = _ensayo(_cuerpo_ensayo(1, 2, 3))
@@ -596,7 +597,6 @@ def test_f059_r12_la_respuesta_del_ensayo(mundo):
     )
     assert (uno["estado"], uno["motivo"], uno["sigrid_cod"]) == ("idempotente", None, "RS26.10/0001")
     assert (dos["estado"], dos["motivo"], dos["sigrid_cod"]) == ("previsto", None, None)
-    candidatas = {c.incidencia_id: c for c in mundo.revision.aprobadas(obra_codigo=OBRA)}
     assert uno["envio"] == cuerpo_de_parte(parte_de(candidatas[ID(1)]))
     assert dos["envio"] == cuerpo_de_parte(parte_de(candidatas[ID(2)]))
     assert dos["envio"]["descripcion_larga"] == DETALLE

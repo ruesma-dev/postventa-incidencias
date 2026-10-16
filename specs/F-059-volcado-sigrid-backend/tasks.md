@@ -221,7 +221,7 @@
   `test_f010_endpoints_protegidos.py` (`ENDPOINTS` con las tres rutas y la
   cuenta a **veinticuatro**). Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_pipeline_volcado.py tests/test_f059_volcado_http.py tests/test_f056_revision_http.py` **falla**
-- [ ] **T14**: `application/pipelines/volcado.py` (§10). |
+- [x] **T14**: `application/pipelines/volcado.py` (§10). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_pipeline_volcado.py`
 - [ ] **T15**: `interface_adapters/api/volcado.py`; en
   `interface_adapters/api/revision.py`, el objeto `volcado` en `_fila`, que

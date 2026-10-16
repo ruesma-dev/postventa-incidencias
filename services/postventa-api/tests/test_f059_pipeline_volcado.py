@@ -150,6 +150,7 @@ class Mundo:
         self.volcados = VolcadosEnMemoria(self.llamadas, self.revision)
         self.sigrid = PasarelaFalsa(self.llamadas, self.volcados)
         self.usuarios = UsuariosEnMemoria(self.llamadas)
+        self.ajustes = AJUSTES
         self._ids = iter(UUID(int=500_000 + i) for i in range(1_000))
 
     def nuevo_id(self) -> UUID:
@@ -161,7 +162,7 @@ class Mundo:
             "volcados": self.volcados,
             "usuarios": self.usuarios,
             "sigrid": self.sigrid,
-            "ajustes_volcado": AJUSTES,
+            "ajustes_volcado": self.ajustes,
             "nuevo_id": self.nuevo_id,
         }
 
@@ -214,9 +215,9 @@ def _ensayadas(*ns: int) -> tuple[Mundo, dict[int, int], UUID]:
     return mundo, revisiones, ENSAYO_ID
 
 
-def _sin_secretos(caplog: pytest.LogCaptureFixture) -> None:
+def _sin_secretos(caplog: pytest.LogCaptureFixture, *mas: str) -> None:
     texto = "\n".join(r.getMessage() for r in caplog.records)
-    for secreto in SECRETOS_DE_LOG:
+    for secreto in (*SECRETOS_DE_LOG, *mas):
         assert secreto not in texto, f"un registro lleva {secreto!r}"
 
 
@@ -328,6 +329,7 @@ def test_f059_r11_cada_exclusion_del_ensayo_sin_mandarla():
     mundo.volcados.sembrar(4, EV.CREADO, ide=700_004, cod="RS26.09/0004")
     revision_5 = mundo.revision.ultima(ID(5)).revision_id
     mundo.revision.falsear_valores(revision_5, descripcion="Ejemplo cambiado en la base")
+    mundo.ajustes = AjustesDelVolcado(partes_por_llamada=7, base_datos=BASE)
 
     resultado = mundo.ensayar(77, 2, 3, 4, 5, 6, 1)
 
@@ -511,6 +513,7 @@ def test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base():
 
 def test_f059_r21_una_llamada_con_commit_true_con_los_partes_de_la_candidata_en_el_orden_del_ensayo():
     mundo, revisiones, ensayo_id = _ensayadas(1, 2, 3)
+    candidatas = {c.incidencia_id: c for c in mundo.revision.aprobadas(obra_codigo=OBRA)}
 
     mundo.volcar(ensayo_id, (3, revisiones[3]), (1, revisiones[1]), (2, revisiones[2]))
 
@@ -521,7 +524,6 @@ def test_f059_r21_una_llamada_con_commit_true_con_los_partes_de_la_candidata_en_
         OBRA,
         BASE,
     )
-    candidatas = {c.incidencia_id: c for c in mundo.revision.aprobadas(obra_codigo=OBRA)}
     assert cuerpo["partes"] == [cuerpo_de_parte(parte_de(candidatas[ID(n)])) for n in (1, 2, 3)]
 
 
@@ -613,6 +615,7 @@ def test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502(resp
     with pytest.raises(VolcadoSinRespuesta) as fallo:
         mundo.volcar(ensayo_id, (1, revisiones[1]), (2, revisiones[2]))
 
+    assert mundo.llamadas[-1] == "volcados.guardar_resultados"
     assert fallo.value.en_duda == (ID(1), ID(2))
     assert "reintentar es seguro" in fallo.value.motivo.lower()
     assert [e.estado for e in mundo.volcados.de_la_llamada(LLAMADA_ID)] == [
@@ -622,7 +625,6 @@ def test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502(resp
         EV.SIN_RESPUESTA,
     ]
     assert (mundo.estado(1), mundo.estado(2)) == (EstadoRevision.EN_DUDA,) * 2
-    assert mundo.llamadas[-1] == "volcados.guardar_resultados"
 
 
 @pytest.mark.parametrize(

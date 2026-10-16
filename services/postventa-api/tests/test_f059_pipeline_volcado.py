@@ -1130,3 +1130,33 @@ def test_f059_r28_t17_cada_recuento_del_panel_cuenta_lo_suyo():
 
     assert (panel.aprobadas, panel.en_duda, panel.volcadas) == (3, 1, 2)
     assert [c.situacion.incidencia.incidencia_id for c in panel.candidatas] == [ID(n) for n in (1, 2, 3, 4)]
+
+
+def _uno_de_cada_tipo() -> dict[str, object]:
+    """Un valor de cada tipo de la aplicación, para comprobar que son inmutables."""
+    vacio = {"previstos": 0}
+    return {
+        "AjustesDelVolcado": AJUSTES,
+        "PeticionDeEnsayo": PeticionDeEnsayo(obra_codigo=OBRA, quien=QUIEN, incidencias=(ID(1),)),
+        "PeticionDeVolcado": PeticionDeVolcado(
+            obra_codigo=OBRA, ensayo_id=ENSAYO_ID, quien=QUIEN, pedidas=(PedidaAlVolcado(ID(1), 1),)
+        ),
+        "ParteMandado": pipeline.ParteMandado(parte=None, resultado=None),  # type: ignore[arg-type]
+        "ResultadoDeEnsayo": pipeline.ResultadoDeEnsayo(OBRA, None, None, (), (), vacio),
+        "ResultadoDeVolcado": pipeline.ResultadoDeVolcado(OBRA, None, (), (), (), vacio),
+        "CandidataDelPanel": pipeline.CandidataDelPanel(situacion=None, estado=EstadoRevision.APROBADA),  # type: ignore[arg-type]
+        "PanelDeVolcado": pipeline.PanelDeVolcado(OBRA, 5, 0, 0, 0, ()),
+    }
+
+
+@pytest.mark.parametrize("tipo", sorted(_uno_de_cada_tipo()))
+def test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables(tipo):
+    """Lo que la aplicación devuelve y recibe no se cambia por el camino: lo que
+    se guardó y lo que se responde salen del mismo valor."""
+    import dataclasses
+
+    valor = _uno_de_cada_tipo()[tipo]
+    primero = dataclasses.fields(valor)[0].name  # type: ignore[arg-type]
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        setattr(valor, primero, None)

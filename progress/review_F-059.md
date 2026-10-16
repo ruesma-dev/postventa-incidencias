@@ -631,3 +631,185 @@ Patrones: GUID, correos, IPv4 y `password|secret|token|AccountKey`, sobre el dif
   proyecto ha pasado ya dos veces (`PosibleDuplicado` en el Bloque 1 y `strict=False` en la primera campaña del
   Bloque 2). Con esa columna, la reverificación contra los tests de la feature, que hoy hace a mano el implementer
   y comprueba por muestreo el reviewer, pasaría a ser una lectura del informe. Complementa P-1 y P-2.
+
+## Review del Bloque 3 (el adaptador de `sigrid-api` y las fábricas) · 2026-10-16
+
+- **Veredicto:** **CHANGES_REQUESTED** (2 hallazgos: C-B3-1 y C-B3-2). Los dos son huecos de los tests,
+  pequeños, y no defectos del código. El resto del bloque está en orden y responde bien a lo que pide la spec.
+- **Alcance revisado:** `git diff 8e668b2..890e2f4`, sin lo del líder (`features.json`, `BACKLOG.md`,
+  `current.md`). Commits: `5c0a6d2` (V05d, aceptado por escrito por el humano), T10 `9bdc35c`, T11 `7705354`,
+  T12 `eb8d03b`, `93a3984` y `890e2f4`. He comprobado de paso `f7bcf9b` (O-B2-1): §12 dice ya lo que hace
+  `aprobadas`, y el resto de la spec no cambia.
+- **Nivel de rigor:** `critico`.
+
+### Qué he verificado yo, y cómo
+
+Desde el scratchpad, sin `.env`. Los mutantes, en dos worktrees desechables de `890e2f4`, ya retirados:
+`git worktree list` sin ninguno del scratchpad y `git status` limpio.
+
+| Verificación | Resultado |
+|---|---|
+| **Suite entera del servicio** (`tests` y `tests_bbdd`) | **8768 passed, 233 skipped in 589.09s**, las mismas cifras que el implementer |
+| `ruff check` (desde la raíz) sobre los seis ficheros de producción y los dos tests nuevos | `All checks passed!` |
+| Recálculo puro (`alcance_de_feature("F-059", base="5c0a6d2")`) | 6 ficheros, **509** líneas (5 + 32 + 16 + 69 + 78 + 309) y **25** mutantes (0 + 2 + 0 + 4 + 3 + 16). Coincide; los n.º 1, 5, 11, 16, 22 y 25 salen idénticos a la tabla |
+| Ocho mutantes de la herramienta (n.º 7, 8, 9, 11, 18, 19, 20 y 23: los de la ventana, el `commit` y el 400), contra los dos ficheros de F-059 solos | 8/8 muertos, cada uno por el mismo test que da la tabla del implementer |
+| Mutantes a mano del reviewer (17, dos de ellos con variante) | 15 muertos y **2 supervivientes**, que tampoco caza el conjunto de T11 (F-009 y F-012 incluidos): **1000 passed** con cada uno |
+| Tests ajenos tocados | **Ninguno**: el diff de `tests/` son solo los dos ficheros de F-059 |
+| Red | Ningún test llama a la red. `sin_red` (autouse, de sesión) sigue puesto; el adaptador se prueba con `ClienteFalso`; las fábricas construyen sin cliente y solo se llama a `volcar` sobre el ensayador, que se niega antes de componer nada |
+
+**Campaña no reejecutada: 50 min según el informe** (3012.2 s, por encima de los 5 minutos del protocolo). El
+coste por mutante, 3012.2 × 8 ÷ 25 ≈ **964 s**, es coherente con una suite que tarda entre 470 y 590 s.
+
+### Hallazgos (cambios requeridos)
+
+1. **C-B3-1 · Un 2xx que no es 200 ni 201 no está fijado. Mutante M05,
+   `services/postventa-api/infrastructure/sigrid/volcado.py:247`.** Si cambio
+   `if respuesta.status_code not in CORRECTOS:` por `if respuesta.status_code >= 300:`, el mutante **sobrevive** a
+   los 170 tests de F-059 y a los 1000 de T11. Con él, un 202 o un 204 con un objeto JSON pasarían a `ok` en vez de
+   a `sin_respuesta`. R23 dice «un código que no es 200 ni 400 → `sin_respuesta`», y
+   `test_f059_r23_cualquier_otro_codigo_es_sin_respuesta` solo prueba `401, 403, 404, 409, 422` (los 5xx, 408 y 429
+   salen en los de R21). **Qué hacer:** añadir a esa parametrización al menos un 2xx de fuera de `CORRECTOS` (202 o
+   204) y, si se quiere, un 3xx, y comprobar que el mutante muere.
+2. **C-B3-2 · `truncated` se decide por su veracidad, y ningún test lo fija. Mutantes M07 y M15,
+   `services/postventa-api/infrastructure/sigrid/volcado.py:182`.** Si cambio `if datos.get("truncated"):` por
+   `if datos.get("truncated") is True:` (o por `== True`), el mutante **sobrevive** a F-059 y a T11. Hoy cualquier
+   valor verdadero (`1`, `"true"`) cuenta como truncado, que es lo conservador: una lectura truncada no decide el
+   login. Pero ningún test lo dice: `test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada[truncada]` solo
+   usa `True`. Es la clase de mutante del Bloque 1, al revés: la veracidad frente a la identidad. **Qué hacer:** un
+   caso con un `truncated` verdadero que no sea `True` (por ejemplo, `1`) → `EnsayoSinRespuesta`. El cierre de F-009
+   (`cliente.py:299`) tiene la misma línea, pero ese es su alcance y no se toca aquí.
+
+Con los dos casos, repetir M05, M07 y M15 en una copia desechable y anotar qué test de F-059 los caza. No hace
+falta relanzar la campaña: son líneas que la herramienta no muta así.
+
+### Lo que el líder pidió mirar primero
+
+**(1) `existe_usuario` sin respuesta → `EnsayoSinRespuesta` (502).** **Encaja con R14 y con §8.2. No hace falta
+volver al spec-author para el código, pero sí que el contrato lo diga (O-B3-1).**
+- En el **ensayo**, R14 dice: «si no responde, tarda más de su tiempo, responde otro código o algo que no es JSON
+  → 502 sin guardar nada: es una lectura, repetirla es inocuo». La lectura del login es eso exactamente.
+- En el **volcado**, R19 pone el login **antes** de la escritura anticipada, así que tampoco se ha escrito nada y
+  un 502 «repetir es inocuo» es lo correcto. `VolcadoSinRespuesta` sería un error: dice «en duda» y lleva una
+  lista de incidencias que no se han mandado.
+- Lo que la spec no fija es el **código** que verá F-040 en ese caso de `volcar` (`ensayo_sin_respuesta`). Es una
+  línea de contrato de §11 y de la tabla de errores de §7, y conviene que la escriba el spec-author antes de T15,
+  que es quien lo traduce a HTTP.
+- Nota al margen: los reintentos de la lectura (`SIGRID_REINTENTOS` × `SIGRID_TIMEOUT_S`) pueden pasar de los 45 s
+  del proxy en el peor caso. Es lo que pide §8.2 («los reintentos de lectura de siempre») y no escribe nada, así
+  que no lo cuento como hallazgo. El front vería un corte, y repetir es inocuo.
+
+**(2) `VOLCADO_PARTES_POR_LLAMADA` como `int | str` (`left_to_right`).** **Desviación aceptable, y es para el
+spec-author (O-B3-2).** §13 se contradecía consigo mismo y con R30: «`int`» frente a «el rango se valida en la
+fábrica (503) y no al cargar los ajustes, `/health` tiene que arrancar igual», y R30 pide 503 para un `N` que no
+sea entero. Con `int`, un «cinco» tumbaría la carga de los ajustes. La unión de izquierda a derecha da un entero
+cuando lo es (`"12"` → 12) y deja lo demás como texto, que `validar_partes_por_llamada` rechaza con 503. Lo he
+comprobado con mi M12b (solo `int`, sin la unión): **muere** con
+`test_f059_r30_un_n_que_no_es_un_entero_no_impide_cargar_los_ajustes[cinco]`. Ese es también el test que faltaba
+en la columna de C02 del informe. La letra de §13 tiene que decir `int | str` y por qué: es un cambio mecánico,
+sin decisión que tomar.
+
+**(3) `VolcadoDeshabilitado` envolviendo `exigir_entorno_con_cierre`.** **Correcto.** §8.2 pide la misma lista
+(`dev`, `pro`), y la función la comprueba **llamando** a la del cierre, así que no hay dos listas que puedan
+divergir. R16 pide «503 `volcado_deshabilitado`» si falla una de las puertas. Con el `CierreDeshabilitado` en
+crudo, el código que vería F-040 sería el del cierre. Lo vigilan mis M04 y M14 (constructor sin el entorno, y
+dejar subir el error del cierre), que mueren.
+
+**(4) A09 (`json={**cuerpo, "commit": cuerpo.get("commit") is True}`).** **Coincido: no cambia el programa.** A esa
+línea solo se llega desde `ensayar`, con `commit` idéntico a `False`, o desde `volcar`, con `commit` idéntico a
+`True`. En los dos casos el valor que se reescribe es el que ya había, en la misma posición del diccionario (la
+clave ya existe). El JSON es el mismo para cualquier entrada posible. Es la categoría de V05d; que el líder se lo
+lleve al humano.
+
+**(5) Que nada pueda mandar `commit: true` sin las tres barreras, y que ningún test toque la red.** Las barreras
+son tres:
+- **la fábrica**: el entorno y luego `VOLCADO_HABILITADO` (`construir_volcador`); el ensayador nunca lleva
+  `escritura_habilitada=True`;
+- **el adaptador**: el entorno en el constructor, y `escritura_habilitada` en `volcar`, **antes** de mirar el
+  cuerpo;
+- **el cuerpo**: `volcar` solo manda uno con `commit` idéntico a `True`.
+
+Las cubren los mutantes de la herramienta 7, 8, 9, 19 y 20, los A01 a A04 y B01 a B04 del implementer, y mis M01,
+M02, M03, M04, M09, M10 y M11, que mueren todos. Se cruza bien con §8.9: la clave va en `x-functions-key` y nunca en
+la URL; `RUTA_PARTES_RECLAMACION` es la de §8.9; de un 400 solo se coge `details.codigo` (§8.9: «400
+`{ok:false, error, details:{type, codigo}}`, nada escrito»); un 400 «Solicitud invalida.» sin código es `lote_400`
+sin código, y lo resolverá la aplicación (O-B3-4). Queda un camino para saltarse la fábrica: construir
+`AdaptadorVolcadoSigridApi(escritura_habilitada=True)` a mano. Esa es la guarda que tendrá que poner el test de
+alcance de T16 (O-B3-3). Lo de la red está en la tabla de arriba.
+
+### Mutantes a mano del reviewer
+
+Incluyen el encargo pendiente del humano: `x is not None` → `x`. En las líneas nuevas son tres (N01 a N03); no hay
+ningún `x is None` → `not x` que hacer aparte, porque el único `is None` es el de N03. Todos se lanzaron contra
+los dos ficheros de F-059, con `-x`:
+
+| Id | Mutación | Resultado | Test de F-059 que lo caza |
+|---|---|---|---|
+| N01 | `RespuestaDeLote`: datos por veracidad | muerto | `test_f059_t11_lo_que_decide_es_que_haya_datos_o_codigo_y_no_su_veracidad` |
+| N02 | `RespuestaDeLote`: código por veracidad | muerto | ídem |
+| N03 | `_cliente_http`: `is None` → `not` | muerto | `test_f059_t11_lo_que_decide_es_que_haya_cliente_y_no_su_veracidad` |
+| M01 | `ensayar`: `is not False` → `!= False` (un `0` pasaría) | muerto | `test_f059_r6_ensayar_exige_commit_false_de_verdad[cero]` |
+| M02 | `volcar`: `is not True` → `!= True` (un `1` pasaría) | muerto | `test_f059_r6_r16_volcar_exige_commit_true_de_verdad[uno]` |
+| M03 | `volcar` sin la ventana | muerto | `test_f059_r16_sin_la_ventana_no_se_vuelca_y_no_se_llama` |
+| M04 | Constructor sin el entorno | muerto | `test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[True-test]` |
+| **M05** | `not in CORRECTOS` → `>= 300` | **sobrevive** (también a T11) | — (C-B3-1) |
+| M06 | El código de un 400 sin exigir texto | muerto | `test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo[codigo-numero]` |
+| **M07 / M15** | `truncated` con `is True` / `== True` | **sobreviven** (también a T11) | — (C-B3-2) |
+| M08 | El login, con «uno o más» (`bool`) | muerto | `test_f059_r8_existe_usuario_solo_con_exactamente_uno[dos]` |
+| M09 | La ventana del cierre abre el volcado | muerto | `test_f059_r37_ni_la_ventana_del_cierre_abre_el_volcado` |
+| M10 | El ensayador con `escritura_habilitada` de la ventana | muerto | `test_f059_d4_el_ensayador_no_mira_la_ventana_y_no_puede_volcar[true]` |
+| M11 | El volcador sin el entorno en la fábrica | muerto | `test_f059_r16_el_entorno_va_antes_que_la_ventana_y_la_configuracion[construir_volcador]` |
+| M12b | `N` solo `int`, sin la unión | muerto | `test_f059_r30_un_n_que_no_es_un_entero_no_impide_cargar_los_ajustes[cinco]` |
+| M13 | Solo los tiempos agotados son `sin_respuesta` | muerto | `test_f059_r21_r31_un_solo_post_tambien_ante_un_corte[conexion-volcar]` |
+| M14 | Dejar subir `CierreDeshabilitado` | muerto | `test_f059_r10_r16_fuera_de_dev_y_pro_no_se_construye[True-test]` |
+
+M12, el primer intento de M12b, murió por un `RuntimeError` de pydantic al importar (`union_mode` sobre un `int`).
+Es un artefacto del mutante, y por eso lo repetí bien como M12b. Ninguno de los muertos lo caza solo una suite
+vecina.
+
+**Orden (punto 7): aplicado, con lo que hay en este bloque.** Las puertas de orden del adaptador y de las fábricas
+son el entorno antes que la ventana, la ventana antes que la configuración y que el cuerpo, y la configuración
+antes que `N`. Las bajan un paso B01 a B07 y A02 del implementer, y mis M03, M04 y M11, que mueren todos con tests de
+F-059. Las de la aplicación (R16 antes de leer la base, R19, R20 antes de llamar a Sigrid) son del Bloque 4.
+
+### Datos sensibles
+
+Barrido del diff de `services/`:
+- **GUID, correos, IPs:** ninguno.
+- **URL:** solo `https://pasarela-inventada.invalido` y `https://ejemplo-volcado.invalido`.
+- **Claves:** las inventadas de los tests (`clavedefuncioninventadaparaelvolcado`,
+  `clave-de-mentira-para-el-volcado`).
+- **DNI:** `00000000T`, el ficticio de todo ceros, como ruido de los 400 de prueba.
+- **Ejemplos de entorno:** solo `false` y `5`.
+
+### Checkpoints (los que cambian)
+
+- N/A · **C1 `init.sh`**: fuera del encargo, por la regla del `.env`; T23. La suite entera está en verde.
+- [x] **C3**: hexagonal (el puerto en `domain/ports/`, el adaptador en `infrastructure/sigrid/`, que **importa** de
+  `cliente.py` y no copia), primeras líneas, sin `print` ni secretos. En `paso_cierre.py` (F-009) solo cambian la
+  anotación y su importación (§8.4): mi lectura del diff lo confirma. Ningún número de estado de Sigrid
+  (`_HTTP_DEL_LOTE` es un código HTTP).
+- [x] **C4**: R6 (el `commit` explícito), R8, R10, R14, R16, R21, R22–R23 (las familias), R30, R31, R34–R37, con
+  tests `test_f059_*`; ningún test toca la red.
+- [x] **C4 bis · RED**: traza pegada (157 failed, 7 passed).
+- [x] **C4 bis · cobertura**: 100 % de `infrastructure/sigrid/volcado.py` y de los puertos, según el informe; lo de
+  F-059 en `fabrica.py` y `settings.py`, cubierto.
+- [x] **C4 bis · mutación de la herramienta**: 25/25/0/0, recalculada y muestreada.
+- [ ] **C4 bis · cero supervivientes, también a mano**: M05, M07 y M15 (C-B3-1, C-B3-2).
+- [x] **C4 bis · «Evidencias»**: con los workers (8).
+- N/A · **C4 ter**: no hay `harness/rutas_sensibles.json`.
+- [x] **C5**: T10–T12 en `[x]`, con sus commits.
+
+### Observaciones (no bloquean)
+
+- **O-B3-1 · Para el spec-author, antes de T15.** Que §7 (la tabla de errores) y §11 digan que un login que no se
+  puede verificar en `ensayo` **o en `volcar`** es `502 ensayo_sin_respuesta`, sin escribir nada.
+- **O-B3-2 · Para el spec-author.** Que §13 diga `volcado_partes_por_llamada: int | str` (unión de izquierda a
+  derecha), con el porqué (R30 y `/health`).
+- **O-B3-3 · Para T16.** El test de alcance tiene que exigir que solo `infrastructure/sigrid/fabrica.py` construya
+  `AdaptadorVolcadoSigridApi` con `escritura_habilitada=True`: es la única forma de saltarse la fábrica.
+- **O-B3-4 · Para el Bloque 4.** Un `lote_400` sin código (el «Solicitud invalida.» de §8.9, «nada escrito») tiene
+  que tener su camino en la aplicación: en el ensayo, 502; en el volcado, lo que se decida conforme a R23 y R24
+  (`todos_no_procesados` no admite un código que no sea de lote). Siguen abiertas también O-B2-2 y O-B1-1.
+- **O-B3-5 · `CORRECTOS` acepta 201 (§1) y R23 dice «no es 200».** La pasarela devuelve siempre 200 en §8.9, e
+  `interpretar_respuesta` sigue exigiendo la forma completa, así que no tiene efecto práctico. Si el spec-author
+  toca §11, que deje dicho que vale lo de `CORRECTOS`.

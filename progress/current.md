@@ -1,6 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-059 · `blocked` antes de T4 (implementer, 2026-10-16)** · Bloque 1 (dominio) **APPROVED** tras re-review
+> (`9fdb222`; C-B1-1..3 corregidos en `583e6d3`). Bloque 2 parado sin código: **B-1** R17 (misma persona del
+> ensayo) choca con R33 (ninguna lectura selecciona `actor_oid`); recomendado (a) la base compara y el dominio
+> recibe `de_la_persona: bool` (toca `Ensayo` y `validar_ensayo` del Bloque 1). **B-2** falta
+> `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo` en las excepciones
+> de R41; recomendado añadirlo ampliando sin relajar. Detalle: `progress/impl_F-059.md`, «Bloque 2 · BLOQUEADO».
+> Pendientes del humano además: P-1 y P-2 de la review del Bloque 1 (mejoras de `harness.mutacion`).
+
 > ## F-059 · `in_progress` · 2026-10-15 · paso 1: poner la spec al día con `dev`
 > Rama `feature/F-059-volcado-sigrid-backend` desde `dev` **`2d2efd7`** (base fija, T0: F-056 y F-060 mergeadas,
 > desplegadas y con push). Spec aprobada el 2026-10-07, traída del worktree `postventa-f040`. Antes de implementar, el

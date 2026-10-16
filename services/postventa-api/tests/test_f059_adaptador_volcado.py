@@ -164,6 +164,17 @@ def test_f059_t11_las_tres_familias_y_lo_que_lleva_cada_una():
         RespuestaDeLote(tipo="ok", datos={"ok": True})  # type: ignore[arg-type]
 
 
+def test_f059_t11_lo_que_decide_es_que_haya_datos_o_codigo_y_no_su_veracidad():
+    """Un 200 con `{}` sigue siendo `ok` con datos (los interpreta el dominio);
+    un código vacío sigue siendo un código, y fuera de un 400 no va."""
+    assert RespuestaDeLote(tipo=FamiliaDeRespuesta.OK, datos={}).datos == {}
+    assert RespuestaDeLote(tipo=FamiliaDeRespuesta.LOTE_400, codigo="").codigo == ""
+    with pytest.raises(ValueError):
+        RespuestaDeLote(tipo=FamiliaDeRespuesta.SIN_RESPUESTA, codigo="")
+    with pytest.raises(ValueError):
+        RespuestaDeLote(tipo=FamiliaDeRespuesta.LOTE_400, datos={})
+
+
 def test_f059_t11_la_respuesta_es_inmutable():
     respuesta = RespuestaDeLote(tipo=FamiliaDeRespuesta.SIN_RESPUESTA)
 
@@ -546,3 +557,86 @@ def test_f059_r10_en_dev_y_pro_si(entorno):
 def test_f059_r16_el_adaptador_dice_si_puede_escribir():
     assert _adaptador(ClienteFalso()).escritura_habilitada is True
     assert _adaptador(ClienteFalso(), escritura_habilitada=False).escritura_habilitada is False
+
+
+# ==========================================================================
+# T12 · lo que la mutación del bloque pidió fijar
+# ==========================================================================
+
+
+def test_f059_r31_la_duracion_y_la_media_son_las_medidas(caplog, monkeypatch):
+    """R31 · la duración de la llamada y la media por parte, con un reloj
+    controlado: 2,5 s para 2 partes."""
+    relojes = iter((10.0, 12.5))
+    monkeypatch.setattr(volcado.time, "monotonic", lambda: next(relojes))
+    cliente = ClienteFalso([RespuestaFalsa(200, _respuesta_200())])
+
+    with caplog.at_level(logging.INFO):
+        _adaptador(cliente).volcar(cuerpo=_cuerpo(partes=2))
+
+    assert "segundos=2.50" in caplog.text
+    assert "media_por_parte=1.25" in caplog.text
+
+
+def test_f059_r31_un_lote_sin_partes_no_divide_entre_cero(caplog):
+    """El dominio nunca manda un lote vacío (R30), pero el registro no puede
+    romper la llamada si llegara."""
+    cliente = ClienteFalso([RespuestaFalsa(200, _respuesta_200())])
+
+    with caplog.at_level(logging.INFO):
+        respuesta = _adaptador(cliente).volcar(cuerpo=_cuerpo(partes=0))
+
+    assert respuesta.tipo is FamiliaDeRespuesta.OK
+    assert "partes=0" in caplog.text
+    assert "media_por_parte=0.00" in caplog.text
+
+
+class _ClienteQueSeEvaluaFalso(ClienteFalso):
+    """Un cliente válido que, evaluado como booleano, da falso."""
+
+    def __bool__(self) -> bool:
+        return False
+
+
+def test_f059_t11_lo_que_decide_es_que_haya_cliente_y_no_su_veracidad(monkeypatch):
+    """Con un cliente dado, se usa ese: no se fabrica uno real (que abriría la
+    red), aunque el dado se evalúe como falso."""
+
+    def no_construyas(timeout_s):
+        raise AssertionError("no se fabrica un cliente real si ya hay uno")
+
+    monkeypatch.setattr(volcado, "construir_cliente_http", no_construyas)
+    cliente = _ClienteQueSeEvaluaFalso([RespuestaFalsa(200, _respuesta_200())])
+
+    _adaptador(cliente).volcar(cuerpo=_cuerpo())
+
+    assert len(cliente.peticiones) == 1
+
+
+def test_f059_r31_sin_cliente_se_fabrica_uno_con_el_tiempo_de_sigrid(monkeypatch):
+    """R31 · el cliente se construye en la primera llamada, con `SIGRID_TIMEOUT_S`,
+    y se reutiliza."""
+    pedidos: list[int] = []
+    cliente = ClienteFalso([RespuestaFalsa(200, _respuesta_200()), RespuestaFalsa(200, _respuesta_200())])
+
+    def construir(timeout_s):
+        pedidos.append(timeout_s)
+        return cliente
+
+    monkeypatch.setattr(volcado, "construir_cliente_http", construir)
+    adaptador = AdaptadorVolcadoSigridApi(
+        entorno="dev",
+        escritura_habilitada=True,
+        base_url=RAIZ,
+        api_key=CLAVE,
+        base_datos=BASE,
+        timeout_s=33,
+        reintentos=3,
+        espera_inicial_s=0,
+    )
+
+    adaptador.volcar(cuerpo=_cuerpo())
+    adaptador.ensayar(cuerpo=_cuerpo(commit=False))
+
+    assert pedidos == [33]
+    assert len(cliente.peticiones) == 2

@@ -1103,3 +1103,14 @@ def test_f059_r28_t17_el_panel_lee_justo_el_tope():
 
     assert mundo.llamadas == ["revision.listar"]
     assert panel.aprobadas == TOPE_LECTURA_OBRA
+
+
+def test_f059_r11_t17_al_dominio_solo_llegan_las_situaciones_de_la_bandeja():
+    """H05: `seleccionar_para_ensayo` recibe un `Mapping[UUID, SituacionDeRevision]`:
+    la pedida que no está en la bandeja **no tiene entrada** (§8.1), no un `None`."""
+    mundo = Mundo(1)
+
+    situaciones = pipeline._situaciones((ID(1), ID(77)), mundo.revision)
+
+    assert list(situaciones) == [ID(1)]
+    assert situaciones[ID(1)].incidencia.incidencia_id == ID(1)

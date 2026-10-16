@@ -1595,6 +1595,9 @@ lo cazan F12 y F14 del lote 3.
 que un test pueda distinguir. Es la misma categoría que A5 y A8 de la re-review del Bloque 1. Lo dejo escrito
 para que el humano lo vea; si prefiere la regla al pie de la letra, basta con su visto bueno a este párrafo.
 
+> **Cerrado el 2026-10-16: el humano acepta por escrito el mutante equivalente V05d** (opción «Sí, lo acepto»,
+> transmitida por el líder tras la review del Bloque 2, APPROVED en `8e668b2`).
+
 **Lote 3** (sobre `42be797`, 13): las filas leídas desempaquetando.
 
 | Id | Fichero | Mutación | Resultado | Primer test de F-059 que lo caza |

@@ -62,7 +62,6 @@ from infrastructure.persistencia.ddl import validar_nombre_de_esquema, valores_c
 from infrastructure.persistencia.sentencias_bandeja import como_uuid
 
 __all__ = [
-    "ANCHO_DEL_VOLCADO",
     "COLUMNAS_INSERT",
     "EventoNuevo",
     "columnas_del_volcado",
@@ -99,9 +98,6 @@ COLUMNAS_INSERT: tuple[str, ...] = (
 #: en este orden. **Sin `actor_oid`** (R33).
 _LEIDAS_DEL_PARTE: tuple[str, ...] = ("sigrid_ide", "sigrid_cod", "at_utc", "actor_correo")
 _LEIDAS_DEL_ULTIMO: tuple[str, ...] = ("estado", "motivo_codigo", "at_utc", "actor_correo")
-
-#: Cuántas columnas añade la situación de volcado a una fila.
-ANCHO_DEL_VOLCADO = len(_LEIDAS_DEL_PARTE) + len(_LEIDAS_DEL_ULTIMO)
 
 #: La última revisión, en `select_volcado_de`.
 _LEIDAS_DE_LA_ULTIMA: tuple[str, ...] = ("revision_id", "accion", "huella_valores")
@@ -245,9 +241,11 @@ def insert_evento(*, esquema: str, evento: EventoNuevo) -> tuple[str, tuple]:
 
 def fila_a_volcado(fila: Sequence[Any]) -> SituacionDeVolcado:
     """Las columnas de las dos `LATERAL`: el parte, si lo hay, y el último de
-    modo `volcado`, si lo hay. Sin eventos, `SituacionDeVolcado(None, None)`."""
-    if len(fila) != ANCHO_DEL_VOLCADO:
-        raise ValueError("la situación de volcado no tiene el ancho de su consulta")
+    modo `volcado`, si lo hay. Sin eventos, `SituacionDeVolcado(None, None)`.
+
+    Una fila con columnas de más o de menos no se lee a medias: los dos `zip`
+    son estrictos (`ValueError`).
+    """
     parte = dict(zip(_LEIDAS_DEL_PARTE, fila[: len(_LEIDAS_DEL_PARTE)], strict=True))
     ultimo = dict(zip(_LEIDAS_DEL_ULTIMO, fila[len(_LEIDAS_DEL_PARTE) :], strict=True))
     volcada = None
@@ -271,10 +269,8 @@ def fila_a_volcado(fila: Sequence[Any]) -> SituacionDeVolcado:
 
 def fila_a_bloqueada(fila: Sequence[Any]) -> tuple[UUID, SituacionBloqueada]:
     """Una fila de `select_volcado_de`: la incidencia, su última revisión —todo
-    `None` si no tiene— y su situación de volcado (R20)."""
-    ancho = 1 + len(_LEIDAS_DE_LA_ULTIMA) + ANCHO_DEL_VOLCADO
-    if len(fila) != ancho:
-        raise ValueError("la fila bloqueada no tiene el ancho de su consulta")
+    `None` si no tiene— y su situación de volcado (R20). Con columnas de más o
+    de menos, `ValueError` (lo que sobra o falta cae en la de volcado)."""
     revision_id, accion, huella = fila[1 : 1 + len(_LEIDAS_DE_LA_ULTIMA)]
     return como_uuid(fila[0]), SituacionBloqueada(
         revision_id=revision_id,

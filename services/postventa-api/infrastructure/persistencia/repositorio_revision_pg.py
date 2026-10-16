@@ -60,7 +60,7 @@ from domain.models.revision import (
     candidata_de,
     estado_de,
 )
-from domain.models.situacion_volcado import estado_de_volcado
+from domain.models.situacion_volcado import EstadoVolcado, estado_de_volcado
 from domain.ports.revision import ResultadoDelLote
 
 from infrastructure.persistencia import sentencias_revision as sql
@@ -71,6 +71,10 @@ from infrastructure.persistencia.sentencias_bandeja import como_uuid
 __all__ = ["RepositorioRevisionPostgres"]
 
 log = logging.getLogger(__name__)
+
+#: F-059 D-14 · los estados de volcado desde los que no se admite ninguna
+#: acción de revisión (R2): los dos, escritos uno a uno.
+_BLOQUEAN_LA_REVISION = frozenset({EstadoVolcado.VOLCADA, EstadoVolcado.EN_DUDA})
 
 
 class RepositorioRevisionPostgres(_Transaccional):
@@ -233,7 +237,7 @@ class RepositorioRevisionPostgres(_Transaccional):
             return
         _, bloqueada = sentencias_volcado.fila_a_bloqueada(filas[0])
         estado = estado_de_volcado(bloqueada.volcado)
-        if estado is not None:
+        if estado in _BLOQUEAN_LA_REVISION:
             raise AccionNoPermitida(
                 f"la incidencia está {estado.value}: no admite ninguna acción de revisión",
                 estado=estado.value,

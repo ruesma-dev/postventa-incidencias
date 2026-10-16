@@ -68,7 +68,6 @@ from domain.models.situacion_volcado import SituacionDeVolcado
 from infrastructure.persistencia.ddl import validar_nombre_de_esquema
 from infrastructure.persistencia.sentencias_bandeja import como_uuid
 from infrastructure.persistencia.sentencias_volcado import (
-    ANCHO_DEL_VOLCADO,
     columnas_del_volcado,
     fila_a_volcado,
     joins_del_volcado,
@@ -336,8 +335,6 @@ def fila_a_situacion(fila: Sequence[Any]) -> SituacionDeRevision:
     fin_ultima = _ANCHO_BANDEJA + _ANCHO_REVISION
     fin_original = fin_ultima + _ANCHO_BANDEJA
     fin_ultima_original = fin_original + _ANCHO_REVISION
-    if len(fila) != fin_ultima_original + ANCHO_DEL_VOLCADO:
-        raise ValueError("la fila no tiene el ancho de la consulta de situaciones")
     original = None
     if fila[fin_ultima] is not None:  # el `incidencia_id` de la original
         original = _situacion(

@@ -33,7 +33,7 @@ import ast
 import inspect
 import logging
 import re
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone, tzinfo
 from pathlib import Path
 from uuid import UUID
 
@@ -433,6 +433,32 @@ def test_f059_r32_una_hora_con_otra_zona_se_escribe_en_utc():
     madrid = timezone(timedelta(hours=2))
     _, parametros = sentencias_volcado.insert_evento(
         esquema=ESQUEMA, evento=_evento_nuevo(at_utc=AHORA.astimezone(madrid))
+    )
+
+    assert parametros[-1] == AHORA
+    assert parametros[-1].tzinfo is UTC
+
+
+class _ZonaQueSeEvaluaFalsa(tzinfo):
+    """Una zona válida (UTC+2) que, evaluada como booleano, da falso."""
+
+    def utcoffset(self, dt: datetime | None) -> timedelta:
+        return timedelta(hours=2)
+
+    def dst(self, dt: datetime | None) -> timedelta:
+        return timedelta(0)
+
+    def __bool__(self) -> bool:
+        return False
+
+
+def test_f059_r32_lo_que_decide_la_zona_es_que_la_haya_y_no_su_veracidad():
+    """Sin zona es `tzinfo is None`, no «una zona que se evalúa como falsa»: esa
+    sigue siendo una zona y el instante se pasa a UTC."""
+    instante = datetime(2026, 10, 16, 11, 30, tzinfo=_ZonaQueSeEvaluaFalsa())
+
+    _, parametros = sentencias_volcado.insert_evento(
+        esquema=ESQUEMA, evento=_evento_nuevo(at_utc=instante)
     )
 
     assert parametros[-1] == AHORA

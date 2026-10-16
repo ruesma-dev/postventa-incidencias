@@ -1525,6 +1525,16 @@ def test_f059_r2_si_la_base_falla_al_leer_el_volcado_es_503_y_nada_a_medias():
 
 
 @pytest.mark.parametrize("nombre", CON_SITUACIONES)
+def test_f059_r1_r4_las_lateral_del_volcado_son_de_la_propia(nombre):
+    """§12 de F-059 · las dos `LATERAL` sobre `volcados_sigrid` van sobre la
+    incidencia (`b`), nunca sobre su original (`o`)."""
+    sql = " ".join(_todas_las_sentencias()[nombre][0].split())
+
+    assert sql.count("FROM postventa.volcados_sigrid v WHERE v.incidencia_id = b.incidencia_id ") == 2
+    assert "v.incidencia_id = o.incidencia_id" not in sql
+
+
+@pytest.mark.parametrize("nombre", CON_SITUACIONES)
 def test_f059_r33_las_situaciones_no_seleccionan_actor_oid(nombre):
     """R33 de F-059 · el `oid` de quien volcó no se lee; el correo, sí (R4)."""
     sql, _ = _todas_las_sentencias()[nombre]

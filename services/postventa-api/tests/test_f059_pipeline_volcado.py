@@ -1114,3 +1114,19 @@ def test_f059_r11_t17_al_dominio_solo_llegan_las_situaciones_de_la_bandeja():
 
     assert list(situaciones) == [ID(1)]
     assert situaciones[ID(1)].incidencia.incidencia_id == ID(1)
+
+
+def test_f059_r28_t17_cada_recuento_del_panel_cuenta_lo_suyo():
+    """H36: con recuentos distintos (3 aprobadas, 1 en duda, 2 volcadas), ninguno
+    se puede confundir con otro."""
+    mundo = Mundo(*range(1, 7))
+    for n in range(1, 7):
+        mundo.revision.aprobar(n)
+    mundo.volcados.sembrar(4, EV.SIN_RESPUESTA)
+    mundo.volcados.sembrar(5, EV.CREADO, ide=700_005, cod="RS26.10/0005")
+    mundo.volcados.sembrar(6, EV.IDEMPOTENTE, modo=ModoVolcado.ENSAYO, ide=700_006, cod="RS26.10/0006")
+
+    panel = pipeline.panel_de_volcado(OBRA, revision=mundo.revision, partes_por_llamada=5)
+
+    assert (panel.aprobadas, panel.en_duda, panel.volcadas) == (3, 1, 2)
+    assert [c.situacion.incidencia.incidencia_id for c in panel.candidatas] == [ID(n) for n in (1, 2, 3, 4)]

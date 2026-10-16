@@ -1227,3 +1227,16 @@ def test_f059_r9_r15_t17_con_n_invalido_mas_de_50_sigue_siendo_400(nada_se_const
     estado, datos = _leer(_ensayo(cuerpo) if ruta == "ensayo" else _volcar(cuerpo))
 
     assert (estado, datos.get("codigo")) == (400, "peticion_invalida")
+
+
+def test_f059_r4_r28_t17_una_incidencia_solo_ensayada_no_tiene_objeto_volcado(mundo):
+    """R4: `null` sin eventos de modo `volcado` ni parte en Sigrid, aunque haya
+    ensayos (un `previsto` no es un volcado); y en el panel, igual."""
+    _ensayado(mundo, 1)
+
+    _, listado = _leer(_listar(estado="todas"))
+    _, panel = _leer(_panel())
+
+    assert _filas(listado)[str(ID(1))]["volcado"] is None
+    assert _filas(listado)[str(ID(1))]["estado"] == "aprobada"
+    assert [c["ultimo_volcado"] for c in panel["candidatas"]] == [None]

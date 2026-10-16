@@ -859,11 +859,12 @@ ambos los cazan los casos de arriba (regla a; y quitar el `not` deja pasar los v
 ### Verificación
 
 Desde `<scratchpad>/f059` (sin `.env`), los diez ficheros de la verificación de T2 más las dos guardias de F-006:
-**1 failed, 1220 passed in 30.91s**. Los de F-059 solos: 333 passed.
+**1 failed, 1220 passed in 30.91s**. Los dos de F-059 solos: **316 passed in 4.40s** (los 333 de antes incluían `test_f006_arquitectura.py`).
 
 El rojo **no es de este cambio**: `test_f006_repo_sin_identificadores.py::test_f006_r26_ningun_fichero_del_repositorio_incrusta_un_identificador`
 encuentra **dos GUID en `progress/review_F-059.md`, línea 152** (commit `6864483` de la review): son los dos
 GUID sintéticos de mi T1 que el reviewer cita al comentar el incidente de la guardia R26. No he tocado ese
 fichero (no es mío); **para el líder**: hay que redactarlos allí o `init.sh` saldrá en rojo.
 
-Cobertura: `volcado.py` sigue al 100 % con los tests de F-059 (la función nueva, entera).
+Cobertura, medida tras el cambio con los dos ficheros de F-059: `volcado.py` **100 %** (284 sentencias, la función
+nueva entera) y `situacion_volcado.py` **100 %** (47).

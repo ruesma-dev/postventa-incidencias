@@ -149,7 +149,7 @@ del bloque.
   **Claves:** ninguna.
 - **Obras y proveedores:** `9901`/`9902`, `EJ07`/`EJ08`, «Ejemplo». Ninguna ubicación ni nombre real.
 - **El GUID sintético de T1 (valoración pedida).** `ffaf804` **añade**
-  `00000000-0000-0000-0000-000000abcdef` (dos `assert` de R5) y `00000000-0000-0000-0000-000000000001` (el id de un
+  la forma canónica de `UUID(int=0xABCDEF)` (dos `assert` de R5) y la de `UUID(int=1)` (el id de un
   caso parametrizado, en la traza RED), y `c84e979` los **quita**. En `HEAD` no queda ninguno (`git grep`), y las dos
   guardias R26 de F-006 pasan. Son `UUID(int=…)` escritos en hexadecimal: casi todo ceros, sin relación con ningún
   tenant, suscripción, objeto ni usuario real. **No son secretos ni identificadores reales, y no hace falta
@@ -283,3 +283,112 @@ del bloque.
   `progress/mutacion_F-059_bloque1.md` dice `--base 477e596 --workers 8`, pero la campaña se lanzó con
   `--timeout 1800`. Repetida con la cabecera tal cual (120 s por mutante) en una máquina donde la suite tarda 1563 s,
   saldrían todo timeouts. El docstring de `comando_de` ya da el mismo argumento para `--workers` y `--base`.
+
+## Re-review del Bloque 1 · 2026-10-16
+
+- **Veredicto:** **APPROVED**
+- **Revisado:** `583e6d3` (código y tests) y `6c5b9d3` (cifras del informe), sobre `6864483`. Explicación del
+  implementer en `progress/impl_F-059.md`, «Correcciones de la review del Bloque 1».
+- **Nivel de rigor:** `critico`, con las mismas puertas que en la review.
+
+### Corrección de una errata mía (el rojo de la guardia R26)
+
+El implementer avisa de que `test_f006_repo_sin_identificadores.py::test_f006_r26_…` se ponía en rojo por **mi**
+informe: al valorar el GUID sintético, escribí la forma canónica de los dos `UUID(int=…)` en el párrafo «Datos
+sensibles». Lo he redactado en este mismo commit (ahora dice «la forma canónica de `UUID(int=0xABCDEF)`» y «la de
+`UUID(int=1)`»). Con eso, las dos guardias de F-006 pasan (abajo). La valoración no cambia.
+
+### El cambio de dominio, contra R6, D-9 y §8.9
+
+`583e6d3` añade `_con_texto(texto)` en `domain/models/volcado.py`: devuelve `None` si el texto es nulo, vacío o
+solo blancos, y si no, el texto **tal cual**. Lo usan tres sitios: si hay interviniente (`parte_de`), la
+`descripcion_larga` del parte (`parte_de`) y si la clave va en el cuerpo (`cuerpo_de_parte`).
+
+- **R6** («`descripcion_larga` = `detalle` solo si no es nulo; si lo es, la clave no va») y **§5/§8.9** (sin la
+  clave, la pasarela pone la descripción, «como el alta manual»): tratar un detalle en blanco como nulo es la
+  lectura que protege lo que R6 quiere, que es no dejar en `rcp.tex` una descripción larga en blanco. Además es la
+  misma regla que ya aplica `validar_valores` al editar (`revision.py:616`, `strip() or None`). **Conforme.**
+- **D-9** («`[]` sin proveedor»): un código vacío no identifica a ningún `obrofc`. Mandarlo provocaría
+  `interviniente_no_esta_en_la_obra` en §8.9, es decir, un parte rechazado que se aprobó «sin proveedor».
+  **Conforme.**
+- **Lo que dice algo va sin recortar** (`" EJ07"`, `"  Ejemplo de detalle  "`): es coherente con R7 (lo aprobado
+  es lo que se manda). La huella se calcula sobre los valores, no sobre el parte, así que no cambia.
+- Tampoco cambia la lista de claves (D-10), el `tipo`, el `causante` ni el resto del cuerpo.
+  `test_f059_r6_el_cuerpo_clave_a_clave` y `test_f059_d10_ninguna_clave_de_mas` siguen pasando.
+- **C-B1-3**: sin cambio de código, dos tests nuevos que separan el `ide` del `cod`. **Conforme** con R26.
+
+Los tests nuevos usan datos ficticios (`EJ07`, «Ejemplo de detalle»). He barrido el diff `6864483..6c5b9d3` en
+busca de GUID, correos, IPs y claves, y no aparece nada.
+
+### Mutantes, repetidos en una copia desechable
+
+En un worktree desechable de `6c5b9d3` (ya retirado; el árbol de trabajo no se ha mutado y su `git status` queda
+limpio), solo con `test_f059_volcado_dominio.py` y `test_f059_estados.py`, con `-x`.
+
+**Mutantes de la herramienta en las líneas de la corrección.** He recalculado el alcance de `135dd6b..6c5b9d3`:
+23 líneas de `volcado.py` y **2 mutantes** (`generar_mutantes`), los dos en `_con_texto`. He aplicado los dos
+(`aplicar_mutante`):
+
+| Mutación (herramienta) | Resultado | Test de F-059 que lo caza |
+|---|---|---|
+| `volcado.py:358` `or` → `and` | muerto | `test_f059_r6_el_parte_clave_a_clave` |
+| `volcado.py:358` `not texto.strip()` → `texto.strip()` | muerto | `test_f059_r6_el_parte_clave_a_clave` |
+
+**Mutantes a mano (13):**
+
+| Id | Mutación | Resultado | Test de F-059 que lo caza |
+|---|---|---|---|
+| A1 | `_con_texto` sin `strip` (`not texto`) | muerto | `test_f059_d9_c_b1_1_un_codigo_de_proveedor_vacio_es_sin_proveedor[blancos]` |
+| A2 | `_con_texto` devuelve el texto recortado | muerto | `test_f059_r6_c_b1_2_un_detalle_que_dice_algo_va_tal_cual` |
+| A3 | Solo quita espacios: el tabulador cuenta como texto | muerto | `…_un_codigo_de_proveedor_vacio_es_sin_proveedor[tabulador]` |
+| A4 | Proveedor: vuelta a `is not None` | muerto | `…_un_codigo_de_proveedor_vacio_es_sin_proveedor[vacio]` |
+| A6 | Detalle: vuelta a `descripcion_larga=v.detalle` | muerto | `test_f059_r6_c_b1_2_un_detalle_vacio_no_es_descripcion_larga[vacio]` |
+| A7 | Cuerpo: vuelta a `is not None` | muerto | `test_f059_r6_c_b1_2_el_cuerpo_no_manda_una_descripcion_larga_vacia[vacio]` |
+| A9 | `_con_texto` rechaza también lo que tiene blancos alrededor | muerto | `test_f059_d9_c_b1_1_un_codigo_de_proveedor_que_dice_algo_va_tal_cual` |
+| A10 | Proveedor por veracidad (mi C-B1-1) | muerto | `…_un_codigo_de_proveedor_vacio_es_sin_proveedor[blancos]` |
+| A11 | Cuerpo por veracidad (mi C-B1-2) | muerto | `…_el_cuerpo_no_manda_una_descripcion_larga_vacia[blancos]` |
+| A12 | Duplicado por `cod` (mi C-B1-3) | muerto | `test_f059_r26_c_b1_3_el_mismo_ide_con_otro_cod_no_lo_es` |
+| A13 | Duplicado por `ide` **o** `cod` | muerto | `test_f059_r26_c_b1_3_el_mismo_ide_con_otro_cod_no_lo_es` |
+| A5 | `proveedor=_con_texto(v.proveedor_codigo)` dentro de la rama | no cambia el programa | — |
+| A8 | `cuerpo["descripcion_larga"] = _con_texto(…)` dentro de la rama | no cambia el programa | — |
+
+**A5 y A8 no son supervivientes: no son mutantes.** Los dos aplican `_con_texto` a un valor dentro de una rama a la
+que solo se entra si `_con_texto` de **ese mismo valor** no es `None`, y en ese caso `_con_texto` devuelve el texto
+sin tocarlo (`return texto`). Para cualquier entrada, el resultado es el mismo que el del código original: no hay
+comportamiento que un test pueda distinguir, ni que proteger. Por eso no los cuento como mutantes equivalentes que
+necesiten la aceptación del humano (C4 bis), sino como reescrituras que no cambian nada, y los anoto aquí para que
+se vean. Si el humano prefiere aplicar la regla al pie de la letra, basta con su visto bueno a este párrafo: el
+implementer no tiene nada que cambiar.
+
+Los 13 que cambian el programa (2 de la herramienta y 11 a mano) **mueren todos con un test de F-059**, y ninguno
+lo caza solo una suite vecina. La corrección no abre ningún superviviente en las líneas que toca. Los 8 mutantes del
+implementer (su tabla) coinciden con A1, A2, A4, A6, A7, A10, A11 y A12.
+
+La campaña completa de la herramienta no se relanza (indicación del líder). Lo que la corrección añade se ha
+evaluado entero con los dos mutantes de la herramienta de arriba, y el alcance de antes no ha cambiado fuera de
+esas 23 líneas.
+
+### Verificación
+
+Desde el scratchpad, sin `.env`:
+
+| Verificación | Resultado |
+|---|---|
+| Los diez ficheros de T2 + las dos guardias R26 de F-006 (con mi informe ya redactado) | **1221 passed in 30.46s** |
+| Cobertura con los dos ficheros de F-059 | `volcado.py` 284/284 y `situacion_volcado.py` 47/47: **100 %** |
+| `ruff check` de `volcado.py` y `test_f059_volcado_dominio.py` | `All checks passed!` |
+
+### Checkpoints que cambian respecto a la review
+
+- [x] **C4 bis · Cero supervivientes, también a mano**: la herramienta, 0 (85 + 2); el implementer, 88 + 8; el
+  reviewer, 25 + 13, todos muertos con tests de F-059. A5 y A8, razonados arriba: no cambian el programa.
+- [x] **C3** sigue en orden: `_con_texto` es privada, pura y lleva la ruta en la primera línea del módulo, y no hay
+  dependencias nuevas.
+- [x] **C5**: los commits de la corrección (`583e6d3`, `6c5b9d3`) no llevan `Tn` porque corrigen la review, no son
+  una tarea nueva. Me vale: `tasks.md` sigue con T0–T3 en `[x]`.
+- El resto de checkpoints, como en la review del Bloque 1 (los N/A, con su motivo allí).
+
+### Observaciones que siguen abiertas (para bloques posteriores, no bloquean)
+
+O-B1-1 (R7 recalculado en el camino del volcado, Bloque 4), O-B1-2 (`causa` → `motivo` en T15) y las propuestas
+P-1 y P-2 siguen como se escribieron arriba.

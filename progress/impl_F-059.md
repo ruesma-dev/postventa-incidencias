@@ -2111,6 +2111,9 @@ cualquier entrada que llegue ahí. Es la categoría de V05d (que el humano acept
 re-review del Bloque 1. Lo sustituyen A09b (el cuerpo siempre con `commit: true`) y A09c (sin el `usu`), que sí
 cambian el programa y mueren. **Lo dejo para que el humano lo vea**, como V05d.
 
+> **Cerrado el 2026-10-16: el humano acepta por escrito el mutante equivalente A09** (opción «Sí, lo acepto»,
+> transmitida por el líder tras la review del Bloque 3).
+
 **En total, a mano: 45 + 2 + 2 = 49** (lote principal, A09b y A09c, A25 y A26); todos los que cambian el programa
 mueren con un test de F-059, y ninguno lo caza solo otra suite. A09, razonado arriba.
 
@@ -2159,3 +2162,36 @@ la lectura del login sin respuesta: `EnsayoSinRespuesta`, y el Bloque 4 tendrá 
 `int | str` frente al `int` de §13), la 1 (`VolcadoDeshabilitado` para el entorno, envolviendo
 `exigir_entorno_con_cierre`), A09, y que `init.sh` no se ha lanzado por la regla del `.env`. Para el Bloque 4
 siguen abiertas O-B2-2 y O-B1-1.
+
+## Correcciones de la review del Bloque 3 (C-B3-1 y C-B3-2) · 2026-10-16
+
+La review (`progress/review_F-059.md`, «Review del Bloque 3», CHANGES_REQUESTED, `e7f059c`) encontró dos huecos
+de los tests, con tres mutantes vivos que la herramienta no genera así. Releída la enmienda del spec-author
+(`74f3a94`): **O-B3-5** confirma que «200» son los de `CORRECTOS` (200 y 201), así que el código no cambia; solo
+los tests. O-B3-3 (T16) y O-B3-4, O-B2-2 y O-B1-1 (Bloque 4) quedan para su momento. **A09**, aceptado por el
+humano por escrito (2026-10-16), queda anotado como cerrado en su párrafo de T12.
+
+- **C-B3-1 · un 2xx que no es 200 ni 201.** `test_f059_r23_cualquier_otro_codigo_es_sin_respuesta` gana 202, 204,
+  301 y 302 (con un objeto JSON detrás): `sin_respuesta`. Y, por la misma línea en la lectura del login,
+  `test_f059_r8_un_definitivo_no_se_reintenta` gana 202, 204 y 302: `EnsayoSinRespuesta` sin reintentar.
+- **C-B3-2 · `truncated` por veracidad.** `test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada` gana
+  `truncated=1` y `truncated="true"` (cualquier verdadero cuenta como truncado: lo conservador es no decidir el
+  login). Y un test nuevo, `test_f059_r8_c_b3_2_una_lectura_no_truncada_si_decide` (`False`, nulo, `0`, `""`),
+  fija el otro lado.
+
+Los mutantes, repetidos en un worktree desechable de `74f3a94` con el fichero de tests nuevo copiado encima
+(retirado; el árbol de trabajo no se ha mutado), con los dos ficheros de F-059 del bloque:
+
+| Id | Mutación | Resultado | Test de F-059 que lo caza |
+|---|---|---|---|
+| M05 | `volcado.py:247`, el lote: `not in CORRECTOS` → `>= 300` | muerto | `test_f059_r23_cualquier_otro_codigo_es_sin_respuesta[202]` |
+| M05b | la misma línea en la lectura del login (`_leer_una_vez`) | muerto | `test_f059_r8_un_definitivo_no_se_reintenta[202]` |
+| M07 | `volcado.py:182`, `datos.get("truncated")` → `… is True` | muerto | `test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada[truncada-uno]` |
+| M15 | `volcado.py:182`, `datos.get("truncated")` → `… == True` | muerto | `test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada[truncada-texto]` |
+
+**4/4 muertos por tests de F-059.** La campaña de la herramienta no se relanza (la review lo dice: son líneas que
+no muta así) y el código de producción no cambia.
+
+Verificación, desde el scratchpad: `test_f059_adaptador_volcado.py` y `test_f059_fabrica.py`, **183 passed in
+2.80s** (170 antes: +4 de C-B3-1 en R23, +3 en R8, +2 de C-B3-2 y +4 del test nuevo); `ruff check` del fichero,
+sin avisos. Tests ajenos tocados: ninguno.

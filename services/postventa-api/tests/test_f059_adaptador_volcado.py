@@ -390,7 +390,9 @@ def test_f059_r14_r35_un_400_sin_codigo_de_texto_es_lote_400_sin_codigo(cuerpo):
     assert respuesta == RespuestaDeLote(tipo=FamiliaDeRespuesta.LOTE_400, codigo=None)
 
 
-@pytest.mark.parametrize("estado", (401, 403, 404, 409, 422))
+# C-B3-1 (review del Bloque 3): también un 2xx que no está en `CORRECTOS` (202,
+# 204) y un 3xx, con un objeto JSON detrás: no es la respuesta de §8.9.
+@pytest.mark.parametrize("estado", (401, 403, 404, 409, 422, 202, 204, 301, 302))
 def test_f059_r23_cualquier_otro_codigo_es_sin_respuesta(estado):
     cliente = ClienteFalso([RespuestaFalsa(estado, _error_400())])
 
@@ -464,7 +466,7 @@ def test_f059_r8_agotados_los_reintentos_es_sin_respuesta_y_no_dice_el_login():
         assert prohibido not in str(error.value)
 
 
-@pytest.mark.parametrize("estado", (400, 401, 403, 404))
+@pytest.mark.parametrize("estado", (400, 401, 403, 404, 202, 204, 302))  # C-B3-1: + 2xx/3xx
 def test_f059_r8_un_definitivo_no_se_reintenta(estado):
     cliente = ClienteFalso([RespuestaFalsa(estado, {"error": LOGIN}), RespuestaFalsa(200, cuerpo_de_lectura(["n"], [[1]]))])
 
@@ -481,8 +483,12 @@ def test_f059_r8_un_definitivo_no_se_reintenta(estado):
         ValueError("no es JSON"),
         ["lista"],
         dict(cuerpo_de_lectura(["n"], [[1]]), truncated=True),
+        # C-B3-2 (review del Bloque 3): cualquier `truncated` verdadero cuenta
+        # como truncado, no solo `True`: lo conservador es no decidir el login.
+        dict(cuerpo_de_lectura(["n"], [[1]]), truncated=1),
+        dict(cuerpo_de_lectura(["n"], [[1]]), truncated="true"),
     ),
-    ids=("no-json", "lista", "truncada"),
+    ids=("no-json", "lista", "truncada", "truncada-uno", "truncada-texto"),
 )
 def test_f059_r8_una_lectura_sin_forma_o_truncada_no_decide_nada(cuerpo):
     cliente = ClienteFalso([RespuestaFalsa(200, cuerpo)])
@@ -654,3 +660,11 @@ def test_f059_r8_un_corte_que_no_se_arregla_es_sin_respuesta():
     assert "ConnectError" in str(error.value)
     for prohibido in (LOGIN, CLAVE, RAIZ):
         assert prohibido not in str(error.value)
+
+
+@pytest.mark.parametrize("truncada", (False, None, 0, ""), ids=("false", "nulo", "cero", "vacio"))
+def test_f059_r8_c_b3_2_una_lectura_no_truncada_si_decide(truncada):
+    """El otro lado de C-B3-2: lo que no es verdadero no cuenta como truncado."""
+    cliente = ClienteFalso([RespuestaFalsa(200, dict(cuerpo_de_lectura(["n"], [[1]]), truncated=truncada))])
+
+    assert _adaptador(cliente).existe_usuario(login=LOGIN) is True

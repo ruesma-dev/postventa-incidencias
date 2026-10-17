@@ -2984,3 +2984,32 @@ tocado.
 **Verificación** (desde el scratchpad, sin `.env`): sin DSN la suite se salta, como debe: `test_f059_bbdd_volcado.py`,
 **46 skipped in 1.20s**, limpia; `ruff check` del fichero, `All checks passed!`. Verlo en verde es de T8: el líder la
 repite con Docker. `init.sh` no se ha lanzado.
+
+## Corrección C-B4-1 · 2026-10-17
+
+La review del Bloque 4 (`progress/review_F-059.md`, «Hallazgo») vio que `ASERCIONES_QUE_CAMBIAN` eximía **funciones
+enteras**: en una función declarada se podía quitar cualquier aserción sin que la guarda de R41 lo viera (su «G1»:
+quitar `assert (conexion.commits, conexion.rollbacks) == (1, 0)` de
+`test_f056_repositorio_revision.py::test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma` daba verde).
+
+**El arreglo** (`4c8c309`, solo `tests/test_f059_alcance_cerrado.py`; ningún código de producción):
+
+- `ASERCIONES_QUE_CAMBIAN` pasa a `dict[str, dict[str, frozenset[str]]]`: por fichero y por función, el **texto
+  normalizado** (`ast.unparse`) de cada aserción de la base que se sustituye. Las 21 de 19 funciones en 16 ficheros, generadas
+  del diff con la base fija y comprobadas una a una (las cifras y listas viejas: los quince `.sql`, `== 21`,
+  `nombres[-1] == FICHERO`, los cuatro estados de `por_estado`, `len(sql) == 3`, `sql[2].startswith(…)`…).
+- La guarda (`_perdidas_no_declaradas`, en `test_f059_r41_ningun_ampliado_pierde_una_asercion`) exige
+  **pérdidas ⊆ declaradas** en cada función, con multiplicidad (declarar una aserción deja perderla una vez).
+- Un test nuevo, `test_f059_r41_c_b4_1_lo_declarado_es_lo_que_se_pierde`: cada aserción declarada estaba en la base
+  y ya no está (una declaración de más sería una puerta abierta).
+- Dos controles negativos: `test_f059_r41_c_b4_1_la_guarda_de_aserciones_no_es_ciega` (sintético: la aserción no
+  declarada de una función declarada da rojo; la de otra función, también; dos copias con una declarada, también) y
+  `test_f059_r41_c_b4_1_quitar_una_asercion_no_declarada_da_rojo` (el G1 sobre el fichero real, en memoria).
+- `AMPLIADOS_EN_EL_BLOQUE_5` no cambia (O-B4-3): T20 declara sus aserciones en el mismo formato.
+
+**Verificación** (desde el scratchpad, sin `.env`; sin `init.sh`): `test_f059_alcance_cerrado.py`, **127 passed in
+54.88s**; `ruff check`, `All checks passed!`. **G1, repetido en una copia desechable** (un worktree forzado de la rama
+en el scratchpad, ya retirado; el árbol de trabajo no se tocó): quitada esa línea, **3 failed** —
+`test_f059_r41_ningun_ampliado_pierde_una_asercion[tests/test_f056_repositorio_revision.py]`,
+`test_f059_r41_c_b4_1_lo_declarado_es_lo_que_se_pierde[tests/test_f056_repositorio_revision.py]` y
+`test_f059_r41_c_b4_1_quitar_una_asercion_no_declarada_da_rojo`—. **G1 muere.**

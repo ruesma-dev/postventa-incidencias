@@ -1103,3 +1103,97 @@ no da avisos. **Conforme.** T8 tiene que repetirla el humano con Docker.
     neutralización.
 
   Con eso, el implementer y el reviewer podrían volver a ejecutar `init.sh` tal cual lo manda su protocolo.
+
+## Re-review del Bloque 4 · 2026-10-17
+
+- **Veredicto:** **APPROVED**
+- **Revisado:** `b835d35..8b7790d`: `67d9c4e` (O-B4-1 en la spec), `4c8c309` y `ac5a867` (C-B4-1) y `8b7790d`
+  (los mutantes 16 y 24). Ni el código de producción ni ningún test ajeno cambian; en `services/` solo cambian
+  `test_f059_alcance_cerrado.py` y `test_f059_pipeline_volcado.py`.
+- **Nivel de rigor:** `critico`.
+
+### C-B4-1: corregido
+
+`ASERCIONES_QUE_CAMBIAN` es ahora `dict[fichero, dict[función, frozenset[aserción]]]`, con el texto normalizado
+(`ast.unparse`) de cada aserción de la base que se sustituye. La guarda,
+`test_f059_r41_ningun_ampliado_pierde_una_asercion`, usa `_perdidas_no_declaradas`, que exige
+`perdidas ⊆ declaradas` con multiplicidad (`Counter`): declarar una aserción permite perderla **una** vez. Añade
+además:
+- `test_f059_r41_c_b4_1_lo_declarado_es_lo_que_se_pierde`: no se puede declarar de más, que sería una puerta
+  abierta para relajar después;
+- `test_f059_r41_c_b4_1_quitar_una_asercion_no_declarada_da_rojo`: un control negativo sobre el fichero de verdad,
+  con mi G1.
+
+Lo he comprobado en un worktree de la rama (forzado, sin commit, ya retirado; `git status` limpio al terminar):
+
+| Prueba | Resultado |
+|---|---|
+| La guarda, sin tocar nada | 67 passed (los `test_f059_r41*`) |
+| **G1**: quitar `(conexion.commits, conexion.rollbacks) == (1, 0)` de `test_f056_r4_r7_…`, que tiene aserciones declaradas | **muerto**: `test_f059_r41_ningun_ampliado_pierde_una_asercion[tests/test_f056_repositorio_revision.py]` (y los dos nuevos) |
+| **Control**: quitar una aserción de `test_f056_r10_…`, que no está declarada | **rojo** |
+| **G2**: declarar de más (añadir a la tabla una aserción que sigue en el fichero) | **rojo**: `test_f059_r41_c_b4_1_lo_declarado_es_lo_que_se_pierde` |
+
+He contrastado la tabla con los diffs de la review del Bloque 2: las aserciones declaradas son exactamente las
+que cambiaron de cifra o de posición. **Conforme.** O-B4-3 sigue en pie: T20 vacía `AMPLIADOS_EN_EL_BLOQUE_5` y
+declara las suyas con este formato.
+
+### Los equivalentes, según lo que decidió el humano (2026-10-17, por escrito)
+
+- **E-1, los 13 (H04, H06, H08, H15, H19, H22, H24, H25, A01, A06, A10, A24 y A25): aceptados por el humano.
+  Cerrado.**
+- **E-2, los mutantes 16 y 24: no aceptados.** `8b7790d` añade dos tests de F-059:
+  `test_f059_t17_m16_el_ensayo_no_empareja_mal_un_parte_con_su_resultado` y
+  `test_f059_t17_m24_el_volcado_no_empareja_mal_un_parte_con_su_resultado`. Sustituyen `interpretar_respuesta` por
+  una que devuelve un resultado de menos, anulan el guardado (para que no salte antes `_exigir_que_casen`) y exigen
+  el `ValueError` del `zip(..., strict=True)`. Repetidos en una copia desechable de `8b7790d`, con **solo** los
+  tests de F-059:
+
+| Mutante | Resultado | Test de F-059 que lo caza |
+|---|---|---|
+| 16 · `volcado.py:339` `strict=True` → `False` (ensayo) | **muerto** | `test_f059_t17_m16_el_ensayo_no_empareja_mal_un_parte_con_su_resultado` |
+| 24 · `volcado.py:479` `strict=True` → `False` (volcado) | **muerto** | `test_f059_t17_m24_el_volcado_no_empareja_mal_un_parte_con_su_resultado` |
+
+### O-B4-1 en la spec (`67d9c4e`): §11 coincide con lo implementado
+
+Lo he cotejado contra `interface_adapters/api/volcado.py` y `CODIGOS_DEL_VOLCADO` y `HTTP_DEL_VOLCADO` de
+`function_app.py`:
+- **Los errores por ruta**, con su código y sus claves propias (`motivo`, `codigo_pasarela`, `en_duda` y
+  `total`).
+- **Los 409 del login**, con mensaje propio y sin el correo ni el login, por §15.
+- **Los 503**, con `volcado_deshabilitado` para el entorno o la ventana, y `base_de_datos_no_disponible` también
+  cuando la configuración de la base está incompleta.
+- **`envio` = `cuerpo_de_parte`**, con el ejemplo corregido: la referencia está y no hay `descripcion_larga` sin
+  detalle.
+- **Los nulos de un ensayo sin nada que mandar.**
+- **Las formas de `excluidas`, `avisos` y el panel**, con `ultimo_volcado` sin `volcado_por`.
+
+Todo coincide. El registro va en §20 como mecánico. **Conforme.**
+
+### Las demás
+
+- **O-B4-2 (repetir T8): cerrado.** El líder la repitió sobre `324aff0` contra PostgreSQL efímera en Docker:
+  **104 passed in 56.94s**.
+- **P-4: no bloquea.** El humano lo deja como encargo pendiente en
+  `arnes-base/ENCARGO_pendiente_la_suite_no_lee_el_env.md` (`d66f897`).
+
+### Verificación
+
+Desde el scratchpad, sin `.env` ni `init.sh`:
+
+| Verificación | Resultado |
+|---|---|
+| Todos los `test_f059_*.py` (con el de alcance) y las guardias de F-006 y F-005 | **1030 passed in 110.45s** |
+| `ruff check` de los dos tests tocados (desde la raíz) | `All checks passed!` |
+| GUID en el diff | ninguno |
+
+No relanzo la suite entera: desde la review (9094 passed) solo cambian dos ficheros de tests de F-059, y los he
+ejecutado completos. El resto es spec e informes en Markdown.
+
+### Checkpoints que cambian
+
+- [x] **C4 bis · cero supervivientes sin aceptación escrita**: los 13 de E-1, aceptados por el humano; 16 y 24,
+  muertos con tests de F-059; V05d y A09, aceptados antes.
+- [x] **C4 bis · la guarda de «no se toca» ve lo que tiene que ver**: C-B4-1 corregido, con G1, el control y G2
+  comprobados.
+- [x] **C4 · MANUAL**: T8 en verde (104 passed, el líder, sobre `324aff0`).
+- El resto, como en la review del Bloque 4.

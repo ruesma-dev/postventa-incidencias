@@ -3343,7 +3343,7 @@ solo miraba **definiciones**: una importación o una sentencia de módulo nueva 
 el modelo de `_resto_del_modulo` de `test_f060_alcance_cerrado.py`:
 
 - `IMPORTACIONES_DE_F059`: por cada fichero de `PIEZAS_DE_F059`, las importaciones que F-059 **añade**, escritas a
-  mano como `(módulo, nombre, alias)` (36 en 9 ficheros; `settings.py` y `usuarios_sigrid.py`, ninguna), sacadas del
+  mano como `(módulo, nombre, alias)` (34 en 9 ficheros; `settings.py` y `usuarios_sigrid.py`, ninguna), sacadas del
   diff con la base fija y contrastadas una a una (la de `paso_cierre.py` es `VerificadorDeLoginPort`, la de
   `errores.py` es `UUID`, las de `function_app.py` son los ocho errores y las cuatro del borde, …).
 - `_es_definicion`, `_importaciones` (nombre a nombre: un nombre más en una línea que ya estaba también se ve) y
@@ -3362,4 +3362,4 @@ tres): G3 (`app.route(route="volcado/otra", …)(volcado)` al final de `function
 `repositorio_revision_pg.py`), por `test_f059_c_f_1_cada_fichero_tocado_solo_gana_las_importaciones_declaradas`.
 
 **Verificación** (desde el scratchpad, sin `.env` ni `init.sh`): `test_f059_alcance_cerrado.py`, **165 passed in
-82.97s** (127 + 38 nuevos de C-F-1, O-B4-3 incluido); `ruff check`, `All checks passed!`.
+82.97s** (los 130 de antes y 35 nuevos de C-F-1); `ruff check`, `All checks passed!`.

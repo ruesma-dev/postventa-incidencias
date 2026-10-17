@@ -253,7 +253,7 @@
 
 ## Bloque 5 · Infraestructura y documentación
 
-- [ ] **T18 · RED**: `tests/test_f059_scripts_infra.py` (R38, R39: texto de
+- [x] **T18 · RED**: `tests/test_f059_scripts_infra.py` (R38, R39: texto de
   `27_ventana_volcado.ps1` —sin parámetros solo lee, `-Cerrar` sin palabra,
   `-Abrir` con palabra y aviso, relee—; `28_volcado_lectura_sigrid.ps1` solo
   `sql/read`, con `?`, sin columnas de nombre, propietario ni persona;

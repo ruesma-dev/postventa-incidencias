@@ -1240,3 +1240,28 @@ def test_f059_r4_r28_t17_una_incidencia_solo_ensayada_no_tiene_objeto_volcado(mu
     assert _filas(listado)[str(ID(1))]["volcado"] is None
     assert _filas(listado)[str(ID(1))]["estado"] == "aprobada"
     assert [c["ultimo_volcado"] for c in panel["candidatas"]] == [None]
+
+
+@pytest.mark.parametrize("ruta", ["ensayo", "volcar"])
+def test_f059_r9_r15_r30_t17_con_n_50_se_admiten_50(monkeypatch, ruta):
+    """Mutante #49 de la campaña: el tope de la pasarela, 50, es **inclusive**. Con
+    `N` = 50, un cuerpo de 50 pasa la validación y llega a la fábrica (que aquí
+    responde que la ventana está cerrada, para no construir nada más)."""
+    from domain.models.errores import VolcadoDeshabilitado
+
+    def fabrica_cerrada(_ajustes: object) -> object:
+        raise VolcadoDeshabilitado("la fábrica de la prueba no construye nada")
+
+    monkeypatch.setattr(modulo, "obtener_ajustes", lambda: _completos(VOLCADO_PARTES_POR_LLAMADA="50"))
+    monkeypatch.setattr(modulo, "construir_ensayador", fabrica_cerrada)
+    monkeypatch.setattr(modulo, "construir_volcador", fabrica_cerrada)
+    _repositorios_prohibidos(monkeypatch)
+    cuerpo = (
+        _cuerpo_ensayo(*range(1, 51))
+        if ruta == "ensayo"
+        else _cuerpo_volcado(ENSAYO, [(n, 1) for n in range(1, 51)])
+    )
+
+    estado, datos = _leer(_ensayo(cuerpo) if ruta == "ensayo" else _volcar(cuerpo))
+
+    assert (estado, datos.get("codigo")) == (503, "volcado_deshabilitado")

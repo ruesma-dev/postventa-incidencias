@@ -3035,3 +3035,291 @@ se tocó), con los siete ficheros de tests de F-059 solos: el mutante 16, **muer
 `…_m16_…`); el 24, **muerto** (`1 failed, 795 passed`; solo `…_m24_…`). `test_f059_pipeline_volcado.py`: 76 passed;
 `ruff check`, sin avisos. Anotado en `progress/mutacion_F-059_bloque4.md`. Con esto, de la campaña del Bloque 4 no
 queda ningún superviviente: **66/66 muertos** (los dos últimos, tras la campaña).
+
+## Bloque 5 · Infraestructura y documentación · T18–T22 · 2026-10-17
+
+Encargo del líder tras el APPROVED de la re-review del Bloque 4 (`9a50469`): T18 a T22, y parar; **T23 (`init.sh`)
+la lanza el líder** (P-4). Soy un implementer nuevo: leídos la spec entera (requirements, design —sobre todo §11,
+§13, §14, §17, §21.3— y tasks), este informe (Bloque 4, C-B4-1 y el formato fino de `ASERCIONES_QUE_CAMBIAN`), las
+reviews del Bloque 4 y su re-review, `docs/CONVENTIONS.md` y `docs/ARCHITECTURE.md`.
+
+**Hash anterior a T18: `9a50469`.** Todo lo que lee código o ejecuta tests, lanzado desde
+`<scratchpad>/b5` con rutas absolutas: **ningún proceso mío ha leído el `.env`** y `init.sh` no se ha lanzado. Los
+mutantes de test y de código, en worktrees desechables del scratchpad, ya retirados (`git worktree list` sin
+ninguno del scratchpad; el árbol de trabajo, solo con el `progress/current.md` del líder, que no he tocado). Nada
+contra Azure ni contra Sigrid: los scripts de `infra/` se han escrito y se han comprobado **por su texto**, con el
+analizador de PowerShell (sin ejecutarlos) y, el `28_`, con un lector falso (abajo).
+
+### T18 · Fase RED (`2a198f7`, y `42a2d9d`)
+
+Dos ficheros nuevos de tests:
+
+- **`tests/test_f059_scripts_infra.py`** (38 tests; R38, R39). `27_ventana_volcado.ps1`: la constante
+  `VOLCADO_HABILITADO` y ninguna otra ventana; sin parámetros solo lee y sale antes de la primera escritura; la App
+  Setting ausente es cerrada y la ilegible, desconocida; en palabras; `-Abrir` avisa con las tres frases de §13
+  **antes** de la palabra y la palabra antes de escribir; `-Cerrar` sin `Read-Host`; tras escribir relee; un solo
+  `--settings`; códigos de salida distintos; no habla con la pasarela; la ayuda dice D-3 y D-4.
+  `28_volcado_lectura_sigrid.ps1`: por el `08_`; solo `SELECT` con `?` y sin `$` dentro del SQL; ninguna columna de
+  descripción, propietario, persona, teléfono, correo, urgencia ni nombre (y la ubicación solo por `LEN`); lo que
+  pide R39 (los códigos de estado, tipo y oficio, la longitud, intervinientes, causantes, UPV de la obra); el
+  `MAX(cod)` de la serie del mes con cuatro cifras; el listado `PVI-%`; la referencia con `-cnotmatch '^PVI-'`; el
+  veredicto del común. `desplegar_backend.ps1`: `VOLCADO_HABILITADO=false` **en su línea** de `$ajustes`, una sola
+  vez, sin variable, sin `true` y fuera del bloque de `-VentanasCerradas` (con un control negativo de cuatro
+  variantes compuestas en memoria), `VOLCADO_PARTES_POR_LLAMADA` con el defecto de `config/settings.py`, la ventana
+  enseñada antes de `DESPLEGAR` y la cabecera que lo explica. Los tres: ASCII, sin BOM, CRLF, ayuda con ejemplos y
+  ningún valor (GUID, host, credencial, `RS` real, correo, IP, nombres de recurso de `test_f010_scripts_infra.py`).
+- **`tests/test_f059_documentacion.py`** (44 tests; R40). `ARCHITECTURE.md` (la sección nueva, su sitio, los seis
+  estados leídos del `Enum`, el flujo, la tabla, la ventana, el troceo, el reintento, SAT/PTE, la enmienda en F-056 y
+  las dos filas de la tabla de sistemas); `INTEGRACION.md` (cabecera, §2 con el árbol, §3 bis, §4, §7, §8 con las
+  tres rutas **leídas de `function_app.py`**, «Los veinticuatro» sin «Los veintiuno», la fila de «Qué NO está
+  desplegado», §9); `DESPLIEGUE.md` (§4 ter y la fila del `desplegar_backend.ps1`); y ningún valor ni correo en lo
+  nuevo. Los controles leen el código (`EstadoRevision`, `ModoVolcado`, `EstadoEvento`, el `.sql`, las rutas, el
+  `.env.example`) para no mirar nada vacío.
+
+Comando y traza (desde `<scratchpad>/b5`):
+
+```
+<repo>/services/postventa-api/.venv/Scripts/python.exe -m pytest <repo>/services/postventa-api/tests/test_f059_scripts_infra.py <repo>/services/postventa-api/tests/test_f059_documentacion.py -q -p no:cacheprovider --tb=line
+FF.FFFF.FFFF.FFFFFFFFFFFFFFFFFFFFF.FFF...FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 87%]
+FFFFFFFFFF                                                               [100%]
+================================== FAILURES ===================================
+E   AssertionError: falta 27_ventana_volcado.ps1
+    assert False
+     +  where False = is_file()
+     +    where is_file = WindowsPath('<repo>/infra/27_ventana_volcado.ps1').is_file
+<repo>\services\postventa-api\tests\test_f059_scripts_infra.py:161: AssertionError: falta 27_ventana_volcado.ps1
+E   AssertionError: falta 28_volcado_lectura_sigrid.ps1
+E   FileNotFoundError: [Errno 2] No such file or directory: '<repo>\\infra\\27_ventana_volcado.ps1'
+[... un FileNotFoundError por cada test de los dos scripts, que aún no existen ...]
+E   AssertionError: assert ['VOLCADO_HAB... veces, no 1'] == []
+<repo>\services\postventa-api\tests\test_f059_scripts_infra.py:534: AssertionError: assert ['VOLCADO_HAB... veces, no 1'] == []
+E   AssertionError: assert [] == ['5']
+<repo>\services\postventa-api\tests\test_f059_scripts_infra.py:572: AssertionError: assert [] == ['5']
+E   assert 0 >= 1
+<repo>\services\postventa-api\tests\test_f059_scripts_infra.py:584: assert 0 >= 1
+E   AssertionError: la cabecera no dice «VOLCADO_HABILITADO»
+E   AssertionError: no se encuentra la sección «## Volcado a Sigrid (F-059)»
+<repo>\services\postventa-api\tests\test_f059_documentacion.py:113: AssertionError: no se encuentra la sección «## Volcado a Sigrid (F-059)»
+E   AssertionError: assert ['060'] == ['059']
+<repo>\services\postventa-api\tests\test_f059_documentacion.py:295: AssertionError: assert ['060'] == ['059']
+E   AssertionError: no se encuentra la sección «### Con F-059 · el volcado a Sigrid»
+E   AssertionError: no se encuentra la sección «### Qué escribimos como PARTE NUEVO (F-059)»
+E   AssertionError: no se encuentra la sección «### Las de F-059 (el volcado)»
+E   AssertionError: no se encuentra la sección «## 4 ter · La ventana del volcado: `/api/volcado/volcar`»
+=========================== short test summary info ===========================
+75 failed, 7 passed in 2.19s
+```
+
+Los 7 en verde son los controles negativos (los detectores de valores y de la ventana del despliegue, el control de
+correos) y `test_f059_r40_los_controles_leen_algo_del_codigo`, que mira el código del Bloque 4 y tiene que estar en
+verde antes y después. `42a2d9d` cambia un literal del control de correos a un dominio `.invalid`.
+
+**Desviación de `tasks.md` T18, justificada: ASCII puro, sin BOM y CRLF, no «UTF-8 con BOM».** `infra/` es una de
+las «excepciones documentadas» de `docs/CONVENTIONS.md`: `test_f010_prompt_keys_infra.py` lee **todos** los `.ps1`
+como `ascii` (un BOM tumba la recolección de la suite entera) y `test_f010_scripts_infra.py` lee así
+`desplegar_backend.ps1`; tocar esos tests no está en las excepciones de R41. Un fichero ASCII ya es UTF-8 válido. Es
+la misma desviación, por la misma causa, que dejaron escrita F-013 y F-036 (`test_f013_scripts_infra.py`,
+`test_f036_scripts_infra.py`), y la cabecera del test nuevo lo explica. **Para el reviewer**: si se prefiere al pie
+de la letra, haría falta ampliar `test_f010_prompt_keys_infra.py`, que no es una excepción declarada.
+
+### T19 · Los scripts (`c4874ea`, y `1d7a1ed`)
+
+- **`infra/27_ventana_volcado.ps1`**, calco de `19_ventana_escritura.ps1` sobre `VOLCADO_HABILITADO`: `-Estado` por
+  omisión (solo lee), `-Abrir` con el aviso de §13 («Abre la CREACION DE PARTES en el ERP de produccion / para
+  cualquier usuario del grupo con login de Sigrid … El siguiente despliegue la vuelve a cerrar (D-3)») y la palabra
+  `ABRIR`, `-Cerrar` sin preguntar, y la relectura. Su ayuda dice D-3, D-4, por qué es una ventana aparte del cierre
+  y que la comprobación que vale es la del borde (503 `volcado_deshabilitado`). No toca `19_` ni `22_`.
+- **`infra/28_volcado_lectura_sigrid.ps1`**, solo `sql/read` por el `08_`. Dos modos: con `-Referencia PVI-…`, la
+  foto de un parte (cuántos `tip 708` con esa referencia en `RCPCLI`, **en cualquier obra**, y del parte: `cod`,
+  códigos de estado, tipo y oficio, `LEN(resubi)`, intervinientes, causantes y si su UPV es de la obra; veredicto
+  `PASA` con **un** parte de la obra); sin ella, los partes `PVI-` de la obra (`cod`, estado, referencia), para
+  localizar lo que haya que anular (§14). Los dos, el `MAX(cod)` de la serie del mes (`RS<aa>.<mm>/` + cuatro
+  cifras, como `patron_de_cod` de `sigrid-api`). Las consultas, contrastadas con `parte_reclamacion_statements.py`
+  de `sigrid-api` (las columnas de `rcp` y `rcpint` y el `conext` de la idempotencia) y con `sigrid_tablas.md`. De
+  la obra solo se lee `ide` y `cod`, no su nombre. Decisión mía: la serie del mes sale de la hora local del puesto
+  (Madrid, como numera Sigrid), y la consulta del `MAX(cod)` no filtra por `emp` (la serie `RS` es solo de
+  `tip 708`).
+- **`infra/desplegar_backend.ps1`**: `"VOLCADO_HABILITADO=false",` y `"VOLCADO_PARTES_POR_LLAMADA=5",` en `$ajustes`,
+  cada una en su línea, **con el literal** (sin variable: no hay nada que `-VentanasCerradas` pueda cambiar), al
+  lado de `CIERRE_HABILITADO`; la cabecera (párrafo «LA VENTANA DEL VOLCADO SE DESPLIEGA CERRADA EN TODOS LOS
+  DESPLIEGUES» y la nota en `.PARAMETER VentanasCerradas`) y una línea más en el resumen previo a la confirmación y
+  en el `RESULTADO`. Ninguna variable `SIGRID_*` nueva (lo fija `test_f010_r28_…`).
+
+**Tests de scripts de F-010, F-012 y F-051 que fijan las App Settings: ninguno había que ampliarlo.** Los de
+`desplegar_backend.ps1` comprueban las dos ventanas abiertas (`problemas_de_ventana`), el conjunto de `SIGRID_*` y
+la guarda de vacías; ninguno enumera `$ajustes` entera. Los tres siguen en verde sin tocarlos.
+
+**Dos correcciones dentro del bloque, sin maquillar:** (1) mi `test_f059_r38_la_ventana_no_habla_con_la_pasarela`
+exigía «ni un `/api/`» en el código del `27_`, que es demasiado: sus mensajes nombran `POST /api/volcado/volcar`,
+nuestro borde. Pasa a exigir ni `/api/sql/` ni `/api/sigrid/` ni HTTP propio (va en `c4874ea`). (2) la ayuda del
+`28_` decía «ni `sql/write`», y la guarda de R36 de T16 (`test_f059_r36_ningun_fichero_de_codigo_gana_un_sql_write`)
+cuenta el `.ps1` **entero**, ayuda incluida, a propósito: lo vio en cuanto el fichero entró en el diff (no lo veía
+mientras estaba sin commitear, porque `git diff` no lista lo no seguido). Reescrita sin nombrarlo, `1d7a1ed`.
+
+**Comprobaciones:** el analizador de PowerShell (`[Parser]::ParseFile`, sin ejecutar) da **0 errores** en los tres.
+El `28_`, ejecutado **en el scratchpad** con un `08_` doble (el real cargado y `Invoke-SigridLectura` sustituida por
+respuestas fijas: sin red; la raíz, `https://ejemplo.invalido`): con referencia, la tabla de 14 filas y `FOTO DEL
+PARTE : PASA`; sin ella, el listado y `FOTO DE LA OBRA : PASA`; con `pvi-x`, el mensaje de la referencia y la
+salida de parámetro. Verificación de `tasks.md` T19 (`test_f059_scripts_infra.py`, `test_f010_scripts_infra.py`,
+`test_f012_scripts_infra.py`, `test_f051_scripts_infra.py`, `test_f051_sin_caracteres_de_control.py`): **308 passed,
+3 skipped in 10.22s**. Los demás que barren `infra/` (`test_f010_prompt_keys_infra.py`, `test_f013_*`,
+`test_f036_scripts_infra.py`, `test_f006_repo_sin_identificadores.py`, `test_f005/f006/f009_scripts_infra.py`):
+verdes, dentro de la suite entera.
+
+### T20 · La documentación y el grupo B de R41 (`a623bea`)
+
+- **`docs/ARCHITECTURE.md`**: la sección **«Volcado a Sigrid (F-059)»** tras la de F-060 (el flujo, los seis estados,
+  la tabla, el parte que se manda, la ventana y el troceo, por qué el reintento es seguro, que el parte queda en
+  SAT y Posventa lo pasa a PTE a mano, dónde vive cada pieza y lo que no hace); en la de F-056, la enmienda de los
+  seis estados ya estaba (T2) y añado otra en «Lo que hereda F-040» (lo que dejaba a F-040 lo hace F-059; F-040 se
+  queda la página); y en la tabla de sistemas, «Desde F-059» en las filas de `sigrid-api` y de PostgreSQL.
+- **`docs/INTEGRACION.md`**: la cabecera (Fecha 2026-10-17, Última feature F-059, **«no está desplegada»** —no
+  «sin desplegar», que `test_f060_r43_la_cabecera_…` prohíbe en la cabecera—, y F-060 con su despliegue detrás); §1
+  (las filas de PostgreSQL y de `sigrid-api`, que es «qué consumimos»: no estaba en la lista de T20, pero dejarla sin
+  la tercera escritura la haría falsa); §2 (el árbol, la enmienda «ya no son catorce, son quince» y «Con F-059 · el
+  volcado a Sigrid»); §3 bis («Qué escribimos como PARTE NUEVO (F-059)»: las cinco filas, tipo `0002`, `PVI-` en
+  `RCPCLI`, el `usu`, SAT y **Posventa lo pasa a PTE a mano**, cómo se reconocen y se anulan —UI, NO PROCEDE, nunca
+  `DELETE`—, las puertas, el reintento, el volumen y que no pide nada a `sigrid-api`); §4 («Las de F-059»: las dos
+  variables); §7 (la enmienda del correo de quien vuelca —corrige el «ninguna otra tabla gana una columna de correo»
+  de la de F-056— y la **cuarta superficie**); §8 (las tres filas, el párrafo «Desde F-059» con el contrato y los
+  errores, «Los tres endpoints de F-059 no dependen de…», **«Los veinticuatro quedan en nivel»** y la fila de «Qué NO
+  está desplegado»); §9 (nueve filas).
+- **`docs/DESPLIEGUE.md`**: **§4 ter · La ventana del volcado** (publicada cerrada con y sin `-VentanasCerradas`, D-3,
+  D-4, los tres usos de `27_`, el troceo, la secuencia de un volcado, las fotos con `28_`, SAT/PTE y la anulación), la
+  fila 2 de la tabla de scripts y una fila en §8.
+- **El grupo B de §21.3, ampliado sin relajar** (O-B4-3):
+
+| Test | Qué cambia | Aserciones que se pierden (declaradas) |
+|---|---|---|
+| `test_f012_documentacion.py` | `NUMERALES` hasta 24; `test_f012_r68_…` gana `"Los veintiuno quedan en nivel" not in texto` | ninguna |
+| `test_f053_documentacion.py` | `CUENTA_VIGENTE` = «Los veinticuatro»; `test_f053_t6_…` gana «Los veintiuno» en `not in` | ninguna (la aserción nombra la constante) |
+| `test_f019_documentacion.py` | `test_f019_r32_…`: «Los veinticuatro» en `in`, «Los veintiuno» en `not in` | `'Los veintiuno quedan en nivel' in seccion_ocho` |
+| `test_f056_documentacion.py` | `test_f056_r44_la_seccion_ocho_…`: la tupla dice «Los veinticuatro» y gana «Los veintiuno» en `not in` | ninguna (la aserción es `texto in seccion`) |
+| `test_f060_documentacion.py` | `…_la_seccion_ocho_…`: igual, «Los veintiuno» entre las viejas; `…_la_cabecera_…`: una fecha y una última feature, fecha ≥ 2026-10-14, F-060 y su despliegue constando, y todo lo demás que ya exigía | `'Última feature que lo tocó: F-060' in cabecera`, `'Fecha: 2026-10-14.' in cabecera` |
+
+  **Una decisión en la cabecera de F-060, para el reviewer**: el gemelo que F-060 escribió para F-056 exige además
+  `int(feature) >= 56`. Aquí `>= 60` sería falso (F-059 toca el documento **después** que F-060), así que «no
+  retroceder» lo dice solo la **fecha**; está en el docstring.
+- **`test_f059_alcance_cerrado.py`**: `AMPLIADOS_EN_EL_BLOQUE_5` **vacío** (se conserva, vacío, para que se vea que no
+  queda ninguno a medias), los cinco en igualdad con `AMPLIADOS`, las tres aserciones de la tabla en
+  `ASERCIONES_QUE_CAMBIAN` con el formato de C-B4-1 (texto de `ast.unparse`, por fichero y función, sacado del diff
+  con la base fija), y un test nuevo, `test_f059_r41_o_b4_3_ningun_ampliado_queda_a_medias`, que exige el conjunto
+  vacío y los cinco en `AMPLIADOS`.
+
+**Controles negativos de la guarda**, en un worktree desechable forzado de la rama (ya retirado; el árbol de trabajo
+no se tocó): quitada una aserción **no** declarada de `test_f019_r32_…` (`"Los veinte …" not in`), quitada otra de la
+cabecera de F-060 (`"sin desplegar" not in cabecera`) y devuelto `test_f056_documentacion.py` a
+`AMPLIADOS_EN_EL_BLOQUE_5`: **5 failed** —`…_ningun_ampliado_pierde_una_asercion[test_f019…]` y `[test_f060…]`,
+`…_lo_declarado_es_lo_que_se_pierde[test_f019…]` y `[test_f060…]`, y `…_o_b4_3_ningun_ampliado_queda_a_medias`—.
+Los tres mutantes de test mueren.
+
+Verificación de `tasks.md` T20 (los siete de documentación): **293 passed in 4.71s**; con las cuatro guardias de
+alcance (F-059, F-056, F-060, F-036): **472 passed, 80 skipped in 152.85s**. Los demás tests que leen los documentos
+(F-004, F-005, F-006, F-009, F-010, F-012, F-013, F-019, F-025, F-026, F-028, F-030, F-049, F-051, F-056 y F-060 de
+alcance): **756 passed, 75 skipped**.
+
+### T21 · `azure-apps/postventa_incidencias.md` (`8f9a8a8` en `azure-apps`; marca en `de6d415`)
+
+El gemelo no es una copia literal (tiene su propia cabecera de revisiones y algunos párrafos adaptados), así que lo
+he refrescado aplicando **el mismo diff** de `INTEGRACION.md` de T20 en una copia del scratchpad: 12 de los 13
+trozos entran solos (con desplazamiento) y el de la cabecera, que no existe allí, se escribe a mano: Origen (la rama
+de F-059, **sin mergear ni desplegar**), Fecha 2026-10-17 y un recuadro «LO QUE CAMBIA EN ESTA REVISIÓN
+(2026-10-17)» con lo que consume de `sigrid-api` (`partes-reclamacion`, ninguna petición de cambio, ningún
+`sql/write`), lo que escribe en el ERP, la tabla, las dos variables y los tres endpoints; el de F-060 pasa a «LO QUE
+CAMBIÓ». Un enlace adaptado (`azure-apps/sigrid_api.md` → `sigrid_api.md`, como hace el resto del gemelo). Barrido:
+ningún GUID, IP, host ni correo. **Commit local, sin push**: `git -C azure-apps show --stat HEAD` enseña solo
+`postventa_incidencias.md` (247+, 7−). **`sigrid_api.md` §10 no se ha tocado** (la fila de consumidores es del líder
+al desplegar, T24).
+
+### T22 · Campaña final de mutación: **PARADA antes de lanzarla (estimación > 12 h)**
+
+Lo pide el encargo: estimar antes de lanzar y, si pasa de 12 horas, parar y dejar la decisión al humano.
+
+**Lo que mediría**: `alcance_de_feature("F-059", base="2d2efd7")` + `generar_mutantes`, calculado sin ejecutar nada:
+**3822 líneas en 19 ficheros y 203 mutantes** (`domain/models/volcado.py` 79, `application/pipelines/volcado.py` 25,
+`interface_adapters/api/volcado.py` 24, `function_app.py` 17, `infrastructure/sigrid/volcado.py` 16,
+`sentencias_volcado.py` 15, `situacion_volcado.py` 6, `repositorio_volcado_pg.py` 6, `domain/ports/volcado.py` 4,
+`infrastructure/sigrid/fabrica.py` 3, y 2 en cada uno de `settings.py`, `revision.py`, `repositorio_revision_pg.py` y
+`sentencias_revision.py`). El Bloque 5 no añade ninguno: no toca Python de producción.
+
+**La estimación**:
+
+| Dato | Valor |
+|---|---|
+| La suite entera hoy, en serie, desde el scratchpad | **1219.41 s** (9199 passed, 233 skipped), con la máquina al 11 % de CPU al empezar |
+| Coste por mutante y worker con 8 workers (Bloque 4, la campaña más reciente) | 2352 s, con la suite entonces en 1180 s: **≈ 2,0 veces la suite** (cada worker corre la suite con `-x` y los de F-059 caen al final del orden alfabético; `harness/rigor.json` midió el mismo factor de contención con 8 workers) |
+| Estimación central | 203 / 8 × (2,0 × 1219 s) ≈ **61.900 s ≈ 17 h** |
+| Cota baja | Lo que tardaron las cuatro campañas de bloque sumadas: 39.944 s ≈ **11,1 h**, pero con la suite a 472–1180 s; con la de hoy no baja de las 12 h |
+| Riesgo añadido | ≈ 2400 s por mutante bajo 8 workers es **más** que el `--timeout 1800` del comando: muchos acabarían en `timeout` y en el repaso **en serie**, que alarga aún más la campaña (como la primera del Bloque 4, abortada por eso) |
+
+**Alternativas, para que decida el humano** (la recomendación, la B):
+
+- **A · La campaña entera, tal cual**: unas **15–17 h** con 8 workers, y probablemente con `--timeout` subido (p. ej.
+  3600) para que la carga no la llene de timeouts; esto último cambia el comando de `tasks.md` y es decisión suya.
+- **B · El tramo nuevo desde el último bloque medido** (recomendada): **desde la campaña del Bloque 4 (`9db9847`) no
+  ha cambiado ni un fichero de producción** (`git diff --name-only 9db9847 HEAD -- services/` sin `tests`: vacío), así
+  que `--base 9db9847` no tiene nada que mutar. Y he comparado, mutante a mutante (fichero, texto de la línea,
+  columna, operador y cambio; sin el número de línea), la campaña entera con la unión de las cuatro de bloque (85 +
+  26 + 25 + 66 = 202, todas cerradas: 200 muertos por la herramienta y los dos del Bloque 4, 16 y 24, muertos por
+  sus tests después): **201 de los 203 son idénticos a uno ya medido**, y los **dos** que ninguna campaña de bloque
+  midió son de la corrección C-B1-1/C-B1-2, posterior a la del Bloque 1 y anterior a la base del Bloque 2,
+  `domain/models/volcado.py:364` (`_con_texto`): `or` → `and` y `not texto.strip()` → `texto.strip()`. **Los he
+  ejecutado a mano** en un worktree desechable de `HEAD` (ya retirado), con los tests de F-059 sin el de alcance y
+  `-x`: los **dos muertos**, por `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` (`1 failed, 324 passed`) y
+  por `test_f059_r6_el_parte_clave_a_clave` (`1 failed, 536 passed`). Coste de B: ya hecho; lo que queda es que el
+  humano la acepte en lugar de la campaña entera.
+- **C · La campaña entera con muestreo** (`--max-mutantes`, `--semilla`): p. ej. 64 mutantes en unas 5 h. No es una
+  campaña completa, y el nivel `critico` la pide.
+
+Si se elige A, el procedimiento sería el del Bloque 4: `--raiz` en un worktree limpio de la rama (el árbol principal
+tiene el `progress/current.md` del líder sin commitear) con un enlace de unión a la `.venv` del servicio, y los
+workers en sus worktrees de `HEAD`, que **no llevan `.env`** (no está versionado); `--workers 8` explícito (desde el
+scratchpad no se lee `harness/rigor.json`); y cada muerto, reverificado con los tests de F-059 solos.
+
+**No he lanzado nada de la campaña**, ni he tocado `features.json` ni `progress/current.md` (los dos del líder; el
+segundo tiene cambios suyos sin commitear).
+
+### Verificación final del bloque
+
+| Verificación | Resultado |
+|---|---|
+| **La suite entera del servicio** (`pytest <repo>/services/postventa-api/tests <repo>/services/postventa-api/tests_bbdd -q`), sobre `de6d415` | **9199 passed, 233 skipped in 1219.41s**, sin un rojo (los de base se saltan sin DSN). `42a2d9d`, después, solo cambia un literal de un test de F-059: esos dos ficheros, 82 passed |
+| `ruff check` (desde el scratchpad, con el `ruff` del repositorio) de los nueve ficheros de tests tocados | `All checks passed!` (y `ruff format` en los dos nuevos) |
+| Los tres `.ps1`, con el analizador de PowerShell | 0 errores |
+| Barrido de datos sensibles sobre `9a50469..HEAD` (2455 líneas añadidas) | ningún GUID, ninguna IP, ninguna URL, ningún host, ningún `RS` real; los únicos correos, los dos literales `.invalid` del control negativo |
+
+## Evidencias del Bloque 5
+
+| Evidencia | Valor |
+|---|---|
+| RED (T18) | **75 failed, 7 passed** in 2.19s (traza arriba) |
+| Verificación de T19 | 308 passed, 3 skipped in 10.22s |
+| Verificación de T20 | 293 passed in 4.71s; con las cuatro guardias de alcance, 472 passed, 80 skipped in 152.85s |
+| Tests nuevos | `test_f059_scripts_infra.py` (38) + `test_f059_documentacion.py` (44): **82 passed in 1.16s** |
+| Suite entera del servicio | **9199 passed, 233 skipped in 1219.41s**, sin un rojo |
+| Cobertura de las líneas cambiadas | **N/A en este bloque**: no cambia ni una línea de Python de producción (scripts, Markdown y tests). La `PUERTA COBERTURA` de la feature entera la da `init.sh` en T23 (el líder) |
+| Mutación del bloque | 0 mutantes (sin Python de producción nuevo) |
+| Mutación final (T22) | **No lanzada**: 203 mutantes estimados en ≈ 17 h (> 12 h). Alternativa B ejecutada: 201/203 ya medidos por las campañas de bloque y **2/2 restantes muertos a mano** por tests de F-059. Pendiente de la decisión del humano |
+| Controles negativos de la guarda de R41 | 3 mutantes de test, los 3 muertos (5 failed) |
+| Tests ajenos tocados | Los cinco del grupo B de §21.3 (`test_f012_`, `test_f053_`, `test_f019_`, `test_f056_` y `test_f060_documentacion.py`), cada uno en sus funciones declaradas, sin perder ninguna aserción salvo las tres declaradas; ninguno más |
+| Supervivientes abiertos | **Ninguno**. Ningún equivalente nuevo que aceptar |
+
+## Commits del Bloque 5
+
+| Tarea | Commit |
+|---|---|
+| T18 | `2a198f7`, `42a2d9d` |
+| T19 | `c4874ea`, `1d7a1ed` |
+| T20 | `a623bea` |
+| T21 | `8f9a8a8` (en `azure-apps`, local, sin push) y `de6d415` (la marca en `tasks.md`) |
+| T22 | **Parada** antes de lanzar (este informe) |
+
+**Parado aquí: `blocked` en T22, por la estimación.** T18–T21 están hechas y marcadas; T22 y T23 siguen sin marcar.
+Lo que el reviewer y el líder deberían mirar primero:
+
+1. **La decisión de T22** (A, B o C de arriba), que es del humano. Con B, T22 se cerraría con este análisis y los
+   informes de las cuatro campañas de bloque.
+2. **La codificación de los `.ps1`** (ASCII sin BOM frente a «UTF-8 con BOM» de T18), con su porqué.
+3. **La cabecera de F-060** sin la comparación del número de feature.
+4. Las formas que he elegido en el `28_` (los dos modos, el `MAX(cod)` sin `emp`, la serie por la hora local) y los
+   textos de §3 bis y §4 ter, que son lo que leerá quien vuelque la primera vez.

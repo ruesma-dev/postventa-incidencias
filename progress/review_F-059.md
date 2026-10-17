@@ -1382,3 +1382,93 @@ veredictos de bloque está respaldada también con los tests de hoy. **Conforme.
   parte con esa referencia, de la UPV elegida», no depende de esto.
 - **O-F-3 · Para T27.** Podar `progress/current.md` (pasar lo cerrado a `history.md`) y volver a lanzar
   `init.sh`.
+
+## Re-review final · 2026-10-17
+
+- **Veredicto:** **APPROVED**. **F-059 es apta para desplegar (T24).**
+- **Revisado:** `cd57620` (C-F-2, el líder), `1e620de` (C-F-1, el implementer) y `3ecbbea` (las cifras del
+  informe), sobre `2277707`.
+- **Nivel de rigor:** `critico`.
+
+### C-F-1: corregido
+
+`test_f059_alcance_cerrado.py` añade lo que faltaba para cada fichero de `PIEZAS_DE_F059`:
+- `IMPORTACIONES_DE_F059`: las importaciones que F-059 añade en cada fichero, escritas a mano como
+  `(módulo, nombre, alias)`;
+- `_importaciones`: nombre a nombre, con `Counter`;
+- `_es_definicion`: una asignación a algo que no es un nombre no cuenta como definición, con el criterio de F-060;
+- `_resto_del_modulo`.
+
+Y cinco tests nuevos:
+- que se declare cada fichero tocado;
+- que solo se ganen las importaciones declaradas y no se pierda ninguna;
+- que el resto del módulo quede igual que en la base;
+- que lo declarado esté importado de verdad;
+- y un control negativo compuesto en memoria, que ve G3, G5 y G6 y además un `if`, un `try`, un desempaquetado, un
+  atributo, un nombre añadido a una línea `from` que ya estaba y un alias. No ve, como debe, ni las definiciones, ni
+  los docstrings, ni el formato.
+
+Repetido en un worktree forzado de la rama, sin commit y ya retirado; `git status` limpio al terminar:
+
+| Prueba | Resultado |
+|---|---|
+| La guarda, sin tocar nada | **165 passed** (el control negativo, incluido) |
+| **G3**: una ruta anónima registrada con una sentencia de módulo en `function_app.py` | **muerto**: `test_f059_c_f_1_el_resto_del_modulo_de_cada_fichero_tocado_no_cambia[function_app.py]` |
+| **G5**: `_PERMITIDAS[EstadoRevision.DESCARTADA] = ()` en `domain/models/revision.py` | **muerto**: `…_el_resto_del_modulo_…[domain/models/revision.py]` |
+| **G6**: `import os` en `repositorio_revision_pg.py` | **muerto**: `…_cada_fichero_tocado_solo_gana_las_importaciones_declaradas[infrastructure/persistencia/repositorio_revision_pg.py]` |
+| **G7** (mío, aparte): `Mapping` importado de `typing` en vez de `collections.abc` en ese mismo fichero | **muerto**: el mismo test |
+
+`ruff check` del fichero, desde la raíz: `All checks passed!` **Conforme**, y el checkpoint de C4 bis («la guarda
+por definiciones ve también lo que no es una definición, con su control no ciego») pasa a `[x]`.
+
+### C-F-2: hecho
+
+`progress/current.md` tiene ahora «F-059 · Pendientes MANUAL del humano (Bloque 6 de `tasks.md`)». La
+precondición es esta review aprobada y «apta para desplegar». Los pasos:
+- **T24**: los cuatro comandos del worktree de publicación, **idénticos** a los de `tasks.md`, y que el tercero tiene
+  que decir «cerrada».
+- **T25**: la autorización expresa para una sola escritura, en la 0626, y los siete pasos con sus comandos (`28_`
+  antes y después, `27_ -Abrir` y `-Cerrar` enseguida). **O-F-2 está dentro, en el paso 5**: comparar el `cod`
+  del parte con el `MAX(cod)`.
+- **T26**: `-Cerrar`, la anulación desde la UI (NO PROCEDE, nunca `DELETE` ni `sql/write`) y la comprobación con
+  `28_`.
+- **T27**: con O-F-3.
+
+Los comandos coinciden con el Bloque 6 de `tasks.md`; aquí llevan además el prefijo
+`powershell -ExecutionPolicy Bypass -File`. **Conforme.**
+
+Hay un matiz, que no bloquea: el resumen de `current.md` abrevia algunas comprobaciones de `tasks.md`, que remite
+como detalle. Por ejemplo:
+- en T25.3, que el ensayo con la ventana cerrada da 200 con un `previsto` y el `envio` esperado;
+- en T25.5, que el `MAX(cod)` avanzó en uno;
+- en T26, los demás `PVI-` de la prueba y la vuelta al commit anterior con `-VentanasCerradas` si el defecto es
+  del código.
+
+**Durante T25 y T26 el guion que manda es el de `tasks.md`**, que el propio `current.md` cita.
+
+### Sin cambios de producción desde T23
+
+Desde `a2ab36b`, el commit sobre el que el líder lanzó T23, solo cambian:
+- `services/postventa-api/tests/test_f059_alcance_cerrado.py` (C-F-1);
+- `progress/current.md`, `progress/impl_F-059.md` y `progress/review_F-059.md`;
+- y la marca de T23 en `tasks.md`.
+
+**Ningún fichero de producción, ni de `infra/`, ni de `docs/`.** No hace falta repetir `init.sh` antes de desplegar:
+el código que se publica es el que midió T23 (9199 passed, cobertura al 100,0 %). El único test nuevo pasa entero
+(165 passed). T27 lo volverá a lanzar.
+
+### Checkpoints que cambian respecto a la review final
+
+- [x] **C4 · Las MANUAL pendientes, en `current.md` con su comando exacto**: C-F-2.
+- [x] **C4 bis · La guarda por definiciones ve lo que no es una definición**: C-F-1.
+- El resto, como en la review final: todos `[x]` o N/A justificados. T24–T27 quedan MANUAL o de cierre, y T24 tiene
+  como precondición este APPROVED.
+
+### Para el despliegue y lo que queda
+
+- **Apta para desplegar (T24)**: merge a `dev` y publicación desde un worktree limpio de `dev`, con la ventana
+  **cerrada**, que el `27_` sin parámetros tiene que confirmar.
+- **T25 solo con la autorización expresa del humano para una escritura**, en la 0626, y la ventana cerrada
+  enseguida.
+- Siguen en pie las observaciones O-F-1 (la excepción ASCII de `infra/` en `CONVENTIONS.md`) y O-F-3 (podar
+  `current.md` en T27), y las propuestas P-1 a P-4, que son del humano.

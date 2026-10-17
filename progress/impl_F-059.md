@@ -3323,3 +3323,14 @@ Lo que el reviewer y el líder deberían mirar primero:
 3. **La cabecera de F-060** sin la comparación del número de feature.
 4. Las formas que he elegido en el `28_` (los dos modos, el `MAX(cod)` sin `emp`, la serie por la hora local) y los
    textos de §3 bis y §4 ter, que son lo que leerá quien vuelque la primera vez.
+
+## T22 · Cerrada por la opción B · 2026-10-17
+
+**Decisión del humano (2026-10-17, por escrito, transmitida por el líder): la opción B.** La campaña de la
+herramienta del tramo entero no se lanza. T22 se cierra con lo que ya está arriba, ahora en
+**`progress/mutacion_F-059.md`**: la cabecera con la decisión, el alcance calculado (203 mutantes en 19 ficheros), la
+**tabla de equivalencias mutante a mutante** con las cuatro campañas de bloque (201/203 idénticos a uno ya medido,
+todos muertos; 16 y 24, por sus tests), la tabla de los **dos muertos a mano** (`domain/models/volcado.py:364`,
+`_con_texto`) y las referencias a los cuatro informes de bloque. El mutante de bloque que no casa con ninguno de la
+campaña entera es el `if ensayo.actor_oid != actor_oid:` del Bloque 1, una línea que quitó B-1 (a). T22, marcada en
+`tasks.md` con la decisión. No se ha lanzado ninguna campaña ni `init.sh`; T23 sigue siendo del líder.

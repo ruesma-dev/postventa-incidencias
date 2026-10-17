@@ -293,7 +293,10 @@
   consumidores de `azure-apps/sigrid_api.md` §10 (Q-6) la actualiza **el líder
   al desplegar** (T24), no esta tarea. |
   Verificación: `git -C C:\Users\pgris\PycharmProjects\azure-apps show --stat HEAD` enseña solo `postventa_incidencias.md`
-- [ ] **T22 · Campaña final de mutación** del tramo entero. |
+- [x] **T22 · Campaña final de mutación** del tramo entero. **Cerrada por la opción B, decidida por el
+  humano el 2026-10-17** (la campaña de la herramienta, estimada en unas 17 h, no se lanzó: comparación mutante a
+  mutante con las cuatro campañas de bloque, 201/203 ya medidos, y los 2 restantes muertos a mano; detalle en
+  `progress/mutacion_F-059.md` y `progress/impl_F-059.md`, Bloque 5). |
   Verificación: `python -m harness.mutacion --feature F-059 --base 2d2efd7 --timeout 1800` → `progress/mutacion_F-059.md` sin supervivientes abiertos
 - [ ] **T23**: `bash harness/init.sh` en verde. |
   Verificación: `bash harness/init.sh`

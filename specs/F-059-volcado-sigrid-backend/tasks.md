@@ -305,7 +305,7 @@
 
 ## Bloque 6 · Publicar y verificar en producción (MANUAL, humano)
 
-- [ ] **T24 · MANUAL (humano)**: con T8 hecha y la review final APROBADA,
+- [x] **T24 · MANUAL (humano)** (2026-10-17: publicado `81049bc` «Merge: F-059…» de `dev` desde una copia limpia; 24 funciones, las tres `volcado*` incluidas; `VOLCADO_HABILITADO=false`, `VOLCADO_PARTES_POR_LLAMADA=5`; `27_` dice **cerrada**; `azure-apps` `ab28e40`, §10): con T8 hecha y la review final APROBADA,
   merge normal a `dev` desde un worktree aparte, y publicar el backend desde un
   worktree **limpio** de `dev`; la ventana del volcado queda **cerrada** (D-3):
   ```

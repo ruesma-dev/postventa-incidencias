@@ -1,6 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-059 · T24 hecha (humano y líder, 2026-10-17)** · Merge en `dev` `81049bc` (local, sin push); el humano publicó el
+> backend desde una copia limpia (`t40_desplegar_f059.ps1`). Leído en Azure: 24 funciones (las tres `volcado*`),
+> `VOLCADO_HABILITADO=false`, `VOLCADO_PARTES_POR_LLAMADA=5`; `27_ventana_volcado.ps1`: **cerrada**. `azure-apps`
+> `sigrid_api.md` §10 en `ab28e40` (local). Siguiente: **T25, que necesita la autorización expresa del humano para UNA
+> escritura en la 0626**.
+
 > ## F-059 · Pendientes MANUAL del humano (Bloque 6 de `tasks.md`), con su comando exacto (C-F-2, 2026-10-17)
 > Precondición de todo el bloque: review final de F-059 **APPROVED, «apta para desplegar»**. El detalle de cada paso está en
 > `specs/F-059-volcado-sigrid-backend/tasks.md`, Bloque 6.

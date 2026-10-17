@@ -298,7 +298,7 @@
   mutante con las cuatro campañas de bloque, 201/203 ya medidos, y los 2 restantes muertos a mano; detalle en
   `progress/mutacion_F-059.md` y `progress/impl_F-059.md`, Bloque 5). |
   Verificación: `python -m harness.mutacion --feature F-059 --base 2d2efd7 --timeout 1800` → `progress/mutacion_F-059.md` sin supervivientes abiertos
-- [ ] **T23**: `bash harness/init.sh` en verde. |
+- [x] **T23**: `bash harness/init.sh` en verde. (Líder, 2026-10-17, sobre `a2ab36b`: 9199 passed, 233 skipped in 2282.42s; PUERTA COBERTURA 100,0 % de 1122 líneas; ENTORNO LISTO.) |
   Verificación: `bash harness/init.sh`
 
 **Parar. Review final de F-059.**

@@ -1,6 +1,10 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-059 · T23 en verde (líder, 2026-10-17, sobre `a2ab36b`)** · `bash harness/init.sh`: 9199 passed, 233 skipped in
+> 2282.42s; PUERTA COBERTURA 100,0 % de 1122 líneas; ENTORNO LISTO. T22 por la opción B en `43fb673`. Siguiente: review
+> final de F-059 (Bloques 5 y feature entera); luego el Bloque 6 manual (T24 desplegar con la ventana cerrada).
+
 > **F-059 · desbloqueada (humano, 2026-10-17)** · T22 por la **opción B**: se cierra con la comparación mutante a
 > mutante (201/203 ya medidos) y los 2 de `_con_texto` muertos a mano. El reviewer la verifica en la review final.
 > Siguiente: el implementer marca T22; el líder lanza T23 (`init.sh`).

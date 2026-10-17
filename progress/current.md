@@ -1,6 +1,44 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> **F-059 · desbloqueada (humano, 2026-10-17)** · T22 por la **opción B**: se cierra con la comparación mutante a
+> mutante (201/203 ya medidos) y los 2 de `_con_texto` muertos a mano. El reviewer la verifica en la review final.
+> Siguiente: el implementer marca T22; el líder lanza T23 (`init.sh`).
+
+> **F-059 · `blocked` en T22 (implementer, 2026-10-17)** · Bloque 5: T18 `2a198f7`/`42a2d9d`, T19 `c4874ea`/`1d7a1ed`,
+> T20 `a623bea`, T21 `8f9a8a8` (azure-apps, local) y `de6d415`; suite entera 9199 passed. T22 no lanzada: 203 mutantes,
+> ≈ 17 h estimadas (> 12). Opciones para el humano: **A** entera (15–17 h, quizá `--timeout 3600`); **B** (recomendada,
+> ya ejecutada) 201/203 idénticos a mutantes ya medidos en las campañas de bloque y los 2 restantes (`_con_texto`)
+> muertos a mano por tests de F-059; **C** muestreo. Detalle: `progress/impl_F-059.md`, «T22». Luego T23 (líder) y review final.
+
+> **F-059 · Bloque 4 APPROVED (re-review, 2026-10-17, sobre `8b7790d`)** · C-B4-1 cerrado; mutantes 16 y 24 muertos por
+> tests de F-059; O-B4-1 en la spec. Lanzado el **Bloque 5 (T18–T22)** con un implementer nuevo; T23 (`init.sh`) la
+> lanza el líder después (los subagentes no, por P-4). T22 (campaña del tramo entero): si estima más de 12 h, para y
+> decide el humano.
+
+> **F-059 · Review del Bloque 4: CHANGES_REQUESTED (reviewer, 2026-10-17, `b835d35`)** · C-B4-1 (la guarda de R41
+> eximía funciones enteras) corregido en `4c8c309`; O-B4-1 (formas de §11) en la spec, `67d9c4e`. **Decisiones del
+> humano (2026-10-17, por escrito):** acepta como equivalentes los **13 de E-1** (H04, H06, H08, H15, H19, H22, H24,
+> H25, A01, A06, A10, A24, A25); los **mutantes 16 y 24 (E-2) no se aceptan**: un test que fije la alarma de
+> `zip(strict=True)` (en curso con el implementer); **P-4** (que la suite no lea el `.env`) **solo como encargo
+> pendiente**: `arnes-base/ENCARGO_pendiente_la_suite_no_lee_el_env.md`, commit local. Después: re-review del Bloque 4.
+
+> **F-059 · T8 EN VERDE (líder, 2026-10-17, sobre `324aff0`)** · `infra/pruebas_bbdd_efimera.ps1`: **104 passed in
+> 56.94s** (72 s con el contenedor). Arreglo del ayudante `_resultado` en `324aff0` (solo el test). T8 ya no bloquea el cierre.
+
+> **F-059 · Bloque 4 hecho (implementer, 2026-10-17, `cc49cba`)** · T13–T17; mutación 64/66 (2 equivalentes) y 75 a mano
+> (13 equivalentes): **15 equivalentes pendientes de aceptación del humano** tras la review. En review (reviewer
+> `a44b8bb12f48e95c7`); en paralelo, el implementer arregla el test de T8. Incidente: el implementer lanzó `init.sh`
+> desde el servicio y su pytest pudo leer el `.env` (sin red por la guardia `sin_red`); no queda ningún proceso vivo.
+
+> **F-059 · T8 ejecutada (líder, 2026-10-16, Docker arrancado a petición del humano)** · `infra/pruebas_bbdd_efimera.ps1`:
+> **103 pasan, 1 falla** (74 s de pytest, 92 s con el contenedor). Falla
+> `test_f059_bbdd_volcado.py::test_f059_r1_la_derivacion_de_cuatro_uno_leida_de_la_base` con `KeyError` en el
+> ayudante `_resultado`: tras guardar `creado` la incidencia ya es `volcada` y deja de ser candidata (R3), y el ayudante
+> construye el parte buscándola en `aprobadas`. Defecto del test de T7 (`9b4c8d5`), no del código: la aserción que
+> persigue («volcada gana a lo que venga después») sigue siendo válida. Al implementer cuando cierre el Bloque 4; luego
+> T8 se repite. Los de F-036, F-056 y F-060 pasan todos.
+
 > **F-059 · Bloque 2 APPROVED (reviewer, 2026-10-16, `8e668b2`)** · T4–T7 y T9 (26/26 muertos; 83 a mano). **T8 pendiente
 > del humano y bloquea el cierre**: `infra/pruebas_bbdd_efimera.ps1` con Docker Desktop (deben pasar
 > `test_f059_bbdd_volcado.py` y los de F-036, F-056 y F-060). O-B2-1 (letra de `aprobadas` en design §12) al

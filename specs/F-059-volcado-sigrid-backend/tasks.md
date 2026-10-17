@@ -286,7 +286,7 @@
   la cuenta y la cabecera, que pasa a exigir una cabecera bien formada que no
   retroceda con F-060 y su despliegue constando). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_documentacion.py tests/test_f056_documentacion.py tests/test_f060_documentacion.py tests/test_f036_documentacion.py tests/test_f053_documentacion.py tests/test_f012_documentacion.py tests/test_f019_documentacion.py`
-- [ ] **T21**: `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
+- [x] **T21**: `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
   al día con lo mismo (qué consume de `sigrid-api` y qué escribe en el ERP),
   sin secretos ni identificadores; commit en ese repositorio
   («postventa-incidencias: F-059, el volcado a Sigrid»). La fila de

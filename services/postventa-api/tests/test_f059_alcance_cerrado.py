@@ -176,7 +176,8 @@ def _definiciones(fuente: str) -> dict[str, str]:
 
     Las funciones y las asignaciones, por su nombre; una clase, por su nombre
     **sin sus métodos** y cada método aparte, como `Clase.metodo`. Los
-    `import` no cuentan: no responden ni escriben nada.
+    `import` y las demás sentencias de módulo no son definiciones: los vigilan
+    `_importaciones` y `_resto_del_modulo` (C-F-1 de la review final).
     """
     definiciones: dict[str, str] = {}
     for nodo in _sin_docstrings(ast.parse(fuente)).body:  # type: ignore[attr-defined]
@@ -420,6 +421,197 @@ def test_f059_s12_all_solo_gana_nombres(relativa):
         )
 
     assert exportados["antes"] <= exportados["ahora"]
+
+
+# --------------------------------------------------------------------------
+# C-F-1 · lo que no es una definición: las importaciones y el resto del módulo
+# --------------------------------------------------------------------------
+
+#: Las importaciones que F-059 **añade** en cada fichero que ya existía, como
+#: `(módulo, nombre, alias)` (`import x` va con nombre `None`), escritas a mano
+#: como `PIEZAS_DE_F059` (C-F-1 de la review final). Ninguna se quita.
+IMPORTACIONES_DE_F059: dict[str, frozenset[tuple[str, str | None, str | None]]] = {
+    # §8.4: el protocolo del login, para la anotación de `erp`.
+    "application/pipelines/paso_cierre.py": frozenset(
+        {("domain.ports.usuarios_sigrid", "VerificadorDeLoginPort", None)}
+    ),
+    "config/settings.py": frozenset(),
+    # §7: `EnsayoNoValido` y compañía llevan identificadores.
+    "domain/models/errores.py": frozenset({("uuid", "UUID", None)}),
+    # §7, §12: el módulo hoja.
+    "domain/models/revision.py": frozenset(
+        {
+            ("domain.models.situacion_volcado", "SituacionDeVolcado", None),
+            ("domain.models.situacion_volcado", "estado_de_volcado", None),
+        }
+    ),
+    "domain/ports/usuarios_sigrid.py": frozenset(),
+    # §11: los ocho errores para la traducción propia y el borde del volcado.
+    "function_app.py": frozenset(
+        {
+            *(
+                ("domain.models.errores", error, None)
+                for error in (
+                    "ConfiguracionDeVolcadoInvalida",
+                    "CuerpoDeVolcadoInvalido",
+                    "EnsayoNoValido",
+                    "EnsayoSinRespuesta",
+                    "VolcadoDeshabilitado",
+                    "VolcadoRechazadoPorLaPasarela",
+                    "VolcadoSinRespuesta",
+                    "VolcadoSinTraza",
+                )
+            ),
+            *(
+                ("interface_adapters.api.volcado", nombre, None)
+                for nombre in (
+                    "ensayar_volcado",
+                    "estado_http_del_rechazo",
+                    "leer_panel_de_volcado",
+                    "volcar_a_sigrid",
+                )
+            ),
+        }
+    ),
+    # §8.3: `construir_volcados`.
+    "infrastructure/persistencia/fabrica.py": frozenset(
+        {("infrastructure.persistencia.repositorio_volcado_pg", "RepositorioVolcadoPostgres", None)}
+    ),
+    # §12: R2 en `_registrar` (la sentencia de `sentencias_volcado.py`) y `aprobadas`.
+    "infrastructure/persistencia/repositorio_revision_pg.py": frozenset(
+        {
+            ("domain.models.errores", "AccionNoPermitida", None),
+            ("domain.models.revision", "EstadoRevision", None),
+            ("domain.models.revision", "estado_de", None),
+            ("domain.models.situacion_volcado", "EstadoVolcado", None),
+            ("domain.models.situacion_volcado", "estado_de_volcado", None),
+            ("infrastructure.persistencia", "sentencias_volcado", None),
+        }
+    ),
+    # §12: las dos `LATERAL` y `fila_a_situacion`.
+    "infrastructure/persistencia/sentencias_revision.py": frozenset(
+        {
+            ("dataclasses", "replace", None),
+            ("domain.models.situacion_volcado", "SituacionDeVolcado", None),
+            ("infrastructure.persistencia.sentencias_volcado", "columnas_del_volcado", None),
+            ("infrastructure.persistencia.sentencias_volcado", "fila_a_volcado", None),
+            ("infrastructure.persistencia.sentencias_volcado", "joins_del_volcado", None),
+        }
+    ),
+    # §8.3: las dos fábricas del volcado.
+    "infrastructure/sigrid/fabrica.py": frozenset(
+        {
+            ("domain.models.errores", "VolcadoDeshabilitado", None),
+            ("domain.models.volcado", "validar_partes_por_llamada", None),
+            ("domain.ports.volcado", "VolcadoSigridPort", None),
+            ("infrastructure.sigrid.volcado", "AdaptadorVolcadoSigridApi", None),
+            ("infrastructure.sigrid.volcado", "exigir_entorno_con_volcado", None),
+        }
+    ),
+    # §12: el objeto `volcado` de `_fila` (F-2 (a)).
+    "interface_adapters/api/revision.py": frozenset(
+        {("interface_adapters.api.volcado", "volcado_de", None)}
+    ),
+}
+
+
+def _es_definicion(nodo: ast.stmt) -> bool:
+    """¿La recoge `_definiciones` del todo? Funciones y clases; una asignación,
+    solo si **todos** sus destinos son un nombre; una anotada, si el suyo lo es.
+    `m.x = 1`, `d[k] = v` o `a, b = 1, 2` no: van al resto del módulo (el
+    criterio de `_es_definicion` de `test_f060_alcance_cerrado.py`)."""
+    if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+        return True
+    if isinstance(nodo, ast.Assign):
+        return all(isinstance(objetivo, ast.Name) for objetivo in nodo.targets)
+    if isinstance(nodo, ast.AnnAssign):
+        return isinstance(nodo.target, ast.Name)
+    return False
+
+
+def _importaciones(fuente: str) -> Counter[tuple[str, str | None, str | None]]:
+    """Las importaciones de módulo, nombre a nombre: `(módulo, nombre, alias)`."""
+    importadas: Counter[tuple[str, str | None, str | None]] = Counter()
+    for nodo in ast.parse(fuente).body:
+        if isinstance(nodo, ast.Import):
+            importadas.update((alias.name, None, alias.asname) for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom):
+            modulo = "." * nodo.level + (nodo.module or "")
+            importadas.update((modulo, alias.name, alias.asname) for alias in nodo.names)
+    return importadas
+
+
+def _resto_del_modulo(fuente: str) -> list[str]:
+    """Las sentencias de módulo que no son ni una definición ni una importación,
+    en orden y con `ast.unparse` (sin docstrings): una expresión suelta —un
+    decorador aplicado a mano, una llamada—, un `if`, un `try` o una asignación a
+    algo que no es un nombre."""
+    return [
+        ast.unparse(nodo)
+        for nodo in _sin_docstrings(ast.parse(fuente)).body  # type: ignore[attr-defined]
+        if not _es_definicion(nodo) and not isinstance(nodo, ast.Import | ast.ImportFrom)
+    ]
+
+
+def test_f059_c_f_1_las_importaciones_se_declaran_por_cada_fichero_tocado():
+    assert set(IMPORTACIONES_DE_F059) == set(PIEZAS_DE_F059)
+
+
+@pytest.mark.parametrize("relativa", sorted(PIEZAS_DE_F059))
+def test_f059_c_f_1_cada_fichero_tocado_solo_gana_las_importaciones_declaradas(relativa):
+    """Contra la base fija: ninguna importación se quita y solo se añaden las declaradas."""
+    _diff_de_la_rama_o_saltar()
+    antes = _importaciones(_en_la_base(f"{SERVICIO}{relativa}"))
+    ahora = _importaciones(_actual(relativa))
+
+    assert antes - ahora == Counter(), "un fichero tocado no pierde importaciones"
+    assert ahora - antes == Counter(IMPORTACIONES_DE_F059[relativa])
+
+
+@pytest.mark.parametrize("relativa", sorted(PIEZAS_DE_F059))
+def test_f059_c_f_1_el_resto_del_modulo_de_cada_fichero_tocado_no_cambia(relativa):
+    """Contra la base fija: lo que no es definición ni importación, igual."""
+    _diff_de_la_rama_o_saltar()
+
+    assert _resto_del_modulo(_actual(relativa)) == _resto_del_modulo(_en_la_base(f"{SERVICIO}{relativa}"))
+
+
+@pytest.mark.parametrize("relativa", sorted(PIEZAS_DE_F059))
+def test_f059_c_f_1_lo_declarado_esta_importado(relativa):
+    """La mitad que no depende de `git`: una declaración de más no se queda sin ver."""
+    ahora = _importaciones(_actual(relativa))
+
+    assert [i for i in IMPORTACIONES_DE_F059[relativa] if not ahora[i]] == []
+
+
+def test_f059_c_f_1_el_control_del_resto_y_de_las_importaciones_no_es_ciego():
+    """Control negativo, compuesto en memoria: los G3, G5 y G6 de la review final y
+    sus parientes se ven; las definiciones, los docstrings y el formato, no."""
+    base = (
+        '"""Doc."""\nimport a\nfrom b import c\nfrom . import d\n\n\n'
+        "def f():\n    import e\n\n\nX = 1\nY: int = 2\n_T = {1: (1,)}\n"
+    )
+
+    assert _resto_del_modulo(base) == []
+    assert _importaciones(base) == Counter({("a", None, None): 1, ("b", "c", None): 1, (".", "d", None): 1})
+    # Lo que no se ve: definiciones, docstrings y formato.
+    assert _resto_del_modulo(base.replace('"""Doc."""', '"""Otra."""').replace("X = 1", "X = 3")) == []
+    assert _importaciones(base.replace("from b import c", "from b import (c)")) == _importaciones(base)
+    # G3: una ruta registrada con una sentencia suelta.
+    assert _resto_del_modulo(base + 'app.route(route="volcado/otra")(f)\n') == [
+        "app.route(route='volcado/otra')(f)"
+    ]
+    # G5: una asignación a un subíndice de módulo.
+    assert _resto_del_modulo(base + "_T[1] = ()\n") == ["_T[1] = ()"]
+    # G6: una importación más, también de un nombre más en una línea que ya estaba.
+    assert _importaciones(base + "import os\n") - _importaciones(base) == Counter({("os", None, None): 1})
+    assert _importaciones(base.replace("from b import c", "from b import c, g")) - _importaciones(base) == Counter(
+        {("b", "g", None): 1}
+    )
+    assert _importaciones(base.replace("import a", "import a as z")) != _importaciones(base)
+    # Y los demás: un `if`, un `try`, un desempaquetado, un atributo.
+    for extra in ("if X:\n    f()\n", "try:\n    import h\nexcept ImportError:\n    pass\n", "m, n = 1, 2\n", "a.x = 1\n"):
+        assert _resto_del_modulo(base + extra) != [], extra
 
 
 def test_f059_s84_paso_cierre_solo_cambia_la_anotacion_de_erp():

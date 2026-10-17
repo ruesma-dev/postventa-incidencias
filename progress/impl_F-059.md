@@ -3334,3 +3334,32 @@ todos muertos; 16 y 24, por sus tests), la tabla de los **dos muertos a mano** (
 `_con_texto`) y las referencias a los cuatro informes de bloque. El mutante de bloque que no casa con ninguno de la
 campaña entera es el `if ensayo.actor_oid != actor_oid:` del Bloque 1, una línea que quitó B-1 (a). T22, marcada en
 `tasks.md` con la decisión. No se ha lanzado ninguna campaña ni `init.sh`; T23 sigue siendo del líder.
+
+## Corrección C-F-1 · 2026-10-17
+
+La review final (`progress/review_F-059.md`, «Review final», «Hallazgos», C-F-1) vio que la guarda de piezas de T16
+solo miraba **definiciones**: una importación o una sentencia de módulo nueva en un fichero tocado pasaba sin verse
+(sus G3, G5 y G6). **El arreglo**, solo en `tests/test_f059_alcance_cerrado.py` (ningún código de producción), con
+el modelo de `_resto_del_modulo` de `test_f060_alcance_cerrado.py`:
+
+- `IMPORTACIONES_DE_F059`: por cada fichero de `PIEZAS_DE_F059`, las importaciones que F-059 **añade**, escritas a
+  mano como `(módulo, nombre, alias)` (36 en 9 ficheros; `settings.py` y `usuarios_sigrid.py`, ninguna), sacadas del
+  diff con la base fija y contrastadas una a una (la de `paso_cierre.py` es `VerificadorDeLoginPort`, la de
+  `errores.py` es `UUID`, las de `function_app.py` son los ocho errores y las cuatro del borde, …).
+- `_es_definicion`, `_importaciones` (nombre a nombre: un nombre más en una línea que ya estaba también se ve) y
+  `_resto_del_modulo` (lo que no es definición ni importación: expresiones sueltas, `if`, `try`, asignaciones a
+  algo que no es un nombre).
+- Contra la base `2d2efd7`, por cada fichero tocado: **ninguna importación se quita y solo se añaden las
+  declaradas** (igualdad), y **el resto del módulo no cambia**; sin `git`, que lo declarado esté importado; que se
+  declare cada fichero de `PIEZAS_DE_F059`; y un control negativo en memoria (G3, G5, G6, un nombre más en una línea,
+  un alias, `if`, `try`, desempaquetado, atributo; y que docstrings, definiciones y formato no cuenten).
+
+**G3, G5 y G6, repetidos** en un worktree desechable forzado de la rama (ya retirado; el árbol de trabajo no se
+tocó), con el test nuevo: **los tres mueren**, cada uno por su control y solo por él (`1 failed, 164 passed` en los
+tres): G3 (`app.route(route="volcado/otra", …)(volcado)` al final de `function_app.py`) y G5
+(`_PERMITIDAS[EstadoRevision.DESCARTADA] = ()` en `domain/models/revision.py`), por
+`test_f059_c_f_1_el_resto_del_modulo_de_cada_fichero_tocado_no_cambia`; G6 (`import os` en
+`repositorio_revision_pg.py`), por `test_f059_c_f_1_cada_fichero_tocado_solo_gana_las_importaciones_declaradas`.
+
+**Verificación** (desde el scratchpad, sin `.env` ni `init.sh`): `test_f059_alcance_cerrado.py`, **165 passed in
+82.97s** (127 + 38 nuevos de C-F-1, O-B4-3 incluido); `ruff check`, `All checks passed!`.

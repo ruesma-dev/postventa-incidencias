@@ -28,11 +28,11 @@ salta); y **el que no depende de `git`**, que se comprueba siempre.
 
 Escritas a mano, función a función, en `AMPLIADOS` (la lista de `design.md`
 §21.3, más el `test_f056_r12_la_unica_columna_…` de B-2). Las del grupo B que
-cambian los documentos (T20, Bloque 5) están declaradas ya y van en
-`AMPLIADOS_EN_EL_BLOQUE_5`: hasta T20 solo se exige que **no cambie nada
-más** que lo declarado; T20 las pasa a igualdad y declara las aserciones que
-cambien en `ASERCIONES_QUE_CAMBIAN`, una a una (desde C-B4-1, la aserción y no la
-función).
+cambian los documentos (T20, Bloque 5) estuvieron declaradas hasta T20 en
+`AMPLIADOS_EN_EL_BLOQUE_5`, donde solo se exigía que **no cambiara nada
+más** que lo declarado; T20 las pasó a igualdad, declaró las aserciones que
+cambian en `ASERCIONES_QUE_CAMBIAN`, una a una (desde C-B4-1, la aserción y no
+la función), y ese conjunto queda **vacío**, y así se exige (O-B4-3).
 
 **Sin red, sin base de datos, sin IA y sin reloj.** Los controles del diff
 llaman a `git`, que es un proceso local de solo lectura.
@@ -969,24 +969,25 @@ AMPLIADOS: dict[str, frozenset[str]] = {
     ),
 }
 
-#: Los del grupo B que cambian con los documentos (T20): hasta entonces solo se
-#: exige que no cambie nada que no esté declarado. T20 los saca de aquí.
-AMPLIADOS_EN_EL_BLOQUE_5 = frozenset(
-    {
-        "tests/test_f012_documentacion.py",
-        "tests/test_f053_documentacion.py",
-        "tests/test_f019_documentacion.py",
-        "tests/test_f056_documentacion.py",
-        "tests/test_f060_documentacion.py",
-    }
-)
+#: Los del grupo B que cambiaban con los documentos (T20): hasta entonces solo
+#: se exigía que no cambiara nada que no estuviera declarado. **T20 los sacó
+#: de aquí** (O-B4-3 de la review del Bloque 4): los cinco —`test_f012_`,
+#: `test_f053_`, `test_f019_`, `test_f056_` y `test_f060_documentacion.py`—
+#: pasan a igualdad con lo declarado en `AMPLIADOS`, y sus aserciones que
+#: cambian están, una a una, en `ASERCIONES_QUE_CAMBIAN`. Se deja vacío y no se
+#: borra: así se ve que no queda ninguno a medias.
+AMPLIADOS_EN_EL_BLOQUE_5: frozenset[str] = frozenset()
 
 #: Las aserciones de la base que **cambian** (no las que se añaden), una a una y
 #: por función, con su texto normalizado (`ast.unparse`): la cifra o el fichero
 #: vigente sustituye a la anterior, como dice R41. **Solo** esas se pueden
 #: perder; todas las demás de la base, también las de estas mismas funciones,
 #: siguen (C-B4-1 de la review del Bloque 4: antes se eximía la función entera).
-#: T20 añade aquí, con el mismo formato, las de `AMPLIADOS_EN_EL_BLOQUE_5`.
+#: T20 añade, con el mismo formato, las del grupo B de los documentos: de los
+#: cinco ficheros, solo dos pierden aserciones (la cifra vieja en `in` de
+#: F-019 y las dos literales de la cabecera de F-060); en los otros tres la
+#: cifra está en una constante o en una tupla, y lo que cambia es el dato, no
+#: la aserción.
 ASERCIONES_QUE_CAMBIAN: dict[str, dict[str, frozenset[str]]] = {
     "tests/test_f005_ddl_idempotente_texto.py": {
         "test_f005_r1_se_aplican_todos_los_ficheros_en_orden": frozenset(
@@ -1077,6 +1078,25 @@ ASERCIONES_QUE_CAMBIAN: dict[str, dict[str, frozenset[str]]] = {
             }
         ),
     },
+    # Grupo B · los documentos (T20). «Los veintiuno», de `in` a `not in`, y
+    # «Los veinticuatro» en `in` (F-019); y la cabecera de F-060, que deja de
+    # exigir que F-060 sea la última y su fecha la del documento, y exige una
+    # cabecera bien formada que no retroceda, con F-060 y su despliegue.
+    "tests/test_f019_documentacion.py": {
+        "test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints": frozenset(
+            {
+                "'Los veintiuno quedan en nivel' in seccion_ocho",
+            }
+        ),
+    },
+    "tests/test_f060_documentacion.py": {
+        "test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando": frozenset(
+            {
+                "'Última feature que lo tocó: F-060' in cabecera",
+                "'Fecha: 2026-10-14.' in cabecera",
+            }
+        ),
+    },
     "tests/test_f056_paginacion.py": {
         "test_f056_r23_filtros_de_estado": frozenset(
             {
@@ -1137,6 +1157,20 @@ def test_f059_r41_la_rama_solo_toca_los_tests_declarados():
 
     assert tocados <= set(AMPLIADOS)
     assert set(AMPLIADOS) - AMPLIADOS_EN_EL_BLOQUE_5 <= tocados
+
+
+def test_f059_r41_o_b4_3_ningun_ampliado_queda_a_medias():
+    """Tras T20 ningún ampliado se compara con `<=`: todos, con igualdad. Un
+    fichero que volviera a `AMPLIADOS_EN_EL_BLOQUE_5` relajaría su control."""
+    assert AMPLIADOS_EN_EL_BLOQUE_5 == frozenset()
+    for relativa in (
+        "tests/test_f012_documentacion.py",
+        "tests/test_f053_documentacion.py",
+        "tests/test_f019_documentacion.py",
+        "tests/test_f056_documentacion.py",
+        "tests/test_f060_documentacion.py",
+    ):
+        assert relativa in AMPLIADOS, relativa
 
 
 def test_f059_r41_los_tests_de_f009_no_tienen_diff():

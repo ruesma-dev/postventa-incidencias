@@ -268,7 +268,7 @@
   y los cambios de `infra/desplegar_backend.ps1` (§13). Si un test de scripts
   de F-010, F-012 o F-051 fija las App Settings, se amplía y se cita. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_scripts_infra.py tests/test_f010_scripts_infra.py tests/test_f012_scripts_infra.py tests/test_f051_scripts_infra.py tests/test_f051_sin_caracteres_de_control.py`
-- [ ] **T20**: `docs/ARCHITECTURE.md` (sección «Volcado a Sigrid (F-059)»:
+- [x] **T20**: `docs/ARCHITECTURE.md` (sección «Volcado a Sigrid (F-059)»:
   flujo, seis estados, tabla, ventana, troceo, por qué el reintento es seguro,
   que el parte queda en SAT; enmienda en la de F-056 sobre estados y
   acciones), `docs/INTEGRACION.md` (§2 la tabla; §3 bis «Qué escribimos como

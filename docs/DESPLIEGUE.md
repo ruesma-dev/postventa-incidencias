@@ -49,7 +49,7 @@ Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
 |---|---|---|---|---|
 | 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | — | Nunca se ejecuta suelto |
 | 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **once** secretos del backend, pedidos a ciegas | `$HOME` o `infra\` | Solo al rotar una credencial (`-Solo <nombre>`, **no con `-File`**: ver abajo) |
-| 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código. Deja **abiertas** las dos ventanas de escritura (§4); `-VentanasCerradas` las cierra | **`infra\` obligatorio** | Cada vez que cambie el backend |
+| 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código. Deja **abiertas** las dos ventanas de escritura (§4); `-VentanasCerradas` las cierra. Y deja **siempre cerrada** la del volcado, con y sin el parámetro (§4 ter) | **`infra\` obligatorio** | Cada vez que cambie el backend |
 | 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | **`infra\` obligatorio** | Con `-SoloFront` para el día a día |
 | 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | `$HOME` o `infra\` | Después de cada despliegue |
 
@@ -483,6 +483,65 @@ Function App arranque igual pero con las referencias en error en el portal: se
 cargan una vez con `cargar_secretos_postventa.ps1 -Solo sigrid-api-base-url
 sigrid-api-key`, ejecutado **sin `-File`** (§2).
 
+## 4 ter · La ventana del volcado: `/api/volcado/volcar`
+
+**F-059 (2026-10-17).** Desde F-059 el servicio **crea partes de reclamación
+en el ERP de producción** (`POST /api/volcado/volcar`, con
+`POST /api/sigrid/partes-reclamacion` de la pasarela), y eso tiene su **propia
+ventana**: la App Setting **`VOLCADO_HABILITADO`**. Es una variable **aparte**
+de `CIERRE_HABILITADO`: el volcado es otra operación, con otro volumen
+—decenas o cientos de altas de golpe— y se abre en otro momento. Abrir la del
+ERP no abre esta, ni al revés.
+
+**La ventana se publica cerrada, en todos los despliegues** (D-3, decisión del humano del
+2026-10-07): `desplegar_backend.ps1` fija `VOLCADO_HABILITADO=false` en su
+propia línea de `$ajustes`, con el literal, **con o sin -VentanasCerradas**.
+Es al revés que las otras dos, que se publican abiertas desde el 2026-09-23.
+Publicarla abierta por defecto sería otra decisión expresa del humano. **El
+defecto del código también es apagado** (`config/settings.py`,
+`volcado_habilitado`). Con ella cerrada, `POST /api/volcado/volcar` responde
+**503 volcado_deshabilitado** y no toca ni la base ni el ERP; se comprueba en la
+fábrica **y** en el adaptador, que se niega a mandar `commit: true` si se
+construyó sin ella.
+
+Y **el ensayo no la mira** (D-4): `POST /api/volcado/ensayo` manda el lote con
+`commit: false`, que solo lee del ERP, y funciona con la ventana cerrada; el
+panel, `GET /api/volcado`, ni siquiera lee Sigrid.
+
+**Se abre para cada volcado, con su script**, y se cierra en cuanto termina:
+
+```
+powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1
+powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1 -Abrir
+powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1 -Cerrar
+```
+
+Sin parámetros **solo mira** y lo dice en palabras; `-Abrir` avisa de que abre
+la creación de partes para cualquier usuario del grupo con login de Sigrid y
+pide teclear `ABRIR`; `-Cerrar` cierra **sin preguntar**, salga bien o mal lo
+que se estuviera haciendo. Los tres vuelven a leer el valor después de
+escribir. El siguiente despliegue la vuelve a cerrar de todas formas.
+
+**El troceo, `VOLCADO_PARTES_POR_LLAMADA`.** Los partes de cada llamada a la
+pasarela, de 1 a 50, con 5 en el código y en el despliegue (`$ajustes`). Se
+ajusta **sin desplegar**, con la App Setting, cuando se mida el primer volcado
+real: el log de cada llamada deja su duración y la media por parte. Fuera de
+rango, el ensayo, el volcado y el panel responden 503.
+
+**La secuencia de un volcado**, en este orden: el ensayo (con la ventana
+cerrada) → leerlo → `27_ventana_volcado.ps1 -Abrir` → `POST /api/volcado/volcar`
+con el `ensayo_id` y `confirmado: true`, antes de que pasen 30 minutos →
+`27_ventana_volcado.ps1 -Cerrar`. Lo creado se comprueba **por lectura** con
+`infra\28_volcado_lectura_sigrid.ps1` (solo `sql/read`; sin `-Referencia`, los
+partes `PVI-` de la obra y el `MAX(cod)` de la serie del mes; con ella, la foto
+de un parte). **El parte nace en SAT y Posventa lo pasa a PTE a mano** en
+Sigrid, que es cuando avisa al industrial: el servicio no lo hace. Un parte que
+haya que deshacer se anula desde la UI de Sigrid (**NO PROCEDE**, sin correo),
+**nunca** con `DELETE` ni `sql/write`. El guion entero de la primera vez, con la
+verificación en producción y su vuelta atrás, es el Bloque 6 de
+`specs/F-059-volcado-sigrid-backend/tasks.md`; se publica desde un worktree
+**limpio** de `dev`.
+
 ## 5 · Después de desplegar
 
 ```
@@ -747,6 +806,7 @@ frío de la primera petición del día y un día malo del proveedor de IA—.
 | El razonamiento completo del despliegue | `specs/F-010-despliegue/design.md` |
 | El portal, su catálogo y sus avisos | `azure-apps/portal.md` |
 | El corte de F-013: la mudanza a la biblioteca de Posventa | §9 de este documento; el diseño, en `specs/F-013-archivo-posventa/design.md` §7.3 |
+| La ventana del volcado a Sigrid y las fotos del ERP | §4 ter de este documento; `infra/27_ventana_volcado.ps1` y `infra/28_volcado_lectura_sigrid.ps1`; el diseño, en `specs/F-059-volcado-sigrid-backend/design.md` §13 y §14 |
 
 ## 9 · El corte de F-013: el archivo se muda a la biblioteca de Posventa
 

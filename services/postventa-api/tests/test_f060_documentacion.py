@@ -153,11 +153,25 @@ def test_f060_r43_la_cabecera_dice_que_f060_lo_toco_y_cuando():
     """Al cierre (2026-10-14, T36), la cabecera pasa a decir que F-060 está
     **desplegada** (T24, 2026-10-13) y verificada en el entorno (T26 y T27,
     2026-10-14), como hizo F-056 en el suyo.
-    """
-    cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
 
-    assert "Última feature que lo tocó: F-060" in cabecera
-    assert "Fecha: 2026-10-14." in cabecera
+    **Ampliado por F-059 (T20; R41, F-1 (a), decisión del humano del
+    2026-10-15)**, como F-060 hizo con el de F-056: exigir que F-060 sea la
+    **última** feature caducaba con la siguiente. Exige una cabecera bien
+    formada —**una** fecha y **una** última feature—, que no retroceda de lo
+    que dejó F-060 (2026-10-14) y que F-060 y su despliegue sigan constando
+    en ella. «No retroceder» lo dice la **fecha**, no el número de la feature:
+    F-059 toca el documento **después** que F-060. Lo demás, igual.
+    """
+    from datetime import date
+
+    cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
+    fechas = re.findall(r"Fecha: (\d{4}-\d{2}-\d{2})\. ", cabecera)
+    features = re.findall(r"Última feature que lo tocó: F-(\d{3})\b", cabecera)
+
+    assert len(fechas) == 1, f"se esperaba una «Fecha: AAAA-MM-DD.»: {fechas}"
+    assert len(features) == 1, f"se esperaba una «Última feature»: {features}"
+    assert date.fromisoformat(fechas[0]) >= date(2026, 10, 14)
+    assert "F-060" in cabecera
     for texto in ("desplegada el 2026-10-13", "verificada en el entorno el 2026-10-14"):
         assert texto in cabecera, f"la cabecera no dice «{texto}»"
     assert "sin desplegar" not in cabecera
@@ -286,11 +300,17 @@ def test_f060_r43_la_seccion_ocho_dice_la_importacion_la_traza_y_la_cuenta():
         "la respuesta de POST /api/importaciones no cambia",
         "F-060 tiempos del listado",
         "POST /api/revision/normalizar tampoco depende de ninguna ventana",
-        "Los veintiuno quedan en nivel",
+        # F-059 (T20; R41, F-1 (a)): las tres rutas del volcado llevan la
+        # cuenta de veintiuno a veinticuatro, y la de veintiuno pasa a vieja.
+        "Los veinticuatro quedan en nivel",
         "las mismas claves",
     ):
         assert texto in ocho, f"§8 no dice «{texto}»"
-    for vieja in ("Los veinte quedan en nivel", "Los diecisiete quedan en nivel"):
+    for vieja in (
+        "Los veinte quedan en nivel",
+        "Los diecisiete quedan en nivel",
+        "Los veintiuno quedan en nivel",
+    ):
         assert vieja not in ocho
 
 

@@ -3013,3 +3013,25 @@ en el scratchpad, ya retirado; el árbol de trabajo no se tocó): quitada esa l�
 `test_f059_r41_ningun_ampliado_pierde_una_asercion[tests/test_f056_repositorio_revision.py]`,
 `test_f059_r41_c_b4_1_lo_declarado_es_lo_que_se_pierde[tests/test_f056_repositorio_revision.py]` y
 `test_f059_r41_c_b4_1_quitar_una_asercion_no_declarada_da_rojo`—. **G1 muere.**
+
+## Mutantes 16 y 24 · 2026-10-17
+
+**Decisión del humano (2026-10-17):** los dos supervivientes de la campaña del Bloque 4 (E-2, `zip(partes, resultados,
+strict=True)` → `strict=False` en `application/pipelines/volcado.py`, líneas 339 y 479) **no** se aceptan como
+equivalentes: se fija la alarma con un test. Los 13 de E-1 sí los aceptó; no se tocan.
+
+**Los tests** (en el mismo commit que esta sección, solo `tests/test_f059_pipeline_volcado.py`; ningún código de producción), con la propuesta
+del reviewer (review del Bloque 4, punto (2)): `_uno_de_menos` sustituye `interpretar_respuesta` del módulo de la
+aplicación por una que devuelve un resultado de menos, y deja que la base de mentira guarde sin comprobar el
+emparejamiento (si no, `guardar_ensayo` lo pararía antes, y en el volcado `_guardar` lo convertiría en
+`VolcadoSinTraza`): la única defensa que queda es el `zip`.
+
+- `test_f059_t17_m16_el_ensayo_no_empareja_mal_un_parte_con_su_resultado`: el ensayo levanta `ValueError` (del `zip`).
+- `test_f059_t17_m24_el_volcado_no_empareja_mal_un_parte_con_su_resultado`: el volcado, igual, tras la respuesta de
+  Sigrid.
+
+**Comprobado en una copia desechable** (un worktree en el scratchpad del commit de los tests antes de añadir esta sección —el mismo contenido de tests—, ya retirado; el árbol de trabajo no
+se tocó), con los siete ficheros de tests de F-059 solos: el mutante 16, **muerto** (`1 failed, 795 passed`; solo
+`…_m16_…`); el 24, **muerto** (`1 failed, 795 passed`; solo `…_m24_…`). `test_f059_pipeline_volcado.py`: 76 passed;
+`ruff check`, sin avisos. Anotado en `progress/mutacion_F-059_bloque4.md`. Con esto, de la campaña del Bloque 4 no
+queda ningún superviviente: **66/66 muertos** (los dos últimos, tras la campaña).

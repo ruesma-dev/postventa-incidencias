@@ -42,8 +42,10 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 
 #### Análisis
 
+> **Actualización del 2026-10-17: muere.** El humano no lo aceptó como equivalente: la alarma de `strict=True` se fija con un test (el commit de «Mutantes 16 y 24» en `progress/impl_F-059.md`) que sustituye `interpretar_respuesta` por una que devuelve un resultado de menos (y la base sin comprobar el emparejamiento) y exige el `ValueError`. Repetido en una copia desechable contra los tests de F-059 solos: **muerto**, por ``test_f059_t17_m16_el_ensayo_no_empareja_mal_un_parte_con_su_resultado`` (y solo por él). Lo que sigue es el análisis de antes, que se conserva como constancia.
+>
 > Por qué ningún test lo caza: **es equivalente**. `strict` solo cambia algo si las dos secuencias tienen longitudes distintas, y aquí son iguales **por construcción**: `resultados` sale de `interpretar_respuesta` (un resultado por parte mandado: `tuple(… for i, parte in enumerate(mandados))`), de `todos_sin_respuesta` o de `todos_no_procesados` (los dos, uno por parte), siempre con los mismos `partes`. Ningún test puede dar dos longitudes distintas sin cambiar esas funciones del dominio, que el Bloque 1 fija.
-> Decisión: **mutante equivalente**, razonado en `progress/impl_F-059.md` (Bloque 4, T17, E-2), **pendiente de que lo acepte el humano**. `strict=True` se queda a propósito: si un cambio futuro del dominio diera longitudes distintas, el volcado fallaría en voz alta en vez de emparejar mal un parte con su resultado.
+> Decisión: **mutante equivalente**, razonado en `progress/impl_F-059.md` (Bloque 4, T17, E-2), no aceptado por el humano: **muere** con su test (arriba). `strict=True` se queda a propósito: si un cambio futuro del dominio diera longitudes distintas, el volcado fallaría en voz alta en vez de emparejar mal un parte con su resultado.
 
 ### 2. `services/postventa-api/application/pipelines/volcado.py:479` [booleano]
 
@@ -52,6 +54,8 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 
 #### Análisis
 
+> **Actualización del 2026-10-17: muere.** El humano no lo aceptó como equivalente: la alarma de `strict=True` se fija con un test (el commit de «Mutantes 16 y 24» en `progress/impl_F-059.md`) que sustituye `interpretar_respuesta` por una que devuelve un resultado de menos (y la base sin comprobar el emparejamiento) y exige el `ValueError`. Repetido en una copia desechable contra los tests de F-059 solos: **muerto**, por ``test_f059_t17_m24_el_volcado_no_empareja_mal_un_parte_con_su_resultado`` (y solo por él). Lo que sigue es el análisis de antes, que se conserva como constancia.
+>
 > Por qué ningún test lo caza: **es equivalente**. `strict` solo cambia algo si las dos secuencias tienen longitudes distintas, y aquí son iguales **por construcción**: `resultados` sale de `interpretar_respuesta` (un resultado por parte mandado: `tuple(… for i, parte in enumerate(mandados))`), de `todos_sin_respuesta` o de `todos_no_procesados` (los dos, uno por parte), siempre con los mismos `partes`. Ningún test puede dar dos longitudes distintas sin cambiar esas funciones del dominio, que el Bloque 1 fija.
-> Decisión: **mutante equivalente**, razonado en `progress/impl_F-059.md` (Bloque 4, T17, E-2), **pendiente de que lo acepte el humano**. `strict=True` se queda a propósito: si un cambio futuro del dominio diera longitudes distintas, el volcado fallaría en voz alta en vez de emparejar mal un parte con su resultado.
+> Decisión: **mutante equivalente**, razonado en `progress/impl_F-059.md` (Bloque 4, T17, E-2), no aceptado por el humano: **muere** con su test (arriba). `strict=True` se queda a propósito: si un cambio futuro del dominio diera longitudes distintas, el volcado fallaría en voz alta en vez de emparejar mal un parte con su resultado.
 

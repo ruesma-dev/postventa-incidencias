@@ -1160,3 +1160,41 @@ def test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables(tipo):
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         setattr(valor, primero, None)
+
+
+# ==========================================================================
+# Mutantes 16 y 24 de la campaña del Bloque 4 (decisión del humano, 2026-10-17)
+# ==========================================================================
+
+
+def _uno_de_menos(monkeypatch, mundo: Mundo) -> None:
+    """`interpretar_respuesta` devuelve un resultado de menos, y la base guarda sin
+    mirar si casan: así la única defensa que queda es el `zip(..., strict=True)`."""
+    original = pipeline.interpretar_respuesta
+
+    def de_menos(mandados, datos, *, modo):
+        resultados = original(mandados, datos, modo=modo)
+        return None if resultados is None else resultados[:-1]
+
+    monkeypatch.setattr(pipeline, "interpretar_respuesta", de_menos)
+    monkeypatch.setattr(mundo.volcados, "guardar_ensayo", lambda **_: None)
+    monkeypatch.setattr(mundo.volcados, "guardar_resultados", lambda **_: None)
+
+
+def test_f059_t17_m16_el_ensayo_no_empareja_mal_un_parte_con_su_resultado(monkeypatch):
+    """Mutante 16: con un resultado de menos, el ensayo falla en voz alta (`ValueError`)
+    en vez de devolver un parte sin su resultado."""
+    mundo, _ = _aprobadas(1, 2)
+    _uno_de_menos(monkeypatch, mundo)
+
+    with pytest.raises(ValueError, match="zip"):
+        mundo.ensayar(1, 2)
+
+
+def test_f059_t17_m24_el_volcado_no_empareja_mal_un_parte_con_su_resultado(monkeypatch):
+    """Mutante 24: lo mismo en el volcado, después de que Sigrid haya respondido."""
+    mundo, revisiones, ensayo_id = _ensayadas(1, 2)
+    _uno_de_menos(monkeypatch, mundo)
+
+    with pytest.raises(ValueError, match="zip"):
+        mundo.volcar(ensayo_id, (1, revisiones[1]), (2, revisiones[2]))

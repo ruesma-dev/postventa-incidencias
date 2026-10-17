@@ -264,7 +264,7 @@
   `DESPLIEGUE.md`, incluida la de que Posventa pasa el parte a PTE a mano).
   Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_scripts_infra.py tests/test_f059_documentacion.py` **falla**
-- [ ] **T19**: `infra/27_ventana_volcado.ps1`, `infra/28_volcado_lectura_sigrid.ps1`
+- [x] **T19**: `infra/27_ventana_volcado.ps1`, `infra/28_volcado_lectura_sigrid.ps1`
   y los cambios de `infra/desplegar_backend.ps1` (§13). Si un test de scripts
   de F-010, F-012 o F-051 fija las App Settings, se amplía y se cita. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_scripts_infra.py tests/test_f010_scripts_infra.py tests/test_f012_scripts_infra.py tests/test_f051_scripts_infra.py tests/test_f051_sin_caracteres_de_control.py`

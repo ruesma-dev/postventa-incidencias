@@ -347,10 +347,13 @@ def test_f059_r38_los_modos_son_excluyentes_y_cada_fallo_tiene_su_codigo():
 
 
 def test_f059_r38_la_ventana_no_habla_con_la_pasarela():
-    """El script toca el plano de gestión de Azure, nunca `sigrid-api`."""
+    """El script toca el plano de gestión de Azure, nunca `sigrid-api`: ni una
+    ruta de la pasarela ni una llamada HTTP propia. (Sus mensajes sí nombran
+    `POST /api/volcado/volcar`, que es nuestro borde, no la pasarela.)"""
     ejecutable = _ejecutable(SCRIPT_VENTANA)
 
-    assert "/api/" not in ejecutable
+    assert "/api/sql/" not in ejecutable
+    assert "/api/sigrid/" not in ejecutable
     assert re.search(r"Invoke-(?:RestMethod|WebRequest)", ejecutable) is None
     assert "08_lectura_sigrid_comun.ps1" not in ejecutable
 

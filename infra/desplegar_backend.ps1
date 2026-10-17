@@ -95,6 +95,24 @@
     `-VentanasCerradas`. El detalle, en `docs/DESPLIEGUE.md`, secciones 4 y
     4 bis.
 
+    LA VENTANA DEL VOLCADO SE DESPLIEGA CERRADA EN TODOS LOS DESPLIEGUES
+    (F-059, D-3, decision del humano del 2026-10-07). Es una TERCERA App
+    Setting, `VOLCADO_HABILITADO`, aparte de las dos de arriba: la que deja a
+    `POST /api/volcado/volcar` crear partes de reclamacion en el ERP de
+    produccion. Al reves que las otras dos, este script la fija SIEMPRE en
+    `false`, con y sin `-VentanasCerradas`, en su propia linea de `$ajustes` y
+    con el literal, sin variable que la pueda abrir. Se abre a mano con
+    `27_ventana_volcado.ps1 -Abrir` para cada volcado y se cierra al terminar
+    con `-Cerrar`; el siguiente despliegue la vuelve a cerrar de todas formas.
+    El ensayo (`POST /api/volcado/ensayo`) no la mira: solo lee del ERP (D-4).
+    Publicarla abierta por defecto seria otra decision expresa del humano.
+    Su defecto del CODIGO tambien es apagado (`config/settings.py`).
+
+    Y `VOLCADO_PARTES_POR_LLAMADA`, los partes de cada llamada a
+    `partes-reclamacion` (de 1 a 50), con el mismo 5 que el codigo: es la
+    cifra con la que se mide el primer volcado real y se ajusta sin desplegar,
+    con una App Setting (F-059, R30; Q-8).
+
     NOTA DEL 2026-09-23 (F-034). DESDE EL DESPLIEGUE DE F-034, `/api/adjuntar`
     y `/api/cerrar` dejan de tomar del cuerpo el numero de incidencia y el
     estado de archivo: deciden con lo GUARDADO del parte, y un cuerpo que no
@@ -141,7 +159,9 @@
     Despliega LAS DOS ventanas de escritura cerradas: `ARCHIVO_HABILITADO` y
     `CIERRE_HABILITADO` en `false`. Sin el, las dos quedan ABIERTAS (decision
     del 2026-09-23). No hay forma de cerrar solo una desde aqui: para eso
-    estan `22_ventana_archivo.ps1` y `19_ventana_escritura.ps1`.
+    estan `22_ventana_archivo.ps1` y `19_ventana_escritura.ps1`. La del
+    volcado, `VOLCADO_HABILITADO`, no depende de este parametro: se despliega
+    CERRADA con y sin el (D-3), y se abre con `27_ventana_volcado.ps1`.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1 -WhatIf
@@ -383,6 +403,9 @@ Write-Host ""
 Write-Host ("  Tiempos de espera    : IA {0}s, Graph {1}s (el proxy corta a los {2}s)" -f $TIEMPO_IA_S, $TIEMPO_GRAPH_S, $PostventaPresupuestoProxyS)
 Write-Host ("  Ventana de archivo (/api/archivar, SharePoint)            : se despliega {0}" -f (Estado-Ventana $ventanaArchivo))
 Write-Host ("  Ventana del ERP (/api/adjuntar y /api/cerrar, Sigrid PRO) : se despliega {0}" -f (Estado-Ventana $ventanaCierre))
+# F-059 (D-3): la del volcado no depende de -VentanasCerradas. Se dice igual,
+# para que quien teclee DESPLEGAR vea que la creacion de partes queda cerrada.
+Write-Host "  Ventana del volcado (/api/volcado/volcar, partes en Sigrid PRO) : se despliega CERRADA, siempre"
 Write-Host ("  Destino del archivo  : estructura '{0}', carpeta base '{1}', crear carpetas '{2}'" -f $EstructuraArchivo, $carpetaBaseAppSetting, $CrearCarpetasArchivo)
 if (-not $VentanasCerradas) {
     Write-Host "  Con las ventanas abiertas, esta version escribira en SharePoint y en el" -ForegroundColor Yellow
@@ -575,6 +598,19 @@ $ajustes = @(
     # implicar poder escribir en el ERP. El defecto del CODIGO
     # (config/settings.py) sigue en False.
     "CIERRE_HABILITADO=$ventanaCierre",
+    # LA VENTANA DEL VOLCADO (F-059, D-3): crear partes de reclamacion en el
+    # ERP de produccion. CERRADA EN TODOS LOS DESPLIEGUES, con y sin
+    # -VentanasCerradas, con el literal y en su linea: ninguna variable la
+    # puede abrir desde aqui. Se abre para cada volcado con
+    # 27_ventana_volcado.ps1 -Abrir y se cierra con -Cerrar (docs/DESPLIEGUE.md,
+    # seccion 4 ter). Es una variable APARTE de CIERRE_HABILITADO: el volcado
+    # es otra operacion, con otro volumen, y se abre en otro momento. El
+    # defecto del CODIGO (config/settings.py) tambien es False.
+    "VOLCADO_HABILITADO=false",
+    # Los partes de cada llamada a partes-reclamacion (R30: de 1 a 50), el
+    # mismo 5 que el codigo. Se ajusta sin desplegar cuando se mida el primer
+    # volcado real (Q-8); fuera de 1-50, el ensayo y el volcado responden 503.
+    "VOLCADO_PARTES_POR_LLAMADA=5",
     # El resto de la configuracion de Sigrid que NO identifica ni autentica.
     # Los mismos valores que el codigo trae por defecto, fijados aqui a
     # proposito -como PG_PORT o GRAPH_REINTENTOS- para que la configuracion
@@ -677,6 +713,7 @@ Write-Host ("  Function App          : {0}" -f $PostventaFunction)
 Write-Host ("  Identidad             : {0} (con '{1}' sobre el vault)" -f $PostventaIdentidad, $ROL_KEYVAULT)
 Write-Host ("  App Settings          : {0}, de las que {1} son referencias" -f $ajustes.Count, $PostventaAppSettingsSecretas.Count)
 Write-Host ("  Ventana de escritura  : archivo {0}; GRAFICO y cierre en el ERP {1}" -f (Estado-Ventana $ventanaArchivo), (Estado-Ventana $ventanaCierre))
+Write-Host "  Ventana del volcado   : CERRADA (se abre para cada volcado con 27_ventana_volcado.ps1)"
 Write-Host ("  Destino del archivo   : estructura '{0}', carpeta base '{1}', crear carpetas '{2}'" -f $EstructuraArchivo, $carpetaBaseAppSetting, $CrearCarpetasArchivo)
 Write-Host ""
 Write-Host "Ahora, a mano (T14), en este orden:"

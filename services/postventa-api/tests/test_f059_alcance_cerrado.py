@@ -31,7 +31,8 @@ Escritas a mano, función a función, en `AMPLIADOS` (la lista de `design.md`
 cambian los documentos (T20, Bloque 5) están declaradas ya y van en
 `AMPLIADOS_EN_EL_BLOQUE_5`: hasta T20 solo se exige que **no cambie nada
 más** que lo declarado; T20 las pasa a igualdad y declara las aserciones que
-cambien en `ASERCIONES_QUE_CAMBIAN`.
+cambien en `ASERCIONES_QUE_CAMBIAN`, una a una (desde C-B4-1, la aserción y no la
+función).
 
 **Sin red, sin base de datos, sin IA y sin reloj.** Los controles del diff
 llaman a `git`, que es un proceso local de solo lectura.
@@ -44,6 +45,7 @@ import json
 import re
 import subprocess
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -979,50 +981,142 @@ AMPLIADOS_EN_EL_BLOQUE_5 = frozenset(
     }
 )
 
-#: Las funciones cuyas aserciones **cambian** (no las que se añaden): la cifra
-#: o el fichero vigente en lugar del anterior, como dice R41. Todas las demás
-#: aserciones de la base siguen.
-ASERCIONES_QUE_CAMBIAN: dict[str, frozenset[str]] = {
-    "tests/test_f005_ddl_idempotente_texto.py": frozenset(
-        {"test_f005_r1_se_aplican_todos_los_ficheros_en_orden"}
-    ),
-    "tests/test_f028_ddl_historico.py": frozenset(
-        {"test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo"}
-    ),
-    "tests/test_f030_veredicto_persistido.py": frozenset(
-        {"test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo"}
-    ),
-    "tests/test_f031_alcance_cerrado.py": frozenset({"test_f031_r17_no_hay_ni_un_fichero_de_ddl_nuevo"}),
-    "tests/test_f032_alcance_cerrado.py": frozenset({"test_f032_r22_no_hay_ni_un_fichero_de_ddl_nuevo"}),
-    "tests/test_f033_alcance_cerrado.py": frozenset({"test_f033_no_hay_ni_un_fichero_de_ddl_nuevo"}),
-    "tests/test_f034_alcance_cerrado.py": frozenset({"test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo"}),
-    "tests/test_f036_ddl.py": frozenset(
-        {"test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden"}
-    ),
-    "tests/test_f056_ddl.py": frozenset(
-        {
-            "test_f056_r36_el_fichero_va_detras_de_los_de_f036",
-            "test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo",
-        }
-    ),
-    "tests/test_f056_alcance_cerrado.py": frozenset({"test_f056_r12_solo_15_declara_una_columna_de_correo"}),
-    "tests/test_f060_alcance_cerrado.py": frozenset({"test_f060_r37_los_sql_son_los_quince_de_antes"}),
-    "tests/test_f010_endpoints_protegidos.py": frozenset(
-        {"test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay"}
-    ),
-    "tests/test_f056_paginacion.py": frozenset(
-        {"test_f056_r23_filtros_de_estado", "test_f056_r27_resumen_sobre_todas_las_filas"}
-    ),
-    "tests/test_f056_pipeline_revision.py": frozenset(
-        {"test_f056_r27_resumen_de_toda_la_obra_y_pagina_filtrada"}
-    ),
-    "tests/test_f056_revision_http.py": frozenset({"test_f056_r27_la_respuesta_lleva_lo_de_r27"}),
-    "tests/test_f056_repositorio_revision.py": frozenset(
-        {
-            "test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original",
-            "test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma",
-        }
-    ),
+#: Las aserciones de la base que **cambian** (no las que se añaden), una a una y
+#: por función, con su texto normalizado (`ast.unparse`): la cifra o el fichero
+#: vigente sustituye a la anterior, como dice R41. **Solo** esas se pueden
+#: perder; todas las demás de la base, también las de estas mismas funciones,
+#: siguen (C-B4-1 de la review del Bloque 4: antes se eximía la función entera).
+#: T20 añade aquí, con el mismo formato, las de `AMPLIADOS_EN_EL_BLOQUE_5`.
+ASERCIONES_QUE_CAMBIAN: dict[str, dict[str, frozenset[str]]] = {
+    "tests/test_f005_ddl_idempotente_texto.py": {
+        "test_f005_r1_se_aplican_todos_los_ficheros_en_orden": frozenset(
+            {
+                "nombres == ['01_esquema.sql', '02_remesas.sql', '03_partes.sql', '04_validaciones.sql', '05_archivos.sql', '06_cierres.sql', '07_preferencias.sql', '08_usuarios_sigrid.sql', '09_graficos.sql', '10_aprobaciones.sql', '11_historico_estado.sql', '12_importaciones.sql', '13_bandeja_incidencias.sql', '14_decisiones_equivalencia.sql', '15_revisiones_bandeja.sql']",
+            }
+        ),
+    },
+    "tests/test_f028_ddl_historico.py": {
+        "test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo": frozenset(
+            {
+                "nombres[nombres.index(FICHERO) + 1:] == ['12_importaciones.sql', '13_bandeja_incidencias.sql', '14_decisiones_equivalencia.sql', '15_revisiones_bandeja.sql']",
+            }
+        ),
+    },
+    "tests/test_f030_veredicto_persistido.py": {
+        "test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo": frozenset(
+            {
+                'nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056',
+            }
+        ),
+    },
+    "tests/test_f031_alcance_cerrado.py": {
+        "test_f031_r17_no_hay_ni_un_fichero_de_ddl_nuevo": frozenset(
+            {
+                'nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056',
+            }
+        ),
+    },
+    "tests/test_f032_alcance_cerrado.py": {
+        "test_f032_r22_no_hay_ni_un_fichero_de_ddl_nuevo": frozenset(
+            {
+                'nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056',
+            }
+        ),
+    },
+    "tests/test_f033_alcance_cerrado.py": {
+        "test_f033_no_hay_ni_un_fichero_de_ddl_nuevo": frozenset(
+            {
+                'nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056',
+            }
+        ),
+    },
+    "tests/test_f034_alcance_cerrado.py": {
+        "test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo": frozenset(
+            {
+                'nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056',
+            }
+        ),
+    },
+    "tests/test_f036_ddl.py": {
+        "test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden": frozenset(
+            {
+                "nombres[nombres.index('11_historico_estado.sql') + 1:] == [*FICHEROS, '15_revisiones_bandeja.sql']",
+            }
+        ),
+    },
+    "tests/test_f056_ddl.py": {
+        "test_f056_r36_el_fichero_va_detras_de_los_de_f036": frozenset(
+            {
+                'nombres[-1] == FICHERO',
+            }
+        ),
+        "test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo": frozenset(
+            {
+                "con_correo == [f'{ESQUEMA}.{TABLA}.revisado_correo']",
+            }
+        ),
+    },
+    "tests/test_f056_alcance_cerrado.py": {
+        "test_f056_r12_solo_15_declara_una_columna_de_correo": frozenset(
+            {
+                "con_correo == ['15_revisiones_bandeja.sql']",
+            }
+        ),
+    },
+    "tests/test_f060_alcance_cerrado.py": {
+        "test_f060_r37_los_sql_son_los_quince_de_antes": frozenset(
+            {
+                "tuple(sorted((f.name for f in carpeta.glob('*.sql')))) == SQL_DE_LA_BASE",
+            }
+        ),
+    },
+    "tests/test_f010_endpoints_protegidos.py": {
+        "test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay": frozenset(
+            {
+                'len(niveles(codigo)) == len(ENDPOINTS) == 21',
+            }
+        ),
+    },
+    "tests/test_f056_paginacion.py": {
+        "test_f056_r23_filtros_de_estado": frozenset(
+            {
+                "[f.value for f in FiltroEstado] == ['activas', 'todas', 'nueva', 'editada', 'aprobada', 'descartada']",
+            }
+        ),
+        "test_f056_r27_resumen_sobre_todas_las_filas": frozenset(
+            {
+                'r.por_estado == {E.NUEVA: 3, E.EDITADA: 2, E.APROBADA: 1, E.DESCARTADA: 2}',
+            }
+        ),
+    },
+    "tests/test_f056_pipeline_revision.py": {
+        "test_f056_r27_resumen_de_toda_la_obra_y_pagina_filtrada": frozenset(
+            {
+                'resultado.resumen.por_estado == {E.NUEVA: 3, E.EDITADA: 0, E.APROBADA: 1, E.DESCARTADA: 1}',
+            }
+        ),
+    },
+    "tests/test_f056_revision_http.py": {
+        "test_f056_r27_la_respuesta_lleva_lo_de_r27": frozenset(
+            {
+                "datos['resumen'] == {'total': 3, 'por_estado': {'nueva': 2, 'editada': 0, 'aprobada': 0, 'descartada': 1}, 'con_motivos': 1, 'por_motivo': {m.value: int(m is MotivoNoAprobable.SIN_UBICACION) for m in MotivoNoAprobable}}",
+            }
+        ),
+    },
+    "tests/test_f056_repositorio_revision.py": {
+        "test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original": frozenset(
+            {
+                "sql.count('LEFT JOIN LATERAL') == 2",
+            }
+        ),
+        "test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma": frozenset(
+            {
+                'conexion.ejecutadas[2].parametros[0] == UUID(int=1)',
+                'len(sql) == 3',
+                "sql[2].startswith(f'INSERT INTO {ESQUEMA}.revisiones_bandeja ')",
+            }
+        ),
+    },
 }
 
 #: Los tests propios de F-059 y sus dobles.
@@ -1081,27 +1175,100 @@ def test_f059_r41_en_cada_ampliado_solo_cambia_lo_declarado(relativa):
         assert _novedades(antes, ahora) == AMPLIADOS[relativa]
 
 
+def _perdidas_no_declaradas(
+    antes: str, ahora: str, declaradas: Mapping[str, frozenset[str]]
+) -> dict[str, list[str]]:
+    """Las aserciones de la base que ya no están y **no** se declararon, por función.
+
+    `declaradas` es lo de un fichero en `ASERCIONES_QUE_CAMBIAN`. Se compara con
+    multiplicidad (`Counter`): declarar una aserción permite perderla **una** vez.
+    """
+    viejas, nuevas = _aserciones(antes), _aserciones(ahora)
+    sobran = {}
+    for funcion, aserciones in viejas.items():
+        perdidas = aserciones - nuevas.get(funcion, Counter())
+        no_declaradas = perdidas - Counter(declaradas.get(funcion, frozenset()))
+        if no_declaradas:
+            sobran[funcion] = sorted(no_declaradas.elements())
+    return sobran
+
+
 @pytest.mark.parametrize("relativa", sorted(AMPLIADOS))
 def test_f059_r41_ningun_ampliado_pierde_una_asercion(relativa):
-    """Sin relajar: cada aserción de la base sigue, salvo las que cambian por declaración."""
+    """Sin relajar: cada aserción de la base sigue, salvo **las** declaradas una a una (C-B4-1)."""
+    _diff_de_la_rama_o_saltar()
+    antes = _en_la_base(f"{SERVICIO}{relativa}")
+
+    assert _perdidas_no_declaradas(antes, _actual(relativa), ASERCIONES_QUE_CAMBIAN.get(relativa, {})) == {}
+
+
+@pytest.mark.parametrize("relativa", sorted(ASERCIONES_QUE_CAMBIAN))
+def test_f059_r41_c_b4_1_lo_declarado_es_lo_que_se_pierde(relativa):
+    """Cada aserción declarada estaba en la base, en su función, y ya no está: una
+    declaración de más sería una puerta abierta para relajar después."""
     _diff_de_la_rama_o_saltar()
     antes = _aserciones(_en_la_base(f"{SERVICIO}{relativa}"))
     ahora = _aserciones(_actual(relativa))
-    exentas = ASERCIONES_QUE_CAMBIAN.get(relativa, frozenset())
 
-    perdidas = {
-        funcion: sorted((aserciones - ahora.get(funcion, Counter())).elements())
-        for funcion, aserciones in antes.items()
-        if funcion not in exentas and aserciones - ahora.get(funcion, Counter())
-    }
-
-    assert perdidas == {}
+    for funcion, declaradas in ASERCIONES_QUE_CAMBIAN[relativa].items():
+        perdidas = antes.get(funcion, Counter()) - ahora.get(funcion, Counter())
+        assert declaradas == set(perdidas), (relativa, funcion)
 
 
 def test_f059_r41_lo_que_cambia_esta_declarado_como_ampliado():
     """Una aserción que cambia en una función que no se declara ampliada no se puede."""
     for relativa, funciones in ASERCIONES_QUE_CAMBIAN.items():
-        assert funciones <= AMPLIADOS[relativa], relativa
+        assert set(funciones) <= AMPLIADOS[relativa], relativa
+        assert all(funciones.values()), relativa
+
+
+def test_f059_r41_c_b4_1_quitar_una_asercion_no_declarada_da_rojo():
+    """Control negativo con un fichero de verdad (C-B4-1, «G1» de la review del Bloque 4).
+
+    En `test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma`, que sí
+    tiene aserciones declaradas, se quita una que **no** lo está —la de los
+    `commits` y `rollbacks`—: la guarda la ve. Y la que sí está declarada se
+    puede perder sin que salte.
+    """
+    _diff_de_la_rama_o_saltar()
+    relativa = "tests/test_f056_repositorio_revision.py"
+    funcion = "test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma"
+    g1 = "(conexion.commits, conexion.rollbacks) == (1, 0)"
+    antes = _en_la_base(f"{SERVICIO}{relativa}")
+    declaradas = ASERCIONES_QUE_CAMBIAN[relativa]
+
+    def sin(fuente: str, texto: str) -> str:
+        arbol = ast.parse(fuente)
+        for nodo in arbol.body:
+            if isinstance(nodo, ast.FunctionDef) and nodo.name == funcion:
+                nodo.body = [
+                    s for s in nodo.body if not (isinstance(s, ast.Assert) and ast.unparse(s.test) == texto)
+                ]
+        return ast.unparse(arbol)
+
+    actual = _actual(relativa)
+    assert g1 in _aserciones(actual)[funcion]
+    assert _perdidas_no_declaradas(antes, sin(actual, g1), declaradas) == {funcion: [g1]}
+    assert _perdidas_no_declaradas(antes, actual, declaradas) == {}
+
+
+def test_f059_r41_c_b4_1_la_guarda_de_aserciones_no_es_ciega():
+    """Control negativo sin `git`: una función declarada no exime a sus demás aserciones."""
+    antes = "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n\ndef test_b():\n    assert 3\n"
+    declaradas = {"test_a": frozenset({"1 == 1"})}
+
+    assert _perdidas_no_declaradas(antes, antes.replace("    assert 1 == 1\n", ""), declaradas) == {}
+    assert _perdidas_no_declaradas(antes, antes.replace("    assert 2 == 2\n", ""), declaradas) == {
+        "test_a": ["2 == 2"]
+    }
+    assert _perdidas_no_declaradas(antes, antes.replace("    assert 3\n", "    pass\n"), declaradas) == {
+        "test_b": ["3"]
+    }
+    # Declarar una aserción la deja perder una vez, no dos.
+    doble = antes.replace("    assert 1 == 1\n", "    assert 1 == 1\n    assert 1 == 1\n")
+    assert _perdidas_no_declaradas(doble, antes.replace("    assert 1 == 1\n", ""), declaradas) == {
+        "test_a": ["1 == 1"]
+    }
 
 
 def test_f059_r41_los_controles_de_los_tests_no_son_ciegos():

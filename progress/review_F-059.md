@@ -1197,3 +1197,188 @@ ejecutado completos. El resto es spec e informes en Markdown.
   comprobados.
 - [x] **C4 · MANUAL**: T8 en verde (104 passed, el líder, sobre `324aff0`).
 - El resto, como en la review del Bloque 4.
+
+## Review final (Bloque 5 y la feature entera) · 2026-10-17
+
+- **Veredicto:** **CHANGES_REQUESTED** (2 hallazgos: C-F-1 para el implementer y C-F-2 para el líder).
+- **Todavía NO es «apta para desplegar».** El código, los tests, la infra y la documentación están bien, y no veo
+  ningún riesgo de escritura en el ERP. Lo que falta:
+  - **C-F-1**: un checkpoint de C4 bis que la guarda de alcance de F-059 no cumple.
+  - **C-F-2**: los pasos MANUAL del Bloque 6 no están en `progress/current.md` con su comando exacto.
+
+  Corregidas las dos, la re-review será corta, y su APPROVED sí será «apta para desplegar» (T24).
+- **Alcance revisado:** el Bloque 5, `8b7790d..0ea5fef` (T18 `2a198f7`/`42a2d9d`, T19 `c4874ea`/`1d7a1ed`, T20
+  `a623bea`, T21 `de6d415` y `8f9a8a8` en `azure-apps`, T22 `44fcd21`/`43fb673`, T23 `0ea5fef`), y la feature
+  entera desde `2d2efd7` contra `CHECKPOINTS.md`.
+- **Nivel de rigor:** `critico`.
+
+### Qué he verificado yo, y cómo
+
+Todo desde el scratchpad, sin `.env` y sin `init.sh`. Los mutantes, en worktrees desechables, ya retirados:
+`git worktree list` sin ninguno del scratchpad, y el árbol de trabajo solo con el `progress/current.md` del líder.
+
+| Verificación | Resultado |
+|---|---|
+| Los tests del Bloque 5 y los vecinos: `test_f059_scripts_infra.py`, `test_f059_documentacion.py`, `test_f059_alcance_cerrado.py`, los cinco de documentación del grupo B, `test_f010_scripts_infra.py`, `test_f010_prompt_keys_infra.py`, `test_f012_scripts_infra.py`, `test_f051_scripts_infra.py` y las dos guardias de F-006 | **709 passed, 3 skipped in 99.25s** |
+| T23 (el líder; no la repito) | `init.sh` sobre `a2ab36b`: 9199 passed, 233 skipped, PUERTA COBERTURA 100,0 % de 1122 líneas, ENTORNO LISTO. Desde `a2ab36b` solo cambia `tasks.md` (`0ea5fef`) |
+| T8 (el líder) | 104 passed, sobre `324aff0`. Desde entonces, ningún cambio de producción |
+| **T22, opción B**: cambios de producción desde `9db9847` | **Ninguno** (`git diff --name-only 9db9847 HEAD -- services/`, sin tests: vacío) |
+| **T22, opción B**: la comparación mutante a mutante, recalculada por mí | Campaña entera (`2d2efd7..HEAD`): **203**. Bloques: 85 + 26 + 25 + 66 = 202, cada uno calculado sobre el commit de su campaña. **201 de 203 idénticos**, con la misma clave del informe (fichero, texto de la línea, columna, operador, original → mutado). Los **2** sin gemelo son los de `_con_texto` (`domain/models/volcado.py:364`). Y el único de los bloques sin gemelo en la final es `if ensayo.actor_oid != actor_oid:`, la línea que quitó B-1 (a). Coincide con `progress/mutacion_F-059.md` |
+| **T22**: los 2 de `_con_texto`, sobre `HEAD`, con los tests de F-059 solos | **los 2 muertos**: `or` → `and`, por `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base`; quitar el `not`, por `test_f059_r6_el_parte_clave_a_clave` |
+| **T22**: muestra aleatoria (semilla fija) de 10 de los 201, sobre `HEAD` y contra los tests de F-059 | **10/10 muertos** por tests de F-059. Dos de ellos (`repositorio_revision_pg.py:236` y `:238`) los matan los `test_f059_*` que viven en `test_f056_repositorio_revision.py` |
+| Los `.ps1` nuevos y `desplegar_backend.ps1` | ASCII, sin BOM, CRLF (como `19_ventana_escritura.ps1`) |
+| Datos sensibles en `2d2efd7..HEAD` y en `8f9a8a8` de `azure-apps` | Ningún GUID ni IP. Los correos son todos de `.invalid`, y las URL, de `.invalido` |
+| Ficheros binarios u ofimática añadidos en la feature | Ninguno |
+
+### Hallazgos (cambios requeridos)
+
+1. **C-F-1 (implementer) · La guarda de piezas de T16 no ve lo que no es una definición.** Está en
+   `services/postventa-api/tests/test_f059_alcance_cerrado.py`, en `_definiciones`, líneas 174–196 («Los `import` no
+   cuentan»), y en `test_f059_s12_en_cada_fichero_tocado_solo_cambia_lo_declarado`, líneas 396–409.
+   - **Lo que exige el checkpoint.** El de C4 bis aprobado por el humano el 2026-10-14 (F-060, Bloque 7) dice que una
+     guarda por definiciones tiene que ver también las importaciones y las sentencias de módulo, con su control no
+     ciego. Es lo que hace `_resto_del_modulo` en `test_f060_alcance_cerrado.py`.
+   - **Lo que he comprobado.** En un worktree forzado de la rama, sin commit y ya retirado:
+     - **G5**: añadir al final de `domain/models/revision.py` `_PERMITIDAS[EstadoRevision.DESCARTADA] = ()`. Es una
+       sentencia de módulo que cambia F-056, porque una `descartada` deja de poder recuperarse. La guarda lo deja
+       pasar (130 passed). Solo lo cazan los tests de comportamiento de F-056.
+     - **G6**: añadir un `import` a `repositorio_revision_pg.py`. 130 passed.
+     - **G3**: registrar una ruta anónima nueva con una sentencia de módulo
+       (`app.route(route="volcado/otra", …)(volcado)`). La guarda y `test_f010_endpoints_protegidos.py` la dejan
+       pasar (130 y 8 passed). Esta vez cae por casualidad en los tests HTTP, al importar `function_app`.
+   - **Qué hacer.** Para cada fichero de `PIEZAS_DE_F059`, comparar con la base lo que queda fuera de
+     `_definiciones`: las importaciones y las sentencias de módulo (`Expr`, `If`, asignaciones a algo que no es un
+     nombre…), y exigir que no cambie nada salvo lo **declarado**. Lo declarado son las importaciones que F-059 añade
+     en cada fichero (las de `situacion_volcado`, `sentencias_volcado`, `volcado_de`, los errores y el
+     `from interface_adapters.api.volcado import …` de `function_app.py`, …), escritas a mano como en
+     `PIEZAS_DE_F059`. Con su control negativo, y repitiendo G3, G5 y G6, que tienen que morir.
+2. **C-F-2 (líder) · Los pasos MANUAL que faltan no están en `progress/current.md` con su comando exacto.** C4 lo
+   pide para que el humano pueda ejecutarlos. Hoy `current.md` solo dice «luego el Bloque 6 manual (T24 desplegar
+   con la ventana cerrada)». **Qué hacer:** listar ahí T24, T25, T26 y T27 como pendientes del humano, con los
+   comandos de `tasks.md`, Bloque 6:
+   - `git worktree add --detach ..\postventa-publicar dev`;
+   - `desplegar_backend.ps1` y `27_ventana_volcado.ps1` desde ese worktree;
+   - `28_volcado_lectura_sigrid.ps1 -CodigoObra 0626` para las fotos, y con `-Referencia PVI-<id>` la de después;
+   - `27_ventana_volcado.ps1 -Abrir` / `-Cerrar`;
+   - la anulación desde la UI.
+
+   Con la autorización expresa para **una** escritura como precondición de T25.
+
+### Lo que el implementer pidió mirar (Bloque 5)
+
+- **La codificación de los `.ps1` (ASCII sin BOM frente al «UTF-8 con BOM» de T18): desviación aceptable.**
+  `test_f010_prompt_keys_infra.py` lee **todos** los `.ps1` como `ascii`, así que un BOM tumbaría la recolección, y
+  tocar ese test no está en las excepciones de R41. Un fichero ASCII ya es UTF-8 válido, y es lo que hacen ya
+  `19_ventana_escritura.ps1` y los scripts de F-013 y F-036. La excepción, eso sí, solo está escrita en las
+  cabeceras de los tests, y `docs/CONVENTIONS.md` dice «UTF-8 con BOM (salvo excepciones documentadas)» sin
+  documentarla (O-F-1).
+- **La cabecera de F-060: conforme con R41** (F-1 (a), cuyo texto dice «una cabecera bien formada que no
+  retroceda, con F-060 y su despliegue constando»). El test exige una sola fecha y una sola última feature, una
+  fecha ≥ 2026-10-14, «F-060» en la cabecera, los textos del despliegue de F-060, que siguen intactos en su bucle,
+  y «sin desplegar» fuera. Que «no retroceder» se mida por la fecha y no por el número de feature es correcto:
+  F-059 toca el documento después que F-060. Las dos aserciones exactas que se quitan están declaradas, con el
+  formato fino, en `ASERCIONES_QUE_CAMBIAN`, y la guarda de R41 lo vigila.
+- **`28_volcado_lectura_sigrid.ps1`: solo `sql/read`, y no lee ni nombres, ni propietarios, ni personas.** Va por
+  `08_lectura_sigrid_comun.ps1` (`Invoke-SigridLectura`, solo `POST /api/sql/read`). Sus seis `SELECT` leen solo
+  `ide` y `cod` de la obra, el `MAX(cod)` de la serie, y de cada parte el `cod`, el código de estado (por `conest`,
+  sin ningún número de estado fijo), los de tipo y oficio, `LEN(resubi)`, el número de intervinientes y causantes,
+  si la UPV es de la obra y la referencia `PVI-`. Ni descripciones, ni `rcp.tex`, ni propietario, ni persona, ni
+  nombres. Cumple R39. Hay una nota en O-F-2.
+- **`27_ventana_volcado.ps1` y `desplegar_backend.ps1`: conformes con R38 y D-3.**
+  - Sin parámetros, `27_` solo lee; `-Abrir` avisa y pide `ABRIR` antes de escribir; `-Cerrar` no pregunta; y tras
+    escribir vuelve a leer. Una App Setting ausente cuenta como cerrada.
+  - `desplegar_backend.ps1` fija `"VOLCADO_HABILITADO=false"` con el literal y en su propia línea, con y sin
+    `-VentanasCerradas`, junto con `VOLCADO_PARTES_POR_LLAMADA=5`, y lo enseña antes de pedir `DESPLEGAR`.
+- **La documentación (R40)**: la frase «Posventa lo pasa a PTE a mano» está en los cuatro documento: en
+  `ARCHITECTURE.md`, `INTEGRACION.md` y `DESPLIEGUE.md` (partida en dos líneas), y en `azure-apps`. Con ella, la
+  referencia `PVI-` en `RCPCLI`, el tipo `0002`, la anulación por la UI (NO PROCEDE, nunca `DELETE`),
+  `VOLCADO_HABILITADO` y «Los veinticuatro quedan en nivel». La cabecera de `INTEGRACION.md` dice «no está
+  desplegada». `azure-apps` va en un commit **local** (`8f9a8a8`, solo `postventa_incidencias.md`, sin push), y la
+  fila de consumidores de `sigrid_api.md` §10 queda para el líder en T24 (Q-6). **Conforme.**
+- **El grupo B de R41 (O-B4-3): cerrado.** `AMPLIADOS_EN_EL_BLOQUE_5` está vacío y lo exige un test; los cinco
+  ficheros pasan a igualdad. Sus diffs solo añaden la cifra vigente en `in`, la anterior en `not in`, y las
+  aserciones exactas que se sustituyen, declaradas una a una. La guarda de R41, con el formato de C-B4-1, pasa sobre
+  el árbol real.
+
+### T22 por la opción B: verificada
+
+La decisión del humano (2026-10-17, por escrito) se cumple tal como está escrita. No hay producción nueva desde la
+última campaña de bloque, la equivalencia de mutantes se sostiene (la he recalculado por mi cuenta) y los dos sin
+gemelo mueren. La muestra de 10 sobre el código actual mueren todos con tests de F-059, así que la reutilización de
+veredictos de bloque está respaldada también con los tests de hoy. **Conforme.**
+
+### La feature entera contra `CHECKPOINTS.md`
+
+**C1**
+- [x] `init.sh` termina con exit 0: T23, el líder, sobre `a2ab36b`, «ENTORNO LISTO».
+- [x] Están los ficheros del arnés.
+
+**C2**
+- [x] Una sola `in_progress` (F-059).
+- [x] La rama es la de la feature.
+- N/A · `current.md` solo con la sesión activa: F-059 no se cierra hasta T27, y es entonces cuando el líder pasa
+  lo cerrado a `history.md`. Hoy arrastra sesiones de otras features, y conviene podarlo en T27.
+- N/A · El resumen en `history.md`: la feature no es `done` (T27).
+
+**C3**
+- [x] Hexagonal: el dominio, puro; los puertos, en `domain/ports/`; los adaptadores, en `infrastructure/`;
+  `function_app.py`, solo con el borde.
+- [x] Primeras líneas con su ruta.
+- [x] Sin `print`, sin secretos y sin dependencias nuevas.
+- [x] La unidad es el parte: uno por incidencia, con su referencia `PVI-`.
+- [x] **Ningún `commit` contra Sigrid sin dry-run ni confirmación**, con tres barreras:
+  - un ensayo guardado de la misma persona y obra, de menos de 30 min, del que solo se vuelca lo `previsto`
+    (R17, R18);
+  - `confirmado: true` de JSON (R15);
+  - la ventana propia, que se despliega cerrada, comprobada en la fábrica, en el adaptador y en el cuerpo
+    (`commit is True`).
+- N/A · Manuscrito y «firmado no es conforme»: la feature no toca partes escaneados.
+- [x] **Reprocesar no duplica**: la referencia `PVI-<uuid>` da la idempotencia en `sigrid-api`, con la escritura
+  anticipada y `en_duda`.
+- [x] Ningún número de estado de Sigrid fijo: el parte nace en el estado inicial de la serie (lo resuelve
+  `sigrid-api`), y el `28_` lee el código por `conest`. El `"0002"` es el **tipo**, que decidió el humano (Q-1).
+- [x] Ningún escaneado ni PDF en el historial de la rama.
+
+**C3 bis**
+- N/A · La feature no toca `docs/referencia/`.
+
+**C4**
+- [x] Cada requisito tiene tests `test_f059_*`, todos en verde: R1–R42. R43 es MANUAL (T25).
+- [x] Los unit tests no tocan red ni base: dobles, `sin_red`, y los de base en `tests_bbdd`, contra la efímera
+  (T8).
+- [ ] **Las MANUAL pendientes, en `current.md` con su comando exacto: C-F-2.**
+
+**C4 bis**
+- [x] `rigor: critico`.
+- [x] Fase RED en cada bloque, con la traza pegada.
+- [x] Cobertura: la puerta de `init.sh`, al 100,0 %.
+- [x] Mutación: cuatro campañas de bloque recalculadas y reverificadas por muestreo, y T22 por la opción B,
+  verificada.
+- [x] Los muertos, comprobados.
+- [x] Cero supervivientes sin aceptación: V05d, A09 y los 13 de E-1, aceptados por escrito por el humano; 16 y 24,
+  muertos.
+- [x] «Evidencias» en cada bloque.
+- [ ] **La guarda por definiciones ve lo que no es una definición: C-F-1.**
+- [x] Ningún N/A sin motivo.
+
+**C4 ter**
+- N/A · El repositorio no declara `harness/rutas_sensibles.json`.
+
+**C5**
+- [x] T0–T23 en `[x]`, con sus commits.
+- N/A · T24–T27 son MANUAL o de cierre, y T24 tiene como precondición **esta** review aprobada, así que no pueden
+  estar hechas antes.
+- [x] Sin artefactos sin seguimiento.
+- [x] `features.json`: F-059 `in_progress`, que es su estado real.
+
+### Observaciones (no bloquean)
+
+- **O-F-1 · `docs/CONVENTIONS.md`.** Escribir la excepción de `infra/`: ASCII sin BOM y CRLF, porque
+  `test_f010_prompt_keys_infra.py` lee los `.ps1` como `ascii`. Hoy solo la explican las cabeceras de los tests de
+  F-013, F-036 y F-059. Si vale para cualquier proyecto con esa guarda, se porta a `arnes-base`.
+- **O-F-2 · El `MAX(cod)` del `28_` no filtra por `emp`.** Si la serie `RS<aa>.<mm>/` la comparten varias
+  empresas, la foto de antes y después de T25 podría moverse por un alta de otra empresa. En el guion de T25, que
+  el humano compare además el `cod` del parte creado con el `MAX(cod)` de después. La comprobación que vale, «1
+  parte con esa referencia, de la UPV elegida», no depende de esto.
+- **O-F-3 · Para T27.** Podar `progress/current.md` (pasar lo cerrado a `history.md`) y volver a lanzar
+  `init.sh`.

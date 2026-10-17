@@ -1,6 +1,50 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-059 · Pendientes MANUAL del humano (Bloque 6 de `tasks.md`), con su comando exacto (C-F-2, 2026-10-17)
+> Precondición de todo el bloque: review final de F-059 **APPROVED, «apta para desplegar»**. El detalle de cada paso está en
+> `specs/F-059-volcado-sigrid-backend/tasks.md`, Bloque 6.
+>
+> - **T24 · Merge y despliegue con la ventana cerrada.** El líder prepara el merge a `dev` desde un worktree fuera del
+>   repo. El humano publica desde un worktree limpio de `dev`, ejecutando desde la raíz del repositorio:
+>   ```
+>   git worktree add --detach ..\postventa-publicar dev
+>   powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_backend.ps1
+>   powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\27_ventana_volcado.ps1
+>   git worktree remove ..\postventa-publicar
+>   ```
+>   Van los mismos parámetros que en el último despliegue. El tercer comando tiene que decir **cerrada**. Se anota el
+>   commit publicado. Después, el líder actualiza `azure-apps/sigrid_api.md` §10 (Q-6) en un commit local.
+> - **T25 · UNA escritura en la obra 0626.** Precondición: **autorización expresa del humano en el chat para una sola
+>   escritura**. Se hace desde la consola (F12) del front publicado.
+>   1. Foto de antes: `powershell -ExecutionPolicy Bypass -File infra\28_volcado_lectura_sigrid.ps1 -CodigoObra 0626`
+>   2. Fila «PRUEBA F-059 - ANULAR»: se importa en `importar.html`, se le pone una ubicación y se aprueba. Se anota su
+>      `incidencia_id`.
+>   3. Con la ventana cerrada: `GET /api/volcado?obra=0626`, después `POST /api/volcado/ensayo` y luego
+>      `POST /api/volcado/volcar` con `confirmado: true`. Tiene que dar **503 `volcado_deshabilitado`**, y la foto no
+>      cambia.
+>   4. `powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1 -Abrir` (pide `ABRIR`). Se hace un ensayo
+>      nuevo y se vuelca: tiene que dar 200 `creado` `RS<aa>.<mm>/NNNN`. **Enseguida**:
+>      `powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1 -Cerrar`
+>   5. Foto de después:
+>      `powershell -ExecutionPolicy Bypass -File infra\28_volcado_lectura_sigrid.ps1 -CodigoObra 0626 -Referencia PVI-<id>`.
+>      Tiene que salir **1** parte en SAT, de tipo `0002`, con 1 interviniente y sin causante. Se compara su `cod` con el
+>      `MAX(cod)` (O-F-2). El humano lo abre en Sigrid. **No se pasa a PTE.**
+>   6. Bandeja: `GET /api/revision?obra=0626&estado=volcada` devuelve la prueba con su `sigrid_cod`. Un `editar` da 409.
+>      Un ensayo nuevo la marca como `ya_volcada`.
+>   7. Application Insights: las trazas no llevan `oid`, correo, login ni texto.
+> - **T26 · Vuelta atrás y limpieza**, salga bien o mal:
+>   1. `powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1 -Cerrar`
+>   2. El parte se **anula desde la UI de Sigrid** (NO PROCEDE, sin correo). **Nunca** con `DELETE` ni `sql/write`.
+>   3. Se comprueba con
+>      `powershell -ExecutionPolicy Bypass -File infra\28_volcado_lectura_sigrid.ps1 -CodigoObra 0626 -Referencia PVI-<id>`.
+> - **T27 · Cierre (líder).** Resumen en `progress/history.md`, poda de este fichero (O-F-3) y `bash harness/init.sh` en
+>   verde.
+
+> **F-059 · Review final: CHANGES_REQUESTED (reviewer, 2026-10-17)** · C-F-1 (la guarda de piezas no ve las importaciones
+> ni las sentencias de módulo), en manos del implementer; C-F-2 (estos pasos MANUAL), hecho arriba. Observaciones:
+> O-F-1 (excepción ASCII de `infra/` en `CONVENTIONS.md`), O-F-2 (en T25) y O-F-3 (en T27).
+
 > **F-059 · T23 en verde (líder, 2026-10-17, sobre `a2ab36b`)** · `bash harness/init.sh`: 9199 passed, 233 skipped in
 > 2282.42s; PUERTA COBERTURA 100,0 % de 1122 líneas; ENTORNO LISTO. T22 por la opción B en `43fb673`. Siguiente: review
 > final de F-059 (Bloques 5 y feature entera); luego el Bloque 6 manual (T24 desplegar con la ventana cerrada).

@@ -896,3 +896,210 @@ la spec en Markdown.
 - **O-B3-3** (T16): que solo `fabrica.py` construya el adaptador con `escritura_habilitada=True`.
 - **Bloque 4**: O-B2-2, O-B1-1 y el camino de O-B3-4, ya fijado en T13.
 - **P-1 a P-3**: mejoras de `harness.mutacion`, pendientes del humano.
+
+## Review del Bloque 4 (la aplicación y los tres endpoints) · 2026-10-17
+
+- **Veredicto:** **CHANGES_REQUESTED** (1 hallazgo: C-B4-1, en la guarda de R41 de T16). Lo demás está bien hecho:
+  la aplicación, el borde, el cierre de las seis observaciones y los mutantes. Los 15 equivalentes los confirmo
+  yo, y quedan para que el humano los acepte por escrito.
+- **Alcance revisado:** `git diff 560811b..cc49cba`, sin lo del líder (`features.json`, `BACKLOG.md`,
+  `current.md`). Commits: T13 `590eb1a`, T14 `b5cc5c1`, T15 `930a5db`, T16 `1850984`, T17 `6b187a3`,
+  `e8cb869`, `e7a3c64`, `bf68637`, `9db9847`, `70d611e` y `cc49cba`. Además, el arreglo de T8 que llegó
+  durante la review: `324aff0`.
+- **Nivel de rigor:** `critico`.
+
+### Qué he verificado yo, y cómo
+
+Todo desde el scratchpad, sin `.env` y sin `init.sh`. Los mutantes, en worktrees desechables, ya retirados:
+`git worktree list` sin ninguno del scratchpad, y el árbol de trabajo solo con el `progress/current.md` del líder,
+que no he tocado.
+
+| Verificación | Resultado |
+|---|---|
+| **Suite entera del servicio** (`tests` y `tests_bbdd`), sobre `324aff0` | **9094 passed, 233 skipped in 675.90s**, las cifras del implementer |
+| `ruff check` (desde la raíz) de los 4 ficheros de producción y de los 5 de tests del bloque, `test_f059_bbdd_volcado.py` incluido | `All checks passed!` |
+| `tests_bbdd/tests/test_f059_bbdd_volcado.py --collect-only`, tras `324aff0` | **46 tests collected** |
+| Recálculo puro (`alcance_de_feature("F-059", base="560811b")`) | 4 ficheros, **1374** líneas (719 + 196 + 6 + 453) y **66** mutantes (25 + 17 + 0 + 24). Coincide. Seis muestras (`volcado.py:160` frozen, `:339` strict, `:662`, `function_app.py:1880`, `api/volcado.py:332` y `:419`) están en la tabla del informe con el mismo operador |
+| Los 15 equivalentes (13 de E-1 y 2 de E-2), contra los siete ficheros de tests de F-059 (sin el de alcance) | **Los 15 sobreviven** (831 passed con cada uno) |
+| Siete mutantes de orden míos (regla 7) | 7/7 muertos por tests de F-059 |
+| La guarda de R41 de T16, con un mutante de test (G1) y su control | **G1 sobrevive** (C-B4-1); el control cae |
+| Datos sensibles en `560811b..HEAD` | Ningún GUID, ninguna IP; los correos son de `@ejemplo.invalid`; la única URL, `https://ejemplo-volcado-http.invalido` |
+
+**Campaña no reejecutada: 323 min según el informe** (19405.7 s). Coste por mutante: 19405.7 × 8 ÷ 66 ≈
+**2352 s**, coherente con una suite de unos 1180 s bajo carga, más los seis timeouts que se repasaron en serie. El
+implementer reverificó los 66 contra los tests de F-059 solos y encontró el 49, que solo mataba una suite ajena; ya
+lo cubre `70d611e`.
+
+### Hallazgo (cambio requerido)
+
+1. **C-B4-1 · `ASERCIONES_QUE_CAMBIAN` exime funciones enteras, y la guarda de R41 deja quitar aserciones que no
+   tienen que ver con el cambio.** Está en `services/postventa-api/tests/test_f059_alcance_cerrado.py`: la tabla
+   en las líneas 985 y siguientes, y la comprobación en `test_f059_r41_ningun_ampliado_pierde_una_asercion`,
+   líneas 1084–1098.
+   - **Qué pasa.** Para una función que está en `ASERCIONES_QUE_CAMBIAN`, la comprobación no mira **ninguna** de
+     sus aserciones.
+   - **Cómo lo he comprobado.** En un worktree de la rama (forzado, sin commit, ya retirado), quité
+     `assert (conexion.commits, conexion.rollbacks) == (1, 0)` de
+     `test_f056_repositorio_revision.py::test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma`. Es una
+     aserción que F-059 no cambia, pero la función está exenta. Resultado: **109 passed**, la guarda no lo ve. El
+     control (quitar una aserción de `test_f056_r10_…`, que no está exenta) sí cae:
+     `test_f059_r41_ningun_ampliado_pierde_una_asercion[tests/test_f056_repositorio_revision.py]`.
+   - **Por qué importa.** R41, con F-1 (a), dice que cada excepción se declara «función a función en
+     `test_f059_alcance_cerrado.py`, que vigila que no se pierde **ninguna** aserción», y que solo cambia «la
+     cifra o el fichero vigente». Hoy hay 18 funciones exentas en 16 ficheros, y en cualquiera de ellas se podría
+     relajar algo sin que salte nada. T20 añadirá más.
+   - **Qué hacer.** Declarar las **aserciones** que desaparecen, no las funciones: por ejemplo
+     `ASERCIONES_QUE_CAMBIAN: dict[str, dict[str, frozenset[str]]]`, con el texto normalizado de cada aserción de
+     la base que se sustituye (`len(sql) == 3`, `sql[2].startswith(…)`, `nombres[-1] == FICHERO`…), y que la guarda
+     exija `perdidas ⊆ declaradas` para cada función. Con un control negativo (una aserción no declarada que se
+     quita → rojo), y repitiendo G1, que tiene que morir.
+
+### Lo que el líder pidió mirar
+
+**(1) El cierre de las seis observaciones.** Cada una tiene su test, y he comprobado que existen todos en los
+ficheros que dice la tabla del informe:
+- **O-B1-1**: `_decision_con_candidatas` dentro de `anotar_enviados`, con dos tests.
+- **O-B1-2**: la clave `motivo` en HTTP.
+- **O-B2-2**: un parte sin respuesta → 502 sin guardar **ninguno**.
+- **O-B3-1**: el login sin verificar → 502 `ensayo_sin_respuesta`, en los dos endpoints.
+- **O-B3-3**: por `ast`, solo `_adaptador_de_volcado` construye el adaptador, y solo `construir_volcador` pide
+  `escritura_habilitada=True`.
+- **O-B3-4**: con el aviso en el log.
+
+**(2) Los 15 equivalentes.** Los he repetido todos y **coincido con los 15**. Ninguno lo caza un test de F-059.
+Frases para llevar al humano:
+- **H04, H15, A01 y A06** (`is None` → `not` sobre `SituacionDeRevision`, `CandidataAlVolcado`,
+  `SituacionDeVolcado` y `UltimoEvento`): «son dataclasses sin `__bool__` ni `__len__`; cuando no son `None` son
+  siempre verdaderas, así que las dos formas hacen lo mismo».
+- **H06, H22 y H19** (`ClaseDeCodigoDeLote` y `MotivoExclusion`): «son `StrEnum` sin ningún valor vacío; cuando
+  no son `None` son siempre verdaderos».
+- **H08 y H24** (`resultados is None` → `not resultados`): «`interpretar_respuesta` devuelve un resultado por
+  parte mandado, y a esa línea solo se llega con al menos un parte, así que la tupla nunca está vacía».
+- **H25** (`fallo is not None` → `fallo`): «una excepción es siempre verdadera».
+- **A10** (`volcado is None`): «`volcado_de` devuelve siempre un diccionario con cinco claves».
+- **A24 y A25** (`UUID` y `datetime`): «los dos son siempre verdaderos, también `UUID(int=0)`».
+- **E-2, los mutantes 16 y 24** (`zip(…, strict=True)` → `strict=False`): «partes y resultados tienen la misma
+  longitud por construcción del dominio, así que `strict` no cambia nada; se queda como alarma por si un cambio
+  futuro lo rompiera». Si el humano prefiere no aceptarlos, hay una alternativa barata: un test que sustituya
+  `interpretar_respuesta` por una versión que devuelva un resultado de menos y exija el `ValueError`. Eso los
+  mataría y además dejaría fijada la alarma.
+
+**(3) Las formas del contrato que eligió el implementer (T15, decisiones 3 a 6).** Ninguna contradice un
+requisito, y no veo ninguna que tenga que decidir el humano. Sí conviene que el spec-author las escriba en §11,
+porque son lo que va a consumir F-040 (O-B4-1):
+- **Los 409 del login** (`usuario_sigrid_no_mapeado` y `usuario_sigrid_inexistente`, con mensaje propio):
+  **obligado por §15**. Los motivos de F-009 llevan el correo y el login, y §15 dice que el login no va en ninguna
+  respuesta y el correo no va en mensajes de error. El cierre de F-009 los devuelve tal cual, y aquí no se podía
+  copiar.
+- **Los códigos de los 503** (`configuracion_sigrid_incompleta`, `base_de_datos_no_disponible`): §11 solo dice
+  «503 entorno, configuración, base». Que todo el volcado responda `{error, codigo}` es coherente con §7.
+- **`envio` es lo realmente mandado** (`cuerpo_de_parte`, con `referencia_externa` y sin la clave
+  `descripcion_larga` si no hay detalle): manda R12 («los campos de R6 que se han mandado») sobre el ejemplo de
+  §11. El spec-author tiene que **corregir el ejemplo**, que enseña `"descripcion_larga": null` y no lleva la
+  referencia.
+- **`ultimo_volcado` sin correo**: R28 no da su forma; §9 y §15 limitan el correo de quien vuelca a
+  `GET /api/revision`, y F-2 (a) solo extendió eso a la respuesta de la acción. Es la lectura conservadora.
+- De paso, que §11 diga también las formas de `excluidas` (`{incidencia_id, motivo, sigrid_cod}`) y de `avisos`
+  (`{incidencia_id, referencia_externa, sigrid_cod_anterior, sigrid_cod}`), y que un ensayo sin nada que mandar
+  devuelve `ensayo_id` y `caduca_at_utc` nulos.
+
+**(4) O-B1-1 dentro de la transacción, y R26 leído después de la respuesta.**
+- **O-B1-1.** `_decision_con_candidatas` envuelve `seleccionar_para_volcado` y se le pasa a `anotar_enviados`,
+  que la llama con las filas bloqueadas (Bloque 2). La candidata se lee antes de la transacción, y es correcto:
+  dentro se exige que la última revisión, con la fila bloqueada, sea la del ensayo, y que la candidata sea de esa
+  misma revisión. Como la tabla es append-only, sus valores son los de esa revisión. Los partes se construyen
+  después con esas mismas candidatas. La falseada no deja `enviado` (lo fija el test).
+- **R26.** Leer las situaciones **después** de la respuesta y **antes** de guardar es lo que permite ver un
+  `creado` de otro volcado concurrente, y si esa lectura falla es R25. Mi O8, que lee las situaciones antes de
+  llamar a la pasarela, muere con `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base`, que
+  fija el orden entero de las llamadas.
+
+**(5) T16 y el grupo B de R41 con `AMPLIADOS_EN_EL_BLOQUE_5`.** El diseño es correcto. Los cinco ficheros de
+documentación del grupo B están declarados con sus funciones; hasta T20 solo se exige que no cambie nada **no
+declarado** (`<=`), y después, la igualdad. El grupo B de F-010 (la cuenta de 24) ya está en igualdad. Queda el
+hueco de C-B4-1, que afecta también a lo que haga T20. **Para T20**: vaciar `AMPLIADOS_EN_EL_BLOQUE_5` y declarar
+sus aserciones con el formato fino que pide C-B4-1 (O-B4-3).
+
+**(6) Tests ajenos ampliados.**
+- `test_f056_revision_http.py` solo añade `"volcado"` a `CLAVES_DE_FILA`, con su comentario.
+- `test_f010_endpoints_protegidos.py` añade las tres rutas a `ENDPOINTS`, pone `== 24` en lugar de `== 21` (la
+  cifra vigente, como pide R41) y añade un comentario.
+- **Ninguna línea quitada** en ninguno de los dos, fuera de esa cifra. Ningún otro test ajeno en el diff.
+- `interface_adapters/api/revision.py` gana la clave `volcado` (F-2 (a)) y el mensaje de `_filtro` con los dos
+  estados. No añade ninguna importación directa de `infrastructure.sigrid`: la de `volcado_de` llega a las
+  fábricas de forma transitiva, a través de `api/volcado.py`. `test_f056_r39_…` y
+  `test_f060_importacion_diferida.py` siguen en verde.
+
+**(7) El incidente de `init.sh` y el `.env`.** El `pytest` de la sección 7 bis de `init.sh` se lanza con
+`cd "$RUTA"`, y `config/settings.py` declara `env_file=".env"`. Así que **cualquiera que ejecute `init.sh`**
+—como mandan los protocolos del implementer y del reviewer— hace que la suite lea el `.env` del servicio. No pudo
+pasar nada (la guardia `sin_red` impide abrir conexiones), pero la regla «ningún proceso lee el `.env`» y el
+protocolo «ejecuta `init.sh`» chocan, y el agente que siga los dos al pie de la letra no puede. **Sí hace falta una
+salvaguarda (P-4, abajo).** Mientras no esté, el encargo «sin `init.sh`» es la única defensa, y depende de que el
+agente lea la nota a tiempo, que es justo lo que falló.
+
+### Mutantes de orden (regla 7)
+
+El orden es el requisito central del volcado (§10: puertas → base → login → escritura anticipada → Sigrid →
+base). He bajado cada puerta un paso, en una copia desechable y solo con los tests de F-059:
+
+| Id | Mutación | Resultado | Test de F-059 que la caza |
+|---|---|---|---|
+| O1 | `validar_ensayo` después de leer las candidatas | muerto | `test_f059_r17_un_ensayo_que_no_existe` |
+| O2 | El login **después** de la escritura anticipada (R19) | muerto | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| O3 | La pasarela con `commit: true` **antes** de la escritura anticipada (R20) | muerto | ídem |
+| O5 | El login del ensayo antes de saber si queda algo que mandar | muerto | `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` |
+| O6 | El volcado: la base antes que las puertas (R16) | muerto | `test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[entorno-test]` |
+| O7 | El ensayo: la base antes que las puertas (R10) | muerto | `test_f059_r10_d4_el_ensayo_no_mira_la_ventana` |
+| O8 | R26 leído **antes** de llamar a la pasarela | muerto | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+
+Los siete los caza un test **de F-059**.
+
+### El arreglo de T8 (`324aff0`)
+
+Solo cambia `tests_bbdd/tests/test_f059_bbdd_volcado.py`. `_resultado` acepta el parte ya construido (`_parte`), y
+`test_f059_r1_la_derivacion_de_cuatro_uno_leida_de_la_base` lo captura **antes** del `creado`. El `KeyError` venía
+de reconstruir el parte desde `aprobadas` cuando la incidencia ya era `volcada` y, con R3, había salido de ahí.
+**Ninguna aserción cambia** (lo he leído en el diff), no hay código de producción tocado, recoge 46 casos y `ruff`
+no da avisos. **Conforme.** T8 tiene que repetirla el humano con Docker.
+
+### Checkpoints (los que cambian)
+
+- N/A · **C1 `init.sh`**: fuera del encargo, por la regla del `.env` (ver (7) y P-4). La suite entera está en
+  verde.
+- [x] **C3**: hexagonal. La aplicación solo usa puertos y dominio; el borde compone las fábricas;
+  `function_app.py` solo importa de `interface_adapters/api/volcado.py`. Primeras líneas, sin `print` ni secretos.
+  Ningún `commit: true` sin dry-run previo de la misma persona.
+- [x] **C4**: R8–R31 y R34–R35 de la aplicación y del borde, con `test_f059_*`. Sin red ni base:
+  `PasarelaFalsa`, dobles de los repositorios y `sin_red`.
+- [x] **C4 bis · RED**: traza pegada (169 failed, 187 passed; F-010, 2 failed).
+- [x] **C4 bis · cobertura**: 100 % de la aplicación y de los dos bordes, y lo de F-059 en `function_app.py`.
+- [x] **C4 bis · mutación de la herramienta**: 66/64/2, recalculada; el 49 se detectó y está resuelto.
+- [x] **C4 bis · orden**: siete mutantes de orden, todos muertos por F-059.
+- [ ] **C4 bis · cero supervivientes sin aceptación escrita**: los 15 equivalentes, que confirmo, siguen
+  **pendientes de la aceptación del humano**. No los cuento como hallazgo para el implementer: es una decisión que
+  el líder tiene que llevar.
+- [ ] **C4 bis · la guarda de «no se toca» ve lo que tiene que ver**: C-B4-1.
+- [x] **C5**: T13–T17 en `[x]`, con sus commits. T8, MANUAL pendiente.
+
+### Observaciones (no bloquean)
+
+- **O-B4-1 · Para el spec-author, antes de F-040.** Que §11 recoja las formas de (3): los dos 409 del login con
+  su código, los códigos de los 503, `envio` igual a `cuerpo_de_parte` (corrigiendo el ejemplo), `ultimo_volcado`
+  sin `volcado_por`, las formas de `excluidas` y `avisos`, y los nulos de un ensayo sin nada que mandar. Todo
+  mecánico.
+- **O-B4-2 · T8**: repetirla tras `324aff0` (46 casos de F-059).
+- **O-B4-3 · Para T20**: vaciar `AMPLIADOS_EN_EL_BLOQUE_5` y declarar sus aserciones con el formato de C-B4-1.
+
+### Propuesta de automejora (no aplicada)
+
+- **P-4 · Que la suite no pueda leer el `.env`, para que «ejecuta `init.sh`» y «ningún proceso lee el `.env`» no
+  choquen.** Tiene dos partes:
+  - **En este proyecto:** un fixture de sesión en `tests/conftest.py` que anule `env_file` de `Ajustes` (por
+    ejemplo, `Ajustes.model_config["env_file"] = None`, o `obtener_ajustes` con `_env_file=None` mientras corre
+    pytest), con un test que lo compruebe: con un `.env` señuelo en el directorio, los ajustes no lo leen.
+  - **Genérica, para `arnes-base`:** que `CHECKPOINTS.md` o `CONVENTIONS.md` exijan que ninguna suite lea secretos
+    locales, y que `init.sh` (7 bis) avise si encuentra un `.env` en el directorio de un servicio sin esa
+    neutralización.
+
+  Con eso, el implementer y el reviewer podrían volver a ejecutar `init.sh` tal cual lo manda su protocolo.

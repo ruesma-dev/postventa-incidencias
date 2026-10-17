@@ -59,6 +59,7 @@ from domain.models.revision import (
 from domain.models.situacion_volcado import EstadoEvento, ModoVolcado
 from domain.models.volcado import (
     MotivoExclusion,
+    ParteAVolcar,
     PedidaAlVolcado,
     ResultadoParte,
     parte_de,
@@ -580,10 +581,28 @@ def test_f059_r17_b1_el_ensayo_compara_la_persona_en_la_base(preparada):
 # ==========================================================================
 
 
-def _resultado(conexion, incidencia: uuid.UUID, estado: EstadoEvento, **campos) -> None:
-    """Un resultado de volcado guardado como lo guarda la aplicación."""
+def _parte(conexion, incidencia: uuid.UUID) -> ParteAVolcar:
+    """El parte de una candidata, como lo construye la aplicación (de `aprobadas`)."""
     candidatas = {c.incidencia_id: c for c in _revision(conexion).aprobadas(obra_codigo=OBRA)}
-    parte = parte_de(candidatas[incidencia])
+    return parte_de(candidatas[incidencia])
+
+
+def _resultado(
+    conexion,
+    incidencia: uuid.UUID,
+    estado: EstadoEvento,
+    *,
+    parte: ParteAVolcar | None = None,
+    **campos,
+) -> None:
+    """Un resultado de volcado guardado como lo guarda la aplicación.
+
+    Sin `parte`, se construye de la candidata. Una `volcada` ya no lo es (R3):
+    para guardar algo tras un `creado`, quien llama pasa el parte que capturó
+    antes (arreglo de T8, 2026-10-17).
+    """
+    if parte is None:
+        parte = _parte(conexion, incidencia)
     _volcados(conexion).guardar_resultados(
         llamada_id=uuid.uuid4(),
         ensayo_id=uuid.uuid4(),
@@ -627,8 +646,10 @@ def test_f059_r1_la_derivacion_de_cuatro_uno_leida_de_la_base(preparada):
     assert situacion.volcado.ultimo.motivo == "oficio_no_esta_en_la_obra"
     assert situacion.volcado.ultimo.correo == QUIEN.correo
 
-    _resultado(preparada, incidencia, EstadoEvento.CREADO, ide=77, cod=COD)
-    _resultado(preparada, incidencia, EstadoEvento.SIN_RESPUESTA)
+    # El parte, capturado antes del `creado`: después ya no es candidata (R3).
+    parte = _parte(preparada, incidencia)
+    _resultado(preparada, incidencia, EstadoEvento.CREADO, parte=parte, ide=77, cod=COD)
+    _resultado(preparada, incidencia, EstadoEvento.SIN_RESPUESTA, parte=parte)
     situacion = _revision(preparada).situacion(incidencia_id=incidencia)
     assert situacion is not None and situacion.volcado is not None
     assert estado_de(situacion) is EstadoRevision.VOLCADA  # volcada gana a lo que venga después

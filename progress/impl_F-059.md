@@ -2966,3 +2966,21 @@ sigue puesta.
 `test_f059_bbdd_volcado.py::test_f059_r1_la_derivacion_de_cuatro_uno_leida_de_la_base`, un defecto del test de T7
 (`9b4c8d5`, el ayudante `_resultado` busca en `aprobadas` una incidencia que ya es `volcada`). No lo he tocado: no es
 del encargo del Bloque 4 y no he podido repetir T8 (no tengo Docker); el líder dirá cuándo se corrige.
+
+## Arreglo de T8 · 2026-10-17
+
+Encargo del líder: T8 (`infra/pruebas_bbdd_efimera.ps1`, con Docker) dio **103 passed, 1 failed**:
+`tests_bbdd/tests/test_f059_bbdd_volcado.py::test_f059_r1_la_derivacion_de_cuatro_uno_leida_de_la_base`, `KeyError`
+en el ayudante `_resultado`. Defecto **del test** de T7 (`9b4c8d5`), no del código: tras guardar el `creado`, la
+incidencia ya es `volcada`, deja de ser candidata (R3), y el `_resultado(…, SIN_RESPUESTA)` siguiente construía el
+parte buscándola en `aprobadas`.
+
+**El arreglo**, solo en ese fichero de tests: el parte se construye en un ayudante nuevo, `_parte` (de `aprobadas`,
+como antes), y `_resultado` acepta `parte=` ya construido; sin él, lo construye como siempre. El test captura el
+parte **antes** del `creado` y lo pasa a las dos últimas llamadas. **Ninguna aserción cambia ni se quita**: la que
+persigue —«volcada gana a lo que venga después», y `aprobadas` vacía— sigue igual. Ningún código de producción
+tocado.
+
+**Verificación** (desde el scratchpad, sin `.env`): sin DSN la suite se salta, como debe: `test_f059_bbdd_volcado.py`,
+**46 skipped in 1.20s**, limpia; `ruff check` del fichero, `All checks passed!`. Verlo en verde es de T8: el líder la
+repite con Docker. `init.sh` no se ha lanzado.

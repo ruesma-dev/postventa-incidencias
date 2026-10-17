@@ -989,6 +989,17 @@ descartar y aprobar; desde `aprobada`, editar —y la incidencia **pierde la
 aprobación**— y descartar; desde `descartada`, solo recuperar. Cualquier otra
 es 409 `accion_no_permitida`, sin leer Sigrid ni escribir.
 
+**Enmienda de F-059 (2026-10-15): seis estados.** El volcado a Sigrid añade
+dos, también **derivados** y con **precedencia** sobre los cuatro de F-056:
+`volcada`, si Sigrid tiene el parte (algún evento `creado` o `idempotente` en
+`postventa.volcados_sigrid`), y si no, `en_duda`, si se pidió crearlo y no
+consta qué pasó (el último evento de modo `volcado` es `enviado` o
+`sin_respuesta`). Desde `volcada` y desde `en_duda` **no se admite ninguna
+acción**: 409 `accion_no_permitida` con `acciones: []`. Las candidatas al
+volcado son las `aprobada` y las `en_duda`, nunca una `volcada`, y el filtro
+`activas` deja fuera las `descartada` y las `volcada`. El diseño, en
+`specs/F-059-volcado-sigrid-backend/design.md` §4.
+
 ### Validar contra el catálogo de hoy
 
 Editar y aprobar comparan contra lo que Sigrid dice **en ese momento** —el
@@ -1096,6 +1107,14 @@ de quien vuelca, el dry-run, la referencia externa, el tipo, la urgencia en
 Sigrid y el estado `volcada`, en su propia tabla— queda fuera; y si Sigrid
 cambia entre aprobar y volcar, basta editar para sacar una incidencia de las
 candidatas.
+
+**Enmienda de F-059 (2026-10-17).** F-040 se partió por el límite de servicio
+(D-1 de F-059): lo que este apartado deja «fuera» para F-040 lo hace en el
+backend **F-059** —el login de quien vuelca, el ensayo, la referencia `PVI-`,
+el tipo `0002`, la tabla `postventa.volcados_sigrid` y los estados `volcada` y
+`en_duda`—, y F-040 se queda con la página. Las candidatas siguen saliendo de
+`candidatas_al_volcado`, sin cambiarla; la urgencia sigue sin mandarse. Todo,
+en la sección «Volcado a Sigrid (F-059)».
 
 ### Lo que no hace la revisión
 
@@ -1246,13 +1265,190 @@ al objetivo de `design.md` §11.4, y lo que domina son las lecturas lentas de
 - **No optimiza el listado** más allá de la importación diferida: lo mide, y
   lo demás es **F-061**.
 
+## Volcado a Sigrid (F-059)
+
+**Añadida el 2026-10-17 por F-059, implementada en su rama; no está desplegada
+todavía.** Es la primera feature que **crea** cosas en el ERP de producción:
+cada incidencia **aprobada** de la bandeja (F-056) se da de alta en Sigrid como
+**parte de reclamación** (`con.tip` 708, serie `RS<aa>.<mm>/`), con los mismos
+campos que el alta manual de Posventa, en **lote**, con un **ensayo** previo y
+una **confirmación**, y su número vuelve a la bandeja. Lo escribe la pasarela,
+`POST /api/sigrid/partes-reclamacion` (`sigrid-api` F-006, `azure-apps/sigrid_api.md`
+§8.9): este servicio decide **qué** se vuelca, **cómo** se traduce, **quién**
+firma y **qué se recuerda**. Es el **tramo A** de la spec conjunta de F-040
+(D-1): el backend; la página es **F-040**. Qué consume y qué escribe, con su
+tabla, sus rutas y el correo de quien vuelca, está en `docs/INTEGRACION.md`
+(§2, §3 bis, §4, §7, §8 y §9); el diseño y sus decisiones, en
+`specs/F-059-volcado-sigrid-backend/`.
+
+### El flujo: panel, ensayo, confirmación y volcado
+
+```
+GET  /api/volcado?obra=        las candidatas (aprobada, en_duda) y sus recuentos; sin leer Sigrid
+POST /api/volcado/ensayo       partes-reclamacion con commit: false; los eventos «ensayo» se guardan
+POST /api/volcado/volcar       puertas → ensayo vigente → login → escritura anticipada → commit: true → resultados
+```
+
+- **El ensayo** (`commit: false`) lee las candidatas de la obra, excluye con su
+  motivo lo que no se puede mandar (`no_es_de_la_bandeja`, `de_otra_obra`,
+  `no_es_candidata`, `ya_volcada`, `huella_no_coincide`), resuelve el login de
+  Sigrid de quien pide y manda **una** llamada. Guarda un evento por parte, con
+  el mismo `llamada_id` (el `ensayo_id`), y devuelve por parte lo que se mandó
+  (`envio`) y lo que dijo la pasarela: `previsto`, `idempotente`, `rechazado` o
+  `no_procesado`, con el **código** del motivo. Nunca los `cod` provisionales
+  ni las `filas` del preview, que llevan los identificadores del propietario y
+  de quien reclama.
+- **El volcado** (`commit: true`) exige un **ensayo vigente**: de la misma
+  obra, de la misma persona —lo compara la base, que nunca devuelve el `oid`
+  guardado (B-1)— y de menos de **30 minutos**; y solo manda lo que salió
+  `previsto` en él con la misma revisión. El orden es el requisito: **puertas
+  → base → Sigrid lectura → base escritura → Sigrid escritura → base**, lo
+  barato y lo que no escribe, primero. La **escritura anticipada** es una
+  transacción que bloquea las filas de la bandeja con `SELECT … FOR UPDATE` en
+  orden fijo —la misma `select_bloquear` que F-056 y F-060—, vuelve a comprobar
+  que la última revisión sigue siendo la del ensayo y la huella, e inserta un
+  evento **`enviado`** por parte; solo tras su `COMMIT` se llama a Sigrid, en
+  **una** llamada que **no se reintenta**, ni ante un tiempo agotado. Después
+  se guarda un evento por parte: `creado` o `idempotente` (con su `cod` y su
+  `ide`), `rechazado` o `no_procesado` (con el código), o **`sin_respuesta`**
+  si el parte no vuelve, vuelve con otra referencia o con algo incoherente.
+  Si la respuesta entera no se entiende, `sin_respuesta` para todos y 502
+  `volcado_sin_respuesta`; si Sigrid respondió y no se pudo guardar, 500
+  `volcado_sin_traza` y las incidencias quedan con su `enviado`.
+
+### Los seis estados
+
+Los cuatro de F-056 —`nueva`, `editada`, `aprobada` y `descartada`— más dos,
+**derivados** de los eventos y nunca guardados, con **precedencia**:
+`volcada` si hay algún evento `creado` o `idempotente`, de cualquier modo
+(también un `idempotente` del ensayo: es Sigrid diciendo que el parte existe);
+si no, `en_duda` si el último evento de modo volcado es `enviado` o
+`sin_respuesta`; y si no, el de F-056. Desde `volcada` y `en_duda` **no se
+admite ninguna acción** de revisión (409 `accion_no_permitida`), y la
+comprobación se repite **dentro** de la transacción de F-056 que bloquea la
+fila: una edición y un volcado simultáneos no se cruzan. Son candidatas
+exactamente las `aprobada` y las `en_duda`; una `volcada`, nunca (`ya_volcada`).
+`GET /api/revision` y la respuesta de `POST /api/revision/acciones` llevan en
+cada incidencia el objeto `volcado` (F-2 (a)). Las revisiones del sistema de
+F-060 no pueden tocar una `volcada` ni una `en_duda`: solo escriben sobre
+`nueva` y `editada`.
+
+### La tabla: `postventa.volcados_sigrid`
+
+`16_volcados_sigrid.sql`, con el DDL idempotente de siempre. Es
+**append-only**: una fila por parte y por intento, de ensayo o de volcado; nada la actualiza ni
+la borra, y manda el `evento_id`, nunca la hora. Sus `CHECK` de `modo` y
+`estado` son los `Enum` del dominio, y los de fila dicen que el parte existe
+—`sigrid_cod` y `sigrid_ide`— **si y solo si** el estado es `creado` o
+`idempotente`, y que `rechazado` y `no_procesado` llevan su código. Va **sin
+índice único** sobre `creado`, a propósito: si Sigrid llegara a crear dos
+partes de una incidencia, el segundo se guarda y se avisa (`avisos`, y un
+error en el log), en vez de fallar después de haber escrito en el ERP.
+Guarda el `oid` de quien ensaya o vuelca, que **no se lee nunca**, y su
+**correo** (D-8), que solo devuelve la revisión. Ni descripciones, ni
+nombres, ni el login de Sigrid, ni el mensaje de la pasarela: del motivo,
+solo el código. `bandeja_incidencias` y `revisiones_bandeja` no se tocan.
+
+### El parte que se manda
+
+Campo a campo contra §8.9 (`design.md` §5): la obra, la unidad, la
+descripción, el detalle solo si lo hay, el oficio, la ubicación y, si hay
+proveedor, **un** interviniente con `causante: false` (Q-2); **tipo 0002**
+siempre (PRIMER LISTADO POSTVENTA, Q-1: el `listado` de la bandeja no lo
+decide), `forma_comunicacion` 1 («Escrita»), los dos explícitos aunque sean
+el defecto de la pasarela. Ni `clase`, ni urgencia (D-10), ni propietario, ni
+persona: esos los copia la pasarela de la UPV. El `usu` es el login de Sigrid
+**de la persona que pide** (F-009), nunca uno técnico. Y la **referencia**
+`PVI-` seguida del `incidencia_id`, la misma toda la vida de la incidencia, que
+la pasarela guarda en el campo extendido `RCPCLI` del parte.
+
+### La ventana y el troceo
+
+**`VOLCADO_HABILITADO`**, apagada por defecto en el código, **se publica
+cerrada** en cada despliegue, con y sin `-VentanasCerradas` (D-3), y se abre
+para cada volcado con `infra/27_ventana_volcado.ps1` (`-Abrir` pide una
+palabra; `-Cerrar` no). Se comprueba en la fábrica, antes de leer nada, y en el
+adaptador, que no manda `commit: true` si se construyó sin ella. Y **el ensayo
+no la mira** (D-4): solo lee del ERP. Es una ventana **aparte** de
+`CIERRE_HABILITADO`: el volcado es otra operación, con otro volumen, y abrir la
+del cierre no puede abrir el volcado masivo. Ni el cierre, ni el gráfico, ni el
+archivo la miran, y el volcado no mira las suyas.
+
+**El troceo** lo hace quien llama —la página de F-040—, no el backend (D-6):
+una obra son `k` llamadas de como mucho `N` partes,
+`VOLCADO_PARTES_POR_LLAMADA` (5 por defecto, de 1 a 50; fuera de rango, 503),
+encadenadas de una en una. Lo que aprieta es el **proxy** de la Static Web App,
+que corta a los **45 s**, no los 150 s de la pasarela; el coste por parte de un
+lote no está medido, así que `N` empieza bajo y es una App Setting, y el log
+de cada llamada deja su duración y la media por parte para ajustarlo (Q-8).
+
+### Por qué el reintento es seguro
+
+En el cierre, un tiempo agotado obliga a que una persona mire el ERP. Aquí no:
+la pasarela busca la referencia `PVI-` en `RCPCLI` **dentro** de la
+transacción de cada parte y bajo `sp_getapplock`, así que lo que ya exista
+vuelve **idempotente** y no se duplica. Una incidencia `en_duda` —o una
+`aprobada` cuyo último resultado fue `rechazado` o `no_procesado`— se vuelve a
+ensayar y a volcar con la **misma** referencia, y el mensaje del 502 lo dice:
+**reintentar es seguro** y no hay que tocar Sigrid a mano. El reintento sigue
+sin ser automático: la escritura **no se reintenta** por cuenta del servicio;
+lo pide una persona. Dos volcados simultáneos de la misma incidencia pueden
+mandarla los dos, y en Sigrid queda **un** parte.
+
+### El parte queda en SAT
+
+Nace en el estado inicial de la serie, **SAT**. **Posventa lo pasa a PTE a
+mano** en Sigrid (Q-3), que es cuando Sigrid crea las tareas y avisa al
+industrial: este servicio no lo hace. Un parte creado no se modifica ni se
+anula desde aquí: se anula desde la UI de Sigrid (**NO PROCEDE**, sin correo),
+**nunca con DELETE** ni `sql/write`; y recrear uno anulado queda fuera (Q-5).
+Nuestros partes se reconocen por la referencia `PVI-` en `RCPCLI`
+(`infra/28_volcado_lectura_sigrid.ps1`, solo lectura).
+
+### Dónde vive cada pieza
+
+- **Dominio puro**: `domain/models/volcado.py` —la referencia, el parte y el
+  cuerpo del lote, la huella, las selecciones del ensayo y del volcado, la
+  validación del ensayo, la interpretación de la respuesta y los duplicados— y
+  `domain/models/situacion_volcado.py`, el módulo hoja con los tipos de la
+  situación de volcado y su estado; los ocho errores, en
+  `domain/models/errores.py`. En `domain/models/revision.py`, los dos estados y
+  la precedencia.
+- **Puertos**: `domain/ports/volcado.py` (`RepositorioVolcadoPort` y
+  `VolcadoSigridPort`) y `VerificadorDeLoginPort` en
+  `domain/ports/usuarios_sigrid.py`.
+- **Adaptadores**: `infrastructure/sigrid/volcado.py` (la única pieza que
+  nombra `partes-reclamacion`; `sql/read` para verificar el login) con sus dos
+  fábricas en `infrastructure/sigrid/fabrica.py`; y
+  `infrastructure/persistencia/repositorio_volcado_pg.py` con
+  `sentencias_volcado.py`.
+- **Aplicación**: `application/pipelines/volcado.py` (`panel_de_volcado`,
+  `ensayar` y `volcar`); el borde, en `interface_adapters/api/volcado.py`, y
+  tres rutas en `function_app.py`, con su propia traducción de errores.
+
+**Dos variables de entorno nuevas** (`VOLCADO_HABILITADO` y
+`VOLCADO_PARTES_POR_LLAMADA`), ninguna dependencia nueva.
+
+### Lo que no hace
+
+- **No pasa el parte a PTE**, ni crea tareas, ni correos, ni fotos, ni UPV ni
+  oficios de obra: solo `partes-reclamacion` y `sql/read`, y ningún módulo
+  nombra `sql/write`.
+- **No anula ni modifica** un parte creado: es la UI de Sigrid.
+- **No trocea**: el troceo y la confirmación (segundo clic y número de partes)
+  son de **F-040**, que tampoco existe todavía; hasta entonces, solo se puede
+  usar llamando a las rutas.
+- **No manda la urgencia** ni varios intervinientes por parte (**F-039**).
+- **No es asíncrono**: sin cola; con la referencia idempotente, el troceo
+  síncrono basta.
+
 ## Acceso a datos y sistemas externos
 
 | Sistema | Uso | Límites |
 |---|---|---|
-| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). **Desde F-056**, una **tercera lectura** por `sql/read`, con las mismas puertas y el mismo techo: las ubicaciones válidas de la tipología de cada unidad, para validar lo que se edita o se aprueba en la revisión de la bandeja (sección «Revisión de la bandeja (F-056)»). **Desde F-060**, esa tercera lectura se hace también tras cada importación que registra filas y en `POST /api/revision/normalizar`, para normalizar las ubicaciones; ninguna lectura nueva y ninguna escritura (sección «Normalizar las ubicaciones (F-060)»). |
+| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). **Desde F-056**, una **tercera lectura** por `sql/read`, con las mismas puertas y el mismo techo: las ubicaciones válidas de la tipología de cada unidad, para validar lo que se edita o se aprueba en la revisión de la bandeja (sección «Revisión de la bandeja (F-056)»). **Desde F-060**, esa tercera lectura se hace también tras cada importación que registra filas y en `POST /api/revision/normalizar`, para normalizar las ubicaciones; ninguna lectura nueva y ninguna escritura (sección «Normalizar las ubicaciones (F-060)»). **Desde F-059**, una **tercera escritura**: la **creación de partes de reclamación** por `POST /api/sigrid/partes-reclamacion`, en lote y con ensayo previo (`commit: false`) de la misma persona; la escritura (`commit: true`) exige además su **propia ventana**, `VOLCADO_HABILITADO`, apagada en el código y **publicada cerrada** en cada despliegue, que no es la del cierre; **no se reintenta**, pero repetirla es seguro porque la pasarela es idempotente por la referencia `PVI-`; y una lectura por `sql/read` para verificar el login de quien vuelca (sección «Volcado a Sigrid (F-059)»). |
 | SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. Identidad **app-only** (client credentials) y `httpx` como cliente, igual que `partes`. El destino es **configuración**: `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID`, `SHAREPOINT_CARPETA_BASE`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TIMEOUT_S`, `GRAPH_REINTENTOS`. | **PUERTA DE ENTORNO**: subir solo se permite con `ENTORNO` en `dev` o `pro` **y** `ARCHIVO_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja subir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature **F-013**, y sale casi gratis porque la ruta es configuración. Qué consumimos y qué se rompe si alguien mueve la biblioteca o revoca el permiso: **`docs/INTEGRACION.md`**. |
-| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Desde F-036**, también la entrada de incidencias: `importaciones`, `bandeja_incidencias` y `decisiones_equivalencia` (append-only), con texto libre de la propiedad y nombres de proveedor que no salen en ningún log. **Desde F-056**, `revisiones_bandeja` (append-only): una fila por cada acción de revisión, con el `oid` y el correo corporativo de quien actúa, que no salen en ningún log. **Desde F-060**, también revisiones del **sistema** (`sistema:normalizar_ubicacion`), sin DDL nuevo. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
+| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Desde F-036**, también la entrada de incidencias: `importaciones`, `bandeja_incidencias` y `decisiones_equivalencia` (append-only), con texto libre de la propiedad y nombres de proveedor que no salen en ningún log. **Desde F-056**, `revisiones_bandeja` (append-only): una fila por cada acción de revisión, con el `oid` y el correo corporativo de quien actúa, que no salen en ningún log. **Desde F-060**, también revisiones del **sistema** (`sistema:normalizar_ubicacion`), sin DDL nuevo. **Desde F-059**, `volcados_sigrid` (append-only, `16_volcados_sigrid.sql`): un evento por parte y por ensayo o volcado a Sigrid, con el `oid` —que no se lee nunca— y el correo corporativo de quien vuelca, que no salen en ningún log. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
 | Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
 

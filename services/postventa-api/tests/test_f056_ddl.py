@@ -155,7 +155,10 @@ def test_f056_r36_el_fichero_va_detras_de_los_de_f036():
     """Lee de `13_bandeja_incidencias.sql` (la clave ajena): tiene que ir detrás."""
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
-    assert nombres[-1] == FICHERO
+    # F-059 (R41, F-1 (a); design.md §21.3 A): el último es ahora el `16_` (lee de este);
+    # el `15_` va justo antes.
+    assert nombres[-2] == FICHERO
+    assert nombres[-1] == "16_volcados_sigrid.sql"
     assert nombres.index("14_decisiones_equivalencia.sql") < nombres.index(FICHERO)
     assert nombres.index(BANDEJA) < nombres.index(FICHERO)
 
@@ -409,7 +412,12 @@ def test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo():
             if any(p in columna.lower() for p in ("correo", "mail", "email", "upn")):
                 con_correo.append(f"{tabla}.{columna}")
 
-    assert con_correo == [f"{ESQUEMA}.{TABLA}.revisado_correo"]
+    # F-059 (R41, F-1 (a); design.md §21.3 A), B-2 (humano, 2026-10-16): la igualdad
+    # sigue exacta, ahora con `actor_correo` de F-059 (D-8).
+    assert con_correo == [
+        f"{ESQUEMA}.{TABLA}.revisado_correo",
+        f"{ESQUEMA}.volcados_sigrid.actor_correo",
+    ]
 
 
 # ==========================================================================

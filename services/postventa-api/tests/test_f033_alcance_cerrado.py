@@ -242,7 +242,8 @@ def test_f033_no_hay_ni_un_fichero_de_ddl_nuevo():
     carpeta = RAIZ / CARPETA_DDL
     nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
 
-    assert nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056
+    # F-059 (R41, F-1 (a); design.md §21.3 A): el `16_` de la tabla del volcado.
+    assert nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056 + ("16_volcados_sigrid.sql",)
 
 
 # --------------------------------------------------------------------------

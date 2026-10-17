@@ -28,7 +28,7 @@ from typing import Protocol, runtime_checkable
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.persistencia import ResultadoGuardado
 
-__all__ = ["RepositorioUsuariosSigridPort"]
+__all__ = ["RepositorioUsuariosSigridPort", "VerificadorDeLoginPort"]
 
 
 @runtime_checkable
@@ -56,4 +56,19 @@ class RepositorioUsuariosSigridPort(Protocol):
         Guardar la misma correspondencia dos veces actualiza la fila; no crea
         una segunda identidad para la misma persona.
         """
+        ...
+
+
+@runtime_checkable
+class VerificadorDeLoginPort(Protocol):
+    """Quien confirma contra el ERP que un login existe (F-059, design.md §8.4).
+
+    `resolver_login_de_sigrid` solo necesita esto del ERP. Lo cumplen el
+    adaptador del cierre (`ErpPort`) y el del volcado (`VolcadoSigridPort`):
+    así el volcado resuelve el login sin construir el adaptador del cierre, que
+    exige la otra ventana (`CIERRE_HABILITADO`).
+    """
+
+    def existe_usuario(self, *, login: str) -> bool:
+        """¿Ese login existe exactamente una vez en el ERP? (R30, R31 de F-009)."""
         ...

@@ -54,6 +54,22 @@ sello de `gra.cod` lo pone la pasarela y aquí no hay ninguna hora que escribir.
 > mismas dos puertas y el mismo error que `construir_catalogo_obra`, para la
 > lectura de las ubicaciones de la tipología de cada unidad
 > (`specs/F-056-revision-bandeja-backend/design.md` §16.3).
+
+> **Enmienda del 2026-10-16 (F-059, Bloque 3).** Hay una **sexta** y una
+> **séptima**, **añadidas** sin cambiar las demás, para el volcado de la
+> bandeja (`specs/F-059-volcado-sigrid-backend/design.md` §8.3). Las dos
+> construyen el mismo adaptador, `AdaptadorVolcadoSigridApi`:
+>
+> - `construir_volcador`: entorno → **`VOLCADO_HABILITADO`** → configuración →
+>   `N`, con `escritura_habilitada=True`. Su ventana es **propia** (R37): no
+>   mira `CIERRE_HABILITADO`, y el cierre no mira la suya.
+> - `construir_ensayador`: entorno → configuración → `N`, **sin** la ventana
+>   (D-4: el ensayo solo lee), con `escritura_habilitada=False`, de modo que
+>   un ensayador compuesto por error **no puede** volcar.
+>
+> El error del entorno y de la ventana es `VolcadoDeshabilitado` (503); el de
+> la configuración, `ConfiguracionSigridIncompleta`; el de `N` fuera de 1 a 50
+> o que no es un entero, `ConfiguracionDeVolcadoInvalida` (503, R30).
 """
 
 from __future__ import annotations
@@ -63,12 +79,14 @@ from datetime import tzinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from config.settings import Ajustes
-from domain.models.errores import ConfiguracionSigridIncompleta
+from domain.models.errores import ConfiguracionSigridIncompleta, VolcadoDeshabilitado
+from domain.models.volcado import validar_partes_por_llamada
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.erp import ErpPort
 from domain.ports.grafico import GraficoPort
 from domain.ports.ubicacion import UbicacionPort
 from domain.ports.ubicaciones_validas import UbicacionesValidasPort
+from domain.ports.volcado import VolcadoSigridPort
 
 from infrastructure.sigrid.catalogo_obra import (
     AdaptadorCatalogoSigridApi,
@@ -88,15 +106,21 @@ from infrastructure.sigrid.ubicacion import (
 from infrastructure.sigrid.ubicaciones_validas import (
     AdaptadorUbicacionesValidasSigridApi,
 )
+from infrastructure.sigrid.volcado import (
+    AdaptadorVolcadoSigridApi,
+    exigir_entorno_con_volcado,
+)
 
 __all__ = [
     "ENTORNOS_CON_CIERRE",
     "VARIABLES_OBLIGATORIAS",
     "construir_catalogo_obra",
+    "construir_ensayador",
     "construir_erp",
     "construir_graficos",
     "construir_ubicaciones",
     "construir_ubicaciones_validas",
+    "construir_volcador",
     "resolver_zona",
 ]
 
@@ -263,6 +287,59 @@ def construir_ubicaciones_validas(ajustes: Ajustes) -> UbicacionesValidasPort:
     )
     return AdaptadorUbicacionesValidasSigridApi(
         entorno=ajustes.entorno,
+        base_url=str(ajustes.sigrid_api_base_url),
+        api_key=str(ajustes.sigrid_api_key),
+        base_datos=str(ajustes.sigrid_base_datos),
+        timeout_s=ajustes.sigrid_timeout_s,
+        reintentos=ajustes.sigrid_reintentos,
+    )
+
+
+def construir_ensayador(ajustes: Ajustes) -> VolcadoSigridPort:
+    """El adaptador del ensayo del volcado, o el motivo por el que aquí no (§8.3).
+
+    Entorno → configuración → `N`. **No** mira `VOLCADO_HABILITADO` (D-4): el
+    ensayo solo lee del ERP. Lo que construye tiene `escritura_habilitada`
+    en falso: puede ensayar y verificar logins, y **no puede volcar**.
+    """
+    exigir_entorno_con_volcado(ajustes.entorno)
+    _exigir_configuracion(ajustes)
+    validar_partes_por_llamada(ajustes.volcado_partes_por_llamada)
+
+    log.info("F-059 ensayador del volcado construido en el entorno %s", ajustes.entorno)
+    return _adaptador_de_volcado(ajustes, escritura_habilitada=False)
+
+
+def construir_volcador(ajustes: Ajustes) -> VolcadoSigridPort:
+    """El adaptador del volcado, o el motivo por el que aquí no se vuelca (§8.3).
+
+    Entorno → **`VOLCADO_HABILITADO`** → configuración → `N`, en ese orden
+    (R16): la ventana va antes que la configuración por lo mismo que el
+    entorno va antes que todo, para que el motivo sea el que es. Lo que
+    construye tiene `escritura_habilitada` en verdadero, y vuelve a comprobar
+    el entorno por su cuenta.
+    """
+    exigir_entorno_con_volcado(ajustes.entorno)
+    if not ajustes.volcado_habilitado:
+        raise VolcadoDeshabilitado(
+            "VOLCADO_HABILITADO no está activado: el volcado crea partes en el ERP "
+            "de producción, está cerrado por defecto y se abre con "
+            "infra/27_ventana_volcado.ps1 para cada volcado"
+        )
+    _exigir_configuracion(ajustes)
+    validar_partes_por_llamada(ajustes.volcado_partes_por_llamada)
+
+    log.info("F-059 volcador construido en el entorno %s", ajustes.entorno)
+    return _adaptador_de_volcado(ajustes, escritura_habilitada=True)
+
+
+def _adaptador_de_volcado(
+    ajustes: Ajustes, *, escritura_habilitada: bool
+) -> AdaptadorVolcadoSigridApi:
+    """El mismo adaptador para las dos, con la configuración de Sigrid."""
+    return AdaptadorVolcadoSigridApi(
+        entorno=ajustes.entorno,
+        escritura_habilitada=escritura_habilitada,
         base_url=str(ajustes.sigrid_api_base_url),
         api_key=str(ajustes.sigrid_api_key),
         base_datos=str(ajustes.sigrid_base_datos),

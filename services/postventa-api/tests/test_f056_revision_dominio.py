@@ -93,6 +93,12 @@ from domain.models.revision import (
     valores_importados,
     valores_vigentes,
 )
+from domain.models.situacion_volcado import (
+    EstadoEvento,
+    ParteEnSigrid,
+    SituacionDeVolcado,
+    UltimoEvento,
+)
 
 A = AccionRevision
 E = EstadoRevision
@@ -315,11 +321,29 @@ def sit_descartada() -> SituacionDeRevision:
     return situacion(ultima=revision(3, A.DESCARTAR, motivo="Ejemplo"))
 
 
+# F-059 (R41, F-1 (a); design.md §21.3 C): los dos estados del volcado, sobre una aprobada.
+def sit_volcada() -> SituacionDeRevision:
+    parte = ParteEnSigrid(
+        sigrid_ide=700001, sigrid_cod="RS26.10/0001", at_utc=AHORA, correo=CORREO
+    )
+    return replace(sit_aprobada(), volcado=SituacionDeVolcado(volcada=parte, ultimo=None))
+
+
+def sit_en_duda() -> SituacionDeRevision:
+    ultimo = UltimoEvento(
+        estado=EstadoEvento.ENVIADO, motivo=None, at_utc=AHORA, correo=CORREO
+    )
+    return replace(sit_aprobada(), volcado=SituacionDeVolcado(volcada=None, ultimo=ultimo))
+
+
 SITUACIONES = {
     E.NUEVA: sit_nueva,
     E.EDITADA: sit_editada,
     E.APROBADA: sit_aprobada,
     E.DESCARTADA: sit_descartada,
+    # F-059 (R41, F-1 (a); design.md §21.3 C)
+    E.VOLCADA: sit_volcada,
+    E.EN_DUDA: sit_en_duda,
 }
 
 
@@ -457,6 +481,9 @@ PERMITIDAS = {
     E.EDITADA: (A.EDITAR, A.DESCARTAR, A.APROBAR),
     E.APROBADA: (A.EDITAR, A.DESCARTAR),
     E.DESCARTADA: (A.RECUPERAR,),
+    # F-059 (R41, F-1 (a); design.md §21.3 C): desde las dos, ninguna (R2, D-14).
+    E.VOLCADA: (),
+    E.EN_DUDA: (),
 }
 
 

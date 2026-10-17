@@ -111,6 +111,13 @@ FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 #: escribe en el esquema propio revisiones del sistema y nada en Sigrid, que
 #: solo lee por `sql/read`). Anonimo como los demas y por lo mismo; ninguna
 #: comprobacion de este fichero cambia ni se quita, solo la cuenta.
+#:
+#: F-059 (T13; R41, F-1 (a); design.md §21.3 B) los lleva a **veinticuatro**
+#: con el volcado a Sigrid: `volcado` (GET, solo la base), `volcado/ensayo`
+#: (POST, lee Sigrid y escribe en el esquema propio) y `volcado/volcar` (POST,
+#: crea partes en el ERP de produccion tras su ventana `VOLCADO_HABILITADO`).
+#: Anonimos como los demas y por lo mismo; ninguna comprobacion cambia ni se
+#: quita, solo la cuenta.
 ENDPOINTS = (
     "health",
     "split",
@@ -133,6 +140,9 @@ ENDPOINTS = (
     "revision/historial",
     "revision/acciones",
     "revision/normalizar",
+    "volcado",
+    "volcado/ensayo",
+    "volcado/volcar",
 )
 
 #: Un decorador de ruta con su nivel de autenticacion.
@@ -269,7 +279,7 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == len(ENDPOINTS) == 21
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 24
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]

@@ -142,7 +142,7 @@ def test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo():
     Era el último hasta F-036 (T14): detrás de él van solo sus tres ficheros,
     que no leen de este. La aserción se amplía con ellos, sin relajarla.
     F-056 (T4) añade detrás `15_revisiones_bandeja.sql`, que tampoco lee de
-    este: se amplía igual.
+    este: se amplía igual. Y F-059 (T4), `16_volcados_sigrid.sql`, igual.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
@@ -151,6 +151,7 @@ def test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo():
         "13_bandeja_incidencias.sql",
         "14_decisiones_equivalencia.sql",
         "15_revisiones_bandeja.sql",
+        "16_volcados_sigrid.sql",  # F-059 (R41, F-1 (a); design.md §21.3 A)
     ]
     assert nombres.index("03_partes.sql") < nombres.index(FICHERO)
     assert nombres.index(FICHERO_CONGELADO) < nombres.index(FICHERO)

@@ -52,7 +52,11 @@ DIECISIETE = "Los diecisiete quedan en nivel"
 #: humano en F-056): `POST /api/revision/normalizar` lleva la cuenta de veinte
 #: a **veintiuno**. Sin relajar: el párrafo sigue antes de la cuenta y sin
 #: encabezado, y tampoco puede quedar «Los veinte» (R39 de F-060).
-CUENTA_VIGENTE = "Los veintiuno quedan en nivel"
+#: **Ampliado por F-059 (T20; R41, F-1 (a), decisión del humano del
+#: 2026-10-15)**: las tres rutas del volcado llevan la cuenta de veintiuno a
+#: **veinticuatro**. Sin relajar: el párrafo sigue antes de la cuenta y sin
+#: encabezado, y tampoco puede quedar «Los veintiuno».
+CUENTA_VIGENTE = "Los veinticuatro quedan en nivel"
 
 #: Lo que el párrafo tiene que decir (`tasks.md`, T6; R20).
 TEXTOS_DE_F053 = (
@@ -127,15 +131,18 @@ def test_f053_t6_el_parrafo_va_antes_de_los_diecisiete_y_sin_encabezado():
     """`design.md` §6 · dentro del subapartado de los endpoints, antes de la cuenta.
 
     El nombre se conserva por trazabilidad: desde F-056 la cuenta era «Los
-    veinte», y desde F-060 es «Los veintiuno» (`CUENTA_VIGENTE`); ni «Los
-    diecisiete» ni «Los veinte» pueden estar.
+    veinte», desde F-060 «Los veintiuno» y desde F-059 es «Los veinticuatro»
+    (`CUENTA_VIGENTE`); ni «Los diecisiete», ni «Los veinte», ni «Los
+    veintiuno» pueden estar.
     """
     endpoints = _seccion(_leer(), ENDPOINTS)
     parrafo = _parrafo_de_f053()
 
     assert DIECISIETE not in endpoints, "«Los diecisiete» sigue en el subapartado"
-    assert CUENTA_VIGENTE in endpoints, "«Los veintiuno» no está en el subapartado"
+    assert CUENTA_VIGENTE in endpoints, "«Los veinticuatro» no está en el subapartado"
     assert "Los veinte quedan en nivel" not in endpoints, "«Los veinte» sigue en el subapartado"
+    # F-059 (T20): la cifra de antes pasa de `in` a `not in`, como las anteriores.
+    assert "Los veintiuno quedan en nivel" not in endpoints, "«Los veintiuno» sigue en el subapartado"
     assert endpoints.index(parrafo) < endpoints.index(CUENTA_VIGENTE)
     assert not re.search(r"^#", parrafo, re.MULTILINE)
     assert "F-053" not in "".join(re.findall(r"^#+ .*$", _leer(), re.MULTILINE))

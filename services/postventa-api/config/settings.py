@@ -516,6 +516,38 @@ class Ajustes(BaseSettings):
         ),
     )
 
+    # --- El volcado de la bandeja a Sigrid (F-059) ------------------------
+    #
+    # Una ventana **propia**, aparte de `CIERRE_HABILITADO` (R37, `design.md`
+    # §13): el volcado es otra operación, con otro volumen (decenas o cientos
+    # de altas de golpe), y se abre en otro momento. Ni el cierre, ni el
+    # gráfico, ni el archivo la miran; el volcado no mira las suyas.
+
+    volcado_habilitado: bool = Field(
+        default=False,
+        validation_alias="VOLCADO_HABILITADO",
+        description=(
+            "La ventana del volcado: crear partes de reclamación en el ERP de "
+            "producción. **Falsa por defecto a propósito**, y cada despliegue "
+            "la vuelve a cerrar (D-3); se abre con `infra/27_ventana_volcado.ps1` "
+            "para cada volcado. Se comprueba dos veces: en la fábrica y en el "
+            "propio adaptador (R16). El ensayo no la mira: solo lee (D-4)."
+        ),
+    )
+    volcado_partes_por_llamada: int | str = Field(
+        default=5,
+        validation_alias="VOLCADO_PARTES_POR_LLAMADA",
+        union_mode="left_to_right",
+        description=(
+            "`N`, cuántos partes como mucho lleva cada llamada a "
+            "`partes-reclamacion` (R30): de 1 a 50, el tope de la pasarela. Se "
+            "valida en la fábrica (503 de configuración) y **no** al cargar los "
+            "ajustes: un valor que no sea un entero se queda tal cual, como "
+            "texto, para que `/health` arranque igual (§13). 5 es conservador; "
+            "se ajusta sin desplegar cuando se mida el primer volcado real (Q-8)."
+        ),
+    )
+
 
 @lru_cache(maxsize=1)
 def obtener_ajustes() -> Ajustes:

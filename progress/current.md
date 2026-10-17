@@ -1,6 +1,116 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-059 · Pendientes MANUAL del humano (Bloque 6 de `tasks.md`), con su comando exacto (C-F-2, 2026-10-17)
+> Precondición de todo el bloque: review final de F-059 **APPROVED, «apta para desplegar»**. El detalle de cada paso está en
+> `specs/F-059-volcado-sigrid-backend/tasks.md`, Bloque 6.
+>
+> - **T24 · Merge y despliegue con la ventana cerrada.** El líder prepara el merge a `dev` desde un worktree fuera del
+>   repo. El humano publica desde un worktree limpio de `dev`, ejecutando desde la raíz del repositorio:
+>   ```
+>   git worktree add --detach ..\postventa-publicar dev
+>   powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_backend.ps1
+>   powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\27_ventana_volcado.ps1
+>   git worktree remove ..\postventa-publicar
+>   ```
+>   Van los mismos parámetros que en el último despliegue. El tercer comando tiene que decir **cerrada**. Se anota el
+>   commit publicado. Después, el líder actualiza `azure-apps/sigrid_api.md` §10 (Q-6) en un commit local.
+> - **T25 · UNA escritura en la obra 0626.** Precondición: **autorización expresa del humano en el chat para una sola
+>   escritura**. Se hace desde la consola (F12) del front publicado.
+>   1. Foto de antes: `powershell -ExecutionPolicy Bypass -File infra\28_volcado_lectura_sigrid.ps1 -CodigoObra 0626`
+>   2. Fila «PRUEBA F-059 - ANULAR»: se importa en `importar.html`, se le pone una ubicación y se aprueba. Se anota su
+>      `incidencia_id`.
+>   3. Con la ventana cerrada: `GET /api/volcado?obra=0626`, después `POST /api/volcado/ensayo` y luego
+>      `POST /api/volcado/volcar` con `confirmado: true`. Tiene que dar **503 `volcado_deshabilitado`**, y la foto no
+>      cambia.
+>   4. `powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1 -Abrir` (pide `ABRIR`). Se hace un ensayo
+>      nuevo y se vuelca: tiene que dar 200 `creado` `RS<aa>.<mm>/NNNN`. **Enseguida**:
+>      `powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1 -Cerrar`
+>   5. Foto de después:
+>      `powershell -ExecutionPolicy Bypass -File infra\28_volcado_lectura_sigrid.ps1 -CodigoObra 0626 -Referencia PVI-<id>`.
+>      Tiene que salir **1** parte en SAT, de tipo `0002`, con 1 interviniente y sin causante. Se compara su `cod` con el
+>      `MAX(cod)` (O-F-2). El humano lo abre en Sigrid. **No se pasa a PTE.**
+>   6. Bandeja: `GET /api/revision?obra=0626&estado=volcada` devuelve la prueba con su `sigrid_cod`. Un `editar` da 409.
+>      Un ensayo nuevo la marca como `ya_volcada`.
+>   7. Application Insights: las trazas no llevan `oid`, correo, login ni texto.
+> - **T26 · Vuelta atrás y limpieza**, salga bien o mal:
+>   1. `powershell -ExecutionPolicy Bypass -File infra\27_ventana_volcado.ps1 -Cerrar`
+>   2. El parte se **anula desde la UI de Sigrid** (NO PROCEDE, sin correo). **Nunca** con `DELETE` ni `sql/write`.
+>   3. Se comprueba con
+>      `powershell -ExecutionPolicy Bypass -File infra\28_volcado_lectura_sigrid.ps1 -CodigoObra 0626 -Referencia PVI-<id>`.
+> - **T27 · Cierre (líder).** Resumen en `progress/history.md`, poda de este fichero (O-F-3) y `bash harness/init.sh` en
+>   verde.
+
+> **F-059 · Review final: CHANGES_REQUESTED (reviewer, 2026-10-17)** · C-F-1 (la guarda de piezas no ve las importaciones
+> ni las sentencias de módulo), en manos del implementer; C-F-2 (estos pasos MANUAL), hecho arriba. Observaciones:
+> O-F-1 (excepción ASCII de `infra/` en `CONVENTIONS.md`), O-F-2 (en T25) y O-F-3 (en T27).
+
+> **F-059 · T23 en verde (líder, 2026-10-17, sobre `a2ab36b`)** · `bash harness/init.sh`: 9199 passed, 233 skipped in
+> 2282.42s; PUERTA COBERTURA 100,0 % de 1122 líneas; ENTORNO LISTO. T22 por la opción B en `43fb673`. Siguiente: review
+> final de F-059 (Bloques 5 y feature entera); luego el Bloque 6 manual (T24 desplegar con la ventana cerrada).
+
+> **F-059 · desbloqueada (humano, 2026-10-17)** · T22 por la **opción B**: se cierra con la comparación mutante a
+> mutante (201/203 ya medidos) y los 2 de `_con_texto` muertos a mano. El reviewer la verifica en la review final.
+> Siguiente: el implementer marca T22; el líder lanza T23 (`init.sh`).
+
+> **F-059 · `blocked` en T22 (implementer, 2026-10-17)** · Bloque 5: T18 `2a198f7`/`42a2d9d`, T19 `c4874ea`/`1d7a1ed`,
+> T20 `a623bea`, T21 `8f9a8a8` (azure-apps, local) y `de6d415`; suite entera 9199 passed. T22 no lanzada: 203 mutantes,
+> ≈ 17 h estimadas (> 12). Opciones para el humano: **A** entera (15–17 h, quizá `--timeout 3600`); **B** (recomendada,
+> ya ejecutada) 201/203 idénticos a mutantes ya medidos en las campañas de bloque y los 2 restantes (`_con_texto`)
+> muertos a mano por tests de F-059; **C** muestreo. Detalle: `progress/impl_F-059.md`, «T22». Luego T23 (líder) y review final.
+
+> **F-059 · Bloque 4 APPROVED (re-review, 2026-10-17, sobre `8b7790d`)** · C-B4-1 cerrado; mutantes 16 y 24 muertos por
+> tests de F-059; O-B4-1 en la spec. Lanzado el **Bloque 5 (T18–T22)** con un implementer nuevo; T23 (`init.sh`) la
+> lanza el líder después (los subagentes no, por P-4). T22 (campaña del tramo entero): si estima más de 12 h, para y
+> decide el humano.
+
+> **F-059 · Review del Bloque 4: CHANGES_REQUESTED (reviewer, 2026-10-17, `b835d35`)** · C-B4-1 (la guarda de R41
+> eximía funciones enteras) corregido en `4c8c309`; O-B4-1 (formas de §11) en la spec, `67d9c4e`. **Decisiones del
+> humano (2026-10-17, por escrito):** acepta como equivalentes los **13 de E-1** (H04, H06, H08, H15, H19, H22, H24,
+> H25, A01, A06, A10, A24, A25); los **mutantes 16 y 24 (E-2) no se aceptan**: un test que fije la alarma de
+> `zip(strict=True)` (en curso con el implementer); **P-4** (que la suite no lea el `.env`) **solo como encargo
+> pendiente**: `arnes-base/ENCARGO_pendiente_la_suite_no_lee_el_env.md`, commit local. Después: re-review del Bloque 4.
+
+> **F-059 · T8 EN VERDE (líder, 2026-10-17, sobre `324aff0`)** · `infra/pruebas_bbdd_efimera.ps1`: **104 passed in
+> 56.94s** (72 s con el contenedor). Arreglo del ayudante `_resultado` en `324aff0` (solo el test). T8 ya no bloquea el cierre.
+
+> **F-059 · Bloque 4 hecho (implementer, 2026-10-17, `cc49cba`)** · T13–T17; mutación 64/66 (2 equivalentes) y 75 a mano
+> (13 equivalentes): **15 equivalentes pendientes de aceptación del humano** tras la review. En review (reviewer
+> `a44b8bb12f48e95c7`); en paralelo, el implementer arregla el test de T8. Incidente: el implementer lanzó `init.sh`
+> desde el servicio y su pytest pudo leer el `.env` (sin red por la guardia `sin_red`); no queda ningún proceso vivo.
+
+> **F-059 · T8 ejecutada (líder, 2026-10-16, Docker arrancado a petición del humano)** · `infra/pruebas_bbdd_efimera.ps1`:
+> **103 pasan, 1 falla** (74 s de pytest, 92 s con el contenedor). Falla
+> `test_f059_bbdd_volcado.py::test_f059_r1_la_derivacion_de_cuatro_uno_leida_de_la_base` con `KeyError` en el
+> ayudante `_resultado`: tras guardar `creado` la incidencia ya es `volcada` y deja de ser candidata (R3), y el ayudante
+> construye el parte buscándola en `aprobadas`. Defecto del test de T7 (`9b4c8d5`), no del código: la aserción que
+> persigue («volcada gana a lo que venga después») sigue siendo válida. Al implementer cuando cierre el Bloque 4; luego
+> T8 se repite. Los de F-036, F-056 y F-060 pasan todos.
+
+> **F-059 · Bloque 2 APPROVED (reviewer, 2026-10-16, `8e668b2`)** · T4–T7 y T9 (26/26 muertos; 83 a mano). **T8 pendiente
+> del humano y bloquea el cierre**: `infra/pruebas_bbdd_efimera.ps1` con Docker Desktop (deben pasar
+> `test_f059_bbdd_volcado.py` y los de F-036, F-056 y F-060). O-B2-1 (letra de `aprobadas` en design §12) al
+> spec-author; O-B2-2 y O-B1-1 para el Bloque 4. Siguiente: Bloque 3 (adaptador de `sigrid-api`, T10–T12).
+
+> **F-059 · desbloqueada (humano, 2026-10-16, «ok a b1 y b2»)** · B-1 (a) y B-2 sí. El spec-author enmienda la spec; luego el
+> implementer retoma el Bloque 2 desde T4.
+
+> **F-059 · `blocked` antes de T4 (implementer, 2026-10-16)** · Bloque 1 (dominio) **APPROVED** tras re-review
+> (`9fdb222`; C-B1-1..3 corregidos en `583e6d3`). Bloque 2 parado sin código: **B-1** R17 (misma persona del
+> ensayo) choca con R33 (ninguna lectura selecciona `actor_oid`); recomendado (a) la base compara y el dominio
+> recibe `de_la_persona: bool` (toca `Ensayo` y `validar_ensayo` del Bloque 1). **B-2** falta
+> `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo` en las excepciones
+> de R41; recomendado añadirlo ampliando sin relajar. Detalle: `progress/impl_F-059.md`, «Bloque 2 · BLOQUEADO».
+> Pendientes del humano además: P-1 y P-2 de la review del Bloque 1 (mejoras de `harness.mutacion`).
+
+> ## F-059 · `in_progress` · 2026-10-15 · paso 1: poner la spec al día con `dev`
+> Rama `feature/F-059-volcado-sigrid-backend` desde `dev` **`2d2efd7`** (base fija, T0: F-056 y F-060 mergeadas,
+> desplegadas y con push). Spec aprobada el 2026-10-07, traída del worktree `postventa-f040`. Antes de implementar, el
+> spec-author la concilia con `dev` (rutas anónimas desde 21, `RevisionPort` con 7 operaciones, revisiones del sistema
+> de F-060, nombres reales de F-056); si cambia una decisión aprobada, vuelve al humano.
+> - **Prioridad inmediata (humano, 2026-10-15)**: que Posventa pueda usar la aplicación de punta a punta →
+>   **F-059 → F-038 → F-040**, antes que el resto. F-038 y F-058 ya sin bloqueo (F-056 y F-060 `done`).
+
 > ## ✅ F-060 CERRADA · 2026-10-14 · desplegada y verificada · siguiente: F-059
 > Resumen en `progress/history.md`; `azure-apps` en `61423f1`. Merge del cierre en `dev`/`main` y push: pendientes del humano.
 > - **Siguiente: F-059** (backend del volcado; primera escritura real, un parte en la 0626). Su spec vive en el worktree

@@ -86,7 +86,7 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
     declararlo, que es exactamente lo que se quería —el décimo llegó a existir
     como fichero un commit antes de estar declarado aquí, y esta aserción fue
     lo que lo dijo—. F-036 (T14) añadió del duodécimo al decimocuarto.
-    F-056 (T4) añadió el decimoquinto.
+    F-056 (T4) añadió el decimoquinto. F-059 (T4) añadió el decimosexto.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
@@ -106,6 +106,7 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
         "13_bandeja_incidencias.sql",
         "14_decisiones_equivalencia.sql",
         "15_revisiones_bandeja.sql",
+        "16_volcados_sigrid.sql",  # F-059 (R41, F-1 (a); design.md §21.3 A)
     ]
 
 

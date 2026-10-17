@@ -26,6 +26,9 @@ escritura y los implementan dos clases.
 
 F-056 (T6) añade `construir_revision`, para la revisión de la bandeja: la misma
 receta y el mismo esquema.
+
+F-059 (T6) añade `construir_volcados`, para los eventos del volcado a Sigrid:
+la misma receta y el mismo esquema.
 """
 
 from __future__ import annotations
@@ -45,6 +48,9 @@ from infrastructure.persistencia.repositorio_bandeja_pg import (
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
 from infrastructure.persistencia.repositorio_revision_pg import (
     RepositorioRevisionPostgres,
+)
+from infrastructure.persistencia.repositorio_volcado_pg import (
+    RepositorioVolcadoPostgres,
 )
 
 __all__ = ["construir_bandeja", "construir_equivalencias", "construir_repositorio"]
@@ -86,6 +92,17 @@ def construir_revision(ajustes: Ajustes) -> RepositorioRevisionPostgres:
     importa por su nombre, como las demás.
     """
     return RepositorioRevisionPostgres(
+        _conexion_con_esquema(ajustes), esquema=ajustes.pg_esquema
+    )
+
+
+def construir_volcados(ajustes: Ajustes) -> RepositorioVolcadoPostgres:
+    """Los eventos del volcado de F-059 (`RepositorioVolcadoPort`), con la misma receta.
+
+    No entra en `__all__`, por lo mismo que `construir_revision`: se importa
+    por su nombre.
+    """
+    return RepositorioVolcadoPostgres(
         _conexion_con_esquema(ajustes), esquema=ajustes.pg_esquema
     )
 

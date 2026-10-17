@@ -132,6 +132,7 @@ from interface_adapters.api.tiempos import (
     es_primera_peticion,
     segundos_de_proceso,
 )
+from interface_adapters.api.volcado import volcado_de
 
 __all__ = [
     "MAX_CURSOR",
@@ -355,7 +356,8 @@ def _filtro(crudo: Any) -> FiltroEstado:
     if isinstance(crudo, str) and crudo in {f.value for f in FiltroEstado}:
         return FiltroEstado(crudo)
     raise PeticionDeRevisionInvalida(
-        "'estado' tiene que ser activas, todas, nueva, editada, aprobada o descartada"
+        "'estado' tiene que ser activas, todas, nueva, editada, aprobada, "
+        "descartada, volcada o en_duda"
     )
 
 
@@ -635,6 +637,9 @@ def _fila(
         "revisado_at_utc": None if ultima is None else _instante(ultima.revisado_at_utc),
         "revisado_por": None if ultima is None else ultima.correo,
         "motivos_no_aprobable": None if motivos is None else [m.value for m in motivos],
+        # F-059 (R4, F-2 (a)): el objeto `volcado`, en el listado y en la
+        # respuesta de la acción, con el correo de quien volcó y nunca el `oid`.
+        "volcado": volcado_de(situacion.volcado),
     }
 
 

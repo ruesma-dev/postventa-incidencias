@@ -166,6 +166,9 @@ def test_f056_r23_filtros_de_estado() -> None:
         "editada",
         "aprobada",
         "descartada",
+        # F-059 (R41, F-1 (a); design.md §21.3 C)
+        "volcada",
+        "en_duda",
     ]
 
 
@@ -508,7 +511,15 @@ def test_f056_r27_resumen_sobre_todas_las_filas() -> None:
     ]
     r = resumen(filas)
     assert r.total == 8
-    assert r.por_estado == {E.NUEVA: 3, E.EDITADA: 2, E.APROBADA: 1, E.DESCARTADA: 2}
+    # F-059 (R41, F-1 (a); design.md §21.3 C): los dos estados nuevos, a cero.
+    assert r.por_estado == {
+        E.NUEVA: 3,
+        E.EDITADA: 2,
+        E.APROBADA: 1,
+        E.DESCARTADA: 2,
+        E.VOLCADA: 0,
+        E.EN_DUDA: 0,
+    }
     assert r.con_motivos == 4
     assert list(r.por_motivo) == list(M)
     assert r.por_motivo == {

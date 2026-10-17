@@ -442,17 +442,22 @@ def test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas():
     declaran): `POST /api/revision/normalizar` lleva la cuenta a
     **veintiuno**. Las demás frases siguen exigidas, y «Los veinte» pasa, como
     «Los diecisiete», a no poder estar.
+
+    **Ampliado por F-059 (T20; R41, F-1 (a), decisión del humano del
+    2026-10-15)**: las tres rutas del volcado llevan la cuenta a
+    **veinticuatro**, y «Los veintiuno» pasa también a no poder estar.
     """
     seccion = _normal(_integracion("## 8 · Qué exponemos nosotros"))
 
     for texto in (
-        "Los veintiuno quedan en nivel",
+        "Los veinticuatro quedan en nivel",
         "Los tres endpoints de F-056 no dependen de ARCHIVO_HABILITADO ni de CIERRE_HABILITADO",
         "tercer endpoint que devuelve dato de fuera acumulado",
     ):
         assert texto in seccion, f"§8 no dice «{texto}»"
     assert "Los diecisiete quedan en nivel" not in seccion
     assert "Los veinte quedan en nivel" not in seccion
+    assert "Los veintiuno quedan en nivel" not in seccion
 
 
 def test_f056_r44_la_seccion_ocho_dice_lo_que_hereda_f040_y_lo_que_falta():

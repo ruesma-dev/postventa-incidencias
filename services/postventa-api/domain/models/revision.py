@@ -7,6 +7,12 @@ bandeja de F-036; cada acción es una foto completa de los valores vigentes en
 `postventa.revisiones_bandeja`, y el estado **se deriva** de la última (R1).
 Lo aprobado, y solo eso, es candidato al volcado a Sigrid de F-040 (R34).
 
+F-059 (`specs/F-059-volcado-sigrid-backend/design.md` §4 y §12) añade dos
+estados **derivados** de los eventos del volcado, que mandan sobre los de
+F-056: `volcada` (Sigrid tiene el parte) y `en_duda` (se pidió crearlo y no
+consta qué pasó). Desde ninguno de los dos se admite una acción; las
+candidatas son las `aprobada` y las `en_duda`.
+
 Aquí vive todo lo que decide:
 
 - el estado y las acciones posibles (§3.2, §3.3);
@@ -58,6 +64,7 @@ from domain.models.plantilla_incidencias import (
     OrigenIncidencia,
     Urgencia,
 )
+from domain.models.situacion_volcado import SituacionDeVolcado, estado_de_volcado
 
 
 class AccionRevision(StrEnum):
@@ -72,6 +79,8 @@ class EstadoRevision(StrEnum):
     EDITADA = "editada"
     APROBADA = "aprobada"
     DESCARTADA = "descartada"
+    VOLCADA = "volcada"  # F-059: Sigrid tiene el parte (R1)
+    EN_DUDA = "en_duda"  # F-059: se pidió crearlo y no consta qué pasó (R1)
 
 
 class MotivoNoAprobable(StrEnum):
@@ -91,12 +100,14 @@ class MotivoNoAprobable(StrEnum):
 class FiltroEstado(StrEnum):
     """El filtro `estado` de `GET /api/revision` (R23)."""
 
-    ACTIVAS = "activas"  # todas menos las descartadas
+    ACTIVAS = "activas"  # todas menos las descartadas y las volcadas (D-7 de F-059)
     TODAS = "todas"
     NUEVA = "nueva"
     EDITADA = "editada"
     APROBADA = "aprobada"
     DESCARTADA = "descartada"
+    VOLCADA = "volcada"
+    EN_DUDA = "en_duda"
 
 
 MAX_MOTIVO = 500
@@ -151,7 +162,16 @@ _PERMITIDAS: dict[EstadoRevision, tuple[AccionRevision, ...]] = {
     ),
     EstadoRevision.APROBADA: (AccionRevision.EDITAR, AccionRevision.DESCARTAR),
     EstadoRevision.DESCARTADA: (AccionRevision.RECUPERAR,),
+    # F-059 (R2, D-14): ni editar ni descartar algo que puede estar ya en Sigrid.
+    EstadoRevision.VOLCADA: (),
+    EstadoRevision.EN_DUDA: (),
 }
+
+#: Lo que deja fuera el filtro `activas` (R23 de F-056; D-7 de F-059).
+_FUERA_DE_ACTIVAS = frozenset({EstadoRevision.DESCARTADA, EstadoRevision.VOLCADA})
+
+#: Los estados candidatos al volcado (R3 de F-059).
+_CANDIDATOS = frozenset({EstadoRevision.APROBADA, EstadoRevision.EN_DUDA})
 
 _ORIGEN = datetime.min.replace(tzinfo=UTC)
 _UN_MICROSEGUNDO = timedelta(microseconds=1)
@@ -279,13 +299,19 @@ class RevisionNueva:
 
 @dataclass(frozen=True)
 class SituacionDeRevision:
-    """Una incidencia de la bandeja con su última revisión y su original (R22)."""
+    """Una incidencia de la bandeja con su última revisión y su original (R22).
+
+    `volcado` (F-059, §12) es lo que la base sabe de su volcado a Sigrid: el
+    último campo y con `None` por defecto, para que quien la construye sin él
+    —la original de una duplicada, los tests de F-056 y F-060— siga valiendo.
+    """
 
     incidencia: IncidenciaEnBandeja
     obra_codigo: str
     origen: OrigenIncidencia
     ultima: Revision | None
     original: SituacionDeRevision | None
+    volcado: SituacionDeVolcado | None = None
 
 
 @dataclass(frozen=True)
@@ -439,7 +465,14 @@ def valores_vigentes(situacion: SituacionDeRevision) -> ValoresIncidencia:
 
 
 def estado_de(situacion: SituacionDeRevision) -> EstadoRevision:
-    """El estado derivado de la última revisión (R1, tabla de §3.2)."""
+    """El estado derivado de la última revisión (R1, tabla de §3.2).
+
+    Con la precedencia de F-059 (§4.1): `volcada` y `en_duda`, que salen de
+    los eventos del volcado, mandan sobre los cuatro de F-056.
+    """
+    de_volcado = estado_de_volcado(situacion.volcado)
+    if de_volcado is not None:
+        return EstadoRevision(de_volcado.value)
     ultima = situacion.ultima
     if ultima is not None and ultima.accion is AccionRevision.APROBAR:
         return EstadoRevision.APROBADA
@@ -905,10 +938,16 @@ def decidir(
 
 
 def es_candidata(situacion: SituacionDeRevision) -> bool:
-    """La última revisión es `aprobar` (R34): ninguna otra lo es."""
+    """La última revisión es `aprobar` (R34) y el estado, `aprobada` o
+    `en_duda` (R3 de F-059): una `volcada` no lo es nunca.
+
+    Las dos condiciones: la última de una `en_duda` es siempre un `aprobar`
+    (§4.1 de F-059), y si no lo fuera, sus valores no serían los aprobados.
+    """
     return (
         situacion.ultima is not None
         and situacion.ultima.accion is AccionRevision.APROBAR
+        and estado_de(situacion) in _CANDIDATOS
     )
 
 
@@ -1030,7 +1069,7 @@ def fila_de_revision(
 
 
 def _pasa(fila: FilaDeRevision, filtro: FiltroEstado, con_motivos: bool | None) -> bool:
-    if filtro is FiltroEstado.ACTIVAS and fila.estado is EstadoRevision.DESCARTADA:
+    if filtro is FiltroEstado.ACTIVAS and fila.estado in _FUERA_DE_ACTIVAS:
         return False
     if filtro not in (FiltroEstado.ACTIVAS, FiltroEstado.TODAS) and (
         fila.estado.value != filtro.value

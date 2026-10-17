@@ -169,7 +169,9 @@ def test_f012_r68_la_nota_de_que_f012_no_tiene_por_donde_hacerse_esta_resuelta()
 #: esta lista, no la afirmación del documento. (F-036, T26, 2026-09-30: llegaba
 #: hasta quince y la tabla pasa a diecisiete; se amplía sin tocar la
 #: comprobación. F-060, T20, 2026-10-13: la tabla pasa a veintiuno con
-#: `POST /api/revision/normalizar`; se amplía igual.)
+#: `POST /api/revision/normalizar`; se amplía igual. F-059, T20, 2026-10-17
+#: (R41, F-1 (a)): la tabla pasa a veinticuatro con las tres rutas del
+#: volcado; se amplía igual, y la cifra de antes ya no puede quedar escrita.)
 NUMERALES = {
     10: "diez",
     11: "once",
@@ -183,6 +185,9 @@ NUMERALES = {
     19: "diecinueve",
     20: "veinte",
     21: "veintiuno",
+    22: "veintidós",
+    23: "veintitrés",
+    24: "veinticuatro",
 }
 
 
@@ -215,6 +220,8 @@ def test_f012_r68_integracion_declara_el_endpoint_nuevo_que_exponemos():
     assert len(endpoints) == len(set(endpoints)), f"rutas repetidas: {endpoints}"
     assert len(endpoints) in NUMERALES, f"amplía NUMERALES: hay {len(endpoints)}"
     assert f"Los {NUMERALES[len(endpoints)]} quedan en nivel" in texto
+    # F-059 (T20): con veinticuatro, la cuenta de antes no puede seguir escrita.
+    assert "Los veintiuno quedan en nivel" not in texto
 
 
 # --------------------------------------------------------------------------

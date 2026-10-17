@@ -111,6 +111,9 @@ CLAVES_DE_FILA = {
     "revisado_at_utc",
     "revisado_por",
     "motivos_no_aprobable",
+    # F-059 (R41, F-1 (a); design.md §21.3 C): el objeto `volcado` de R4, en el
+    # listado y en la respuesta de la acción, por la misma `_fila` (F-2 (a)).
+    "volcado",
 }
 
 #: Las claves de los valores, las de `GET /api/bandeja` (R29).
@@ -1011,7 +1014,15 @@ def test_f056_r27_la_respuesta_lleva_lo_de_r27(monkeypatch) -> None:
     assert datos["obra"] == OBRA
     assert datos["resumen"] == {
         "total": 3,
-        "por_estado": {"nueva": 2, "editada": 0, "aprobada": 0, "descartada": 1},
+        # F-059 (R41, F-1 (a); design.md §21.3 C): seis estados.
+        "por_estado": {
+            "nueva": 2,
+            "editada": 0,
+            "aprobada": 0,
+            "descartada": 1,
+            "volcada": 0,
+            "en_duda": 0,
+        },
         "con_motivos": 1,
         "por_motivo": {m.value: int(m is MotivoNoAprobable.SIN_UBICACION) for m in MotivoNoAprobable},
     }

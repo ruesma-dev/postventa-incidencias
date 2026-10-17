@@ -17,7 +17,8 @@
     pasarela sirve con un usuario SQL de solo lectura. Solo `SELECT`, con los
     valores por marcadores `?`. Este script NO crea, NO anula, NO pasa a PTE y
     NO toca ningun parte: anular uno se hace desde la UI de Sigrid (NO PROCEDE,
-    sin correo), nunca con `DELETE` ni `sql/write`; y pasarlo a PTE lo hace
+    sin correo), nunca con `DELETE` ni con una escritura de la pasarela; y
+    pasarlo a PTE lo hace
     Posventa a mano, porque crea tareas y avisa al industrial.
 
     DOS MODOS:

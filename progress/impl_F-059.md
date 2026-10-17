@@ -3363,3 +3363,45 @@ tres): G3 (`app.route(route="volcado/otra", …)(volcado)` al final de `function
 
 **Verificación** (desde el scratchpad, sin `.env` ni `init.sh`): `test_f059_alcance_cerrado.py`, **165 passed in
 82.97s** (los 130 de antes y 35 nuevos de C-F-1); `ruff check`, `All checks passed!`.
+
+## T25 · guiones de consola · 2026-10-18
+
+Preparados (no ejecutados: ni el implementer los lanza ni abre el navegador) cuatro guiones para la consola (F12) de
+`importar.html` del front publicado, **fuera del repo**, junto a los de F-056 y F-060, con su estilo: todo en
+`window.T25`, `throw new Error('T25 para: …')` ante lo inesperado, identidad de `/.auth/me` con `Api.identidadDe`, y
+sin imprimir `oid`, correo, login, nombres de proveedor ni textos (solo códigos, recuentos, estados y `PVI-<id>`).
+Cada uno lleva el mismo preludio (helpers, lectura paginada de `GET /api/revision`, comprobación del `envio`), así
+que sobrevive a una recarga de la pestaña.
+
+| Fichero | Paso de T25 | Qué hace | Escribe |
+|---|---|---|---|
+| `C:\Users\pgris\t41_f059_paso2_fila_de_prueba.js` | 2 | Busca la fila «PRUEBA F-059 - ANULAR» (exactamente 1; `nueva`, `editada` o `aprobada`); elige con el catálogo de `GET /api/revision` una UPV con ubicaciones, una ubicación de su lista (recortada, ≤ 48) y un par de `catalogo.pares` (prefiere lo importado si vale; constantes `ELEGIR` para forzar); la edita con el detalle vacío, exige `motivos_no_aprobable: []`, la aprueba y relee. Re-ejecutado sobre una `aprobada` con esos valores no escribe | Solo nuestra base |
+| `C:\Users\pgris\t41_f059_paso3_ventana_cerrada.js` | 3 | Panel (la prueba candidata, `aprobada`, sin `ultimo_volcado`, sin `volcado_por`); ensayo (200, 1 `previsto`, `envio` con claves exactas, tipo `0002`, oficio, ubicación, UPV, `forma_comunicacion` 1, un interviniente `causante: false`, sin `descripcion_larga` sin detalle); volcar con `confirmado: true` → exige **503 `volcado_deshabilitado`**; un 200 lo grita (cerrar y T26) | Nada (ensayo `commit: false`) |
+| `C:\Users\pgris\t41_f059_paso4_volcar.js` | 4 | Sin `T25.autorizo = 'VOLCAR UNO'` para sin llamar a nada (la palabra se gasta en cada ejecución); ensayo nuevo solo con la prueba (exige 1 `previsto`, que sea la prueba y otro `ensayo_id`); **un** volcar cronometrado → 200, `creado`, `RS<aa>.<mm>/NNNN`; nunca reintenta (sin bucles; un segundo volcar desde la pestaña se bloquea, también tras recarga vía `sessionStorage`, salvo tras un 503 `volcado_deshabilitado`); 502 `volcado_sin_respuesta` para con «en duda, no reintentar»; siempre, en `finally`: «AHORA: 27_ventana_volcado.ps1 -Cerrar» | **Sigrid, un parte** |
+| `C:\Users\pgris\t41_f059_paso6_bandeja.js` | 6 | `GET /api/revision?obra=0626&estado=volcada`: la prueba `volcada`, `volcado.sigrid_cod` el del paso 4, `volcado_por` el correo de quien prueba (comparado, no impreso), sin `oid`; `editar` con los valores vigentes tal cual (si se aceptara, 400 `sin_cambios`) → 409 `accion_no_permitida`, estado `volcada`, acciones `[]`, y la `revision_id` no cambia; ensayo → `ensayo_id` nulo, 0 partes, 1 excluida `ya_volcada` con el mismo código | Nada |
+
+**Contraste con el código** (`interface_adapters/api/volcado.py`, `revision.py` y `function_app.py`): las formas de
+§11 «tal como están implementadas» coinciden; `volcar` pide `incidencias: [{incidencia_id, revision_id}]` (la
+`revision_id` sale del parte del ensayo); el 409 de una `volcada` sale de `comprobar_sin_sigrid` **antes** de
+`sin_cambios`, que es lo que hace inocuo el cuerpo del paso 6.
+
+**Decisiones y desviaciones** (para que el líder las valide):
+
+- **La fila se importa a mano en `importar.html`**, como dice T25.2 y como T19 de F-056: `POST /api/importaciones`
+  solo acepta el `.xlsx` de la plantilla en `multipart` y el front no carga ninguna librería de Excel, así que la
+  consola no puede crearla. Lo que sí hace el guion es **elegir** UPV, ubicación y par oficio–proveedor (la API los
+  lista) y fijarlos con `editar`: en el Excel vale cualquier UPV y oficio de los desplegables.
+- **El detalle se fija vacío** en el `editar`: el parte va sin `descripcion_larga` (sin texto libre en el ERP).
+- **Guarda añadida en el paso 3**: el guion exige `T25.ventana = 'CERRADA'`, declarado tras lanzar
+  `27_ventana_volcado.ps1` sin parámetros. Es el único guion que manda un `volcar` esperando el rechazo; con la
+  ventana abierta por error escribiría. No estaba en el encargo; se puede quitar si el líder no la quiere.
+
+**Verificación (sin red, sin navegador)**: `node --check` (node v24.14.1) de los cuatro, copiados a `.mjs` por el
+`await` de primer nivel que acepta la consola: **los cuatro OK**. Además, una simulación en el scratchpad contra
+una API falsa con estas formas: el camino feliz 2→3→4→6 pasa; el paso 3 sin `T25.ventana` para sin llamar; el
+paso 4 sin la palabra para sin volcar; el paso 4 repetido tras un 200 se bloquea (1 solo volcar); tras un 503 de la
+ventana se deja repetir con la palabra de nuevo; el paso 3 con la ventana abierta para y lo grita; el paso 2
+re-ejecutado no escribe. En la salida simulada, **0 de 35** líneas llevan el `oid`, el correo o el nombre del
+proveedor.
+
+**Pendiente**: que el humano ejecute T25 (pasos 1–7) y anote aquí los resultados; T26 y T27 siguen abiertas.

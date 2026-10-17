@@ -2195,3 +2195,774 @@ no muta así) y el código de producción no cambia.
 Verificación, desde el scratchpad: `test_f059_adaptador_volcado.py` y `test_f059_fabrica.py`, **183 passed in
 2.80s** (170 antes: +4 de C-B3-1 en R23, +3 en R8, +2 de C-B3-2 y +4 del test nuevo); `ruff check` del fichero,
 sin avisos. Tests ajenos tocados: ninguno.
+## Bloque 4 · La aplicación y los tres endpoints · T13–T17 · 2026-10-16
+
+Encargo del líder tras el APPROVED de la re-review del Bloque 3 (`560811b`): T13, T14, T15, T16 y T17, y parar.
+Soy un implementer nuevo: leídos la spec entera (requirements, design —§6, §7, §8, §10, §11, §12, §13, §17, §18,
+§20 y §21— y tasks), este informe, `progress/review_F-059.md` (las cuatro reviews), `progress/spec_F-059.md`,
+`docs/CONVENTIONS.md` y `docs/ARCHITECTURE.md`. Observaciones abiertas que eran de este bloque, y dónde se cierran:
+
+| Observación | Cierre | Test de F-059 |
+|---|---|---|
+| **O-B1-1** (R7/R20: la huella **recalculada** sobre la candidata de la que sale el parte del volcado) | La decisión de la escritura anticipada es `_decision_con_candidatas`: `seleccionar_para_volcado` y, sobre lo que elige, que su candidata sea la de la revisión del ensayo y que `huella_intacta` siga en verdadero. Se decide **dentro** de la transacción: la falseada no deja `enviado` | `test_f059_r7_o_b1_1_un_valor_cambiado_con_la_huella_vieja_se_excluye_en_el_volcado`, `test_f059_r7_o_b1_1_si_solo_queda_la_falseada_no_hay_llamada` |
+| **O-B1-2** (`EnsayoNoValido.causa` → clave `motivo`) | `_error_del_volcado` de `function_app.py` | `test_f059_r17_o_b1_2_cada_motivo_de_ensayo_no_valido_en_la_clave_motivo` (los cuatro motivos por HTTP) |
+| **O-B2-2** (un `sin_respuesta` del ensayo no llega a `guardar_ensayo`) | `_resultados_del_ensayo`: un solo parte sin respuesta es `EnsayoSinRespuesta` (502) y no se guarda **ninguno** | `test_f059_r14_o_b2_2_un_parte_sin_respuesta_en_el_ensayo_es_502_sin_guardar_nada` (el doble de la base aplica el `CHECK` de §9: si llegara, sería un 503) |
+| **O-B3-1** (login sin verificar → 502 `ensayo_sin_respuesta`, en el ensayo y en el volcado) | El `EnsayoSinRespuesta` de `existe_usuario` sube tal cual desde `_login`; el volcado lo resuelve **antes** de la escritura anticipada | `test_f059_r8_o_b3_1_el_login_sin_verificar_en_el_ensayo_es_502_sin_escribir`, `…_en_el_volcado_es_502_sin_escribir`, `test_f059_r8_o_b3_1_el_login_sin_verificar_es_502_ensayo_sin_respuesta_en_los_dos` (HTTP) |
+| **O-B3-3** (solo `fabrica.py` construye el adaptador con `escritura_habilitada=True`) | T16, por `ast`, en **todo** el código del servicio | `test_f059_o_b3_3_solo_la_fabrica_construye_el_adaptador_del_volcado`, `test_f059_o_b3_3_solo_construir_volcador_pide_la_escritura` (y su control negativo) |
+| **O-B3-4** (el `lote_400` sin código o con uno desconocido) | Ensayo: 502 `ensayo_sin_respuesta` sin guardar; volcado: R23 (`sin_respuesta` por parte, 502 `volcado_sin_respuesta`). El matiz de la re-review: el log de ese camino dice que no traía código de lote y que, si se repite, es un defecto nuestro | `test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[400-sin-codigo, 400-codigo-desconocido]`, `test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502[…]`, `test_f059_r23_el_log_de_un_400_sin_codigo_dice_que_no_lo_traia` y los dos de HTTP de R14/R23 |
+
+**Hash anterior a T13 (base de T17): `560811b`.** Todo lanzado desde `<scratchpad>/b4` (sin `.env`) con rutas
+absolutas; los mutantes a mano, en un worktree desechable del scratchpad; la campaña de la herramienta, sobre otro
+worktree limpio (abajo, por qué).
+
+### Un incidente al empezar, sin maquillar: `init.sh` leyó el `.env`
+
+Lo primero que hice fue `bash harness/init.sh`, como manda la precondición del implementer, **antes** de leer la
+nota del Bloque 2 que explica por qué no se lanza: su sección 7 bis ejecuta `pytest` desde `services/postventa-api`,
+donde está el `.env`, y el encargo prohíbe que ningún proceso mío lo lea. Al leerla (unos diez minutos después) paré
+la tarea (`TaskStop`); el `pytest` hijo que había arrancado (`coverage run -m pytest`, desde
+`services/postventa-api`) se quedó huérfano y **no lo pude parar**: el permiso para `Stop-Process` me lo denegó la
+sesión, y no hay otra vía razonable. Lo que eso supone: **ese proceso pudo leer el `.env`** (la suite carga los
+ajustes con `pydantic-settings`, que lo lee del directorio de trabajo). **No pudo escribir en Sigrid ni abrir
+ninguna conexión**: la guardia `sin_red` de `conftest.py` está puesta durante toda la sesión de pytest, y ningún
+test llama a red, base ni IA. No he vuelto a lanzar `init.sh`; queda para T23, como en los bloques anteriores. Lo
+digo para que el líder lo sepa y decida si hay algo que hacer.
+
+### T13 · Fase RED (`590eb1a`)
+
+**Tests nuevos:**
+
+- `tests/utiles_volcado.py` (los dobles; `tests/utiles_revision.py` es de F-056 y no se toca: se **hereda**):
+  `RevisionConVolcado` (el `RevisionEnMemoria` de F-056 con lo que T6 dio a la base: la situación de volcado en
+  cada situación, la obra por incidencia y `aprobadas` que deja fuera la `volcada` antes de `candidata_de`);
+  `VolcadosEnMemoria` (el `RepositorioVolcadoPort` con los `CHECK` de fila de §9 —que el real convierte en
+  `PersistenciaNoDisponible`, 503—, `leer_ensayo` que **compara** el `oid` y no lo devuelve, y `anotar_enviados`
+  que llama a la decisión con lo que leería con las filas bloqueadas, con un gancho para lo que hace «otra
+  conexión» justo antes); `PasarelaFalsa` (al recibir un `commit: true` comprueba que el último evento de cada
+  parte **ya** es su `enviado`, o falla el test; sus respuestas llevan las `filas` del preview con un propietario y
+  un NIF inventados, el `mensaje` del motivo y los `cod`/`ide` provisionales de un `previsto`, que nunca pueden
+  salir); y `UsuariosEnMemoria` (las correspondencias de F-009).
+- `tests/test_f059_pipeline_volcado.py`: el **orden de §10** en el ensayo (base → login → lote → base) y en el
+  volcado (ensayo → candidatas → login → escritura anticipada → lote → base), con la lista de llamadas común;
+  ninguna llamada de lote sin login (R8: sin mapeo, inexistente y **sin verificar**, O-B3-1, en los dos); el cuerpo
+  del ensayo (`commit: false`, `usu`, base, partes en el orden pedido); cada exclusión de R11 (no es de la bandeja,
+  de otra obra, no candidata, ya volcada con su código, huella); sin nada que mandar, ni login, ni lote, ni
+  ensayo; R13 (un evento por parte con `llamada_id` = `ensayo_id`; un `idempotente` deja `volcada`); R14 y O-B3-4
+  (cada respuesta no utilizable del ensayo: nada guardado) y O-B2-2; R17 (cada motivo, 29:59 y 30:00, el `oid` de
+  quien pide a `leer_ensayo`); R18 y R20 (fuera del ensayo, otra revisión, alguien que revisa o vuelca entre el
+  ensayo y el volcado, sin llamada si no queda ninguna); **O-B1-1** (un valor cambiado con la huella vieja →
+  excluida en el **volcado** y sin `enviado`); R21 (una llamada `commit: true` con los partes **de la candidata**
+  en el orden del ensayo); R22 (cada estado, los incoherentes `sin_respuesta`, `committed` no se mira); R23 y
+  O-B3-4 en el volcado (cada familia sin respuesta: `sin_respuesta` por parte, 502 con las en duda y «reintentar
+  es seguro»); R24 (no procesado con su código); R25 (sin traza, quedan los `enviado`, el log de error con las
+  referencias y los códigos; el ensayo siguiente las encuentra `idempotente`); R26 (aviso y log de error); R27; R30;
+  el panel (R28: recuentos, candidatas en el orden del puerto, tope); y los logs (R34, R35: ni `oid`, ni correo,
+  ni login —también el derivado del correo—, ni textos, ni lo que compone la pasarela).
+- `tests/test_f059_volcado_http.py`, por las rutas de `function_app` con las fábricas sustituidas: R9 y R15 (cada
+  cuerpo inválido, con todas las fábricas **prohibidas**, sin repetir `oid`, correo ni lo recibido); R10, R16, R30,
+  R37 y R42 con las **fábricas de verdad** (entorno, ventana, configuración y `N` → 503 con los repositorios
+  prohibidos; con `CIERRE_HABILITADO` y `ARCHIVO_HABILITADO` abiertos el volcado sigue cerrado); R12 (la respuesta
+  del ensayo, sin provisionales, `filas` ni `mensaje`; `envio` = lo mandado); R14, R23 y R24, cada código a su
+  HTTP; R17 con la clave `motivo` (O-B1-2); R8 sin el login ni el correo en la respuesta y el 502 de O-B3-1; R22,
+  R25 y R26; R28; R34 y R35 con `caplog` sobre todos los caminos; R42 (las tres rutas anónimas con su método); y R4
+  por `GET /api/revision` y `POST /api/revision/acciones` (el objeto `volcado` con sus cinco claves y sus cuatro
+  estados, el correo sí y el `oid` no, el mismo objeto en la acción —F-2 (a)—, los seis en `por_estado`, los
+  filtros `volcada`, `en_duda` y `activas`, el mensaje de `_filtro`, R2 desde `volcada` y `en_duda`, el historial
+  sin cambios).
+
+**Tests ajenos ampliados (R41, F-1 (a); `design.md` §21.3), sin quitar nada:**
+
+| Test | Ampliación |
+|---|---|
+| `test_f056_revision_http.py` — la constante `CLAVES_DE_FILA` | `+ "volcado"` (grupo C). Con ella, `test_f056_r8_editar_devuelve_la_fila_con_motivos` (la acción) y `test_f056_r29_una_fila_sin_revisiones` (el listado) exigen la clave en **las dos** respuestas (F-2 (a)); la forma del objeto la fijan los de F-059 |
+| `test_f010_endpoints_protegidos.py` — `ENDPOINTS` y `test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay` | `+ "volcado", "volcado/ensayo", "volcado/volcar"`, y la cuenta `== 21` → `== 24` (grupo B). R41 nombra `test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada`, pero la cifra vive en el barrido: ese es el que cambia, y `la_anonimidad` queda intacto |
+
+Ningún otro test ajeno se tocó en este bloque.
+
+**El esqueleto neutro** (para que la RED falle test a test y no al importar): `application/pipelines/volcado.py`
+con los tipos de §10 y las tres funciones con `raise NotImplementedError("F-059 T14")`, e
+`interface_adapters/api/volcado.py` con las costuras de las fábricas y sus cuatro funciones con
+`NotImplementedError("F-059 T15")`. Ni `function_app.py`, ni `revision.py`.
+
+Comando (desde `<scratchpad>/b4`, `R` = `<repo>/services/postventa-api`):
+
+```
+COLUMNS=400 $R/.venv/Scripts/python.exe -m pytest $R/tests/test_f059_pipeline_volcado.py \
+  $R/tests/test_f059_volcado_http.py $R/tests/test_f056_revision_http.py -q -p no:cacheprovider --tb=no -rf
+```
+
+Resultado: **169 failed, 187 passed**. Por causa: 103 `function_app no publica la ruta` (las tres rutas no
+existen), 58 `NotImplementedError: F-059 T14` (el esqueleto de la aplicación), 3 `el host no publica ninguna ruta`
+(R42), 2 `KeyError: 'volcado'` (R4 en la fila), 2 de `CLAVES_DE_FILA` en `test_f056_revision_http.py` y 1 del
+mensaje de `_filtro`. Además, por separado, `test_f010_endpoints_protegidos.py`: **2 failed, 6 passed**
+(`test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada` y `…_el_barrido_de_niveles_ve_lo_que_hay`).
+**Los 187 que pasan** son los de `test_f056_revision_http.py` que no miran las claves de la fila y siete de F-059
+que caracterizan lo que ya hicieron los Bloques 1 y 2: `test_f059_r2_desde_volcada_y_en_duda_ninguna_accion[volcada,
+en_duda]` (R2 está en el dominio desde T2), `test_f059_r4_el_historial_no_cambia` y los cuatro de
+`test_f059_r4_los_filtros_de_volcada_en_duda_y_activas` (`FiltroEstado` ganó los dos valores en T2 y `_filtro`
+ya los admite: lo que cambia en T15 es su mensaje).
+
+Al pasar a verde corregí **cuatro errores de mis tests**, ninguno del código (van en los commits de T14 y T15,
+dicho en sus mensajes): el caso de siete exclusiones pedía siete incidencias con `N` = 5 (ahora con `N` = 7); dos
+tests leían las candidatas **después** de volcar, cuando ya son `volcada` y no lo son (ahora, antes); un test
+miraba la última llamada tras otras de comprobación; y un `set` dentro de un `set`.
+
+Traza real, completa (solo se ha recortado el prefijo de la ruta hasta `services\`; ningún GUID):
+
+```
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_s10_el_ensayo_va_base_login_ensayo_y_base - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r8_un_login_sin_confirmar_se_verifica_antes_del_lote - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r6_r11_el_cuerpo_del_ensayo_en_el_orden_pedido - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r13_un_evento_de_ensayo_por_parte_con_el_mismo_llamada_id - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r13_un_idempotente_en_el_ensayo_deja_la_incidencia_volcada - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r11_cada_exclusion_del_ensayo_sin_mandarla - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r11_sin_ninguna_que_mandar_no_hay_login_ni_lote_ni_ensayo - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[400-rechazo] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[400-precondicion] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[400-sin-codigo] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[400-codigo-desconocido] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[sin-respuesta] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[sin-forma] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[dry-run-falso] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r14_o_b2_2_un_parte_sin_respuesta_en_el_ensayo_es_502_sin_guardar_nada - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r8_sin_mapeo_ni_candidato_es_409_sin_lote - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r8_un_login_que_el_erp_no_confirma_es_409_sin_lote - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r8_o_b3_1_el_login_sin_verificar_en_el_ensayo_es_502_sin_escribir - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r27_una_en_duda_y_una_rechazada_se_vuelven_a_ensayar_con_su_referencia - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r30_mas_de_n_incidencias_no_se_ensayan - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r34_r35_el_ensayo_no_registra_textos_ni_identidades - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r21_una_llamada_con_commit_true_con_los_partes_de_la_candidata_en_el_orden_del_ensayo - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r22_los_creados_se_guardan_con_su_parte_y_quedan_volcadas - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r22_cada_parte_por_su_estado_y_los_incoherentes_sin_respuesta - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502[sin-respuesta] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502[400-sin-codigo] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502[400-codigo-desconocido] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502[dry-run] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502[sin-forma] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r24_un_400_de_lote_guarda_no_procesado_con_su_codigo[lote_demasiado_grande] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r24_un_400_de_lote_guarda_no_procesado_con_su_codigo[escritura_reclamaciones_deshabilitada] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r25_si_no_se_guarda_el_resultado_es_sin_traza_y_quedan_los_enviado[guardar_resultados] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r25_si_no_se_guarda_el_resultado_es_sin_traza_y_quedan_los_enviado[situaciones] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r25_el_siguiente_ensayo_las_encuentra_idempotente - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r26_un_creado_con_otro_ide_se_guarda_avisa_y_se_registra - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r17_un_ensayo_que_no_existe - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r17_el_ensayo_de_otra_obra - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r17_b1_el_ensayo_de_otra_persona_lo_compara_la_base - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r17_el_ensayo_caduca_a_los_treinta_minutos[29:59] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r17_el_ensayo_caduca_a_los_treinta_minutos[30:00] - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r18_fuera_del_ensayo_y_revision_distinta_no_se_mandan - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r18_lo_que_no_salio_previsto_no_se_vuelca - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r20_r29_si_alguien_revisa_entre_el_ensayo_y_el_volcado_sale_excluida - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r20_si_otro_volcado_la_dejo_volcada_sale_ya_volcada - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r7_o_b1_1_un_valor_cambiado_con_la_huella_vieja_se_excluye_en_el_volcado - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r7_o_b1_1_si_solo_queda_la_falseada_no_hay_llamada - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r20_si_no_queda_ninguna_200_sin_llamar - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r8_r19_un_login_que_el_erp_no_confirma_no_anota_ni_vuelca - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r8_o_b3_1_el_login_sin_verificar_en_el_volcado_es_502_sin_escribir - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r27_una_en_duda_se_reintenta_y_queda_volcada_con_la_misma_referencia - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r30_mas_de_n_incidencias_no_se_vuelcan - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r34_r35_el_volcado_no_registra_textos_ni_identidades - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r23_el_log_de_un_400_sin_codigo_dice_que_no_lo_traia - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r28_el_panel_sin_leer_sigrid - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r28_el_panel_respeta_el_orden_del_puerto - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r28_el_panel_tiene_el_tope_de_la_revision - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_pipeline_volcado.py::test_f059_r28_el_panel_no_usa_sigrid_ni_los_eventos - NotImplementedError: F-059 T14
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[lista] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[texto] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[sin-obra] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[sin-incidencias] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[sin-oid] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[con-commit] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[con-confirmado] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[con-otra] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[obra-vacia] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[obra-rara] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[obra-numero] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[oid-vacio] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[oid-largo] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[oid-numero] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[correo-sin-arroba] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[correo-del-sistema] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[correo-nulo] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-texto] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-vacia] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-n-mas-1] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-51] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-repetidas] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencia-no-uuid] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencia-numero] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_un_cuerpo_que_no_es_json_es_400 - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r9_r30_con_n_valido_se_admiten_n - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[lista] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[sin-ensayo] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[sin-confirmado] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[confirmado-texto] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[confirmado-uno] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[confirmado-falso] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[confirmado-nulo] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[con-commit] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[ensayo-no-uuid] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[ensayo-numero] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[obra-rara] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[oid-vacio] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[correo-sin-arroba] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[correo-del-sistema] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencias-vacia] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencias-n-mas-1] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencias-repetidas] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencia-texto] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencia-sin-revision] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencia-con-otra] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-cero] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-negativa] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-texto] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-booleana] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-decimal] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencia-no-uuid] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_d4_el_ensayo_no_mira_la_ventana - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[entorno-test] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[entorno-local] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[sin-configuracion] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[n-cinco] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[n-cero] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[n-51] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[entorno-test] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[ventana-cerrada] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[ventana-por-defecto] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[otras-ventanas] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[sin-configuracion] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[n-cinco] - AssertionError: function_app no publica la ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_r16_sin_base_es_503[base] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r10_r16_sin_base_es_503[config-pg] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r16_el_volcado_se_compone_con_el_volcador - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r12_la_respuesta_del_ensayo - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r11_r12_sin_ninguna_que_mandar_el_ensayo_es_200_sin_ensayo_id - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[lote_demasiado_grande] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[obra_no_encontrada] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[usuario_no_valido] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[serie_no_encontrada] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[estado_inicial_no_encontrado] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[escritura_reclamaciones_deshabilitada] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[base_de_datos_no_permitida] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[400-sin-codigo] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[400-desconocido] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[sin-respuesta] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[lote_demasiado_grande] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[obra_no_encontrada] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[usuario_no_valido] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[serie_no_encontrada] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[estado_inicial_no_encontrado] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[escritura_reclamaciones_deshabilitada] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[base_de_datos_no_permitida] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[400-sin-codigo] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[400-desconocido] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[sin-respuesta] - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r17_o_b1_2_cada_motivo_de_ensayo_no_valido_en_la_clave_motivo - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r8_un_login_que_el_erp_no_confirma_es_409_sin_el_login_ni_el_correo - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r8_sin_mapeo_es_409_usuario_sigrid_no_mapeado - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r8_o_b3_1_el_login_sin_verificar_es_502_ensayo_sin_respuesta_en_los_dos - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r22_la_respuesta_del_volcado - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r26_el_posible_duplicado_sale_en_avisos - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r25_si_no_se_guarda_el_resultado_es_500_volcado_sin_traza - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r20_si_no_queda_ninguna_el_volcado_es_200_sin_llamar - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r28_el_panel_sin_leer_sigrid - AssertionError: function_app no publica la ruta «volcado»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r28_el_panel_valida_la_obra_sin_leer_nada - AssertionError: function_app no publica la ruta «volcado»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r28_el_panel_con_la_obra_demasiado_grande_es_409 - AssertionError: function_app no publica la ruta «volcado»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r28_r30_el_panel_con_n_invalido_es_503 - AssertionError: function_app no publica la ruta «volcado»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r34_r35_ningun_oid_en_las_respuestas_ni_secretos_en_los_registros - AssertionError: function_app no publica la ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r42_las_tres_rutas_anonimas_con_su_metodo[volcado-volcado-get] - AssertionError: el host no publica ninguna ruta «volcado»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r42_las_tres_rutas_anonimas_con_su_metodo[volcado_ensayo-volcado/ensayo-post] - AssertionError: el host no publica ninguna ruta «volcado_ensayo»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r42_las_tres_rutas_anonimas_con_su_metodo[volcado_volcar-volcado/volcar-post] - AssertionError: el host no publica ninguna ruta «volcado_volcar»
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r4_cada_fila_del_listado_lleva_su_objeto_volcado - KeyError: 'volcado'
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r4_f2_la_respuesta_de_la_accion_lleva_el_mismo_objeto - KeyError: 'volcado'
+FAILED services\postventa-api\tests\test_f059_volcado_http.py::test_f059_r4_el_mensaje_del_filtro_nombra_los_seis_estados - assert 'volcada' in "'estado' tiene que ser activas, todas, nueva, editada, aprobada o descartada"
+FAILED services\postventa-api\tests\test_f056_revision_http.py::test_f056_r8_editar_devuelve_la_fila_con_motivos - AssertionError: assert {'cambios', '...cion_id', ...} == {'cambios', '...cion_id', ...}
+FAILED services\postventa-api\tests\test_f056_revision_http.py::test_f056_r29_una_fila_sin_revisiones - AssertionError: assert {'cambios', '...cion_id', ...} == {'cambios', '...cion_id', ...}
+169 failed, 187 passed in 6.17s
+```
+
+### T14 · `application/pipelines/volcado.py` (`b5cc5c1`)
+
+`panel_de_volcado`, `ensayar` y `volcar`, con los tipos de §10 (`AjustesDelVolcado`, `PeticionDeEnsayo`,
+`PeticionDeVolcado`, `ParteMandado`, `ResultadoDeEnsayo`, `ResultadoDeVolcado`, `CandidataDelPanel`,
+`PanelDeVolcado`). Importa `candidatas_al_volcado` (F-056) y `resolver_login_de_sigrid` (F-009) sin tocarlos.
+
+**Decisiones de diseño (para la review del Bloque 4):**
+
+1. **El orden del volcado**: `leer_ensayo` + `validar_ensayo` → las candidatas (`candidatas_al_volcado`) → el
+   login → `anotar_enviados` → el lote → `situaciones` + `posibles_duplicados` → `guardar_resultados`. Las
+   candidatas se leen **antes** de la transacción (es «base» en el orden de §10); la transacción comprueba con la
+   fila bloqueada que la última revisión sigue siendo la del ensayo, y como la tabla es append-only, los valores
+   leídos son los de esa revisión.
+2. **O-B1-1, dentro de la transacción.** La decisión que recibe `anotar_enviados` es `_decision_con_candidatas`:
+   `seleccionar_para_volcado` (R18, R20) y, para lo que elige, que su candidata exista (`no_es_candidata`), sea de
+   la misma revisión (`revision_desactualizada`) y conserve la huella **recalculada** (`huella_no_coincide`). Así
+   la falseada ni se manda ni deja `enviado`. Las dos primeras son **defensas** que con datos coherentes no se dan
+   (la transacción ya excluye antes); las fijan dos tests con un `aprobadas` desfasado. Las excluidas, en el orden
+   pedido.
+3. **R26 lee las situaciones después de que Sigrid responda** (antes de guardar): así ve el `creado` que otro
+   volcado guardó mientras la pasarela trabajaba, que es el caso en el que puede haber dos partes. Si esa lectura
+   falla, es R25 igual que si falla el guardado.
+4. **R25 ante cualquier fallo al guardar**, no solo la base caída (`except Exception`, relanzado como
+   `VolcadoSinTraza`): R25 dice «si guardar los resultados falla», y en ese punto Sigrid ya ha escrito. El log de
+   error lleva la referencia, el estado y el `sigrid_cod` de cada parte.
+5. **Sin nada que mandar**, el ensayo devuelve `ensayo_id` y `caduca_at_utc` nulos (no se ha guardado ningún
+   evento, y un `ensayo_id` sin eventos sería un `no_existe` en el volcado), y el volcado, `llamada_id` nulo.
+6. **El 502 de un ensayo con un solo parte sin respuesta** (O-B2-2) no guarda **ninguno** de los demás: el
+   ensayo es una lectura y se repite entero.
+7. **`_exigir_n` en la aplicación** (1 a `N`): el borde ya lo comprueba, pero la aplicación no se fía.
+8. `panel_de_volcado(obra_codigo, *, revision, partes_por_llamada)` **sin** `volcados`, aunque §10 lo nombra: la
+   situación de volcado ya viene en `listar` (§12), así que no hace falta otra conexión. Las candidatas, en el
+   orden del puerto (el de R25 de F-056, que `listar` garantiza).
+9. **Los logs** (R31, R34): por llamada, la obra, la `llamada_id` y el resumen; por parte, la referencia, el
+   estado, el código del motivo y el `sigrid_cod`; las excluidas, con su incidencia y su motivo. La duración la
+   pone el adaptador.
+
+Verificación de `tasks.md` T14: **58 passed in 1.22s**.
+
+### T15 · El borde (`930a5db`)
+
+| Fichero | Qué |
+|---|---|
+| `interface_adapters/api/volcado.py` | `leer_panel_de_volcado`, `ensayar_volcado`, `volcar_a_sigrid`, `volcado_de` (el objeto de R4) y `estado_http_del_rechazo` |
+| `interface_adapters/api/revision.py` | `_fila` gana `"volcado": volcado_de(situacion.volcado)` —en el listado **y** en la respuesta de la acción, sin parametrizar ni duplicar `_fila` (F-2 (a))— y `_filtro`, su mensaje con los dos valores nuevos. `listar_revision` no cambia; ninguna importación de `infrastructure.sigrid` nueva |
+| `function_app.py` | Las tres rutas (`volcado`, `volcado/ensayo`, `volcado/volcar`), su traducción propia (`CODIGOS_DEL_VOLCADO`, `HTTP_DEL_VOLCADO`, `MENSAJES_DEL_LOGIN`, `_error_del_volcado`; `_error_de_revision` no cambia) y el párrafo de la cabecera: **veinticuatro** anónimos. Solo importa de `interface_adapters/api/volcado.py` (y los errores de dominio, como siempre) |
+
+**Decisiones de diseño:**
+
+1. **El cuerpo, en dos tiempos** (R9, R15): la estructura entera y el tope de la pasarela (50) **sin leer los
+   ajustes**; luego `N`, antes de construir nada. Si `N` no es un entero de 1 a 50 no se mira aquí: lo dice la
+   fábrica con su orden de puertas (entorno → ventana → configuración → `N`), para que un puesto de trabajo con
+   `N` mal reciba el error del entorno. Un UUID solo vale en su forma canónica con guiones (como `_uuid` de la
+   revisión). `validar_quien` (F-056) rechaza también el actor del sistema de F-060.
+2. **Primero la pasarela, después la base** (R10, R16): `construir_ensayador` o `construir_volcador` no abren
+   ninguna conexión, y sus 503 llegan con los repositorios sin construir (lo fijan los tests con las fábricas de
+   verdad y los repositorios prohibidos). El panel no construye la pasarela.
+3. **Los 409 del login no repiten el motivo de F-009**: el de `UsuarioSigridInexistente` nombra el login y el
+   correo, y §15 dice que el login no va en ninguna respuesta. Mensaje propio y un código:
+   `usuario_sigrid_no_mapeado` y `usuario_sigrid_inexistente`.
+4. **Códigos que §7 no nombra**: los 503 de configuración y de base llevan `configuracion_sigrid_incompleta` y
+   `base_de_datos_no_disponible` (todo el volcado responde `{error, codigo}`, para que F-040 no tenga que leer el
+   texto). Es una clave añadida; si la review prefiere el `_sin_sigrid_o_sin_base` de F-036 sin código, es una línea.
+5. **`envio` es el parte tal cual se mandó** (`cuerpo_de_parte`): con `referencia_externa` y **sin**
+   `descripcion_larga` cuando no hay detalle. El ejemplo de §11 enseña `"descripcion_larga": null` y no la
+   referencia, pero R12 dice «los campos de R6 que se han mandado» y R6, que sin detalle la clave **no va**: manda
+   la letra de los requisitos (la observación ya la dejó el Bloque 1).
+6. **El `ultimo_volcado` del panel** —R28 no da su forma— es el objeto de R4 **sin** `volcado_por`: §9 dice que el
+   correo de quien vuelca solo lo devuelve `GET /api/revision` (y la acción, por F-2 (a)). Lo señalo para la
+   review: es la única forma del contrato de F-040 que he tenido que elegir.
+7. **El panel con `N` mal es 503** (`configuracion_de_volcado_invalida`) sin leer la base: tiene que devolverlo.
+8. `estado_http_del_rechazo` (503 si el código es de configuración del dueño, 409 si no) vive en el módulo del
+   borde, para que `function_app.py` no importe del dominio del volcado.
+9. Al log de `function_app.py` va solo el código y el HTTP; el motivo, a quien hizo la petición (y el de F-009, ni
+   eso).
+
+Verificación de `tasks.md` T15 (`test_f059_volcado_http.py`, `test_f056_revision_http.py`,
+`test_f010_endpoints_protegidos.py`, `test_f060_importacion_diferida.py`, `test_f060_normalizar_http.py`,
+`test_f056_alcance_cerrado.py`, `test_f060_alcance_cerrado.py`): **446 passed, 73 skipped in 84.90s** (los saltados,
+los controles del diff de F-056 y F-060 fuera de su rama). **La suite entera del servicio** sobre el estado de T15
+(antes de dos retoques que no cambian el comportamiento: quitar el parámetro `ahora`, que no usaba nadie, y un único
+nivel de log en `_error_del_volcado`): **8957 passed, 233 skipped in 1184.85s**, sin un rojo. Ningún otro test ajeno
+se puso rojo.
+
+### T16 · `tests/test_f059_alcance_cerrado.py` (`1850984`)
+
+Con el patrón de `test_f060_alcance_cerrado.py`: base fija `2d2efd7`, `RAMA_DE_LA_FEATURE =
+"feature/F-059-volcado-sigrid-backend"`, las tres guardas de F-030 y las dos mitades (la del diff y la que no
+depende de `git`). Lo que fija:
+
+- **R36**: el código de F-059 (los nueve ficheros nuevos y las piezas declaradas) solo nombra `/api/sql/read` y
+  `/api/sigrid/partes-reclamacion`, y solo en `infrastructure/sigrid/volcado.py`; **en todo el código del
+  servicio**, la ruta de `partes-reclamacion` y `RUTA_PARTES_RECLAMACION` solo están ahí; ninguna pieza nombra
+  `sql/write` ni `sigrid/concepto-grafico`; **ningún fichero de código tocado por la rama gana un `sql/write`**
+  frente a la base (contado sin docstrings: el del adaptador dice «ni `sql/write`» y no es código); los módulos
+  nuevos y `function_app.py` no importan `escrituras` ni `graficos`, y los ficheros tocados no ganan esa
+  importación (la fábrica de Sigrid ya importaba el gráfico para `construir_graficos`).
+- **R37 y R42**: `VOLCADO_HABILITADO` solo en los ajustes, en `construir_volcador` y en
+  `AdaptadorVolcadoSigridApi.volcar` (su mensaje al negarse); ni los módulos del cierre, el gráfico y el archivo
+  la miran; el volcado no mira `CIERRE_HABILITADO` ni `ARCHIVO_HABILITADO`.
+- **O-B3-3**: solo `_adaptador_de_volcado` de `infrastructure/sigrid/fabrica.py` construye
+  `AdaptadorVolcadoSigridApi`, con `escritura_habilitada` recibida y no fijada; solo `construir_volcador` se la
+  pide en verdadero, y solo las dos fábricas la llaman.
+- **R32 y R33**: el único `.sql` nuevo es el `16_`; ninguna pieza de F-059 tiene `UPDATE`/`DELETE`/`TRUNCATE` ni
+  DDL fuera del `16_`, todo cualificado en `postventa`.
+- **§12, §17**: en cada fichero que ya existía solo cambian o se añaden las piezas declaradas, una a una
+  (`PIEZAS_DE_F059`), y no se quita ninguna; `__all__` solo gana; `paso_cierre.py` cambia **solo** la anotación de
+  `erp` (`ErpPort` → `VerificadorDeLoginPort`); `Ajustes` gana sus dos campos y nada más; `.env.example` y
+  `local.settings.json.example`, las dos variables con su placeholder y nada más.
+- **«No se toca»** (§17, §21.5): sin cambios, `services/postventa-front/` entero, los ficheros de la lista
+  (`cliente.py`, `escrituras.py`, `graficos.py`, `consultas.py`, …, `application/pipelines/revision.py`,
+  `domain/ports/revision.py`, los `13_`, `14_` y `15_`, `tests/utiles_revision.py`, `19_` y `22_` de `infra/`) y, en
+  los ficheros que sí se tocan, las piezas de F-060 y las compartidas (`registrar_lote`, `_registrar_lote`,
+  `select_bloquear`, `select_ultimas_revisiones`, `insert_revision`, `listar_revision`, `revision_normalizar`,
+  `_error_de_revision` y las demás rutas de la revisión y del cierre), iguales a las de la base.
+- **R41 (F-1 (a))**: los tests de F-009, sin diff; de F-012, F-036 y F-053, solo los de la lista; y la lista de
+  excepciones escrita a mano, **función a función** (`AMPLIADOS`, con la de B-2), sin que ninguna pierda una
+  aserción salvo las declaradas en `ASERCIONES_QUE_CAMBIAN` (la cifra o el fichero vigente en lugar del anterior).
+  Las del grupo B que cambian con los documentos (T20) ya están declaradas y van en `AMPLIADOS_EN_EL_BLOQUE_5`:
+  hasta T20 se exige que no cambie nada **que no esté declarado**; **T20 tiene que sacarlas de ahí** (pasan a
+  igualdad) y declarar en `ASERCIONES_QUE_CAMBIAN` las aserciones que cambien.
+
+Verificación de `tasks.md` T16 (`test_f059_alcance_cerrado.py`, `test_f056_alcance_cerrado.py`,
+`test_f060_alcance_cerrado.py`, `test_f036_alcance_cerrado.py`): **158 passed, 80 skipped in 162.69s**.
+`test_f059_alcance_cerrado.py` solo: **109 passed**.
+
+### T17 · Mutación del bloque
+
+Base **`560811b`** (la anterior a T13). El orden, como en el Bloque 3: primero los mutantes a mano, que pidieron
+tests (todos de F-059 y **sin tocar el código de producción**), y después la campaña de la herramienta sobre el
+código y los tests ya cerrados.
+
+#### Los tests que pidieron los mutantes (`6b187a3`, `e8cb869`, `e7a3c64`, `bf68637`, `9db9847`, `70d611e`)
+
+Una primera pasada de los mutantes a mano, sobre `1850984` (T16), dejó vivos, además de los equivalentes de abajo,
+H01 (una petición vacía en la aplicación), H05 (al dominio llegaban también las pedidas fuera de la bandeja, como
+`None`), H16 y H17 (las dos defensas de la candidata) y, por lo que preví al escribir la lista, H20 (el orden de las
+excluidas mezcladas), H27 (R25 solo ante la base caída), H35 (el panel con justo el tope), A13 (un UUID sin su forma
+canónica), A14 (más de 50 con `N` mal), A17 (`N` antes que el entorno) y A18 (la base del lote por HTTP). Esa
+primera pasada la paré a medias, tras H19, para no competir con la campaña: lo de arriba a partir de H20 sale de
+leer el código, no de haberlo ejecutado; la segunda pasada, completa, es la de la tabla. Los tests nuevos:
+
+| Test | Fija |
+|---|---|
+| `test_f059_r30_t17_una_peticion_sin_incidencias_ni_se_ensaya_ni_se_vuelca` | de 1 a `N` también en la aplicación |
+| `test_f059_r11_t17_al_dominio_solo_llegan_las_situaciones_de_la_bandeja` | `_situaciones` no da entradas `None` (§8.1: la que no está, sin entrada) |
+| `test_f059_r20_t17_una_candidata_de_otra_revision_no_se_manda` | defensa: candidata de otra revisión → `revision_desactualizada`, sin `enviado` |
+| `test_f059_r20_t17_sin_candidata_no_se_manda` | defensa: sin candidata → `no_es_candidata`, sin `enviado` |
+| `test_f059_r18_r20_t17_las_excluidas_salen_en_el_orden_pedido` | la huella y R18 juntas, en el orden pedido |
+| `test_f059_r25_t17_cualquier_fallo_al_guardar_tras_sigrid_es_sin_traza` | un `RuntimeError` al guardar también es `VolcadoSinTraza`, con lo recibido en el log |
+| `test_f059_r28_t17_el_panel_lee_justo_el_tope` | con 10.000 no se pasa del tope |
+| `test_f059_r9_cada_cuerpo_invalido_del_ensayo_…[incidencia-sin-guiones, incidencia-con-llaves, incidencia-urn]` y `test_f059_r15_…[ensayo-sin-guiones, incidencia-sin-guiones]` | un UUID que `UUID()` lee pero no en su forma canónica es 400 |
+| `test_f059_r9_r15_t17_con_n_invalido_mas_de_50_sigue_siendo_400[ensayo, volcar]` | el tope de 50 se mira sin `N` |
+| `test_f059_r10_r30_…[entorno-y-n]` y `test_f059_r16_r37_r42_…[ventana-y-n]` | con el entorno o la ventana mal y `N` mal, manda el entorno o la ventana |
+| `test_f059_r12_la_respuesta_del_ensayo` (una aserción más) | el lote va a la base de la configuración |
+| `test_f059_r4_r28_t17_una_incidencia_solo_ensayada_no_tiene_objeto_volcado` | la única línea sin recorrer de la cobertura: un ensayo no es un volcado (R4, R28) |
+| `test_f059_r28_t17_cada_recuento_del_panel_cuenta_lo_suyo` | H36, de la segunda pasada: los recuentos de los tests coincidían |
+| `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[…]` (ocho) | los `frozen=True` de la campaña de la herramienta (abajo) |
+| `test_f059_r9_r15_r30_t17_con_n_50_se_admiten_50[ensayo, volcar]` | el mutante 49 de la campaña, que solo mataba algo ajeno a F-059 (abajo) |
+
+#### Mutantes a mano (lo que la herramienta no muta)
+
+En un worktree **desechable** del scratchpad (`git worktree add --detach`), nunca en el árbol de trabajo (su
+`git status` queda limpio tras cada mutante y al final; el worktree se retira al terminar). Cada mutante, con
+`test_f059_pipeline_volcado.py` y `test_f059_volcado_http.py` y `-x`; si sobrevive, también con los demás de F-059
+y los ajenos que tocan estas piezas (`test_f056_revision_http.py`, `test_f010_endpoints_protegidos.py`,
+`test_f056_pipeline_revision.py`, `test_f060_normalizar_http.py`). Se incluyen, como pide el encargo, los
+`x is not None` → `x` y `x is None` → `not x`. La segunda pasada, entera, sobre `e8cb869`; H36 y H27b, sobre
+`bf68637`; los `frozen` de la herramienta, sobre `9db9847`.
+
+| Id | Fichero | Mutación | Resultado | Test de F-059 que lo caza |
+|---|---|---|---|---|
+| H01 | `application/pipelines/volcado.py` | `_exigir_n` admite 0 incidencias | muerto | `test_f059_r30_t17_una_peticion_sin_incidencias_ni_se_ensaya_ni_se_vuelca` |
+| H02 | `application/pipelines/volcado.py` | `_exigir_n` no admite N | muerto | `test_f059_r11_cada_exclusion_del_ensayo_sin_mandarla` |
+| H03 | `application/pipelines/volcado.py` | el ensayo sin `_exigir_n` | muerto | `test_f059_r30_mas_de_n_incidencias_no_se_ensayan` |
+| H04 | `application/pipelines/volcado.py` | `_situaciones`: `s is not None` -> `s` | **equivalente** (abajo) | — |
+| H05 | `application/pipelines/volcado.py` | `_situaciones` deja pasar las que no están en la bandeja | muerto | `test_f059_r11_t17_al_dominio_solo_llegan_las_situaciones_de_la_bandeja` |
+| H06 | `application/pipelines/volcado.py` | ensayo: `clasificar(...) is not None` -> `clasificar(...)` | **equivalente** (abajo) | — |
+| H07 | `application/pipelines/volcado.py` | ensayo: cualquier código es un rechazo de lote | muerto | `test_f059_r14_o_b3_4_el_ensayo_sin_respuesta_utilizable_no_guarda_nada[400-codigo-desconocido]` |
+| H08 | `application/pipelines/volcado.py` | ensayo: `resultados is None` -> `not resultados` | **equivalente** (abajo) | — |
+| H09 | `application/pipelines/volcado.py` | ensayo: un parte sin respuesta se guarda (O-B2-2) | muerto | `test_f059_r14_o_b2_2_un_parte_sin_respuesta_en_el_ensayo_es_502_sin_guardar_nada` |
+| H10 | `application/pipelines/volcado.py` | caduca ahora | muerto | `test_f059_r13_un_evento_de_ensayo_por_parte_con_el_mismo_llamada_id` |
+| H11 | `application/pipelines/volcado.py` | ensayo: `is OK` -> `is not OK` | muerto | `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` |
+| H12 | `application/pipelines/volcado.py` | el volcado sin `validar_ensayo` | muerto | `test_f059_r17_un_ensayo_que_no_existe` |
+| H13 | `application/pipelines/volcado.py` | `leer_ensayo` con el correo en vez del `oid` | muerto | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| H14 | `application/pipelines/volcado.py` | la decisión sin la candidata (O-B1-1) | muerto | `test_f059_r7_o_b1_1_un_valor_cambiado_con_la_huella_vieja_se_excluye_en_el_volcado` |
+| H15 | `application/pipelines/volcado.py` | `candidata is None` -> `not candidata` | **equivalente** (abajo) | — |
+| H16 | `application/pipelines/volcado.py` | sin comprobar que la candidata es la de la revisión del ensayo | muerto | `test_f059_r20_t17_una_candidata_de_otra_revision_no_se_manda` |
+| H17 | `application/pipelines/volcado.py` | sin comprobar que hay candidata | muerto | `test_f059_r20_t17_sin_candidata_no_se_manda` |
+| H18 | `application/pipelines/volcado.py` | huella: `not` quitado | muerto | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| H19 | `application/pipelines/volcado.py` | decidir: `motivo is None` -> `not motivo` | **equivalente** (abajo) | — |
+| H20 | `application/pipelines/volcado.py` | decidir: excluidas en el orden de inserción, no en el pedido | muerto | `test_f059_r18_r20_t17_las_excluidas_salen_en_el_orden_pedido` |
+| H21 | `application/pipelines/volcado.py` | volcado con commit false | muerto | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| H22 | `application/pipelines/volcado.py` | volcado: `clasificar(...) is not None` -> `clasificar(...)` | **equivalente** (abajo) | — |
+| H23 | `application/pipelines/volcado.py` | R24: sin_respuesta en vez de no_procesado | muerto | `test_f059_r24_un_400_de_lote_guarda_no_procesado_con_su_codigo[lote_demasiado_grande]` |
+| H24 | `application/pipelines/volcado.py` | volcado: `resultados is None` -> `not resultados` | **equivalente** (abajo) | — |
+| H25 | `application/pipelines/volcado.py` | `fallo is not None` -> `fallo` | **equivalente** (abajo) | — |
+| H26 | `application/pipelines/volcado.py` | el volcado no levanta el fallo tras guardar | muerto | `test_f059_r23_o_b3_4_sin_respuesta_utilizable_todos_sin_respuesta_y_502[sin-respuesta]` |
+| H27 | `application/pipelines/volcado.py` | R25 solo ante la base caída | muerto (F-059), pero por `NameError`: ver H27b | `test_f059_r25_si_no_se_guarda_el_resultado_es_sin_traza_y_quedan_los_enviado[guardar_resultados]` |
+| H27b | `application/pipelines/volcado.py` | H27 con la importación de `PersistenciaNoDisponible` | muerto | `test_f059_r25_t17_cualquier_fallo_al_guardar_tras_sigrid_es_sin_traza` |
+| H28 | `application/pipelines/volcado.py` | R26 sin las situaciones | muerto | `test_f059_r26_un_creado_con_otro_ide_se_guarda_avisa_y_se_registra` |
+| H29 | `application/pipelines/volcado.py` | R26 sin el log de error | muerto | `test_f059_r26_un_creado_con_otro_ide_se_guarda_avisa_y_se_registra` |
+| H30 | `application/pipelines/volcado.py` | R25: el log sin lo recibido | muerto | `test_f059_r25_si_no_se_guarda_el_resultado_es_sin_traza_y_quedan_los_enviado[guardar_resultados]` |
+| H31 | `application/pipelines/volcado.py` | sin nada que mandar, con `llamada_id` | muerto | `test_f059_r20_si_no_queda_ninguna_200_sin_llamar` |
+| H32 | `application/pipelines/volcado.py` | el login antes que las candidatas | muerto | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| H33 | `application/pipelines/volcado.py` | el login con el `oid` como correo | muerto | `test_f059_r8_un_login_sin_confirmar_se_verifica_antes_del_lote` |
+| H34 | `application/pipelines/volcado.py` | el panel sin las en_duda | muerto | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| H35 | `application/pipelines/volcado.py` | panel: `>` -> `>=` | muerto | `test_f059_r28_t17_el_panel_lee_justo_el_tope` |
+| H36 | `application/pipelines/volcado.py` | panel: volcadas cuenta en_duda | muerto (F-059, tercera pasada) | `test_f059_r28_t17_cada_recuento_del_panel_cuenta_lo_suyo` |
+| H37 | `application/pipelines/volcado.py` | sin el log de cada parte | muerto | `test_f059_r34_r35_el_ensayo_no_registra_textos_ni_identidades` |
+| H38 | `application/pipelines/volcado.py` | ensayo: `not mandadas` -> `mandadas is None` | muerto | `test_f059_r11_sin_ninguna_que_mandar_no_hay_login_ni_lote_ni_ensayo` |
+| H39 | `application/pipelines/volcado.py` | el volcado sin `_exigir_n` | muerto | `test_f059_r30_mas_de_n_incidencias_no_se_vuelcan` |
+| H40 | `application/pipelines/volcado.py` | volcado: sin el aviso del 400 sin código | muerto | `test_f059_r23_el_log_de_un_400_sin_codigo_dice_que_no_lo_traia` |
+| A01 | `interface_adapters/api/volcado.py` | `volcado_de`: `situacion is None` -> `not situacion` | **equivalente** (abajo) | — |
+| A02 | `interface_adapters/api/volcado.py` | `volcado_de`: `is` -> `is not` | muerto | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| A03 | `interface_adapters/api/volcado.py` | `volcado_de`: el estado del último evento tal cual | muerto | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| A04 | `interface_adapters/api/volcado.py` | `volcado_de` sin motivo | muerto | `test_f059_r4_cada_fila_del_listado_lleva_su_objeto_volcado` |
+| A05 | `interface_adapters/api/volcado.py` | `volcado_de` sin correo del último | muerto | `test_f059_r4_cada_fila_del_listado_lleva_su_objeto_volcado` |
+| A06 | `interface_adapters/api/volcado.py` | `ultimo is None` -> `not ultimo` | **equivalente** (abajo) | — |
+| A07 | `interface_adapters/api/volcado.py` | 503/409 al revés | muerto | `test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[lote_demasiado_grande]` |
+| A08 | `interface_adapters/api/volcado.py` | panel: la base antes que `N` | muerto | `test_f059_r28_r30_el_panel_con_n_invalido_es_503` |
+| A09 | `interface_adapters/api/volcado.py` | panel con el correo | muerto | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| A10 | `interface_adapters/api/volcado.py` | `_sin_correo`: `volcado is None` -> `not volcado` | **equivalente** (abajo) | — |
+| A11 | `interface_adapters/api/volcado.py` | el cuerpo admite claves de más | muerto | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[con-commit]` |
+| A12 | `interface_adapters/api/volcado.py` | `confirmado` por veracidad | muerto | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[confirmado-texto]` |
+| A13 | `interface_adapters/api/volcado.py` | UUID en cualquier forma | muerto | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencia-sin-guiones]` |
+| A14 | `interface_adapters/api/volcado.py` | tope de 51 | muerto | `test_f059_r9_r15_t17_con_n_invalido_mas_de_50_sigue_siendo_400[ensayo]` |
+| A15 | `interface_adapters/api/volcado.py` | lista vacía admitida | muerto | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-vacia]` |
+| A16 | `interface_adapters/api/volcado.py` | `_exigir_tope`: `>` -> `>=` | muerto | `test_f059_r9_r30_con_n_valido_se_admiten_n` |
+| A17 | `interface_adapters/api/volcado.py` | `_exigir_tope` levanta el 503 antes del entorno | muerto | `test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[entorno-y-n]` |
+| A18 | `interface_adapters/api/volcado.py` | sin la base | muerto | `test_f059_r12_la_respuesta_del_ensayo` |
+| A19 | `interface_adapters/api/volcado.py` | el ensayo con el volcador | muerto | `test_f059_r10_d4_el_ensayo_no_mira_la_ventana` |
+| A20 | `interface_adapters/api/volcado.py` | el volcado con el ensayador | muerto | `test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[entorno-test]` |
+| A21 | `interface_adapters/api/volcado.py` | incidencias repetidas en el ensayo | muerto | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-repetidas]` |
+| A22 | `interface_adapters/api/volcado.py` | incidencias repetidas en el volcado | muerto | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencias-repetidas]` |
+| A23 | `interface_adapters/api/volcado.py` | `revision_id` booleano admitido | muerto | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-booleana]` |
+| A24 | `interface_adapters/api/volcado.py` | `_texto`: `is None` -> `not` | **equivalente** (abajo) | — |
+| A25 | `interface_adapters/api/volcado.py` | caduca: `is None` -> `not` | **equivalente** (abajo) | — |
+| A26 | `interface_adapters/api/volcado.py` | `_instante` sin UTC ni microsegundos | muerto | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| A27 | `interface_adapters/api/volcado.py` | aviso sin el anterior | muerto | `test_f059_r26_el_posible_duplicado_sale_en_avisos` |
+| A28 | `interface_adapters/api/volcado.py` | el ensayo sin validar la obra | muerto | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[obra-vacia]` |
+| R01 | `interface_adapters/api/revision.py` | la fila sin el objeto | muerto | `test_f059_r4_cada_fila_del_listado_lleva_su_objeto_volcado` |
+| F01 | `function_app.py` | los 409 del login con su motivo de F-009 | muerto | `test_f059_r8_un_login_que_el_erp_no_confirma_es_409_sin_el_login_ni_el_correo` |
+| F02 | `function_app.py` | O-B1-2: el texto en vez de la causa | muerto | `test_f059_r17_o_b1_2_cada_motivo_de_ensayo_no_valido_en_la_clave_motivo` |
+| F03 | `function_app.py` | sin traza 502 | muerto | `test_f059_r25_si_no_se_guarda_el_resultado_es_500_volcado_sin_traza` |
+| F04 | `function_app.py` | configuración con el código de la ventana | muerto | `test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[sin-configuracion]` |
+| F05 | `function_app.py` | ensayo sin respuesta 503 | muerto | `test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[400-sin-codigo]` |
+| F06 | `function_app.py` | 502 sin las en duda | muerto | `test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[400-sin-codigo]` |
+
+**75 mutantes a mano** (más H27b y los ocho `frozen` comprobados a mano antes de la campaña): **62 muertos por tests
+de F-059** y **13 supervivientes equivalentes**, todos del mismo patrón. Ninguno lo caza solo un test de otra
+feature.
+
+**H27, sin maquillar.** En la segunda pasada lo dio por muerto
+`test_f059_r25_si_no_se_guarda_el_resultado_es_sin_traza_y_quedan_los_enviado[guardar_resultados]`, pero por un
+`NameError`: el mutante nombra `PersistenciaNoDisponible`, que la aplicación no importa. **H27b** es el mismo
+mutante con su importación: lo mata, y solo él, `test_f059_r25_t17_cualquier_fallo_al_guardar_tras_sigrid_es_sin_traza`.
+
+**H36** sobrevivió a la segunda pasada: los recuentos del panel de los tests coincidían (una en duda y una volcada).
+`test_f059_r28_t17_cada_recuento_del_panel_cuenta_lo_suyo` (`bf68637`, 3 aprobadas, 1 en duda, 2 volcadas) lo mata.
+
+#### Los trece equivalentes (para que los acepte el humano)
+
+Los trece son `x is None` → `not x` (o `x is not None` → `x`) sobre un valor que, cuando **no** es `None`, **nunca
+es falso**: ningún tipo de los de abajo define `__bool__` ni `__len__`, o lo que llega no puede estar vacío. Para
+ellos «es `None`» y «es falso» son la misma pregunta, así que ningún test puede distinguirlos. Se podría evitar
+escribiendo directamente la comprobación por veracidad, pero sería contra PEP 8 (`is None` para un `Optional`) y no
+cambiaría nada de lo que hace el programa.
+
+| Id | Dónde | El valor, cuando no es `None` | Por qué nunca es falso |
+|---|---|---|---|
+| H04 | `_situaciones` | `SituacionDeRevision` | `dataclass(frozen=True)` sin `__bool__` ni `__len__` |
+| H06, H22 | `_resultados_del_ensayo`, `_resultados_del_volcado` | `ClaseDeCodigoDeLote` | `StrEnum` cuyos dos valores (`"precondicion"`, `"rechazo"`) no son vacíos |
+| H08, H24 | `_resultados_del_ensayo`, `_resultados_del_volcado` | `tuple[ResultadoParte, ...]` de `interpretar_respuesta` | tiene **un resultado por parte mandado** (`tuple(… for i, parte in enumerate(mandados))`), y aquí siempre se manda al menos uno: sin ninguno, la aplicación vuelve antes (y `cuerpo_de_lote` se niega a un lote vacío) |
+| H15 | `_motivo_de_la_candidata` | `CandidataAlVolcado` | `dataclass(frozen=True)` sin `__bool__` ni `__len__` |
+| H19 | `_decision_con_candidatas` | `MotivoExclusion` | `StrEnum` sin valores vacíos |
+| H25 | `volcar` | la excepción que se levanta tras guardar | `BaseException` no define `__bool__` ni `__len__` |
+| A01 | `volcado_de` | `SituacionDeVolcado` | `dataclass(frozen=True)` sin `__bool__` ni `__len__` |
+| A06 | `volcado_de` | `UltimoEvento` | ídem |
+| A10 | `_sin_correo` | el `dict` de `volcado_de` | siempre con sus cinco claves |
+| A24 | `_texto` | `UUID` | no define `__bool__` ni `__len__` (también `UUID(int=0)` es verdadero) |
+| A25 | `ensayar_volcado`, `caduca_at_utc` | `datetime` | un `datetime` no es nunca falso |
+
+#### La campaña de la herramienta
+
+```
+cd <scratchpad>/b4
+PYTHONPATH=<repo> python -u -m harness.mutacion --feature F-059 --base 560811b \
+  --rama feature/F-059-volcado-sigrid-backend --timeout 1800 --workers 8 \
+  --raiz <scratchpad>/b4/wt2 --salida <scratchpad>/b4/mutacion_F-059_bloque4.md
+66 mutantes evaluados, 64 muertos, 2 supervivientes, 0 timeouts en 19405.7 s
+```
+
+Sobre `9db9847`; alcance: **1374** líneas de producción en cuatro ficheros (`application/pipelines/volcado.py` 719,
+`function_app.py` 196, `interface_adapters/api/revision.py` 6, `interface_adapters/api/volcado.py` 453); **8
+workers**; campaña completa, sin muestreo. Informe: `progress/mutacion_F-059_bloque4.md` (copiado del scratchpad,
+con la primera línea relativa y el análisis de los dos supervivientes completado).
+
+**Cómo se llegó a ella, sin maquillar:**
+
+1. **`--raiz` es un worktree limpio, no el árbol principal.** El primer intento se negó en el acto: «El árbol
+   principal tiene cambios sin commitear»: un `progress/current.md` modificado que **no es mío** (una nota del líder
+   sobre T8) y que no debo tocar, ni siquiera para un `stash`. La campaña paralela crea sus worktrees desde `HEAD`;
+   con `--raiz` en un worktree desechable y limpio de la misma rama (más un enlace de unión a la `.venv` del
+   servicio, que el worktree no trae y que se retiró antes de borrarlo, sin tocar la `.venv` real) evalúa los
+   mismos commits. `--workers 1`, la otra salida que ofrece, muta en el propio árbol y duraría un día.
+2. **Una campaña abortada.** La primera de verdad (sobre `6b187a3`) dio **timeout en los ocho primeros**
+   mutantes —los `frozen=True` → `False` de los ocho tipos de la aplicación—: la suite entera, con ocho workers,
+   los mutantes a mano que corrían a la vez y otra sesión con su propia campaña de seis workers, pasaba de 1800 s.
+   Y, peor, ninguno de esos ocho lo habría cazado un test: **no había ninguno** que fijara que los tipos son
+   inmutables. La paré, retiré sus ocho worktrees y añadí
+   `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables` (`9db9847`; comprobado a mano que mata los ocho).
+3. **La campaña buena** (sobre `9db9847`) tuvo seis timeouts en paralelo (los mutantes 50–55, todos del cuerpo
+   en `interface_adapters/api/volcado.py`, en una misma tanda de carga); el **repaso en serie** de la herramienta
+   les dio veredicto a los seis: **muertos**. Comprobados aparte con los tests de F-059 solos: los seis mueren en
+   unos 20 s.
+
+#### Reverificación de cada mutante de la herramienta contra los tests de F-059 solos
+
+Como en los bloques anteriores (dos veces un «muerto» lo fue por un test ajeno bajo carga), cada uno de los 66,
+aplicado en la copia desechable y con **solo** los siete ficheros de tests de F-059 del servicio y `-x`:
+
+| # | Fichero:línea | Tipo | Campaña | Con los tests de F-059 solos | Test de F-059 que lo caza |
+|---|---|---|---|---|---|
+| 1 | `application/pipelines/volcado.py:220` | booleano | muerto | muerto (F-059) | `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[CandidataDelPanel]` |
+| 2 | `application/pipelines/volcado.py:187` | booleano | muerto | muerto (F-059) | `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[ParteMandado]` |
+| 3 | `application/pipelines/volcado.py:228` | booleano | muerto | muerto (F-059) | `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[PanelDeVolcado]` |
+| 4 | `application/pipelines/volcado.py:160` | booleano | muerto | muerto (F-059) | `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[AjustesDelVolcado]` |
+| 5 | `application/pipelines/volcado.py:168` | booleano | muerto | muerto (F-059) | `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[PeticionDeEnsayo]` |
+| 6 | `application/pipelines/volcado.py:177` | booleano | muerto | muerto (F-059) | `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[PeticionDeVolcado]` |
+| 7 | `application/pipelines/volcado.py:207` | booleano | muerto | muerto (F-059) | `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[ResultadoDeVolcado]` |
+| 8 | `application/pipelines/volcado.py:195` | booleano | muerto | muerto (F-059) | `test_f059_t17_los_tipos_de_la_aplicacion_son_inmutables[ResultadoDeEnsayo]` |
+| 9 | `application/pipelines/volcado.py:338` | aritmetico | muerto | muerto (F-059) | `test_f059_r13_un_evento_de_ensayo_por_parte_con_el_mismo_llamada_id` |
+| 10 | `application/pipelines/volcado.py:269` | entero | muerto | muerto (F-059) | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| 11 | `application/pipelines/volcado.py:256` | comparacion | muerto | muerto (F-059) | `test_f059_r28_t17_el_panel_lee_justo_el_tope` |
+| 12 | `application/pipelines/volcado.py:300` | not | muerto | muerto (F-059) | `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` |
+| 13 | `application/pipelines/volcado.py:268` | entero | muerto | muerto (F-059) | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| 14 | `application/pipelines/volcado.py:267` | entero | muerto | muerto (F-059) | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| 15 | `application/pipelines/volcado.py:319` | booleano | muerto | muerto (F-059) | `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` |
+| 16 | `application/pipelines/volcado.py:339` | booleano | superviviente | vivo: **equivalente** (E-2) | — |
+| 17 | `application/pipelines/volcado.py:662` | entero | muerto | muerto (F-059) | `test_f059_r8_un_login_sin_confirmar_se_verifica_antes_del_lote` |
+| 18 | `application/pipelines/volcado.py:531` | comparacion | muerto | muerto (F-059) | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| 19 | `application/pipelines/volcado.py:440` | not | muerto | muerto (F-059) | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| 20 | `application/pipelines/volcado.py:533` | not | muerto | muerto (F-059) | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| 21 | `application/pipelines/volcado.py:662` | not | muerto | muerto (F-059) | `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` |
+| 22 | `application/pipelines/volcado.py:458` | booleano | muerto | muerto (F-059) | `test_f059_s10_el_volcado_va_ensayo_base_login_anticipada_sigrid_y_base` |
+| 23 | `application/pipelines/volcado.py:662` | comparacion | muerto | muerto (F-059) | `test_f059_r8_un_login_sin_confirmar_se_verifica_antes_del_lote` |
+| 24 | `application/pipelines/volcado.py:479` | booleano | superviviente | vivo: **equivalente** (E-2) | — |
+| 25 | `function_app.py:1878` | entero | muerto | muerto (F-059) | `test_f059_r10_r16_sin_base_es_503[base]` |
+| 26 | `function_app.py:1875` | entero | muerto | muerto (F-059) | `test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[n-cinco]` |
+| 27 | `application/pipelines/volcado.py:662` | comparacion | muerto | muerto (F-059) | `test_f059_r11_cada_exclusion_del_ensayo_sin_mandarla` |
+| 28 | `function_app.py:1876` | entero | muerto | muerto (F-059) | `test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[sin-configuracion]` |
+| 29 | `function_app.py:1873` | entero | muerto | muerto (F-059) | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[lista]` |
+| 30 | `function_app.py:1877` | entero | muerto | muerto (F-059) | `test_f059_r10_r16_sin_base_es_503[config-pg]` |
+| 31 | `function_app.py:1879` | entero | muerto | muerto (F-059) | `test_f059_r17_o_b1_2_cada_motivo_de_ensayo_no_valido_en_la_clave_motivo` |
+| 32 | `function_app.py:1874` | entero | muerto | muerto (F-059) | `test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[entorno-test]` |
+| 33 | `function_app.py:1936` | entero | muerto | muerto (F-059) | `test_f059_r9_un_cuerpo_que_no_es_json_es_400` |
+| 34 | `function_app.py:1883` | entero | muerto | muerto (F-059) | `test_f059_r8_sin_mapeo_es_409_usuario_sigrid_no_mapeado` |
+| 35 | `function_app.py:1880` | entero | muerto | muerto (F-059) | `test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[400-sin-codigo]` |
+| 36 | `function_app.py:1884` | entero | muerto | muerto (F-059) | `test_f059_r8_un_login_que_el_erp_no_confirma_es_409_sin_el_login_ni_el_correo` |
+| 37 | `function_app.py:1881` | entero | muerto | muerto (F-059) | `test_f059_r23_r24_cada_codigo_del_volcado_a_su_http_despues_de_guardar[400-sin-codigo]` |
+| 38 | `function_app.py:1885` | entero | muerto | muerto (F-059) | `test_f059_r28_el_panel_con_la_obra_demasiado_grande_es_409` |
+| 39 | `function_app.py:1955` | entero | muerto | muerto (F-059) | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| 40 | `function_app.py:1882` | entero | muerto | muerto (F-059) | `test_f059_r25_si_no_se_guarda_el_resultado_es_500_volcado_sin_traza` |
+| 41 | `interface_adapters/api/volcado.py:332` | not | muerto | muerto (F-059) | `test_f059_r9_r30_con_n_valido_se_admiten_n` |
+| 42 | `interface_adapters/api/volcado.py:161` | entero | muerto | muerto (F-059) | `test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[lote_demasiado_grande]` |
+| 43 | `function_app.py:1984` | entero | muerto | muerto (F-059) | `test_f059_r9_r30_con_n_valido_se_admiten_n` |
+| 44 | `interface_adapters/api/volcado.py:207` | comparacion | muerto | muerto (F-059) | `test_f059_r28_el_panel_sin_leer_sigrid` |
+| 45 | `function_app.py:2014` | entero | muerto | muerto (F-059) | `test_f059_r16_el_volcado_se_compone_con_el_volcador` |
+| 46 | `interface_adapters/api/volcado.py:277` | booleano | muerto | muerto (F-059) | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[confirmado-falso]` |
+| 47 | `interface_adapters/api/volcado.py:332` | logico | muerto | muerto (F-059) | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[sin-obra]` |
+| 48 | `interface_adapters/api/volcado.py:160` | entero | muerto | muerto (F-059) | `test_f059_r14_cada_codigo_del_ensayo_a_su_http_sin_guardar[escritura_reclamaciones_deshabilitada]` |
+| 49 | `interface_adapters/api/volcado.py:366` | comparacion | muerto | **vivo** con los de F-059 solos (lo mató algo ajeno a F-059); con `70d611e`, muerto | `test_f059_r9_r15_r30_t17_con_n_50_se_admiten_50[ensayo]` |
+| 50 | `interface_adapters/api/volcado.py:366` | comparacion | timeout | muerto (F-059) | `test_f059_r10_d4_el_ensayo_no_mira_la_ventana` |
+| 51 | `interface_adapters/api/volcado.py:366` | logico | timeout | muerto (F-059) | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-vacia]` |
+| 52 | `interface_adapters/api/volcado.py:332` | comparacion | timeout | muerto (F-059) | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[sin-obra]` |
+| 53 | `interface_adapters/api/volcado.py:366` | not | timeout | muerto (F-059) | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-vacia]` |
+| 54 | `interface_adapters/api/volcado.py:359` | comparacion | timeout | muerto (F-059) | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencia-sin-guiones]` |
+| 55 | `interface_adapters/api/volcado.py:366` | entero | timeout | muerto (F-059) | `test_f059_r10_d4_el_ensayo_no_mira_la_ventana` |
+| 56 | `interface_adapters/api/volcado.py:366` | not | muerto | muerto (F-059) | `test_f059_r9_r30_con_n_valido_se_admiten_n` |
+| 57 | `interface_adapters/api/volcado.py:392` | entero | muerto | muerto (F-059) | `test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[entorno-test]` |
+| 58 | `interface_adapters/api/volcado.py:392` | comparacion | muerto | muerto (F-059) | `test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[entorno-test]` |
+| 59 | `interface_adapters/api/volcado.py:392` | not | muerto | muerto (F-059) | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-texto]` |
+| 60 | `interface_adapters/api/volcado.py:386` | not | muerto | muerto (F-059) | `test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[entorno-test]` |
+| 61 | `interface_adapters/api/volcado.py:392` | logico | muerto | muerto (F-059) | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-texto]` |
+| 62 | `interface_adapters/api/volcado.py:386` | logico | muerto | muerto (F-059) | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencia-sin-revision]` |
+| 63 | `interface_adapters/api/volcado.py:392` | logico | muerto | muerto (F-059) | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[revision-cero]` |
+| 64 | `interface_adapters/api/volcado.py:386` | comparacion | muerto | muerto (F-059) | `test_f059_r15_cada_cuerpo_invalido_del_volcado_es_400_sin_construir_nada[incidencia-sin-revision]` |
+| 65 | `interface_adapters/api/volcado.py:409` | comparacion | muerto | muerto (F-059) | `test_f059_r9_cada_cuerpo_invalido_del_ensayo_es_400_sin_construir_nada[incidencias-repetidas]` |
+| 66 | `interface_adapters/api/volcado.py:419` | comparacion | muerto | muerto (F-059) | `test_f059_r9_r30_con_n_valido_se_admiten_n` |
+
+**63 de los 64 muertos los mata un test de F-059. El 49 no**: `len(crudo) <= MAX_PARTES_POR_LLAMADA` → `<` (con
+`N` = 50, una petición de 50 sería 400). La campaña lo dio por muerto, pero con los tests de F-059 solos **vivía**:
+ninguno mandaba 50. Es el hallazgo que esta reverificación existe para encontrar. Test nuevo,
+`test_f059_r9_r15_r30_t17_con_n_50_se_admiten_50[ensayo, volcar]` (`70d611e`): con `N` = 50, un cuerpo de 50 pasa la
+validación. Repetido el mutante en la copia: **muerto** por ese test.
+
+#### Los dos supervivientes de la campaña: equivalentes (E-2)
+
+Los mutantes 16 y 24, `zip(partes, resultados, strict=True)` → `strict=False` al construir los `ParteMandado` del
+ensayo y del volcado. `strict` solo cambia algo con longitudes distintas, y aquí son iguales **por construcción**:
+`resultados` sale de `interpretar_respuesta` (uno por parte mandado), de `todos_sin_respuesta` o de
+`todos_no_procesados` (los dos, uno por parte), siempre con los mismos `partes`; ningún test puede dar dos
+longitudes distintas sin cambiar esas funciones del Bloque 1. `strict=True` se queda a propósito: si un cambio
+futuro del dominio diera longitudes distintas, el volcado fallaría en voz alta en vez de emparejar mal un parte con
+su resultado. **Pendientes de que los acepte el humano**, con los trece de los mutantes a mano (E-1).
+
+#### Cobertura
+
+`coverage run` con `test_f059_pipeline_volcado.py`, `test_f059_volcado_http.py` y `test_f056_revision_http.py`, sobre
+`70d611e`: `application/pipelines/volcado.py` **100 %** (198 sentencias), `interface_adapters/api/volcado.py` **100 %**
+(131; la única línea sin recorrer de la primera medida, un objeto `volcado` sin parte ni evento de volcado, la cubre
+`e7a3c64`), `interface_adapters/api/revision.py` **100 %** (194) y, en `function_app.py`, **todas las líneas de
+F-059** (de la 1848 al final; lo que falta, 38 %, son las rutas de otras features, que estos ficheros no recorren).
+La `PUERTA COBERTURA` de `init.sh` la dará T23.
+
+### Verificación final del bloque
+
+Desde el scratchpad, sobre `70d611e`:
+
+| Verificación | Resultado |
+|---|---|
+| `test_f059_pipeline_volcado.py` + `test_f059_volcado_http.py` | **202 passed in 5.02s** (74 + 128) |
+| `test_f059_alcance_cerrado.py` (T16) | 109 tests; verde dentro de la suite entera |
+| **La suite entera del servicio** (`pytest <repo>/services/postventa-api/tests <repo>/services/postventa-api/tests_bbdd -q`) | **9094 passed, 233 skipped in 1180.16s**, sin un rojo (los de base se saltan sin DSN) |
+| `test_f006_arquitectura.py`, `test_f006_repo_sin_identificadores.py`, `test_f005_arquitectura.py` (las guardias R26 y de capas) | **70 passed** |
+| `ruff check` (desde la raíz) de los ficheros de producción y de tests tocados | `All checks passed!` |
+
+Barrido de datos sensibles sobre `560811b..HEAD`: ningún GUID literal (los identificadores son `UUID(int=n)`; las
+formas sin guiones o con llaves de los tests se calculan), ningún correo (los de `utiles_revision.py`, de
+`@ejemplo.invalid`), ninguna IP; la única URL, `https://ejemplo-volcado-http.invalido`; la clave, inventada
+(`clave-de-mentira-del-borde-del-volcado`); el login, `login.ficticio.volcado`; el propietario y el NIF de las
+`filas` de la pasarela de mentira, «Nombre Inventado Propietario» y `00000000T`. **Ningún test llama a la red ni a
+`sigrid-api`, y ningún `commit: true` sale de este puesto**: la pasarela es `PasarelaFalsa` y la guardia `sin_red`
+sigue puesta.
+
+`bash harness/init.sh`: ver el incidente del principio; no se ha vuelto a lanzar. Queda para T23.
+
+## Evidencias del Bloque 4
+
+| Evidencia | Valor |
+|---|---|
+| RED (T13) | 169 failed, 187 passed (traza arriba); y `test_f010_endpoints_protegidos.py`, 2 failed, 6 passed |
+| Verificación de T14 | 58 passed in 1.22s |
+| Verificación de T15 | 446 passed, 73 skipped in 84.90s |
+| Verificación de T16 | 158 passed, 80 skipped in 162.69s |
+| Tests de F-059 del bloque | `test_f059_pipeline_volcado.py` + `test_f059_volcado_http.py`: **202 passed in 5.02s**; `test_f059_alcance_cerrado.py`: 109 |
+| Suite entera del servicio | **9094 passed, 233 skipped in 1180.16s**, sin un rojo |
+| Cobertura de lo nuevo | 100 % de `application/pipelines/volcado.py`, `interface_adapters/api/volcado.py` y `interface_adapters/api/revision.py`; todas las líneas de F-059 de `function_app.py` |
+| Mutación (herramienta) | **66 generados, 64 muertos, 2 supervivientes (equivalentes, E-2), 0 timeouts** (6 en paralelo, con veredicto tras el repaso en serie), 19405.7 s, 8 workers |
+| Reverificación contra F-059 solos | 63/64 muertos; el 49 vivía y lo mata un test nuevo (`70d611e`) |
+| Mutación a mano | 75 (y H27b); **62 muertos** por tests de F-059; **13 equivalentes** (E-1) |
+| Supervivientes abiertos | **Ninguno sin razonar**: 15 equivalentes (13 de E-1 y 2 de E-2), **pendientes de que los acepte el humano** |
+| Tests ajenos tocados | `test_f056_revision_http.py` (`CLAVES_DE_FILA`) y `test_f010_endpoints_protegidos.py` (`ENDPOINTS` y la cuenta), ampliados sin quitar nada; ninguno más |
+
+## Commits del Bloque 4
+
+| Tarea | Commit |
+|---|---|
+| T13 | `590eb1a` |
+| T14 | `b5cc5c1` |
+| T15 | `930a5db` |
+| T16 | `1850984` |
+| T17 | `6b187a3`, `e8cb869`, `e7a3c64`, `bf68637`, `9db9847`, `70d611e` (tests que pidieron los mutantes; ningún cambio de producción) y el de este informe con `progress/mutacion_F-059_bloque4.md` |
+
+**Parado aquí: review del Bloque 4.** Lo que el reviewer debería mirar primero:
+
+1. **Los quince equivalentes** (E-1 y E-2): necesitan la aceptación por escrito del humano.
+2. **Las formas del contrato que he tenido que elegir** (T15, decisiones 3–6): los 409 del login con mensaje propio
+   y código; los códigos de los 503 de configuración y de base; `envio` = lo mandado (sin `descripcion_larga` sin
+   detalle, frente al ejemplo de §11); y el `ultimo_volcado` del panel = el objeto de R4 sin el correo. Son las que
+   F-040 va a consumir.
+3. **O-B1-1 dentro de la transacción** (T14, decisión 2) y sus dos defensas, y R26 leído **después** de la respuesta
+   de Sigrid (decisión 3).
+4. **T16, el grupo B de R41**: declarado ya, con `AMPLIADOS_EN_EL_BLOQUE_5`; **T20 tiene que pasarlo a igualdad**
+   y declarar sus aserciones.
+5. **El incidente de `init.sh`** del principio (un proceso mío pudo leer el `.env`; ninguno pudo abrir una
+   conexión).
+
+**Lo que falta y no es de este bloque:** T8 sigue pendiente; según la nota del líder en `progress/current.md`
+(2026-10-16), la base efímera dio **103 pasan, 1 falla**:
+`test_f059_bbdd_volcado.py::test_f059_r1_la_derivacion_de_cuatro_uno_leida_de_la_base`, un defecto del test de T7
+(`9b4c8d5`, el ayudante `_resultado` busca en `aprobadas` una incidencia que ya es `volcada`). No lo he tocado: no es
+del encargo del Bloque 4 y no he podido repetir T8 (no tengo Docker); el líder dirá cuándo se corrige.

@@ -246,7 +246,7 @@
   solo con el cambio de anotación) y los ficheros de «No se toca» sin
   cambios, `services/postventa-front/` y las piezas de F-060 incluidos. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f059_alcance_cerrado.py tests/test_f056_alcance_cerrado.py tests/test_f060_alcance_cerrado.py tests/test_f036_alcance_cerrado.py`
-- [ ] **T17 · Mutación del bloque.** |
+- [x] **T17 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-059 --base <hash anterior a T13> --timeout 1800 --salida progress/mutacion_F-059_bloque4.md`
 
 **Parar. Review del Bloque 4.**

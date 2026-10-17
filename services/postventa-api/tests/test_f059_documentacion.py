@@ -178,7 +178,7 @@ def test_f059_r40_los_controles_leen_algo_del_codigo():
 
 @pytest.mark.parametrize(
     "texto",
-    ("Escríbele a alguien@ejemplo.invalid si falla.", "persona.apellido@empresa.es"),
+    ("Escríbele a alguien@ejemplo.invalid si falla.", "persona.apellido@empresa.invalid"),
     ids=("ficticio", "con-punto"),
 )
 def test_f059_r40_el_control_de_correos_caza(texto):

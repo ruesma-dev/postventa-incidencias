@@ -539,9 +539,9 @@ propia; `_error_de_revision` (F-056, que también usa F-060) no cambia.
 
 | Ruta | Éxito | Errores |
 |---|---|---|
-| `GET /api/volcado?obra=` | 200 | 400; 409 `bandeja_demasiado_grande`; 503 base |
-| `POST /api/volcado/ensayo` | 200 | 400; 409 login, `volcado_rechazado_por_la_pasarela`; 502 `ensayo_sin_respuesta` (la pasarela, o el login sin verificar); 503 entorno, configuración, base, `base_de_datos_no_permitida` |
-| `POST /api/volcado/volcar` | 200 | 400; 409 `ensayo_no_valido`, login, pasarela; 502 `ensayo_sin_respuesta` (login sin verificar: **antes** de la escritura anticipada, nada escrito) y 502 `volcado_sin_respuesta` (tras mandar el lote); 500 `volcado_sin_traza`; 503 `volcado_deshabilitado`, configuración, base |
+| `GET /api/volcado?obra=` | 200 | 400 `peticion_invalida`; 409 `bandeja_demasiado_grande` (con `total`); 503 `configuracion_de_volcado_invalida` (`N` fuera de 1–50), `base_de_datos_no_disponible` |
+| `POST /api/volcado/ensayo` | 200 | 400 `peticion_invalida`; 409 `usuario_sigrid_no_mapeado`, `usuario_sigrid_inexistente`, `volcado_rechazado_por_la_pasarela` (con `codigo_pasarela`); 502 `ensayo_sin_respuesta` (la pasarela, o el login sin verificar); 503 `volcado_deshabilitado` (entorno fuera de `dev`/`pro`), `configuracion_sigrid_incompleta`, `configuracion_de_volcado_invalida`, `base_de_datos_no_disponible`, `volcado_rechazado_por_la_pasarela` con `base_de_datos_no_permitida` |
+| `POST /api/volcado/volcar` | 200 | 400 `peticion_invalida`; 409 `ensayo_no_valido` (con `motivo`), `usuario_sigrid_no_mapeado`, `usuario_sigrid_inexistente`, `volcado_rechazado_por_la_pasarela`; 502 `ensayo_sin_respuesta` (login sin verificar: **antes** de la escritura anticipada, nada escrito) y 502 `volcado_sin_respuesta` (tras mandar el lote, con `en_duda`); 500 `volcado_sin_traza`; 503 `volcado_deshabilitado` (entorno o ventana), `configuracion_sigrid_incompleta`, `configuracion_de_volcado_invalida`, `base_de_datos_no_disponible`, `volcado_rechazado_por_la_pasarela` con un código de precondición |
 
 **Tres precisiones de la review del Bloque 3** (2026-10-16, mecánicas; §20):
 
@@ -589,9 +589,9 @@ Ensayo (datos ficticios):
  "partes": [
   {"incidencia_id": "0b9c…", "revision_id": 12, "referencia_externa": "PVI-0b9c…",
    "estado": "previsto", "motivo": null, "sigrid_cod": null,
-   "envio": {"unidad_postventa": "9901.03VILLA 1.", "descripcion": "Ejemplo de descripción",
-             "descripcion_larga": null, "tipo": "0002", "oficio": "0046", "ubicacion": "baño",
-             "forma_comunicacion": 1,
+   "envio": {"referencia_externa": "PVI-0b9c…", "unidad_postventa": "9901.03VILLA 1.",
+             "descripcion": "Ejemplo de descripción", "tipo": "0002", "oficio": "0046",
+             "ubicacion": "baño", "forma_comunicacion": 1,
              "intervinientes": [{"oficio": "0046", "proveedor": "EJ07", "causante": false}]}},
   {"incidencia_id": "51e2…", "revision_id": 15, "referencia_externa": "PVI-51e2…",
    "estado": "rechazado", "motivo": "oficio_no_esta_en_la_obra", "sigrid_cod": null, "envio": {"…": "…"}}],
@@ -612,6 +612,55 @@ Volcado:
              "estado": "creado", "motivo": null, "sigrid_cod": "RS99.10/0001"}],
  "excluidas": [], "avisos": []}
 ```
+
+(El primer parte no tiene detalle, así que su `envio` **no lleva** la clave
+`descripcion_larga`: corregido el 2026-10-17, O-B4-1; antes enseñaba `null`
+y no llevaba la referencia.)
+
+### Las formas, tal como están implementadas (O-B4-1, review del Bloque 4, 2026-10-17)
+
+Contrastadas con `interface_adapters/api/volcado.py` y la traducción de
+errores del volcado de `function_app.py` (`CODIGOS_DEL_VOLCADO`,
+`HTTP_DEL_VOLCADO`, `MENSAJES_DEL_LOGIN`). Es lo que consume F-040.
+
+- **Errores**: siempre `{error, codigo}` (§7), con lo propio de cada uno:
+  `motivo` en `ensayo_no_valido`; `codigo_pasarela` en
+  `volcado_rechazado_por_la_pasarela`; `en_duda` (los `incidencia_id`) en
+  `volcado_sin_respuesta`; `total` en `bandeja_demasiado_grande`. Un cuerpo
+  que no es JSON, 400 `peticion_invalida`.
+- **Los dos 409 del login** son `usuario_sigrid_no_mapeado` y
+  `usuario_sigrid_inexistente` (F-009), con un **mensaje propio** que dice qué
+  hacer (`infra/07_alta_usuario_sigrid.ps1`) y que **no** lleva el correo ni
+  el login: los motivos de F-009 los llevan, y §15 no deja el login en ninguna
+  respuesta ni el correo en un mensaje de error. Por eso aquí no se copia el
+  motivo, como sí hace el cierre de F-009.
+- **Los 503**: `volcado_deshabilitado` (el entorno fuera de `dev`/`pro`, en los
+  dos endpoints con la pasarela, y la ventana en `volcar`; R10, R16),
+  `configuracion_sigrid_incompleta`, `configuracion_de_volcado_invalida` (`N`,
+  R30; también en el panel, que valida `N` porque lo devuelve) y
+  `base_de_datos_no_disponible` (la base caída o su configuración incompleta).
+  Y el `volcado_rechazado_por_la_pasarela` de un código de precondición (R14,
+  R24).
+- **`envio`** (ensayo, R12) es **lo realmente mandado** de ese parte:
+  `cuerpo_de_parte` del dominio, con `referencia_externa`, `unidad_postventa`,
+  `descripcion`, `descripcion_larga` **solo si hay detalle** (sin la clave si
+  no), `tipo`, `oficio`, `ubicacion`, `forma_comunicacion` e
+  `intervinientes`. Sin `usu`.
+- **Un ensayo sin nada que mandar** (todo excluido): 200 con `ensayo_id` y
+  `caduca_at_utc` **nulos**, `partes: []`, el `resumen` en ceros salvo
+  `excluidas`, y las `excluidas`. Ese `ensayo_id` no sirve para volcar.
+- **`excluidas`** (ensayo y volcado): `[{incidencia_id, motivo, sigrid_cod}]`;
+  `motivo` es un `MotivoExclusion` y `sigrid_cod` solo va en `ya_volcada`
+  (`null` en las demás).
+- **`avisos`** (volcado, R26): `[{incidencia_id, referencia_externa,
+  sigrid_cod_anterior, sigrid_cod}]`.
+- **El panel** (R28): `{obra, partes_por_llamada, resumen: {aprobadas, en_duda,
+  volcadas}, candidatas: [{incidencia_id, revision_id, estado,
+  ultimo_volcado}]}`. `ultimo_volcado` es el objeto `volcado` de R4
+  **sin** `volcado_por` —`{estado, sigrid_cod, volcado_at_utc, motivo}`, o
+  `null`—: el correo de quien vuelca solo lo devuelve la revisión (§9, §15;
+  F-2 (a) lo extendió a la respuesta de la acción y a nada más). Es la lectura
+  conservadora, porque R28 no da su forma.
 
 Se comprueba el cuerpo entero antes de construir nada (R9, R15). El log:
 obra, `llamada_id`, modo, recuentos, duración; por parte, referencia,
@@ -923,6 +972,7 @@ los de esta spec); obras `99NN`, correos `@ejemplo.invalid`, proveedores
 | **F-1** | **Decisión del humano del 2026-10-15, literal: «a en las 2»** → opción (a). R41 gana el bloque «Excepciones, ampliando sin relajar» con la lista test a test de §21.3 (como R45 de F-056); cada una declarada **función a función** en `test_f059_alcance_cerrado.py` (T16), que vigila que no se pierde ninguna aserción |
 | **F-2** | **Decisión del humano del 2026-10-15, literal: «a en las 2»** → opción (a). El objeto `volcado` va en las **dos** respuestas que serializa `_fila`: el listado de `GET /api/revision` y la respuesta de `POST /api/revision/acciones` (R4, §12) |
 | **B-1** | **Decisión del humano del 2026-10-16, literal: «ok a b1 y b2»** → opción (a) del implementer (`progress/impl_F-059.md`, Bloque 2). R17 frente a R33: la persona del ensayo la compara **la base** y el `oid` nunca vuelve. `leer_ensayo(*, ensayo_id, actor_oid)` con `(actor_oid = %s)` en el `SELECT` y sin la columna; `Ensayo.actor_oid: str` → `Ensayo.de_la_persona: bool`; `validar_ensayo(ensayo, *, obra, ahora)`, mismo orden de motivos. R33, §9 y §15, al pie de la letra (nota bajo R17; §7, §8.1, §18; T4, T6, T9). **Toca dos piezas aprobadas del Bloque 1** (`Ensayo` y `validar_ensayo`, con sus tests de R17), por esta decisión |
+| **O-B4-1** | **Mecánico derivado de la review del Bloque 4** (2026-10-17, `progress/review_F-059.md`, «Review del Bloque 4», punto (3) y O-B4-1). §11 recoge las formas tal como están implementadas: los dos 409 del login con mensaje propio y sin correo ni login (§15); los códigos de los 503; `envio` = `cuerpo_de_parte` (con `referencia_externa` y sin `descripcion_larga` si no hay detalle; ejemplo corregido); `ultimo_volcado` sin `volcado_por`; las formas de `excluidas` y `avisos`; los nulos de un ensayo sin nada que mandar. Ningún requisito cambia ni se contradice; ninguna decisión se reabre |
 | **O-B3** | **Mecánicos derivados de la review del Bloque 3** (2026-10-16, `progress/review_F-059.md`, «Review del Bloque 3», puntos (1) y (2) y «Observaciones»). **O-B3-1**: un login que no se puede verificar es 502 `ensayo_sin_respuesta` en `ensayo` y en `volcar`, sin escribir (§7, §11; nota bajo R8). **O-B3-2**: `volcado_partes_por_llamada: int | str`, de izquierda a derecha, por R30 y `/health` (§13). **O-B3-4**: un `lote_400` sin código de lote (o con uno desconocido) va por R14 en el ensayo (502) y por R23 en el volcado (`sin_respuesta`, `en_duda`, 502); se resuelve con lo que la spec ya decía, sin decisión nueva (§6.2, §11; nota bajo R23). **O-B3-5**: «200» son los de `CORRECTOS` (200 y 201) (§11; nota bajo R23). Ninguna decisión se reabre |
 | **O-B2-1** | **Mecánico derivado de la review del Bloque 2** (2026-10-16, `progress/review_F-059.md`, «Review del Bloque 2», punto (1) y O-B2-1). §12 decía «`aprobadas` filtra con `es_candidata`», y eso obligaba a relajar `test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa`, que R41 no deja tocar. Pasa a decir lo que hace el código: deja fuera la `volcada` antes de `candidata_de`, y lo que no sea un `aprobar` sigue llegando a `candidata_de`, que lo rechaza. R3 no cambia; ninguna decisión se reabre |
 | **B-2** | **Decisión del humano del 2026-10-16, literal: «ok a b1 y b2»**. `test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo` entra en las excepciones de R41 (grupo A de §21.3), ampliado sin relajar como su gemelo de `test_f056_alcance_cerrado.py`; declarado en T16. Con la misma enmienda se recogen en §8.1 los tres puntos de implementación del implementer (`guardar_resultados` con `obra` y `partes`; `Quien` de F-056 y `situaciones`; la sentencia de R2 en `sentencias_volcado.py`), mecánicos |

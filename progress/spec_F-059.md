@@ -281,3 +281,34 @@ decisión. Anotados en `design.md` §20 (fila O-B3).
     formado nuestro (un defecto del código, que la suite vigila), y tratarlo
     como respuesta rara es lo conservador.
 - Commit local: `F-059: O-B3-1, O-B3-2, O-B3-4 y O-B3-5 en la spec`.
+
+## O-B4-1 · Las formas de §11 (2026-10-17, mecánico derivado de la review del Bloque 4)
+
+Pedido por la review del Bloque 4 (`progress/review_F-059.md`, punto (3) y
+O-B4-1). `design.md` §11 recoge ahora, **tal como están implementadas**, las
+formas que consumirá F-040. Contrastadas una a una con
+`services/postventa-api/interface_adapters/api/volcado.py` y con
+`CODIGOS_DEL_VOLCADO`, `HTTP_DEL_VOLCADO` y `MENSAJES_DEL_LOGIN` de
+`function_app.py`:
+
+- la tabla de rutas, con el código de cada error (los dos 409 del login, los
+  503 `volcado_deshabilitado`, `configuracion_sigrid_incompleta`,
+  `configuracion_de_volcado_invalida` y `base_de_datos_no_disponible`) y lo
+  que añade cada uno (`motivo`, `codigo_pasarela`, `en_duda`, `total`);
+- los dos 409 del login con mensaje propio y sin correo ni login (§15);
+- `envio` = `cuerpo_de_parte`, con `referencia_externa` y sin
+  `descripcion_larga` si no hay detalle, y **el ejemplo corregido** (enseñaba
+  `"descripcion_larga": null` y no llevaba la referencia);
+- un ensayo sin nada que mandar: `ensayo_id` y `caduca_at_utc` nulos;
+- `excluidas` `{incidencia_id, motivo, sigrid_cod}` y `avisos`
+  `{incidencia_id, referencia_externa, sigrid_cod_anterior, sigrid_cod}`;
+- `ultimo_volcado` del panel sin `volcado_por`.
+
+**Nada contradice un requisito.** Dos cosas que el código hace y que la spec
+no nombraba, y que solo dejo escritas (encajan con lo aprobado): el entorno
+fuera de `dev`/`pro` responde `volcado_deshabilitado` también en el ensayo (R10
+solo dice «503»), y el panel responde 503 `configuracion_de_volcado_invalida`
+si `N` no vale (R28 devuelve `partes_por_llamada`, así que no puede servir uno
+inválido). Anotado en `design.md` §20 (fila O-B4-1).
+
+- Commit local: `F-059: O-B4-1 en la spec (formas de §11)`.

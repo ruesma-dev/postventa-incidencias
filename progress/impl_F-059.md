@@ -3405,3 +3405,62 @@ re-ejecutado no escribe. En la salida simulada, **0 de 35** líneas llevan el `o
 proveedor.
 
 **Pendiente**: que el humano ejecute T25 (pasos 1–7) y anote aquí los resultados; T26 y T27 siguen abiertas.
+
+## T25 · ejecución · 2026-10-19 (líder, con Claude in Chrome en la sesión del humano)
+
+Reparto acordado con el humano: el líder ejecuta los guiones en una pestaña de `importar.html` del front publicado,
+con la sesión ya iniciada por el humano; el humano lanza `28_` (la clave de la pasarela) y `27_ -Abrir` (la
+palabra tecleada). Una sola escritura en Sigrid, autorizada el 2026-10-18 («te autorizo»).
+
+| Paso | Qué | Resultado |
+|---|---|---|
+| 1 | Foto de antes (`28_ -CodigoObra 0626`, humano) | PASA. Serie `RS26.10/`, `MAX(cod)` `RS26.10/0073`. Un parte `PVI-` previo y ajeno a F-059: `RS26.09/0439`, referencia `PVI-PRUEBA-0001`, en SAT (ver «Abierto» abajo) |
+| 2a | Importar la fila | `POST /api/importaciones`: 1 leída, 1 nueva, 0 errores. Incidencia `PVI-1f01dbbc-…` |
+| 2b | `paso2` | OK. `editar` → revisión 117, `aprobar` → revisión 118. UPV `0626.03PORTAL 1.1.A`, ubicación «Hall entrada» (11 en su tipología), oficio `0005`, proveedor `5265` (25 pares en la obra), detalle vacío |
+| 3 | `27_` sin parámetros: cerrada. `paso3` | OK. Panel: 1 candidata. Ensayo: 1 previsto, tipo `0002`, `causante: false`, 1 interviniente, sin `descripcion_larga`. `volcar` → **503 `volcado_deshabilitado`** |
+| 4 | `27_ -Abrir` (humano). `paso4` | 1.ª ejecución, ~20 s tras abrir: el **ensayo** dio **502 a los 40,6 s** (la lectura a `sigrid-api` tardó 35 s; ver el paso 7); el guion paró antes del `volcar` (la red lo confirma: ningún `volcar` salvo el 503 del paso 3). 2.ª ejecución con la palabra de nuevo: ensayo 1 previsto; `volcar` → **200 `creado`, `RS26.10/0074`, 1,849 s**, resumen `creados: 1` y el resto a 0; `llamada_id` `b2d6ca93-…` |
+| 4b | `27_ -Cerrar` (líder, inmediatamente) | Releído del entorno: cerrada |
+| 6 | `paso6` | OK. Bandeja: `volcada`, `sigrid_cod` `RS26.10/0074`, `volcado_por` el correo de quien prueba (comparado, no impreso), sin `oid`, `volcado_at_utc` 2026-10-19T07:22:41Z. `editar` → 409 `accion_no_permitida`, estado `volcada`, acciones `[]`, revisión sin cambios. Ensayo → 0 previstos, 1 excluida `ya_volcada` con `RS26.10/0074` |
+
+**Desviaciones respecto a los guiones y a T25.2:**
+
+- **La fila no se importó a mano**: en la consola se bajó la plantilla de la 0626 (`descargarPlantilla`), se
+  escribió la fila 2 en el XML de la hoja con JSZip 3.10.1 (cdnjs), conservando estilos y validaciones, y se subió
+  con `Api.importarExcel` (el mismo `POST /api/importaciones` del botón). Valores del Excel: la primera UPV, la
+  primera ubicación, el primer oficio de los desplegables y su primer par oficio–proveedor; urgencia y listado en
+  blanco. El paso 2 los reeligió con el catálogo, como estaba previsto.
+- Los cuerpos de `paso3`, `paso4` y `paso6` se ejecutaron tal cual, pero dejando el resultado en `T25.salidaN` en
+  vez de `console.log`, y el 4 y el 6 lanzados sin `await` y leídos después: la herramienta del navegador corta a
+  los 45 s y el ensayo tardó más en la primera ejecución.
+- **Comprobación de la barrera en el borde tras cerrar: no hecha.** Un primer `volcar` con un ensayo inventado y
+  `incidencias: []` dio 400 `peticion_invalida` (la validación del cuerpo va antes que la barrera), así que no
+  demuestra nada. El segundo intento, ya bien formado, lo denegó el clasificador de permisos de la sesión. La
+  ventana consta cerrada por la relectura de `27_ -Cerrar`.
+
+**Abierto (humano):**
+
+- Paso 5: la foto de después, `28_ -CodigoObra 0626 -Referencia PVI-1f01dbbc-…`,
+  y abrir `RS26.10/0074` en Sigrid: SAT, tipo 0002, sin pasar a PTE.
+- T26: anular `RS26.10/0074` desde la UI de Sigrid (NO PROCEDE, sin correo). Nunca con DELETE ni con sql/write.
+- `RS26.09/0439` (`PVI-PRUEBA-0001`) sigue en SAT y no es de F-059; preguntar a sigrid-api si debería estar anulado.
+- Observación para T27: el primer ensayo tras abrir la ventana dio 502 `ensayo_sin_respuesta`. **Corregido el
+  2026-10-20 con las trazas**: no fue el arranque de nuestra Function, sino la lectura a `sigrid-api`, que tardó
+  35,17 s (`familia=sin_respuesta`); 98 s después la misma lectura tardó 5,84 s. Arranque en frío de la pasarela, lo
+  más probable.
+
+### T25 paso 7 · Application Insights (líder, 2026-10-20, solo lectura)
+
+Consulta al workspace `log-postventa-dev` (tabla `AppTraces`), del 2026-10-19 06:55 al 07:40 UTC. La consulta por
+el recurso de Application Insights (`az monitor app-insights query`) devolvía vacío para ese día; el workspace sí
+tiene los datos.
+
+- **Trazas de F-059**: panel (`obra`, recuentos), ensayo (`llamada`, recuentos, `referencia=PVI-…`, `estado`,
+  `motivo`, `sigrid_cod`), lote resuelto (`modo`, `commit`, `familia`, `segundos`), `enviados anotados` antes del
+  commit, `resultados guardados` y volcado (`creados=1`, `sigrid_cod=RS26.10/0074`). Duraciones: ensayo del paso 3,
+  1,23 s; primer ensayo del paso 4, 35,17 s y 502; segundo, 5,84 s; volcar, 1,43 s de lote y 1.656 ms de función.
+- **Sin datos personales**: de las 579 trazas de la ventana, **0** llevan `@`, **0** `oid` y **0** `login`, ni en
+  el mensaje ni en las propiedades.
+- El 503 del paso 3 y el 400 `peticion_invalida` del intento de comprobación en el borde constan como
+  `volcado/volcar no procede`, sin datos.
+
+**Paso 7: PASA.**

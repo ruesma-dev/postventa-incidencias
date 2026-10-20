@@ -417,28 +417,40 @@ def test_f035_r62_el_estado_de_cada_seccion_es_el_que_dan_sus_fichas():
 
 
 def test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done():
-    """Control: con F-038 en `done` en una copia en memoria, `bandeja` pasa a `parcial` y la guardia salta."""
+    """Control: con F-044 en `done` en una copia en memoria, `impresion` pasa a `real` y la guardia salta.
+
+    F-038 (T1 bis, R18; `design.md` §3.1 de F-038): el control miraba F-038 y
+    `bandeja`, que el commit de cierre de F-038 deja en `parcial`; con F-038
+    `done` de verdad, la copia ya no cambiaría nada y el control no cazaría.
+    Se muda a F-044, la única ficha de `impresion`, que sigue en
+    `construccion`: con ella `done`, la sección pasa a `real`.
+    """
     features = copy.deepcopy(_features())
     for ficha in features["features"]:
-        if ficha["id"] == "F-038":
+        if ficha["id"] == "F-044":
             ficha["status"] = "done"
 
-    assert estados_segun_las_fichas(features, secciones_del_portal())["bandeja"] == "parcial"
+    assert estados_segun_las_fichas(features, secciones_del_portal())["impresion"] == "real"
     problemas = estados_que_no_cuadran(features, estados_declarados())
-    assert len(problemas) == 1 and "«bandeja»" in problemas[0], problemas
+    assert len(problemas) == 1 and "«impresion»" in problemas[0], problemas
 
 
 def test_f035_r62_control_el_lector_de_estados_lee_el_texto():
-    """Control: el lector no devuelve un dato fijo; un `estado` cambiado en el texto se ve."""
+    """Control: el lector no devuelve un dato fijo; un `estado` cambiado en el texto se ve.
+
+    F-038 (T1 bis, R18): miraba `bandeja`; con `bandeja` ya en `parcial` tras
+    el cierre de F-038, cambiarla a `parcial` no cambiaría el texto. Se muda a
+    `impresion` (F-044), que sigue en `construccion`.
+    """
     texto = PORTAL_JS.read_text(encoding="utf-8")
     cambiado = re.sub(
-        r'(\{\s*id:\s*"bandeja",[^}]*?\bestado:\s*")[a-z]*(")', r"\1parcial\2", texto, count=1
+        r'(\{\s*id:\s*"impresion",[^}]*?\bestado:\s*")[a-z]*(")', r"\1parcial\2", texto, count=1
     )
 
-    assert cambiado != texto, "el control no encuentra el estado de «bandeja» en js/portal.js"
-    assert estados_declarados(cambiado)["bandeja"] == "parcial"
+    assert cambiado != texto, "el control no encuentra el estado de «impresion» en js/portal.js"
+    assert estados_declarados(cambiado)["impresion"] == "parcial"
     problemas = estados_que_no_cuadran(_features(), estados_declarados(cambiado))
-    assert any("«bandeja»" in p for p in problemas), problemas
+    assert any("«impresion»" in p for p in problemas), problemas
 
 
 def test_f035_r62_partes_e_inicio_siguen_su_propia_regla():

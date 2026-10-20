@@ -68,7 +68,7 @@
 
 ## Bloque 1 bis · La página y las guardias del portal
 
-- [ ] **T1 bis · RED**: `tests/test_f038_front.py` (`bandeja.html` como texto:
+- [x] **T1 bis · RED**: `tests/test_f038_front.py` (`bandeja.html` como texto:
   R1 —con su pie «… · bandeja de revisión.» y sin subnavegación—, R2, R10
   —un solo `confirmado: true`, acciones solo en `@click`, ningún botón de
   acción fuera de lo que da `accionesDe`—, R14, R15, R20

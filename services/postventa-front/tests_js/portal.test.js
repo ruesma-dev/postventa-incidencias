@@ -520,6 +520,21 @@ test("f035 R83: pasoDeSeccion lee RECORRIDO: cada paso que da es de esa sección
 // como la barra, y esta guardia la compara con la fuente (`Portal.RECORRIDO`,
 // `enlaceSeccion`, `enConstruccion`, `pasoDeSeccion`, `PAGINAS`). Si las
 // tiras cumplen con la fuente, cumplen entre sí.
+//
+// F-038 · Bloque 1 bis (T1 bis; R25 de F-038, Q-10 aprobada el 2026-10-20).
+// **Cambio a propósito de F-035**, declarado: `bandeja.html` es la primera
+// página con DOS pasos de su propia sección (02 Revisión y 03 Sigrid van a
+// `bandeja`). Para el 03, `enlaceSeccion` da `null` (es su sección) y no es el
+// paso actual (R86: lo es solo el primero, 02). La guardia de R85 pedía a todo
+// paso sin enlace `<span aria-current="step">`, y R86 prohíbe ese
+// `aria-current` en un paso que no es el actual: con ninguna página se podían
+// cumplir las dos. Ahora, en R85, el paso de la propia sección que **no** es
+// el actual es un `<span>` sin `href` y **sin** `aria-current`. Y la última
+// frase de R87 de F-035 («un paso actual sin enlace no lleva `aria-label`»)
+// queda precisada por R25: el paso actual cuya sección está en construcción
+// lleva su `data-construccion` y su `aria-label`, como su pestaña (R2 de
+// F-038) y como esta guardia ya exigía (el caso no se había dado). Las listas
+// de páginas ganan `bandeja.html`.
 
 //: Cada página con tira y su `desde` de `enlaceSeccion` (R85).
 const PAGINAS_CON_RECORRIDO = [
@@ -527,10 +542,11 @@ const PAGINAS_CON_RECORRIDO = [
   ["partes.html", "circuito"],
   ["importar.html", "importar.html"],
   ["oficios.html", "oficios.html"],
+  ["bandeja.html", "bandeja.html"],
 ];
 
 //: Las páginas reales, donde la tira es HTML estático (R88).
-const PAGINAS_CON_RECORRIDO_ESTATICO = ["partes.html", "importar.html", "oficios.html"];
+const PAGINAS_CON_RECORRIDO_ESTATICO = ["partes.html", "importar.html", "oficios.html", "bandeja.html"];
 
 const ETIQUETA_DEL_RECORRIDO = "El ciclo de una incidencia";
 
@@ -623,9 +639,18 @@ function problemasDelRecorrido(html, Portal, desde) {
     const etiqueta = etiquetaDelPaso(e);
     if (etiqueta !== paso.etiqueta) problemas.push(`${quien}: etiqueta «${etiqueta}» (R84)`);
 
-    // R85: el enlace, el de la barra.
+    // R85: el enlace, el de la barra. Sin enlace (la sección de la página):
+    // el paso actual es <span aria-current="step">; otro paso de la misma
+    // sección (el 03 en bandeja.html, R25 de F-038), <span> sin href ni
+    // aria-current.
     const enlace = Portal.enlaceSeccion(paso.seccion, desde);
-    if (enlace === null) {
+    if (enlace === null && paso.num !== actual) {
+      if (e.nombre !== "span" || "href" in e.atributos || "aria-current" in e.atributos) {
+        problemas.push(
+          `${quien}: es de la sección de esta página y no es el actual: <span> sin href ni aria-current (R85, R25 de F-038)`,
+        );
+      }
+    } else if (enlace === null) {
       if (e.nombre !== "span" || "href" in e.atributos || e.atributos["aria-current"] !== "step") {
         problemas.push(`${quien}: es el paso de esta página: <span aria-current="step"> sin href (R85)`);
       }
@@ -663,7 +688,9 @@ function problemasDelRecorrido(html, Portal, desde) {
       }
     }
 
-    // R87: la marca de construcción, la de la barra.
+    // R87: la marca de construcción, la de la barra. También en el paso
+    // actual: si su sección está en construcción, lleva su marca y su
+    // aria-label (R25 de F-038 precisa así la última frase de R87).
     for (const ligada of LIGADAS_PROHIBIDAS_EN_UN_PASO) {
       if (ligada in e.atributos) problemas.push(`${quien}: lleva ${ligada} (R86, R87, H-7)`);
     }
@@ -801,6 +828,47 @@ const ESTROPEOS_DEL_RECORRIDO = [
     "aria-current=\"step\" también en 05 de partes.html", "partes.html", "circuito",
     (html) => html.replace('<li><a href="./#/impresion" class="rs-recorrido__paso"', '<li><a href="./#/impresion" aria-current="step" class="rs-recorrido__paso"'),
     /05 Parte\): lleva aria-current y el paso actual es 06/,
+  ],
+  // F-038 (T1 bis, R25): el 03 de bandeja.html es de su sección y no es el actual.
+  [
+    "un 03 con aria-current=\"step\" en bandeja.html", "bandeja.html", "bandeja.html",
+    (html) => html.replace(
+      '<span class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">',
+      '<span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">',
+    ),
+    /03 Sigrid\): es de la sección de esta página y no es el actual/,
+  ],
+  [
+    "el 03 de bandeja.html como enlace al portal", "bandeja.html", "bandeja.html",
+    (html) => html.replace(
+      /<span class="rs-recorrido__paso" data-construccion aria-label="Sigrid \(en construcción\)">([\s\S]*?)<\/span><\/li>/,
+      '<a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">$1</a></li>',
+    ),
+    /03 Sigrid\): es de la sección de esta página y no es el actual/,
+  ],
+  [
+    "el 02 actual de bandeja.html sin su aria-label", "bandeja.html", "bandeja.html",
+    (html) => html.replace(
+      '<span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)">',
+      '<span aria-current="step" class="rs-recorrido__paso" data-construccion>',
+    ),
+    /02 Revisión\): aria-label «undefined», no «Revisión \(en construcción\)» \(R87\)/,
+  ],
+  [
+    "el 02 actual de bandeja.html sin su data-construccion", "bandeja.html", "bandeja.html",
+    (html) => html.replace(
+      '<span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)">',
+      '<span aria-current="step" class="rs-recorrido__paso" aria-label="Revisión (en construcción)">',
+    ),
+    /02 Revisión\): su sección está en construcción y no lleva data-construccion/,
+  ],
+  [
+    "el 02 de bandeja.html sin aria-current", "bandeja.html", "bandeja.html",
+    (html) => html.replace(
+      '<span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)">',
+      '<span class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)">',
+    ),
+    /02 Revisión\): es el paso de esta página/,
   ],
   [
     "06 de partes.html como <a href>", "partes.html", "circuito",

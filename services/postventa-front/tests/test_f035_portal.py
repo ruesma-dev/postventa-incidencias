@@ -2227,7 +2227,8 @@ def decorativos_sin_aria_hidden(paginas: dict[str, str]) -> list[str]:
 
 def _paginas_del_front() -> dict[str, str]:
     paginas = {p.name: p.read_text(encoding="utf-8") for p in sorted(RAIZ_FRONT.glob("*.html"))}
-    assert set(paginas) == {"index.html", "partes.html", "importar.html", "oficios.html"}, sorted(paginas)
+    # F-038 (T1 bis, R1): `bandeja.html` es la quinta página del front.
+    assert set(paginas) == {"index.html", "partes.html", "importar.html", "oficios.html", "bandeja.html"}, sorted(paginas)
     return paginas
 
 

@@ -46,6 +46,21 @@
 //   lleva ninguna variante de estado en su `class` estático (la pone el
 //   `:class`; con las dos, ganaría la que vaya después en la hoja).
 //
+// F-038 · Bloque 1 bis (`specs/F-038-bandeja-revision/tasks.md`, T1 bis;
+// `design.md` §3.1): `bandeja.html` es la quinta página con barra y la primera
+// real de `bandeja`. Cambios a propósito, ninguno debilita una aserción:
+//
+// - `PAGINAS_CON_BARRA` y `PAGINAS_REALES_CON_BARRA` ganan `bandeja.html`.
+// - Un test de R44 nuevo para `bandeja.html`, cuya sección actual es
+//   `bandeja` (y `entrada`, un enlace); el de las dos de entrada no cambia.
+// - Los controles de R70 que dependen de la sección de la página (un `href`
+//   distinto, la actual como enlace) se escriben por página; los demás valen
+//   para las tres.
+// - El control de R66 que quitaba `data-construccion` de la pestaña
+//   `bandeja` de `partes.html` mira ahora la de `impresion` (F-044): el
+//   cierre de F-038 quita esa marca de verdad y el control se quedaría sin
+//   nada que quitar (R18 de F-038).
+//
 // El módulo se carga DENTRO de cada test, como en `portal.test.js`: en la
 // fase RED un `require` de cabecera tumbaría el fichero entero sin nombre de
 // requisito.
@@ -66,11 +81,11 @@ function leer(relativa) {
   return fs.readFileSync(path.join(RAIZ_FRONT, relativa), "utf8");
 }
 
-/** Las páginas que llevan la barra superior común (R66): las cuatro del front. */
-const PAGINAS_CON_BARRA = ["index.html", "partes.html", "importar.html", "oficios.html"];
+/** Las páginas que llevan la barra superior común (R66): las cinco del front (F-038: `bandeja.html`). */
+const PAGINAS_CON_BARRA = ["index.html", "partes.html", "importar.html", "oficios.html", "bandeja.html"];
 
-/** Las páginas reales (`Portal.PAGINAS`) que llevan la barra (R70): las dos. */
-const PAGINAS_REALES_CON_BARRA = ["importar.html", "oficios.html"];
+/** Las páginas reales (`Portal.PAGINAS`) que llevan la barra (R70): las tres (F-038: `bandeja.html`). */
+const PAGINAS_REALES_CON_BARRA = ["importar.html", "oficios.html", "bandeja.html"];
 
 /**
  * Las formas ligadas de los atributos de R66 (review del bloque 8, H-7): en
@@ -238,14 +253,17 @@ test("f035 R66: control: el lector ve las ocho pestañas de cada barra, en su or
 });
 
 test("f035 R66: control: quitar data-construccion de una pestaña de partes.html salta", () => {
+  // F-038 (T1 bis, R18): miraba la pestaña de `bandeja`, que el cierre de
+  // F-038 deja sin marca; se muda a `impresion` (F-044), que sigue en
+  // construcción.
   const Portal = portal();
   const html = leer("partes.html");
-  const estropeado = html.replace(/(<a\b[^>]*href="\.\/#\/bandeja"[^>]*?)\s+data-construccion\b/, "$1");
+  const estropeado = html.replace(/(<a\b[^>]*href="\.\/#\/impresion"[^>]*?)\s+data-construccion\b/, "$1");
 
-  assert.notEqual(estropeado, html, "el control no encuentra data-construccion en la pestaña de bandeja");
+  assert.notEqual(estropeado, html, "el control no encuentra data-construccion en la pestaña de impresion");
   const problemas = problemasR66(estropeado, Portal);
   assert.equal(problemas.length, 1, problemas.join("\n"));
-  assert.match(problemas[0], /Bandeja de revisión.*data-construccion/);
+  assert.match(problemas[0], /Impresión de partes.*data-construccion/);
 });
 
 test("f035 R66: control: marcar una pestaña que funciona, o cambiar su aria-label, salta", () => {
@@ -322,6 +340,17 @@ test("f035 R44: enlaceSeccion desde importar.html y oficios.html: Entrada es la 
   }
 });
 
+test("f035 R44 / f038 R1: enlaceSeccion desde bandeja.html: Bandeja de revisión es la actual", () => {
+  // F-038 (T1 bis): la tercera página real, de otra sección que las dos de entrada.
+  const { PAGINAS, enlaceSeccion } = portal();
+
+  assert.equal(PAGINAS["bandeja.html"], "bandeja", "Portal.PAGINAS declara bandeja.html en su sección");
+  assert.equal(enlaceSeccion("bandeja", "bandeja.html"), null);
+  assert.deepEqual(enlaceSeccion("entrada", "bandeja.html"), { href: "./#/entrada", nuevaPestana: false });
+  assert.deepEqual(enlaceSeccion("inicio", "bandeja.html"), { href: "./#/inicio", nuevaPestana: false });
+  assert.deepEqual(enlaceSeccion("partes", "bandeja.html"), { href: "partes.html", nuevaPestana: false });
+});
+
 test("f035 R44: enlaceSeccion con un desde desconocido devuelve null para toda sección y no lanza", () => {
   const { SECCIONES, enlaceSeccion } = portal();
 
@@ -377,9 +406,43 @@ for (const pagina of PAGINAS_REALES_CON_BARRA) {
   });
 }
 
+//: Los controles de R70 que dependen de la sección de la página (F-038, T1 bis):
+//: en las de `entrada` la actual es «Entrada» y «Bandeja» un enlace; en
+//: `bandeja.html`, al revés. Los de las dos de entrada, como estaban.
+const CONTROLES_R70_POR_PAGINA = {
+  "importar.html": [
+    ["un href distinto", '<a href="./#/bandeja"', '<a href="#/bandeja"', /va a «#\/bandeja»/],
+    ["la pestaña actual como enlace", '<span aria-current="page" class="rs-pestana">Entrada</span>', '<a href="./#/entrada" class="rs-pestana">Entrada</a>', /es la actual/],
+  ],
+  "oficios.html": [
+    ["un href distinto", '<a href="./#/bandeja"', '<a href="#/bandeja"', /va a «#\/bandeja»/],
+    ["la pestaña actual como enlace", '<span aria-current="page" class="rs-pestana">Entrada</span>', '<a href="./#/entrada" class="rs-pestana">Entrada</a>', /es la actual/],
+  ],
+  "bandeja.html": [
+    ["un href distinto", '<a href="./#/entrada" class="rs-pestana"', '<a href="#/entrada" class="rs-pestana"', /va a «#\/entrada»/],
+    [
+      "la pestaña actual como enlace",
+      /<span aria-current="page" class="rs-pestana"([^>]*)>Bandeja de revisión<\/span>/,
+      '<a href="./#/bandeja" class="rs-pestana"$1>Bandeja de revisión</a>',
+      /es la actual/,
+    ],
+  ],
+};
+
+for (const pagina of PAGINAS_REALES_CON_BARRA) {
+  for (const [que, viejo, nuevo, senal] of CONTROLES_R70_POR_PAGINA[pagina]) {
+    test(`f035 R70: control: ${que} en la barra de ${pagina} salta`, () => {
+      const html = leer(pagina);
+      const estropeado = html.replace(viejo, nuevo);
+      assert.notEqual(estropeado, html, `el control no encuentra ${viejo}`);
+
+      const problemas = problemasR70(estropeado, pagina, portal());
+      assert.ok(problemas.some((p) => senal.test(p)), `${que}: R70 no lo ve:\n${problemas.join("\n")}`);
+    });
+  }
+}
+
 for (const [que, viejo, nuevo, senal] of [
-  ["un href distinto", '<a href="./#/bandeja"', '<a href="#/bandeja"', /va a «#\/bandeja»/],
-  ["la pestaña actual como enlace", '<span aria-current="page" class="rs-pestana">Entrada</span>', '<a href="./#/entrada" class="rs-pestana">Entrada</a>', /es la actual/],
   ["un target en Inicio (mutación 21)", '<a href="./#/inicio"', '<a href="./#/inicio" target="_blank"', /Inicio» lleva target/],
   ["un :href ligado", '<a href="./#/datos"', `<a href="./#/datos" :href="'./#/datos'"`, /lleva :href/],
   ["el circuito por el portal", '<a href="partes.html"', '<a href="./#/partes"', /Partes firmados» va a/],

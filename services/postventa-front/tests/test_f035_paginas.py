@@ -139,6 +139,21 @@ Bloque 18 (`tasks.md`, T53, el recorrido en todas las páginas, 2026-10-06):
 - **R87** (cascada): la comprobación de H-6 (`problemas_de_la_cascada_r66`)
   mira también el punto de `.rs-recorrido__paso`, que es la misma regla.
 
+F-038 · Bloque 1 bis (`specs/F-038-bandeja-revision/tasks.md`, T1 bis;
+`design.md` §3.1): `bandeja.html` es la quinta página del front y la primera
+real de la sección `bandeja`. Cambios a propósito, ninguno debilita una
+aserción:
+
+- `PAGINAS_ESPERADAS` (el `Portal.PAGINAS` esperado), `PAGINAS_DEL_FRONT`
+  (R73) y `PAGINAS_REALES_CON_VERSION` (T21) pasan de cuatro (o dos) páginas a
+  cinco (o tres): la página nueva cumple lo mismo que las demás.
+- `problemas_r71` y `problemas_r72` aceptan, con nombre y por defecto los de
+  `entrada`, las migas, la subnavegación y el pie de otra sección: `bandeja`
+  lleva sus migas, su pie y **ninguna** subnavegación (R1 de F-038), y pasa
+  por las mismas guardias desde `tests/test_f038_front.py`. Las listas de
+  `entrada` (`PAGINAS_REMODELADAS`, `MIGAS_DE_ENTRADA`, `SUBNAV_DE_ENTRADA`,
+  `PIE_PAGINAS_REALES`) no cambian.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -191,7 +206,8 @@ TARJETAS_DE_ENTRADA = (
 )
 
 #: `Portal.PAGINAS` según `design.md` §16.8: cada página real, con su sección.
-PAGINAS_ESPERADAS = {"importar.html": "entrada", "oficios.html": "entrada"}
+#: F-038 (T1 bis, R1): `bandeja.html`, la primera página real de `bandeja`.
+PAGINAS_ESPERADAS = {"importar.html": "entrada", "oficios.html": "entrada", "bandeja.html": "bandeja"}
 
 
 # --- Utilidades -----------------------------------------------------------------
@@ -709,7 +725,8 @@ def test_f035_r80_control_una_fase_renombrada_en_app_js_salta():
 # regla. Review del bloque 7, H-2: tampoco vale abrir otra ventana con
 # `window.open` desde una directiva, que deja el `href` intacto y R73 no vería.
 
-PAGINAS_DEL_FRONT = ("index.html", "partes.html", "importar.html", "oficios.html")
+#: F-038 (T1 bis): `bandeja.html` es la quinta.
+PAGINAS_DEL_FRONT = ("index.html", "partes.html", "importar.html", "oficios.html", "bandeja.html")
 
 #: Un `href` a otra página del front: `*.html` (con query o ancla), `./…` o `#/…`.
 _HREF_DEL_FRONT = re.compile(r"^(?:[\w.-]+\.html(?:[?#].*)?|\./.*|#/.*)$")
@@ -2115,7 +2132,8 @@ PAGINAS_REMODELADAS = ("importar.html", "oficios.html")
 OFICIOS = RAIZ_FRONT / "oficios.html"
 
 #: Las páginas reales que piden la hoja con versión (T21 extendido, O17-3).
-PAGINAS_REALES_CON_VERSION = ("importar.html", "oficios.html")
+#: F-038 (T1 bis): también `bandeja.html`.
+PAGINAS_REALES_CON_VERSION = ("importar.html", "oficios.html", "bandeja.html")
 
 #: La leyenda de la barra de las páginas reales (R70 ajustado, §16.15.5).
 LEYENDA_PAGINAS_REALES = "Las pestañas con punto ámbar están en construcción y enseñan datos de ejemplo."
@@ -2244,8 +2262,19 @@ def test_f035_r70_control_la_barra_estropeada_salta(viejo, nuevo, senal):
 # R71 · La cabecera: migas «Portal de posventa › Entrada» y la subnavegación
 
 
-def problemas_r71(pagina: str, html: str) -> list[str]:
-    """Lo que la cabecera de una página real incumple de R71. Vacío = correcto."""
+def problemas_r71(
+    pagina: str,
+    html: str,
+    migas_esperadas: tuple = MIGAS_DE_ENTRADA,
+    subnav_esperada: tuple | None = SUBNAV_DE_ENTRADA,
+) -> list[str]:
+    """Lo que la cabecera de una página real incumple de R71. Vacío = correcto.
+
+    Las migas y la subnavegación son las de `entrada` salvo que se digan otras
+    (F-038, T1 bis): con `subnav_esperada=None` la página no lleva
+    subnavegación, y una `rs-subnav` en ella es un problema (R1 de F-038:
+    `bandeja` tiene una sola página real).
+    """
     doc = leer_html_texto(html)
     problemas = []
     cabeceras = [e for e in doc.elementos() if e.nombre == "header"]
@@ -2261,21 +2290,25 @@ def problemas_r71(pagina: str, html: str) -> list[str]:
         problemas.append(f'{pagina}: la cabecera lleva <nav aria-label="Estás en" class="rs-migas">')
     else:
         enlaces = [(a.atributos.get("href"), a.texto()) for a in migas.elementos() if a.nombre == "a"]
-        if tuple(enlaces) != MIGAS_DE_ENTRADA:
-            problemas.append(f"{pagina}: migas {enlaces}, no {list(MIGAS_DE_ENTRADA)}")
-    subnav = navs.get("Entrada de incidencias")
-    if subnav is None or "rs-subnav" not in clases(subnav):
-        problemas.append(f'{pagina}: la cabecera lleva <nav aria-label="Entrada de incidencias" class="rs-subnav">')
+        if tuple(enlaces) != migas_esperadas:
+            problemas.append(f"{pagina}: migas {enlaces}, no {list(migas_esperadas)}")
+    if subnav_esperada is None:
+        if any("rs-subnav" in clases(e) or "rs-subnav__item" in clases(e) for e in doc.elementos()):
+            problemas.append(f"{pagina}: lleva subnavegación (rs-subnav) y su sección no tiene (R1 de F-038)")
     else:
-        items = [e for e in subnav.elementos() if "rs-subnav__item" in clases(e)]
-        if [e.texto() for e in items] != [texto for _, texto in SUBNAV_DE_ENTRADA]:
-            problemas.append(f"{pagina}: subnavegación {[e.texto() for e in items]}")
-        for (destino, texto), item in zip(SUBNAV_DE_ENTRADA, items):
-            if destino == pagina:
-                if item.nombre != "span" or "href" in item.atributos or item.atributos.get("aria-current") != "page":
-                    problemas.append(f'{pagina}: «{texto}» es la actual: <span aria-current="page">, sin enlace')
-            elif item.nombre != "a" or item.atributos.get("href") != destino or "aria-current" in item.atributos:
-                problemas.append(f'{pagina}: «{texto}» es un enlace a {destino}')
+        subnav = navs.get("Entrada de incidencias")
+        if subnav is None or "rs-subnav" not in clases(subnav):
+            problemas.append(f'{pagina}: la cabecera lleva <nav aria-label="Entrada de incidencias" class="rs-subnav">')
+        else:
+            items = [e for e in subnav.elementos() if "rs-subnav__item" in clases(e)]
+            if [e.texto() for e in items] != [texto for _, texto in subnav_esperada]:
+                problemas.append(f"{pagina}: subnavegación {[e.texto() for e in items]}")
+            for (destino, texto), item in zip(subnav_esperada, items):
+                if destino == pagina:
+                    if item.nombre != "span" or "href" in item.atributos or item.atributos.get("aria-current") != "page":
+                        problemas.append(f'{pagina}: «{texto}» es la actual: <span aria-current="page">, sin enlace')
+                elif item.nombre != "a" or item.atributos.get("href") != destino or "aria-current" in item.atributos:
+                    problemas.append(f'{pagina}: «{texto}» es un enlace a {destino}')
     titulos = [e for e in cabecera.elementos() if e.nombre == "h1"]
     if [("rs-titulo" in clases(t)) for t in titulos] != [True]:
         problemas.append(f"{pagina}: un <h1 class=\"rs-titulo\"> en la cabecera")
@@ -2319,8 +2352,14 @@ def test_f035_r71_control_la_cabecera_estropeada_salta(viejo, nuevo, senal):
 # y cada clase rs-* con su regla en css/styles.css (la hoja que cargan).
 
 
-def problemas_r72(pagina: str, html: str, version: str, css: str) -> list[str]:
-    """Lo que una página real incumple de R72 (y R50 extendido). Vacío = correcto."""
+def problemas_r72(
+    pagina: str, html: str, version: str, css: str, texto_del_pie: str = PIE_PAGINAS_REALES
+) -> list[str]:
+    """Lo que una página real incumple de R72 (y R50 extendido). Vacío = correcto.
+
+    `texto_del_pie` es el de `entrada` salvo que se diga otro: el pie es la
+    estructura común y su texto, de cada sección (R1 de F-038, T1 bis).
+    """
     doc = leer_html_texto(html)
     problemas = []
     cabeza = _uno([e for e in doc.elementos() if e.nombre == "head"], f"<head> en {pagina}")
@@ -2356,8 +2395,8 @@ def problemas_r72(pagina: str, html: str, version: str, css: str) -> list[str]:
         if not hijos or hijos[-1] is not pie or len(principales) != 1 or hijos.index(principales[0]) != len(hijos) - 2:
             problemas.append(f"{pagina}: el pie es el último hijo del <div x-data>, justo tras </main> (R72)")
         textos = [e for e in _hijos_elemento(pie) if {"rs-contenedor", "rs-pie__texto"} <= clases(e)]
-        if [e.texto() for e in textos] != [PIE_PAGINAS_REALES]:
-            problemas.append(f"{pagina}: el pie dice «{PIE_PAGINAS_REALES}» en rs-contenedor rs-pie__texto")
+        if [e.texto() for e in textos] != [texto_del_pie]:
+            problemas.append(f"{pagina}: el pie dice «{texto_del_pie}» en rs-contenedor rs-pie__texto")
     sin_regla = sorted({
         clase
         for e in doc.elementos()
@@ -2369,12 +2408,13 @@ def problemas_r72(pagina: str, html: str, version: str, css: str) -> list[str]:
     return problemas
 
 
-def _r72(pagina: str, html: str | None = None, css: str | None = None) -> list[str]:
+def _r72(pagina: str, html: str | None = None, css: str | None = None, pie: str = PIE_PAGINAS_REALES) -> list[str]:
     return problemas_r72(
         pagina,
         (RAIZ_FRONT / pagina).read_text(encoding="utf-8") if html is None else html,
         version_de_las_hojas(),
         STYLES_CSS.read_text(encoding="utf-8") if css is None else css,
+        texto_del_pie=pie,
     )
 
 
@@ -2545,7 +2585,7 @@ def test_f035_t21_la_pagina_real_pide_la_hoja_con_la_version_de_su_contenido(pag
 
     assert pedidas == [f"css/styles.css?v={version_de_las_hojas()}"], (
         f"{pagina}: solo css/styles.css (nada de css/portal.css, R77) y con la versión de las hojas; "
-        "si has cambiado una hoja, pon la nueva ?v= en las cuatro páginas"
+        "si has cambiado una hoja, pon la nueva ?v= en las cinco páginas"
     )
 
 

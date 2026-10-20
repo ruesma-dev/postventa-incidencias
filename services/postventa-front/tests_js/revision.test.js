@@ -8,6 +8,10 @@
 // `lineaDeVolcado`, `textoMotivoVolcado`, los filtros `volcada` y `en_duda`)
 // es del Bloque 1 ter y NO se prueba aquí.
 //
+// Bloque 1 bis (T1 bis): al final, `bandeja.html` leída como texto y sus
+// expresiones de Alpine evaluadas contra este componente (R10, R11, R13,
+// R21.6).
+//
 // Todo inventado: obra 9901, unidades U-01…, oficios 9001…, proveedores P-0N
 // «Ejemplo», correos @ejemplo.invalid, UUID con ceros que no son de nadie.
 // NI UN TEST ABRE RED: el componente recibe un `api` doble.
@@ -1666,4 +1670,384 @@ test("f038 R15: js/revision.js no escribe en console ni en el almacenamiento del
   assert.doesNotMatch(fuente, /console\./);
   assert.doesNotMatch(fuente, /localStorage|sessionStorage|indexedDB/);
   assert.doesNotMatch(fuente, /\/revision\/normalizar/, "R23: la página no normaliza");
+});
+
+// --- Bloque 1 bis (T1 bis) · `bandeja.html`, evaluada contra el componente ----------------------
+//
+// El HTML de la página se lee como texto y sus expresiones de Alpine se evalúan
+// contra el componente DE VERDAD (`crearAppRevision` con el `api` doble), sin
+// navegador: así se prueba lo que el texto no dice (que cada nombre existe, que
+// la puerta de cada botón de acción es la de `accionesDe`, que «Aprobar» lee a
+// la vez la fila y `puedeActuar()`, y el `beforeunload` de R13). La estructura
+// (barra, tira, migas, pie, cargas…) la fija `tests/test_f038_front.py`.
+
+const BANDEJA_HTML = path.join(__dirname, "..", "bandeja.html");
+
+function leerBandeja() {
+  return fs.readFileSync(BANDEJA_HTML, "utf-8");
+}
+
+const VACIOS_HTML = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
+const ETIQUETA_HTML = /<(\/?)([a-zA-Z][\w-]*)((?:\s+[^\s"'=<>\/]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*(\/?)>/g;
+const ATRIBUTO_HTML = /([^\s"'=<>\/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+
+function atributosHtml(trozo) {
+  const atributos = {};
+  for (const m of trozo.matchAll(ATRIBUTO_HTML)) {
+    atributos[m[1]] = m[2] ?? m[3] ?? m[4] ?? "";
+  }
+  return atributos;
+}
+
+/** `with (alcance) { return (expresión) }`: como evalúa Alpine, con `this` = el alcance en las llamadas. */
+function evaluarEn(alcance, expresion) {
+  // eslint-disable-next-line no-new-func
+  return Function("alcance", `with (alcance) { return (${expresion}); }`)(alcance);
+}
+
+const DIRECTIVAS_DE_VALOR = /^(?:x-text|x-show|x-if|x-model|x-html|:[\w.-]+|x-bind:[\w.-]+)$/;
+const DIRECTIVAS_DE_EVENTO = /^(?:@[\w.-]+|x-on:[\w.-]+|x-init)$/;
+const BUCLE = /^\s*(?:\(\s*(\w+)\s*(?:,\s*(\w+)\s*)?\)|(\w+))\s+in\s+([\s\S]+)$/;
+
+/**
+ * Recorre `bandeja.html` como lo pintaría Alpine con el `alcance` dado: un
+ * `x-if` falso no pinta lo de dentro; un `x-for` pinta su primer elemento (con
+ * sus variables); un `x-show` falso deja el elemento oculto. Devuelve los
+ * elementos con su alcance, si se ven y los problemas de evaluación (una
+ * expresión que lanza, o un manejador que no es una función).
+ */
+function recorrerBandeja(html, alcanceBase) {
+  const limpio = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
+  const pila = [{ nombre: "#raiz", alcance: alcanceBase, pinta: true, visible: true }];
+  const elementos = [];
+  const problemas = [];
+  for (const m of limpio.matchAll(ETIQUETA_HTML)) {
+    const [, cierre, nombreCrudo, resto, autocierre] = m;
+    const nombre = nombreCrudo.toLowerCase();
+    if (cierre) {
+      const i = pila.map((e) => e.nombre).lastIndexOf(nombre);
+      if (i > 0) pila.length = i;
+      continue;
+    }
+    const padre = pila[pila.length - 1];
+    const atributos = atributosHtml(resto);
+    let alcance = padre.alcance;
+    let pinta = padre.pinta;
+    let visible = padre.visible;
+    const evaluar = (nombreAtributo, expresion) => {
+      try {
+        return { valor: evaluarEn(alcance, expresion) };
+      } catch (error) {
+        problemas.push(`<${nombre} ${nombreAtributo}="${expresion}">: ${error.message}`);
+        return { error };
+      }
+    };
+    if (pinta && "x-for" in atributos) {
+      const bucle = atributos["x-for"].match(BUCLE);
+      if (!bucle) {
+        problemas.push(`x-for ilegible: ${atributos["x-for"]}`);
+        pinta = false;
+      } else {
+        const lista = evaluar("x-for", bucle[4]);
+        const elementosDeLaLista = Array.isArray(lista.valor) ? lista.valor : [];
+        if (!elementosDeLaLista.length) {
+          pinta = false;
+        } else {
+          alcance = Object.create(alcance);
+          alcance[bucle[1] || bucle[3]] = elementosDeLaLista[0];
+          if (bucle[2]) alcance[bucle[2]] = 0;
+        }
+      }
+    }
+    if (pinta && "x-if" in atributos) {
+      const condicion = evaluar("x-if", atributos["x-if"]);
+      if (!condicion.valor) pinta = false;
+    }
+    if (pinta && "x-show" in atributos) {
+      const condicion = evaluar("x-show", atributos["x-show"]);
+      if (!condicion.valor) visible = false;
+    }
+    if (pinta) {
+      for (const [nombreAtributo, expresion] of Object.entries(atributos)) {
+        if (["x-for", "x-if", "x-show", "x-data"].includes(nombreAtributo)) continue;
+        if (DIRECTIVAS_DE_VALOR.test(nombreAtributo)) {
+          evaluar(nombreAtributo, expresion);
+        } else if (DIRECTIVAS_DE_EVENTO.test(nombreAtributo)) {
+          const llamada = expresion.match(/^\s*([\w$.]+)\s*\(/);
+          if (llamada) {
+            const funcion = evaluar(nombreAtributo, llamada[1]);
+            if (!funcion.error && typeof funcion.valor !== "function") {
+              problemas.push(`<${nombre} ${nombreAtributo}="${expresion}">: ${llamada[1]} no es una función del componente`);
+            }
+          }
+        }
+      }
+      elementos.push({ nombre, atributos, alcance, visible });
+    }
+    if (!VACIOS_HTML.has(nombre) && !autocierre) {
+      pila.push({ nombre, alcance, pinta, visible });
+    }
+  }
+  return { elementos, problemas };
+}
+
+/** Lo que llama el `@click` de un botón de acción → la acción de `accionesDe` que pide. */
+const ACCION_DEL_CLIC = {
+  abrirFormulario: "editar",
+  guardarEdicion: "editar",
+  aprobar: "aprobar",
+  pedirDescarte: "descartar",
+  confirmarDescarte: "descartar",
+  recuperar: "recuperar",
+};
+
+function accionDelBoton(elemento) {
+  const llamada = (elemento.atributos["@click"] || "").match(/^\s*(\w+)\s*\(/);
+  return llamada && Object.prototype.hasOwnProperty.call(ACCION_DEL_CLIC, llamada[1]) ? ACCION_DEL_CLIC[llamada[1]] : null;
+}
+
+/**
+ * El componente con todo abierto sobre UNA incidencia en `estado`: cargada,
+ * con su detalle, su historial, el formulario y el segundo clic de descartar
+ * pedidos. El formulario y el descarte se fuerzan en el alcance (el componente
+ * no los abre en un estado que no los admite): así lo que se mide es la puerta
+ * del HTML, no la del componente.
+ */
+async function alcanceConTodoAbierto(estado, cambios) {
+  const fila = incidencia(
+    Object.assign(
+      {
+        estado: estado,
+        revision_id: "00000000-0000-4000-8000-0000000000b1",
+        revisado_at_utc: "2026-10-20T08:30:00.000000+00:00",
+        revisado_por: CORREO,
+        cambios: ["ubicacion"],
+        importados: valores({ ubicacion: null }),
+      },
+      cambios || {},
+    ),
+  );
+  const { app } = componente({
+    revision: () => respuesta({ incidencias: [fila], siguiente: "cursor-inventado", total_filtrado: 7 }),
+    historialRevision: {
+      incidencia_id: ID_1,
+      importada: { origen: "excel", importacion_id: "00000000-0000-4000-8000-0000000000aa", creada_at_utc: "2026-10-20T08:00:00.000000+00:00" },
+      revisiones: [
+        {
+          revision_id: "00000000-0000-4000-8000-0000000000b1",
+          accion: "editar",
+          revisado_at_utc: "2026-10-20T08:30:00.000000+00:00",
+          correo: CORREO,
+          campos_cambiados: ["ubicacion"],
+          motivo: null,
+        },
+      ],
+    },
+  });
+  await app.iniciar();
+  app.obra = "9901";
+  await app.cargar();
+  await app.abrirDetalle(ID_1);
+  const alcance = Object.create(app);
+  alcance.formulario = Revision.formularioDe(fila.vigentes, app.catalogo);
+  alcance.confirmandoDescarte = ID_1;
+  alcance.motivoDescarte = "";
+  alcance.erroresPorCampo = { ubicacion: "problema inventado" };
+  alcance.mensajeAccion = "mensaje inventado";
+  return alcance;
+}
+
+test("f038 T1 bis: cada expresión de Alpine de bandeja.html se evalúa contra el componente sin error", async () => {
+  const { elementos, problemas } = recorrerBandeja(leerBandeja(), await alcanceConTodoAbierto("nueva"));
+  assert.deepEqual(problemas, []);
+  assert.ok(elementos.length > 50, `la página pinta ${elementos.length} elementos con todo abierto: ¿se ha leído?`);
+});
+
+test("f038 T1 bis: control: un nombre que el componente no tiene, en bandeja.html, salta", async () => {
+  const html = leerBandeja();
+  const alcance = await alcanceConTodoAbierto("nueva");
+  for (const [viejo, nuevo] of [
+    ['@click="aprobar(fila.incidencia_id)"', '@click="aprobarla(fila.incidencia_id)"'],
+    ['x-text="nDeM"', 'x-text="nDeMm"'],
+  ]) {
+    assert.ok(html.includes(viejo), `el control no encuentra ${viejo}`);
+    const { problemas } = recorrerBandeja(html.replace(viejo, nuevo), alcance);
+    assert.notDeepEqual(problemas, [], `${nuevo}: el recorrido no lo ve`);
+  }
+});
+
+test("f038 R11, R21.6: en cada estado, bandeja.html pinta justo los botones de accionesDe, ni uno más", async () => {
+  const vistas = {};
+  for (const estado of Revision.ESTADOS) {
+    const { elementos, problemas } = recorrerBandeja(leerBandeja(), await alcanceConTodoAbierto(estado));
+    assert.deepEqual(problemas, [], estado);
+    const pintadas = new Set(
+      elementos.filter((e) => e.nombre === "button" && e.visible && accionDelBoton(e)).map(accionDelBoton),
+    );
+    assert.deepEqual([...pintadas].sort(), Revision.accionesDe(estado).slice().sort(), `${estado}: los botones de acción pintados`);
+    vistas[estado] = pintadas;
+  }
+  // R21.6: en una volcada o una en duda, ni un botón de acción ni el formulario.
+  for (const estado of ["volcada", "en_duda"]) {
+    const { elementos } = recorrerBandeja(leerBandeja(), await alcanceConTodoAbierto(estado));
+    const campos = elementos.filter(
+      (e) =>
+        ["select", "textarea", "input"].includes(e.nombre) &&
+        e.visible &&
+        !/^(?:obra|filtros\.)/.test(e.atributos["x-model"] || ""),
+    );
+    assert.deepEqual(campos.map((e) => e.nombre), [], `${estado}: sin formulario ni motivo de descarte`);
+    assert.equal(vistas[estado].size, 0, estado);
+  }
+});
+
+test("f038 R11, R21.6: control: un botón fuera de su puerta, en bandeja.html, salta", async () => {
+  const html = leerBandeja();
+  const alcance = await alcanceConTodoAbierto("volcada");
+  const sinPuerta = html.replace(/<template x-if="fila\.acciones\.includes\('aprobar'\)">/, '<template x-if="true">');
+  assert.notEqual(sinPuerta, html, "el control no encuentra la puerta de «Aprobar»");
+  const { elementos } = recorrerBandeja(sinPuerta, alcance);
+  const pintadas = elementos.filter((e) => e.nombre === "button" && e.visible && accionDelBoton(e)).map(accionDelBoton);
+  assert.deepEqual(pintadas, ["aprobar"], "una volcada con «Aprobar» tiene que verse");
+});
+
+function botonDe(elementos, metodo) {
+  const botones = elementos.filter(
+    (e) => e.nombre === "button" && new RegExp(`^\\s*${metodo}\\(`).test(e.atributos["@click"] || ""),
+  );
+  assert.equal(botones.length, 1, `un solo botón con @click="${metodo}(…)" (hay ${botones.length})`);
+  return botones[0];
+}
+
+test("f038 R10, R11 (O-B1-1 a): el :disabled de «Aprobar» lee fila.aprobable Y puedeActuar(), ni uno sin el otro", async () => {
+  const { elementos } = recorrerBandeja(leerBandeja(), await alcanceConTodoAbierto("nueva"));
+  const aprobar = botonDe(elementos, "aprobar");
+  assert.ok(":disabled" in aprobar.atributos, "«Aprobar» lleva :disabled");
+  for (const aprobable of [true, false]) {
+    for (const actua of [true, false]) {
+      const alcance = Object.create(aprobar.alcance);
+      alcance.fila = Object.assign({}, aprobar.alcance.fila, { aprobable });
+      alcance.puedeActuar = () => actua;
+      assert.equal(
+        Boolean(evaluarEn(alcance, aprobar.atributos[":disabled"])),
+        !aprobable || !actua,
+        `aprobable=${aprobable}, puedeActuar()=${actua}`,
+      );
+    }
+  }
+});
+
+test("f038 R10: sin puedeActuar() (sin oid, sin correo o guardando), ningún botón de acción está habilitado", async () => {
+  const { elementos } = recorrerBandeja(leerBandeja(), await alcanceConTodoAbierto("nueva"));
+  const deAccion = elementos.filter((e) => e.nombre === "button" && accionDelBoton(e));
+  assert.deepEqual(
+    [...new Set(deAccion.map(accionDelBoton))].sort(),
+    ["aprobar", "descartar", "editar"],
+    "en una nueva, los botones de editar, descartar y aprobar",
+  );
+  for (const boton of deAccion) {
+    const alcance = Object.create(boton.alcance);
+    alcance.puedeActuar = () => false;
+    assert.ok(":disabled" in boton.atributos, `«${boton.atributos["@click"]}» lleva :disabled`);
+    assert.equal(Boolean(evaluarEn(alcance, boton.atributos[":disabled"])), true, boton.atributos["@click"]);
+  }
+  const { elementos: deUnaDescartada } = recorrerBandeja(leerBandeja(), await alcanceConTodoAbierto("descartada"));
+  const recuperar = botonDe(deUnaDescartada, "recuperar");
+  const sinSesion = Object.create(recuperar.alcance);
+  sinSesion.puedeActuar = () => false;
+  assert.equal(Boolean(evaluarEn(sinSesion, recuperar.atributos[":disabled"])), true, "recuperar");
+});
+
+test("f038 R10: control: el :disabled de «Aprobar» sin puedeActuar() salta", async () => {
+  const html = leerBandeja();
+  const m = html.match(/@click="aprobar\(fila\.incidencia_id\)" :disabled="([^"]*)"/);
+  assert.ok(m, "el control no encuentra «Aprobar» con su :disabled justo detrás del @click");
+  const estropeado = html.replace(m[0], '@click="aprobar(fila.incidencia_id)" :disabled="!fila.aprobable"');
+  const { elementos } = recorrerBandeja(estropeado, await alcanceConTodoAbierto("nueva"));
+  const aprobar = botonDe(elementos, "aprobar");
+  const alcance = Object.create(aprobar.alcance);
+  alcance.puedeActuar = () => false;
+  assert.equal(Boolean(evaluarEn(alcance, aprobar.atributos[":disabled"])), false, "sin puedeActuar(), el estropeado se habilita");
+});
+
+// R13 · el `beforeunload` de la página: el único <script> sin `src` de bandeja.html.
+
+function guardaDeSalida() {
+  const enLinea = [...leerBandeja().matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  assert.equal(enLinea.length, 1, "bandeja.html lleva un único <script> en línea: la guarda de salida");
+  return enLinea[0];
+}
+
+/** Ejecuta la guarda en un contexto aparte; devuelve sus escuchas y cómo dispararla. */
+function montarGuarda({ alpine, raiz } = {}) {
+  const escuchas = [];
+  const ventana = {
+    addEventListener(tipo, funcion) {
+      escuchas.push({ tipo, funcion });
+    },
+    Revision: Revision,
+  };
+  if (alpine !== undefined) ventana.Alpine = alpine;
+  const documento = { querySelector: () => (raiz === undefined ? { esLaRaiz: true } : raiz) };
+  require("node:vm").runInNewContext(guardaDeSalida(), { window: ventana, document: documento });
+  return {
+    escuchas,
+    salir() {
+      const evento = {
+        prevenido: false,
+        returnValue: undefined,
+        preventDefault() {
+          this.prevenido = true;
+        },
+      };
+      for (const e of escuchas) e.funcion(evento);
+      return evento;
+    },
+  };
+}
+
+function estadoConFormulario(cambiar) {
+  const formulario = Revision.formularioDe(valores(), catalogo());
+  if (cambiar) formulario.descripcion = "Otra descripción de ejemplo";
+  return { formulario };
+}
+
+test("f038 R13: la guarda de salida pide confirmación solo con una edición sin guardar", () => {
+  const conCambios = montarGuarda({ alpine: { $data: () => estadoConFormulario(true) } });
+  assert.deepEqual(conCambios.escuchas.map((e) => e.tipo), ["beforeunload"], "una sola escucha, la de beforeunload");
+  const evento = conCambios.salir();
+  assert.equal(evento.prevenido, true, "con cambios, pregunta");
+  assert.equal(typeof evento.returnValue, "string", "y pone returnValue, que piden algunos navegadores");
+
+  for (const [que, estado] of [
+    ["sin formulario", { formulario: null }],
+    ["con el formulario sin cambios", estadoConFormulario(false)],
+  ]) {
+    const guarda = montarGuarda({ alpine: { $data: () => estado } });
+    const sinPregunta = guarda.salir();
+    assert.equal(sinPregunta.prevenido, false, que);
+    assert.equal(sinPregunta.returnValue, undefined, que);
+  }
+});
+
+test("f038 R13: si no puede leer el estado, la guarda no pregunta ni lanza", () => {
+  for (const [que, opciones] of [
+    ["sin Alpine", {}],
+    ["$data que lanza", { alpine: { $data: () => { throw new Error("ilegible"); } } }],
+    ["sin la raíz del componente", { alpine: { $data: () => estadoConFormulario(true) }, raiz: null }],
+  ]) {
+    const guarda = montarGuarda(opciones);
+    const evento = guarda.salir();
+    assert.equal(evento.prevenido, false, que);
+  }
+});
+
+test("f038 R13: la guarda lee el componente de la página por su x-data, no otro", () => {
+  const pedidos = [];
+  const escuchas = [];
+  const ventana = { addEventListener: (tipo, funcion) => escuchas.push(funcion), Revision, Alpine: { $data: () => estadoConFormulario(true) } };
+  const documento = { querySelector: (selector) => { pedidos.push(selector); return {}; } };
+  require("node:vm").runInNewContext(guardaDeSalida(), { window: ventana, document: documento });
+  escuchas[0]({ preventDefault() {}, returnValue: undefined });
+  assert.deepEqual(pedidos, ['[x-data="appRevision()"]']);
 });

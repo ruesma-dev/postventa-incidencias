@@ -1813,7 +1813,10 @@ function accionDelBoton(elemento) {
  * no los abre en un estado que no los admite): así lo que se mide es la puerta
  * del HTML, no la del componente.
  */
-async function alcanceConTodoAbierto(estado, cambios) {
+/** Las llamadas al `api` doble de cada alcance de `alcanceConTodoAbierto` (C-B1b-2). */
+const LLAMADAS_DEL_ALCANCE = new WeakMap();
+
+async function alcanceConTodoAbierto(estado, cambios, guion) {
   const fila = incidencia(
     Object.assign(
       {
@@ -1827,7 +1830,7 @@ async function alcanceConTodoAbierto(estado, cambios) {
       cambios || {},
     ),
   );
-  const { app } = componente({
+  const { app, llamadas } = componente(Object.assign({
     revision: () => respuesta({ incidencias: [fila], siguiente: "cursor-inventado", total_filtrado: 7 }),
     historialRevision: {
       incidencia_id: ID_1,
@@ -1843,7 +1846,7 @@ async function alcanceConTodoAbierto(estado, cambios) {
         },
       ],
     },
-  });
+  }, guion || {}));
   await app.iniciar();
   app.obra = "9901";
   await app.cargar();
@@ -1854,6 +1857,7 @@ async function alcanceConTodoAbierto(estado, cambios) {
   alcance.motivoDescarte = "";
   alcance.erroresPorCampo = { ubicacion: "problema inventado" };
   alcance.mensajeAccion = "mensaje inventado";
+  LLAMADAS_DEL_ALCANCE.set(alcance, llamadas);
   return alcance;
 }
 
@@ -2051,3 +2055,272 @@ test("f038 R13: la guarda lee el componente de la página por su x-data, no otro
   escuchas[0]({ preventDefault() {}, returnValue: undefined });
   assert.deepEqual(pedidos, ['[x-data="appRevision()"]']);
 });
+
+// --- Correcciones de la review del Bloque 1 bis (C-B1b-1, C-B1b-2, O-B1b-2) ---------------------
+//
+// La guardia de texto (`puedeActuar()` aparece en el `:disabled`) no prueba la
+// expresión: aquí cada `:disabled` de acción se evalúa con su tabla de verdad,
+// en un alcance hijo SIN los bloqueos que fuerza `alcanceConTodoAbierto` (que
+// taparían el término de `puedeActuar()`); cada clic de acción se EJECUTA y se
+// mira que llegue a su fila; y los dos `x-show` que acompañan a las acciones
+// se evalúan como el `:disabled` de «Aprobar».
+
+/** Copia con un texto cambiado una sola vez; falla si el control ya no encuentra su ancla. */
+function cambiarUnaVez(html, viejo, nuevo) {
+  assert.equal(html.split(viejo).length, 2, `el control no encuentra una sola vez: ${viejo}`);
+  return html.replace(viejo, nuevo);
+}
+
+/**
+ * Cada botón de acción salvo «Aprobar» (que tiene su tabla aparte): el método
+ * de su clic, el estado de la fila en que se pinta, cómo quitarle su bloqueo
+ * propio, cómo ponérselo (o `null` si no tiene) y, si lo hay, un alcance en el
+ * que el bloqueo propio NO aplica.
+ */
+const DISABLED_DE_CADA_BOTON = [
+  {
+    metodo: "abrirFormulario",
+    estado: "nueva",
+    sinBloqueo: (a) => { a.formulario = null; },
+    conBloqueo: (a) => { a.formulario = Revision.formularioDe(valores(), catalogo()); },
+  },
+  {
+    metodo: "pedirDescarte",
+    estado: "nueva",
+    sinBloqueo: (a) => { a.confirmandoDescarte = null; },
+    conBloqueo: (a) => { a.confirmandoDescarte = a.fila.incidencia_id; },
+    libreCon: (a) => { a.confirmandoDescarte = ID_2; },
+  },
+  { metodo: "confirmarDescarte", estado: "nueva", sinBloqueo: () => {}, conBloqueo: null },
+  { metodo: "guardarEdicion", estado: "nueva", sinBloqueo: () => {}, conBloqueo: null },
+  { metodo: "recuperar", estado: "descartada", sinBloqueo: () => {}, conBloqueo: null },
+];
+
+function botonesDelClic(elementos, metodo) {
+  return elementos.filter(
+    (e) => e.nombre === "button" && new RegExp(`^\\s*${metodo}\\(`).test(e.atributos["@click"] || ""),
+  );
+}
+
+/** C-B1b-1 · lo que el `:disabled` de cada botón de acción incumple de su tabla de verdad. Vacío = correcto. */
+async function problemasDelDisabled(html) {
+  const problemas = [];
+  const porEstado = {};
+  for (const caso of DISABLED_DE_CADA_BOTON) {
+    if (!porEstado[caso.estado]) {
+      porEstado[caso.estado] = recorrerBandeja(html, await alcanceConTodoAbierto(caso.estado)).elementos;
+    }
+    const botones = botonesDelClic(porEstado[caso.estado], caso.metodo);
+    if (botones.length !== 1) {
+      problemas.push(`${caso.metodo}: ${botones.length} botones pintados en una ${caso.estado}`);
+      continue;
+    }
+    const boton = botones[0];
+    const expresion = boton.atributos[":disabled"];
+    if (expresion === undefined) {
+      problemas.push(`${caso.metodo}: sin :disabled`);
+      continue;
+    }
+    const deshabilitado = (actua, preparar) => {
+      const alcance = Object.create(boton.alcance);
+      caso.sinBloqueo(alcance);
+      if (preparar) preparar(alcance);
+      alcance.puedeActuar = () => actua;
+      try {
+        return Boolean(evaluarEn(alcance, expresion));
+      } catch (error) {
+        return `lanza: ${error.message}`;
+      }
+    };
+    if (deshabilitado(false) !== true) problemas.push(`${caso.metodo}: sin puedeActuar() se puede pulsar (R10)`);
+    if (deshabilitado(true) !== false) problemas.push(`${caso.metodo}: con sesión y sin otro bloqueo, no se puede pulsar`);
+    if (caso.conBloqueo) {
+      if (deshabilitado(true, caso.conBloqueo) !== true) problemas.push(`${caso.metodo}: con su bloqueo propio, se puede pulsar`);
+      if (deshabilitado(false, caso.conBloqueo) !== true) problemas.push(`${caso.metodo}: con su bloqueo y sin sesión, se puede pulsar`);
+    }
+    if (caso.libreCon && deshabilitado(true, caso.libreCon) !== false) {
+      problemas.push(`${caso.metodo}: el bloqueo de otra fila lo deshabilita también en esta`);
+    }
+  }
+  return problemas;
+}
+
+test("f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumple su tabla de verdad", async () => {
+  assert.deepEqual(await problemasDelDisabled(leerBandeja()), []);
+});
+
+// Los seis supervivientes de la review del Bloque 1 bis, en memoria.
+const MUTANTES_DEL_DISABLED = [
+  ["M1 «Editar» sin la negación", ':disabled="!puedeActuar() || formulario !== null"', ':disabled="puedeActuar() || formulario !== null"'],
+  ["M2 «Descartar» sin la negación", ':disabled="!puedeActuar() || confirmandoDescarte === fila.incidencia_id"', ':disabled="puedeActuar() || confirmandoDescarte === fila.incidencia_id"'],
+  ["M3 «Recuperar» siempre deshabilitado", '@click="recuperar(fila.incidencia_id)" :disabled="!puedeActuar()"', '@click="recuperar(fila.incidencia_id)" :disabled="!puedeActuar() || true"'],
+  ["M4 «Guardar cambios» siempre deshabilitado", '@click="guardarEdicion()" :disabled="!puedeActuar()"', '@click="guardarEdicion()" :disabled="!puedeActuar() || true"'],
+  ["M5 «Editar» deshabilitado con el formulario cerrado", ':disabled="!puedeActuar() || formulario !== null"', ':disabled="!puedeActuar() || formulario === null"'],
+  ["M11 «Sí, descartarla» siempre deshabilitado", '@click="confirmarDescarte(fila.incidencia_id)" :disabled="!puedeActuar()"', '@click="confirmarDescarte(fila.incidencia_id)" :disabled="!puedeActuar() || true"'],
+];
+
+for (const [nombre, viejo, nuevo] of MUTANTES_DEL_DISABLED) {
+  test(`f038 R10 (C-B1b-1): control: ${nombre} salta`, async () => {
+    const problemas = await problemasDelDisabled(cambiarUnaVez(leerBandeja(), viejo, nuevo));
+    assert.notDeepEqual(problemas, [], `${nombre}: la tabla de verdad no lo ve`);
+  });
+}
+
+/**
+ * C-B1b-2 · cada botón de acción, con su clic EJECUTADO en el alcance del
+ * componente (con el `api` doble que cuenta): las cuatro que escriben llegan a
+ * `accionRevision` con SU fila y su acción; abrir el formulario y pedir el
+ * descarte lo hacen sobre SU fila.
+ */
+const CLIC_DE_CADA_BOTON = [
+  { metodo: "aprobar", estado: "nueva", accion: "aprobar" },
+  { metodo: "recuperar", estado: "descartada", accion: "recuperar" },
+  { metodo: "confirmarDescarte", estado: "nueva", accion: "descartar" },
+  {
+    metodo: "guardarEdicion",
+    estado: "nueva",
+    accion: "editar",
+    preparar: (a) => { a.formulario.descripcion = "Otra descripción de ejemplo"; },
+  },
+  {
+    metodo: "abrirFormulario",
+    estado: "nueva",
+    preparar: (a) => { a.formulario = null; },
+    comprobar: (a) =>
+      a.formulario && a.formulario.vigentes && a.formulario.vigentes.descripcion === valores().descripcion
+        ? null
+        : "no abre el formulario de su fila",
+  },
+  {
+    metodo: "pedirDescarte",
+    estado: "nueva",
+    preparar: (a) => { a.confirmandoDescarte = null; },
+    comprobar: (a) => (a.confirmandoDescarte === ID_1 ? null : `pide el descarte de «${a.confirmandoDescarte}», no de su fila`),
+  },
+];
+
+const ACCION_DEVUELTA = () =>
+  incidencia({ estado: "editada", revision_id: "00000000-0000-4000-8000-0000000000b2", motivos_no_aprobable: [] });
+
+/** C-B1b-2 · lo que el clic de cada botón de acción no hace sobre su fila. Vacío = correcto. */
+async function problemasDelClic(html) {
+  const problemas = [];
+  for (const caso of CLIC_DE_CADA_BOTON) {
+    const alcance = await alcanceConTodoAbierto(caso.estado, {}, { accionRevision: ACCION_DEVUELTA });
+    if (caso.preparar) caso.preparar(alcance);
+    const botones = botonesDelClic(recorrerBandeja(html, alcance).elementos, caso.metodo);
+    if (botones.length !== 1) {
+      problemas.push(`${caso.metodo}: ${botones.length} botones pintados en una ${caso.estado}`);
+      continue;
+    }
+    const boton = botones[0];
+    const llamadas = LLAMADAS_DEL_ALCANCE.get(alcance);
+    const antes = llamadas.length;
+    try {
+      await evaluarEn(boton.alcance, boton.atributos["@click"]);
+    } catch (error) {
+      problemas.push(`${caso.metodo}: el clic lanza (${error.message})`);
+      continue;
+    }
+    if (caso.accion) {
+      const acciones = llamadas.slice(antes).filter((l) => l.nombre === "accionRevision");
+      const cuerpos = acciones.map((l) => `${l.args[0].accion} de ${l.args[0].incidencia_id}`);
+      if (cuerpos.join() !== `${caso.accion} de ${ID_1}`) {
+        problemas.push(`${caso.metodo}: manda [${cuerpos.join(", ")}], no «${caso.accion} de ${ID_1}»`);
+      }
+    } else {
+      const fallo = caso.comprobar(boton.alcance);
+      if (fallo) problemas.push(`${caso.metodo}: ${fallo}`);
+      if (llamadas.slice(antes).some((l) => l.nombre === "accionRevision")) {
+        problemas.push(`${caso.metodo}: manda una acción, y solo abre`);
+      }
+    }
+  }
+  return problemas;
+}
+
+test("f038 R10, R11 (C-B1b-2): cada botón de acción, pulsado, actúa sobre SU fila", async () => {
+  assert.deepEqual(await problemasDelClic(leerBandeja()), []);
+});
+
+for (const [nombre, viejo, nuevo] of [
+  ["M10 «Aprobar» con el argumento con errata", '@click="aprobar(fila.incidencia_id)"', '@click="aprobar(fila.incidencia_idd)"'],
+  ["«Recuperar» sin su fila", '@click="recuperar(fila.incidencia_id)"', '@click="recuperar()"'],
+  ["«Sí, descartarla» sobre la fila abierta por otro nombre", '@click="confirmarDescarte(fila.incidencia_id)"', '@click="confirmarDescarte(fila.id)"'],
+  ["«Editar» con el argumento con errata", '@click="abrirFormulario(fila.incidencia_id)"', '@click="abrirFormulario(fila.incidencia)"'],
+  ["«Descartar» con el argumento con errata", '@click="pedirDescarte(fila.incidencia_id)"', '@click="pedirDescarte(fila.incidenciaId)"'],
+]) {
+  test(`f038 R10 (C-B1b-2): control: ${nombre} salta`, async () => {
+    const problemas = await problemasDelClic(cambiarUnaVez(leerBandeja(), viejo, nuevo));
+    assert.notDeepEqual(problemas, [], `${nombre}: el clic ejecutado no lo ve`);
+  });
+}
+
+/**
+ * O-B1b-2 · los dos `x-show` que acompañan a las acciones, con su tabla de
+ * verdad: el aviso de sesión incompleta (decisión 8) y «No se puede aprobar:
+ * …» (R11). Se recorre una fila CON motivos, así que también se evalúan los
+ * chips de motivos (O-B1b-1).
+ */
+async function problemasDeLosAvisos(html) {
+  const problemas = [];
+  const { elementos, problemas: deEvaluar } = recorrerBandeja(
+    html,
+    await alcanceConTodoAbierto("nueva", { motivos_no_aprobable: ["sin_ubicacion"] }),
+  );
+  problemas.push(...deEvaluar);
+
+  const sesion = elementos.filter((e) => (e.atributos.class || "").split(/\s+/).includes("rs-aviso--info"));
+  if (sesion.length !== 1 || !("x-show" in sesion[0].atributos)) {
+    problemas.push(`el aviso de sesión incompleta: ${sesion.length} rs-aviso--info con x-show`);
+  } else {
+    for (const consulta of [null, { obra: "9901", estado: "activas" }]) {
+      for (const usuarioOid of ["", OID]) {
+        for (const correo of ["", CORREO]) {
+          const alcance = Object.create(sesion[0].alcance);
+          alcance.consulta = consulta;
+          alcance.usuario = { usuarioOid, correo };
+          const esperado = Boolean(consulta) && (!usuarioOid || !correo);
+          if (Boolean(evaluarEn(alcance, sesion[0].atributos["x-show"])) !== esperado) {
+            problemas.push(`aviso de sesión con consulta=${Boolean(consulta)}, oid=${Boolean(usuarioOid)}, correo=${Boolean(correo)}: se ve ≠ ${esperado}`);
+          }
+        }
+      }
+    }
+  }
+
+  const noAprobable = elementos.filter((e) => (e.atributos["x-text"] || "").includes("No se puede aprobar"));
+  if (noAprobable.length !== 1 || !("x-show" in noAprobable[0].atributos)) {
+    problemas.push(`«No se puede aprobar: …»: ${noAprobable.length} con x-show`);
+  } else {
+    const aviso = noAprobable[0];
+    for (const [acciones, motivos, esperado] of [
+      [["editar", "descartar", "aprobar"], ["Falta la ubicación"], true],
+      [["editar", "descartar", "aprobar"], [], false],
+      [["editar", "descartar"], ["Falta la ubicación"], false],
+      [[], ["Falta la ubicación"], false],
+    ]) {
+      const alcance = Object.create(aviso.alcance);
+      alcance.fila = Object.assign({}, aviso.alcance.fila, { acciones, motivos });
+      if (Boolean(evaluarEn(alcance, aviso.atributos["x-show"])) !== esperado) {
+        problemas.push(`«No se puede aprobar» con acciones=[${acciones}] y ${motivos.length} motivos: se ve ≠ ${esperado}`);
+      }
+    }
+    if (!aviso.visible) problemas.push("«No se puede aprobar» no se ve en una nueva con motivos");
+  }
+  return problemas;
+}
+
+test("f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se puede aprobar» se ven justo cuando toca", async () => {
+  assert.deepEqual(await problemasDeLosAvisos(leerBandeja()), []);
+});
+
+for (const [nombre, viejo, nuevo] of [
+  ["M13 el aviso de sesión con AND", 'x-show="consulta && (!usuario.usuarioOid || !usuario.correo)"', 'x-show="consulta && (!usuario.usuarioOid && !usuario.correo)"'],
+  ["M15 «No se puede aprobar» oculto", "x-show=\"fila.acciones.includes('aprobar') && fila.motivos.length\"", 'x-show="false"'],
+]) {
+  test(`f038 R10, R11 (O-B1b-2): control: ${nombre} salta`, async () => {
+    const problemas = await problemasDeLosAvisos(cambiarUnaVez(leerBandeja(), viejo, nuevo));
+    assert.notDeepEqual(problemas, [], `${nombre}: la tabla de verdad no lo ve`);
+  });
+}

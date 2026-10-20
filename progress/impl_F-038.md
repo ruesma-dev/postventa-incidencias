@@ -633,3 +633,93 @@ python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py   
 | Cobertura de las líneas cambiadas | **No disponible**: lo cambiado es HTML, JavaScript y tests; la puerta `PUERTA COBERTURA` de `init.sh` mide Python y aquí no hay `.py` de producción. Además `init.sh` lo ejecuta el líder (P-4) |
 | Mutantes generados / supervivientes | **Pendiente por plan** (T5, Bloque 1 quater). En este bloque, cada guardia nueva lleva su control en memoria (la página estropeada a propósito hace saltar su test), y los tres controles mudados se han comprobado contra un cierre simulado (arriba) |
 | Tiempo de la suite | pytest del front: 34,81 s; suite JS entera: 4,38 s; raíz: 0,40 s |
+
+
+## Correcciones de la review del Bloque 1 bis (2026-10-20)
+
+Review `progress/review_F-038.md` (`827b4d5`), «Review del Bloque 1 bis»: CHANGES_REQUESTED, solo tests. Corregido
+**solo** `tests_js/revision.test.js`; `bandeja.html`, `importar.html`, `js/` y los documentos, sin tocar. Ningún botón
+ha resultado mal al escribir las tablas de verdad: el HTML de T3 cumple todas.
+
+| Punto | Qué cambia en el test |
+|---|---|
+| **C-B1b-1** | `problemasDelDisabled`: el `:disabled` de «Editar», «Descartar», «Sí, descartarla», «Guardar cambios» y «Recuperar» (este en una `descartada`) se evalúa en un alcance hijo del suyo **sin** los bloqueos que fuerza `alcanceConTodoAbierto` (`formulario = null` para «Editar», `confirmandoDescarte = null` para «Descartar»): sin `puedeActuar()` → deshabilitado; con `puedeActuar()` → **habilitado**; con su bloqueo propio (el formulario abierto; el segundo clic pedido sobre ESA fila), deshabilitado con y sin sesión; y «Descartar» con el segundo clic pedido sobre **otra** fila, habilitado. «Aprobar» conserva su tabla aparte. Controles en memoria: los seis supervivientes (M1, M2, M3, M4, M5, M11) |
+| **C-B1b-2** | `problemasDelClic`: por cada botón de acción pintado, su `@click` se **ejecuta** en el alcance del componente con el `api` doble que cuenta (`LLAMADAS_DEL_ALCANCE`, un `WeakMap` que rellena `alcanceConTodoAbierto`, que gana un tercer argumento `guion`). `aprobar`, `recuperar`, `confirmarDescarte` y `guardarEdicion` (con un cambio en el formulario) tienen que mandar **exactamente** una `accionRevision` con `incidencia_id === ID_1` y su `accion`; `abrirFormulario` tiene que abrir el formulario de esa fila y `pedirDescarte` dejar `confirmandoDescarte === ID_1`, sin mandar nada. Controles: M10 y otras cuatro erratas de argumento |
+| **O-B1b-2** | `problemasDeLosAvisos`: el aviso de sesión incompleta (`rs-aviso--info`) con su tabla de verdad (consulta × oid × correo, 8 casos) y «No se puede aprobar: …» (acciones con o sin `aprobar` × con o sin motivos, 4 casos, y visible en una nueva con motivos). Se recorre una fila **con** motivos, así que de paso se evalúan los chips de motivos (cubre O-B1b-1). Controles: M13 y M15 |
+
+### Los mutantes de la review, cazados ahora por su test (no por un control)
+
+Cada mutante se aplicó a la `bandeja.html` de una **copia** del front (y de `docs/`) en el directorio temporal de la
+sesión, con `node --test --test-timeout=60000 "tests_js/*.test.js"` y
+`python -m pytest -q -p no:cacheprovider tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py`
+en la copia. `git status` del árbol, antes y después de la campaña: solo `M tests_js/revision.test.js`. Pytest queda
+verde en todos (564 passed, 7 skipped): estas guardias son de Node, como pedía la review.
+
+```
+=== M1: :disabled="!puedeActuar() || formulario !== null"  ->  :disabled="puedeActuar() || formulario !== null"
+  node exit 1 ℹ tests 874 ℹ pass 871 ℹ fail 3
+    ✖ f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumple su tabla de verdad
+        +   'abrirFormulario: sin puedeActuar() se puede pulsar (R10)',
+        +   'abrirFormulario: con sesión y sin otro bloqueo, no se puede pulsar'
+=== M2: :disabled="!puedeActuar() || confirmandoDescarte === fila.incidencia_id"  ->  :disabled="puedeActuar() || …"
+  node exit 1 ℹ tests 874 ℹ pass 872 ℹ fail 2
+    ✖ f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumple su tabla de verdad
+        +   'pedirDescarte: sin puedeActuar() se puede pulsar (R10)',
+        +   'pedirDescarte: con sesión y sin otro bloqueo, no se puede pulsar',
+        +   'pedirDescarte: el bloqueo de otra fila lo deshabilita también en esta'
+=== M3: @click="recuperar(fila.incidencia_id)" :disabled="!puedeActuar()"  ->  … :disabled="!puedeActuar() || true"
+  node exit 1 ℹ tests 874 ℹ pass 872 ℹ fail 2
+    ✖ f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumple su tabla de verdad
+        +   'recuperar: con sesión y sin otro bloqueo, no se puede pulsar'
+=== M4: @click="guardarEdicion()" :disabled="!puedeActuar()"  ->  … :disabled="!puedeActuar() || true"
+  node exit 1 ℹ tests 874 ℹ pass 872 ℹ fail 2
+    ✖ f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumple su tabla de verdad
+        +   'guardarEdicion: con sesión y sin otro bloqueo, no se puede pulsar'
+=== M5: :disabled="!puedeActuar() || formulario !== null"  ->  :disabled="!puedeActuar() || formulario === null"
+  node exit 1 ℹ tests 874 ℹ pass 871 ℹ fail 3
+    ✖ f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumple su tabla de verdad
+        +   'abrirFormulario: con sesión y sin otro bloqueo, no se puede pulsar',
+        +   'abrirFormulario: con su bloqueo propio, se puede pulsar'
+=== M11: @click="confirmarDescarte(fila.incidencia_id)" :disabled="!puedeActuar()"  ->  … :disabled="!puedeActuar() || true"
+  node exit 1 ℹ tests 874 ℹ pass 872 ℹ fail 2
+    ✖ f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumple su tabla de verdad
+        +   'confirmarDescarte: con sesión y sin otro bloqueo, no se puede pulsar'
+=== M10: @click="aprobar(fila.incidencia_id)"  ->  @click="aprobar(fila.incidencia_idd)"
+  node exit 1 ℹ tests 874 ℹ pass 870 ℹ fail 4
+    ✖ f038 R10, R11 (C-B1b-2): cada botón de acción, pulsado, actúa sobre SU fila
+        +   'aprobar: manda [], no «aprobar de 00000000-0000-4000-8000-000000000001»'
+    (y, como antes, los dos controles que pierden su ancla de texto)
+=== M13: x-show="consulta && (!usuario.usuarioOid || !usuario.correo)"  ->  x-show="consulta && (!usuario.usuarioOid && !usuario.correo)"
+  node exit 1 ℹ tests 874 ℹ pass 872 ℹ fail 2
+    ✖ f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se puede aprobar» se ven justo cuando toca
+        +   'aviso de sesión con consulta=true, oid=false, correo=true: se ve ≠ true',
+        +   'aviso de sesión con consulta=true, oid=true, correo=false: se ve ≠ true'
+=== M15: x-show="fila.acciones.includes('aprobar') && fila.motivos.length"  ->  x-show="false"
+  node exit 1 ℹ tests 874 ℹ pass 872 ℹ fail 2
+    ✖ f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se puede aprobar» se ven justo cuando toca
+        +   '«No se puede aprobar» con acciones=[editar,descartar,aprobar] y 1 motivos: se ve ≠ true',
+        +   '«No se puede aprobar» no se ve en una nueva con motivos'
+```
+
+(En cada mutante cae además su propio control en memoria, que aplica el mismo cambio: en M1 y M5 caen los dos, porque
+tocan el mismo `:disabled`.)
+
+### Verificación
+
+```
+node --test --test-timeout=15000 "tests_js/*.test.js"          (desde services/postventa-front)
+ℹ tests 874
+ℹ pass 874
+ℹ fail 0
+ℹ duration_ms 5759.8636
+
+python -m pytest -q -p no:cacheprovider                         (desde services/postventa-front)
+865 passed, 7 skipped in 33.10s
+```
+
+874 = 858 + 16 tests nuevos (3 guardias y 13 controles). `bash harness/init.sh`, no (P-4).
+
+### Lo que queda abierto (de la review, no pedido en este encargo)
+
+O-B1b-3 (recargar o abrir otro detalle tira una edición sin preguntar; para T7 paso 7), O-B1b-4 (la frase «llegará con
+F-038» de `importar.html`, para T8 o F-057) y O-B1b-5 (`subnav_esperada=None` mira solo la clase): sin cambios.

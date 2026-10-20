@@ -13,10 +13,11 @@
 >   (F-056); la dependencia de F-056 ya cumplida; F-057 también toca `importar.html`.
 > - **Conciliación hecha (spec-author, 2026-10-20)**: `specs/F-038-bandeja-revision/` puesta al día con `87a03f3`
 >   (marcas «Conciliado 2026-10-20», R20–R26 nuevos, `design.md` §10); informe en `progress/spec_F-038.md`. Ninguna
->   decisión aprobada cambia y no hace falta tocar `services/postventa-api`. **Pendiente del humano**: Q-6 (`volcada` y
->   `en_duda`: lo mínimo aquí, el resto en F-040), Q-7 (texto de la revisión del sistema), Q-8 (no ofrecer normalizar),
->   Q-9 (conservar en el formulario lo que ya no está en el catálogo) y Q-10 (paso 03 de la tira y la guardia de R85),
->   con recomendación. T1 no empieza hasta que las resuelva.
+>   decisión aprobada cambia y no hace falta tocar `services/postventa-api`.
+> - **Decisiones del humano (2026-10-20) aplicadas; conciliación cerrada**: Q-6 (b) ampliada (la presentación del volcado,
+>   R54 de F-040, pasa a F-038: R21; sin acciones sobre `volcada`/`en_duda`), Q-7 a Q-10 como se recomendaban. `tasks.md`
+>   repartida en Bloques 1, 1 bis, 1 ter (volcado) y 1 quater (mutación). **Siguiente**: implementer, Bloque 1. Pendiente
+>   fuera de F-038: conciliar F-040 (soltar su R54) y la ficha nueva «editar o anular partes ya volcados» (el líder).
 
 > ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
 > Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y

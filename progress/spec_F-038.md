@@ -13,7 +13,7 @@ D-13, Q-2, Q-3, Q-4) cambia. La conciliación **no** necesita tocar
 `services/postventa-api`: no hay bloqueo. Hay **cinco decisiones nuevas**
 (Q-6 a Q-10) que la spec no contemplaba, redactadas con la recomendación y
 **pendientes de aprobación del humano**; T1 no empieza hasta que las
-resuelva.
+resuelva. *(Resueltas el 2026-10-20: sección final.)*
 
 Cómo se ha hecho: lo conciliado está **en su sitio** en los tres ficheros,
 con la marca «Conciliado 2026-10-20» y su fuente; numeración intacta
@@ -97,7 +97,7 @@ antes y, con `activas` por defecto, una `en_duda` sale en su lista: Q-6.
   en el cierre: `test_f035_r62_control_el_lector_de_estados_lee_el_texto`
   (sustituye `bandeja` → `parcial`; con `bandeja` ya en `parcial`, la copia
   no cambia) y «f035 R66: control: quitar data-construccion de una pestaña de
-  partes.html salta». Se mudan a `impresion` en T1.
+  partes.html salta». Se mudan a `impresion` en T1 bis (Bloque 1 bis).
 - **Nuevo:** en el cierre, también `bandeja.reintentarVolcado` (F-040) es
   `enBloque: true` sobre la selección de la bandeja, y
   `MaquetaDatos.propuestas.porFila` (F-039) apunta a las filas `BJ-…` de la
@@ -132,13 +132,16 @@ antes y, con `activas` por defecto, una `en_duda` sale en su lista: Q-6.
   `bandeja.html` el enlace profundo `?incidencia=` (su R21–R25). Va después de
   F-038; su T1 ya prevé comprobar que lo construido encaja.
 - **F-040** (`spec_ready`; spec en `feature/F-040-volcado-sigrid`): pone su
-  panel en `bandeja.html` y lo de su R54 en `js/revision.js`. Si Q-6 sale como
-  se recomienda, F-038 ya trae las etiquetas de los dos estados y F-040 solo
-  las enriquece; en su conciliación conviene leer así su design §3 («las
-  etiquetas… en `js/revision.js`»). Si sale (a'), los filtros también pasan a
-  F-038.
+  panel en `bandeja.html`. *(Actualizado tras la decisión Q-6 del humano,
+  2026-10-20.)* **F-040 ya no trae la presentación del volcado**: su R54
+  (etiquetas de `volcada` y `en_duda`, la línea «Volcada como RS…», los
+  textos de los códigos de parte de §8.9 y los filtros) es ahora R21 de
+  F-038. Queda para **la conciliación de F-040** quitar R54 de su spec (y la
+  frase de su design §3 sobre `js/revision.js`), conservando solo los textos
+  propios del panel (exclusiones de un ensayo, ensayo no válido) y apoyándose
+  en `lineaDeVolcado` / `textoMotivoVolcado` de `js/revision.js`.
 
-### 2 · Preguntas para el humano (con recomendación)
+### 2 · Preguntas para el humano (con recomendación) — resueltas el 2026-10-20, ver «Decisiones del humano · 2026-10-20»
 
 Detalle y alternativas en `specs/F-038-bandeja-revision/design.md` §10.4.
 
@@ -183,3 +186,37 @@ Detalle y alternativas en `specs/F-038-bandeja-revision/design.md` §10.4.
 - `specs/F-038-bandeja-revision/design.md` (§10, la conciliación)
 - `specs/F-038-bandeja-revision/tasks.md`
 - este informe; y una entrada en `progress/current.md`.
+
+## Decisiones del humano · 2026-10-20
+
+Recibidas por el líder el mismo día; aplicadas a la spec y **conciliación
+cerrada**. En `design.md` §9 (tabla «Aprobadas por el humano el
+2026-10-20») y §10.4.
+
+| Id | Decidido | Dónde queda |
+|---|---|---|
+| **Q-6** | **(b) ampliada** (no la (a) recomendada): `volcada` y `en_duda` se ven en F-038 **con todo** —estado, «Volcada como <sigrid_cod> por <quien> el <fecha>» en hora de Madrid, el motivo de una `en_duda` si lo hay, y los filtros `volcada` y `en_duda`—; la presentación del volcado de R54 de F-040 pasa aquí. **Sin ninguna acción ni formulario** sobre ellas. Motivo del humano: «la idea es gestionar toda la postventa en el portal» | R4 (e), R6, **R21.1–R21.7** (incluye el último intento `rechazado`/`no_procesado` de una aprobada y los textos de los quince códigos de parte de `sigrid_api.md` §8.9, porque son lo que trae `volcado.motivo`); `design.md` §2.2, §2.4 (`lineaDeVolcado`, `textoMotivoVolcado`), §5, §6.9, §8; `tasks.md` **Bloque 1 ter** (T4 bis, T4 ter), T5 y T7 paso 5 |
+| — | Editar o anular una incidencia ya volcada **no es de F-038**: ficha nueva que abre el líder aparte (backend y escritura en Sigrid); F-038 no espera por ella | `requirements.md` §3 («Ficha nueva (editar o anular partes ya volcados)», sin número); `design.md` §8 |
+| **Q-7** | «el sistema (ubicación puesta en el texto exacto de Sigrid)» | R22 |
+| **Q-8** | No se ofrece normalizar; R15 con tres rutas más `/.auth/me` | R15, R23 |
+| **Q-9** | El valor fuera del catálogo de hoy se conserva como opción «no está en la lista de Sigrid de hoy»; el backend lo rechaza junto al campo | R24 |
+| **Q-10** | Paso 03 `<span>` sin `href` ni `aria-current`; el 02 actual con `data-construccion` y `aria-label`; la guardia de R85 y la precisión de R87 se ajustan **como cambio a propósito de F-035**, declarado | R25; `tasks.md` T1 bis |
+
+Lo que **no** se ha tomado de R54 de F-040: los textos de los motivos propios
+del panel de F-059 (exclusiones de un ensayo, `MotivoExclusion`; ensayo no
+válido, `MotivoEnsayoNoValido`), porque no salen en el objeto `volcado` de
+`GET /api/revision` sino en las respuestas del panel: siguen en F-040.
+
+**Reparto de `tasks.md` revisado.** El Bloque 1 de la spec del 2026-10-06
+(T1–T5, todo de una vez) se parte, sin renumerar, en:
+
+- **Bloque 1** · lo puro y la API (T1 RED, T2);
+- **Bloque 1 bis** · la página y las guardias del portal (T1 bis RED, T3, T4);
+- **Bloque 1 ter** · la presentación del volcado, Q-6 (T4 bis RED, T4 ter);
+- **Bloque 1 quater** · mutación y `init.sh` por el líder (T5);
+
+cada uno con su review y parada. Bloques 2 (publicar), 3 (verificar en
+producción: diez pasos, con el 4 y el 5 nuevos) y 4 (cierre) como estaban.
+
+**Queda abierto, fuera de F-038**: la conciliación de F-040 (soltar su R54);
+la ficha nueva de editar o anular partes ya volcados (la abre el líder); P-4.

@@ -18,7 +18,8 @@
 > F-059 cerradas y desplegadas). Las decisiones aprobadas de §9 **no
 > cambian**. Lo conciliado está en su sitio con la marca *«Conciliado
 > 2026-10-20»* y resumido en **§10**; las decisiones nuevas (Q-6 a Q-10) están
-> en §10.4 con recomendación y **PENDIENTES DE APROBACIÓN DEL HUMANO**. La
+> en §9 y §10.4, **aprobadas por el humano el 2026-10-20** (Q-6 en su opción
+> (b) ampliada: la presentación del volcado es de esta ficha). La
 > conciliación no encuentra nada que obligue a tocar `services/postventa-api`.
 
 ## 0 · Dónde está el riesgo
@@ -165,6 +166,10 @@ R72 de F-035), en el orden en que se usa:
 4. **Lista**: una fila por incidencia (R4), con «<acción> por <correo> el
    <fecha>» si la tocó alguien. Debajo, «N de M» y **«Cargar más»** mientras
    haya `siguiente` (R7).
+   *Conciliado 2026-10-20 (Q-6, aprobada):* en una `volcada`, la línea
+   «Volcada como <sigrid_cod> por <quien> el <fecha>»; en una `en_duda`, la
+   suya con el motivo si lo hay; y en el detalle de una aprobada con un
+   intento fallido, «Último intento de volcado: …» (R21).
 5. **Detalle**, en el sitio (no modal): valores vigentes con «llegó así: …»,
    motivos, historial con el **correo** de cada acción (R8), y las acciones:
    «Editar» (formulario, R9) con «Guardar cambios» y «Cancelar»; «Aprobar»
@@ -231,7 +236,10 @@ Lógica pura, con `node --test` (`tests_js/revision.test.js`):
 > | `accionesDe(estado)` (nueva) | Las acciones que ofrece cada estado: la tabla de `_PERMITIDAS` (F-056 §3.3, F-059 §4.2); vacía para `volcada`, `en_duda` y un estado desconocido | R11, R21 |
 > | `quienLegible(texto)` (nueva) | El correo tal cual; `sistema:normalizar_ubicacion` y cualquier `sistema:…`, el texto de R22; `null`, nada | R4 (d), R8, R22 |
 > | `duplicadaDe(fila, cargadas)` (nueva) | «duplicada de la fila N» con el `fila_origen` de la original si está cargada; si no, «duplicada de otra fila del mismo fichero» | R4 (b) |
-> | `presentarRevision(respuesta)` | Ignora `volcado` (es F-040); usa `quienLegible`, `duplicadaDe` y `accionesDe` | R4, R21 |
+> | `presentarRevision(respuesta)` | Usa `quienLegible`, `duplicadaDe`, `accionesDe` y `lineaDeVolcado` | R4, R21 |
+> | `lineaDeVolcado(volcado, estado)` (nueva) | La línea de R21.1 (`volcada`: «Volcada como <sigrid_cod> por <quien> el <fecha>»), R21.2 (`en_duda`, con el motivo si lo hay) o R21.3 (último intento `rechazado` / `no_procesado` de una que no está volcada ni en duda); `null` sin `volcado`. Fecha con `fechaDeMadrid`, quien con `quienLegible` | R21.1–R21.3 |
+> | `textoMotivoVolcado(codigo)` (nueva) | Castellano para los quince códigos de parte de `sigrid_api.md` §8.9; uno desconocido, tal cual | R21.4 |
+> | `consultaDe(obra, filtros, cursor)` | `estado` puede ser también `volcada` o `en_duda` | R6, R21.5 |
 > | `opcionesDeOficio(catalogo, vigentes)` | «El grupo de la fila»: las entradas de `catalogo.oficios` cuyo `grupo.etiqueta` es el `oficio_nombre` vigente, primero | R9 (b) |
 > | `proveedoresDe(catalogo, oficio, vigentes)` | De **`catalogo.pares`** (los de ese `oficio_codigo`); con el oficio ambiguo sin elegir, solo el vigente o ninguno (F-056 R15) | R9 (a), (c) |
 > | `formularioDe(vigentes, catalogo)` | Un valor vigente fuera del catálogo de hoy se conserva como opción marcada (Q-9) | R24 |
@@ -253,8 +261,9 @@ navegador (R15).
 
 > *Conciliado 2026-10-20 (para F-057 y F-040, que vienen detrás):* F-057 (su
 > R23–R25) cargará páginas con `consultaDe`/`anadirPagina` hasta encontrar
-> una incidencia y abrirá su detalle y su formulario; F-040 (su R54) añadirá
-> en `js/revision.js` la línea del parte volcado y los filtros de R21. Que
+> una incidencia y abrirá su detalle y su formulario; F-040 pondrá su panel
+> de volcado en `bandeja.html` (la presentación del volcado en la lista, su
+> antiguo R54, ya es de aquí: R21). Que
 > abrir el detalle y el formulario de una fila sean funciones del componente
 > a las que se pueda llamar con un `incidencia_id` facilita las dos, sin
 > añadir nada que F-038 no use.
@@ -304,7 +313,7 @@ tira…) pasan a cinco; y el control de R62 de
 >   `tests/test_f038_front.py` (sus migas y su pie) y pasa por las mismas
 >   funciones de guardia (`problemas_r70`, `_r72`, `problemas_r77`…).
 > - **Controles que miran la sección `bandeja`** y que el cierre rompería; se
->   mudan **en el Bloque 1** a `impresion` (F-044), que sigue en
+>   mudan **en el Bloque 1 bis** (T1 bis) a `impresion` (F-044), que sigue en
 >   `construccion`: `test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done`
 >   (raíz; ya lo decía la spec), `test_f035_r62_control_el_lector_de_estados_lee_el_texto`
 >   (raíz; nuevo) y «f035 R66: control: quitar data-construccion de una
@@ -359,7 +368,7 @@ verde. Por eso va **un solo commit** que **también** pone F-038 en `done`:
 >   industrial propuesto necesita filas, las que use se mudan a su bloque
 >   (`ficha: "F-039"`); ninguna fila se queda en un bloque sin ficha ni con
 >   la de F-038.
-> - Los controles de la sección `bandeja` ya se mudaron en el Bloque 1 (§3.1):
+> - Los controles de la sección `bandeja` ya se mudaron en T1 bis (§3.1):
 >   el cierre no los toca.
 > - Otros tests que fijan la sección en construcción y que el cierre ajusta,
 >   como candidatos a confirmar con `grep`: en `tests_js/portal.test.js`, los
@@ -431,7 +440,8 @@ rutas) ni nada de F-059 o F-060.
 > | R5, R6 | node | Seis estados en el resumen; `consultaDe` con `activas` por defecto y sin `tamano`; el cursor tal cual |
 > | R9 (a)–(e) | node | Proveedores de `catalogo.pares`, con `proveedor_nombre` `null` → código; grupo por `grupo.etiqueta`; ambiguo sin elegir → solo el vigente o ninguno; ubicación y detalle vacíos → `null`; `hayCambios` falso con solo blancos de diferencia |
 > | R10 | node, pytest | El cuerpo con exactamente las claves de cada acción (seis, más `valores` u opcional `motivo`); la acción sin reintentos (`api.test.js`) |
-> | R11, R21 | node, pytest | `accionesDe` estado a estado (seis, y uno desconocido → ninguna); el HTML no pinta botones sin `accionesDe` |
+> | R11, R21.6 | node, pytest | `accionesDe` estado a estado (seis, y uno desconocido → ninguna); el HTML no pinta botones sin `accionesDe` |
+> | R21.1–R21.5, R21.7 | node, pytest | `lineaDeVolcado` en los cuatro estados del objeto y con `null`; la fecha en hora de Madrid; `volcado_por` del sistema o correo; los quince textos de §8.9 y uno desconocido tal cual; los filtros `volcada` y `en_duda` en `consultaDe` y en el selector del HTML; `volcado_por` fuera de `console` y del almacenamiento |
 > | R12, R26 | node | Cada fila de la tabla de R12 a su salida; sin respuesta → «no se sabe» y primera página; el `detalle` del error en `api.js`; un 503 con el texto del servicio |
 > | R18 | raíz, node | Los tres controles mudados a `impresion` siguen cazando (una copia estropeada en memoria) |
 > | R20 | pytest (raíz o front) | `docs/ARCHITECTURE.md` nombra `bandeja.html` y su sección |
@@ -467,11 +477,14 @@ rutas) ni nada de F-059 o F-060.
 9. *(Conciliado 2026-10-20.)* **Riesgo: tres fichas tocan `bandeja.html`**
    (F-038, F-040, F-057) y dos `importar.html` (F-038, F-057): cada una
    va detrás de la anterior, con su conciliación; F-038 no adelanta nada de
-   las otras salvo lo mínimo de R21.
+   las otras salvo la presentación del volcado, que el humano trajo aquí
+   (Q-6, 2026-10-20): F-040 se queda con el panel y, en su conciliación,
+   suelta su R54.
 
 ## 7 · Lo que se publica
 
-El front se publica **dos veces**: tras el Bloque 1 (la página, con la sección
+El front se publica **dos veces**: tras el Bloque 1 —desde el 2026-10-20, los
+bloques 1, 1 bis, 1 ter y 1 quater de `tasks.md`— (la página, con la sección
 aún «en construcción») y tras el cierre (la sección «En producción»). Siempre
 desde un worktree limpio de `dev` (`tasks.md`, Bloques 2 y 4).
 
@@ -488,7 +501,10 @@ Industrial propuesto (F-039), volcado (F-040), aprobar en bloque (F-043): sus
 restos siguen en la sección `#/bandeja` del portal, en envoltorios de bloque.
 
 *Conciliado 2026-10-20:* y en `bandeja.html`, F-040 añade el panel de volcado
-y lo de su R54 (§2.4), y F-057 el enlace profundo `?incidencia=`.
+(la presentación del volcado en la lista ya es de F-038: R21, Q-6), y F-057 el
+enlace profundo `?incidencia=`. **Editar o anular una incidencia ya volcada**
+(backend y escritura en Sigrid) es una **ficha nueva** que abre el líder
+aparte; F-038 no espera por ella y no ofrece nada sobre una `volcada`.
 
 ## 9 · Decisiones (aprobadas por el humano el 2026-10-06)
 
@@ -508,7 +524,17 @@ y lo de su R54 (§2.4), y F-057 el enlace profundo `?incidencia=`.
 D-3, D-5, D-6, D-7, D-9, D-10 y D-14 son de F-056 (su design §15).
 
 *Conciliado 2026-10-20:* ninguna cambia. D-1 está cumplida (F-056 `done`).
-Las preguntas nuevas, en §10.4.
+
+**Aprobadas por el humano el 2026-10-20** (las preguntas de la conciliación,
+§10.4):
+
+| Id | Decisión |
+|---|---|
+| Q-6 | **(b) ampliada**: `volcada` y `en_duda` se ven en F-038 **con todo** —estado, «Volcada como <sigrid_cod> por <quien> el <fecha>», el motivo de una `en_duda` si lo hay, el último intento fallido de una aprobada y los filtros `volcada` y `en_duda`—: la presentación del volcado que F-040 tenía en su R54 pasa aquí (R21). **Sin ninguna acción ni formulario** sobre ellas. Motivo del humano: «la idea es gestionar toda la postventa en el portal». Editar o anular una ya volcada es una ficha nueva aparte (§8) |
+| Q-7 | Una revisión del sistema se enseña como «el sistema (ubicación puesta en el texto exacto de Sigrid)» (R22) |
+| Q-8 | La página **no** ofrece normalizar; R15 se queda en tres rutas más `/.auth/me` (R23) |
+| Q-9 | Un valor vigente fuera del catálogo de hoy se **conserva** como opción marcada «no está en la lista de Sigrid de hoy»; el backend lo rechaza junto al campo si se guarda así (R24) |
+| Q-10 | El paso 03 de la tira en `bandeja.html`, `<span>` sin `href` ni `aria-current`; el 02 actual con `data-construccion` y su `aria-label`; la guardia de R85 (y la precisión de R87) se ajustan **a propósito** (R25) |
 
 ## 10 · Conciliación con `dev` `87a03f3` (2026-10-20)
 
@@ -519,7 +545,7 @@ Las preguntas nuevas, en §10.4.
 | Estados `volcada` y `en_duda`, sin acciones; 409 `accion_no_permitida` con `estado` y `acciones: []` | F-059 R1–R2, design §4; `EstadoRevision`, `_PERMITIDAS` | R4 (c), R11, R12, R21 |
 | `activas` sin descartadas **ni volcadas**; filtros `volcada` y `en_duda` | F-059 R4 (c)–(d), D-7 de F-059; `FiltroEstado`, `_FUERA_DE_ACTIVAS` | R6, R21 |
 | Seis estados en `resumen.por_estado` | F-059 R4 (b) | R5 |
-| Objeto `volcado` en cada incidencia y en la respuesta de la acción | F-059 R4 (a), F-2 (a); `volcado_de` | R4 (e), R21 (es F-040) |
+| Objeto `volcado` en cada incidencia y en la respuesta de la acción | F-059 R4 (a), F-2 (a); `volcado_de` | R4 (e), R21 (Q-6: de F-038) |
 | Revisiones del sistema `sistema:normalizar_ubicacion` | F-060 R22, Q-2 de F-060, design §10.1 | R4 (d), R8, R22 |
 | Normalización tras cada importación y `POST /api/revision/normalizar` | F-060 R26–R31 | R15, R23 |
 | `catalogo.pares`, `oficio_ambiguo`/`proveedor_ambiguo` en `importados` y `vigentes` | F-056 R28, R29; `_pares`, `_valores_de` | R9 (a)–(c) |
@@ -555,9 +581,15 @@ Las preguntas nuevas, en §10.4.
 - `services/postventa-api`: nada de lo encontrado lo necesita. Si al
   implementar apareciera algo que sí, **bloqueo** (límite de servicio).
 - Las specs de F-040 y F-057: sus encajes con F-038 se dejan anotados para
-  sus propias conciliaciones (`progress/spec_F-038.md`).
+  sus propias conciliaciones (`progress/spec_F-038.md`). En particular,
+  **F-040 deja de traer la presentación del volcado** (su R54): queda para su
+  conciliación quitarla de allí y apoyarse en la de F-038.
 
-### 10.4 · Decisiones nuevas — **PENDIENTES DE APROBACIÓN DEL HUMANO**
+### 10.4 · Decisiones nuevas — **aprobadas por el humano el 2026-10-20**
+
+Lo que se preguntó, con la recomendación y las alternativas que se dieron.
+**Lo decidido**: Q-6 → **(b) ampliada** (no la recomendada (a)); Q-7, Q-8,
+Q-9 y Q-10 → la recomendación. Queda en §9.
 
 | Id | Pregunta | Recomendación | Alternativas |
 |---|---|---|---|

@@ -17,10 +17,12 @@
 > cambian**. Lo que cambia es el contrato que se consume, ahora el de verdad
 > («tal como está implementado»): los requisitos tocados llevan la marca
 > *«Conciliado 2026-10-20»* con su fuente, y lo nuevo va al final, en §2 bis
-> (R20–R26). **R21–R25 dependen de las preguntas Q-6 a Q-10 y están
-> PENDIENTES DE APROBACIÓN DEL HUMANO** (`design.md` §10.4); el resto de la
-> conciliación es contrato y no decide nada nuevo. Detalle de cada cambio y su
-> porqué: `progress/spec_F-038.md`, sección «Conciliación con dev · 2026-10-20».
+> (R20–R26). R21–R25 salen de las preguntas Q-6 a Q-10, **aprobadas por el
+> humano el 2026-10-20** (`design.md` §9 y §10.4): Q-6 en su opción **(b)
+> ampliada** —la presentación del volcado (R54 de F-040) pasa a esta ficha—,
+> y Q-7 a Q-10 como se recomendaban. **Conciliación cerrada.** Detalle de
+> cada cambio y su porqué: `progress/spec_F-038.md`, secciones «Conciliación
+> con dev · 2026-10-20» y «Decisiones del humano · 2026-10-20».
 >
 > Rama `feature/F-038-bandeja-revision`. Rigor **`critico`**. Solo
 > `services/postventa-front` (más las guardias de la raíz de F-035, en el
@@ -103,7 +105,7 @@ forma salvo una clave nueva:
   fichero» (con paginación, la original puede no estar cargada); (c) el
   estado es uno de los **seis** (R21); (d) quien revisó por última vez es
   `revisado_por`, que en las revisiones del sistema no es un correo (R22); y
-  (e) el objeto `volcado` no se enseña aquí (es F-040, R21).
+  (e) el objeto `volcado` se enseña como dice R21 (Q-6, aprobada).
 - **R5.** El resumen de la obra (total, por estado, aprobadas, con algo que
   corregir y por motivo) debe salir del `resumen` de la respuesta, que es de
   **toda** la obra, no de lo cargado.
@@ -116,8 +118,8 @@ forma salvo una clave nueva:
   *Conciliado 2026-10-20 (F-059 R4 (d), D-7 de F-059; `FiltroEstado`):*
   `activas` es todo menos `descartada` **y `volcada`** (incluye `en_duda`). El
   selector de estado ofrece `activas` (por defecto), `todas`, `nueva`,
-  `editada`, `aprobada` y `descartada`; `volcada` y `en_duda`, según Q-6
-  (R21).
+  `editada`, `aprobada`, `descartada`, **`volcada`** y **`en_duda`** (Q-6,
+  aprobada: R21).
 - **R7.** **Paginación (Q-2).** CUANDO la respuesta trae `siguiente`, la
   página debe ofrecer «Cargar más» (con «N de M»: lo cargado frente a
   `total_filtrado`), que pide la página siguiente con ese `cursor` y los mismos
@@ -236,7 +238,7 @@ forma salvo una clave nueva:
   otra ruta que no sean las tres de F-056 y `/.auth/me`; el correo y el `oid`
   no se escriben en la consola ni en el almacenamiento del navegador.
   *Conciliado 2026-10-20:* `POST /api/revision/normalizar` (F-060) **no** es
-  una de las tres; si la página la ofrece o no es Q-8 (R23).
+  una de las tres, y la página no la ofrece (Q-8, aprobada: R23).
 
 ## 2 · El portal cuando F-038 se cierra
 
@@ -273,16 +275,16 @@ forma salvo una clave nueva:
   `parcial`, la copia no cambiaría) y «f035 R66: control: quitar
   data-construccion de una pestaña de partes.html salta» (front; quita la
   marca de la pestaña `bandeja`). Los dos pasan a otra sección que siga en
-  `construccion` (`impresion`, la de F-044) en el Bloque 1, como el de R62.
+  `construccion` (`impresion`, la de F-044) en el Bloque 1 bis (T1 bis), como
+  el de R62.
 - **R19.** El `README.md` del front debe contar la página, su sección, sus tres
   rutas, la paginación y la regla de R16–R17.
 
 ## 2 bis · Lo nuevo de la conciliación (2026-10-20)
 
-R20 y R26 son contrato y reglas del repositorio. **R21 a R25 son decisiones
-nuevas, PENDIENTES DE APROBACIÓN DEL HUMANO**: van redactadas con la
-recomendación de su pregunta (`design.md` §10.4) y cambian si el humano elige
-otra alternativa.
+R20 y R26 son contrato y reglas del repositorio. R21 a R25 salen de las
+preguntas Q-6 a Q-10, **aprobadas por el humano el 2026-10-20** (`design.md`
+§9 y §10.4).
 
 - **R20.** *(Regla del repositorio: la página nueva es algo que el proyecto
   expone.)* `docs/ARCHITECTURE.md` debe contar la página (su sección, sus
@@ -291,40 +293,77 @@ otra alternativa.
   `importar.html` y `oficios.html`. El segundo es de otro repositorio: lo
   actualiza **el líder**, en un commit de `azure-apps`, al publicar (T6) y al
   cerrar (T10), como hizo F-059 con su Q-6.
-- **R21.** *(Q-6, pendiente.)* MIENTRAS una incidencia esté `volcada` o
-  `en_duda`, la página debe enseñarla con su etiqueta —«Volcada a Sigrid» y
-  «En duda: se mandó a Sigrid y no consta qué pasó»— y la frase «Ya no se
-  revisa aquí», **sin ningún botón de acción ni formulario** (R11), y su
-  historial se puede leer. El objeto `volcado` (`sigrid_cod`, quién y cuándo
-  volcó, el motivo de un rechazo), la línea «Volcada como RS… por <correo> el
-  <fecha>», los textos de los motivos de rechazo y los filtros `volcada` y
-  `en_duda` son de **F-040** (su R54, aprobado el 2026-10-07), que los añade
-  a esta página; mientras tanto, se ven con `todas` (las volcadas) y con
-  `activas` (las en duda).
-- **R22.** *(Q-7, pendiente.)* CUANDO `revisado_por` (en la lista) o `correo`
-  (en el historial) es el literal `sistema:normalizar_ubicacion`, la página
-  debe enseñar «el sistema (ubicación puesta en el texto exacto de Sigrid)»
-  en lugar del literal; cualquier otro valor que empiece por `sistema:`, «el
-  sistema»; y un correo, tal cual (D-8).
-- **R23.** *(Q-8, pendiente.)* La página **no** debe ofrecer normalizar las
-  ubicaciones ni llamar a `POST /api/revision/normalizar`: la normalización
-  corre sola tras cada importación (F-060 R31) y R15 sigue con tres rutas.
-- **R24.** *(Q-9, pendiente.)* CUANDO se abre el formulario de una incidencia
-  cuyo valor vigente de unidad, ubicación, oficio o proveedor **no** está
-  entre las opciones del catálogo de hoy, el formulario debe **conservarlo**
-  —como opción propia marcada «no está en la lista de Sigrid de hoy»—, sin
-  vaciarlo en silencio; si se guarda así, el backend responde 400
-  `valores_no_validos` en ese campo y la página lo enseña junto a él (R12).
-  Es el caso de las 38 ubicaciones fuera de lista que F-060 no normaliza.
-  Cambiar la unidad sigue vaciando la ubicación que no es de la nueva (R9).
-- **R25.** *(Q-10, pendiente.)* En la tira de `bandeja.html`, el paso **03**
-  «Sigrid» (de la misma sección, `bandeja`, y para el que `enlaceSeccion`
-  devuelve `null`) debe ser un `<span>` **sin** `href` y **sin**
-  `aria-current`, porque el paso actual es solo el 02 (R86 de F-035); y el
-  paso 02, actual, lleva `data-construccion` y su `aria-label` mientras la
-  sección esté en construcción, como la pestaña de R2. La guardia de la tira
-  (`tests_js/portal.test.js`, R85) se ajusta para el paso de la propia
-  sección que no es el actual.
+- **R21.** *(Q-6, aprobada el 2026-10-20: opción (b) ampliada, «la idea es
+  gestionar toda la postventa en el portal».)* La presentación del volcado
+  —lo que la spec de F-040 tenía en su R54— es de **esta** página, a partir
+  del objeto `volcado` de cada incidencia (F-059 R4 (a)):
+  - **R21.1.** MIENTRAS una incidencia esté **`volcada`**, la página debe
+    enseñar su etiqueta «Volcada a Sigrid» y la línea «Volcada como
+    <`sigrid_cod`> por <`volcado_por`> el <`volcado_at_utc`>», con la fecha y
+    hora de Madrid y quien volcó pasado por `quienLegible` (R22); en la lista
+    y en el detalle.
+  - **R21.2.** MIENTRAS una incidencia esté **`en_duda`**, la página debe
+    enseñar su etiqueta «En duda» y la línea «Se mandó a Sigrid el <fecha> por
+    <quien> y no consta si se creó: volver a ensayar y volcar lo aclara sin
+    duplicar», y, SI `volcado.motivo` no es `null`, su texto (R21.4).
+  - **R21.3.** CUANDO una incidencia que **no** está `volcada` ni `en_duda`
+    trae un `volcado` con `estado` `rechazado` o `no_procesado` (el último
+    intento no creó el parte; la incidencia sigue `aprobada`), la página debe
+    enseñar en el detalle «Último intento de volcado: <no se creó | no se
+    llegó a procesar> el <fecha> por <quien>: <texto del motivo>».
+  - **R21.4.** Debe haber un texto en castellano para **cada código de parte**
+    de `POST /api/sigrid/partes-reclamacion` (`azure-apps/sigrid_api.md`
+    §8.9: `referencia_no_permitida`, `referencia_duplicada_en_lote`,
+    `referencia_en_conflicto`, `unidad_postventa_no_encontrada`,
+    `tipo_no_valido`, `clase_no_valida`, `oficio_no_esta_en_la_obra`,
+    `interviniente_no_esta_en_la_obra`, `interviniente_ambiguo`,
+    `interviniente_repetido`, `numeracion_agotada`, `colision_de_clave`,
+    `filas_afectadas_inesperadas`, `error_de_escritura` y
+    `presupuesto_de_tiempo_agotado`); un código que no esté en la lista se
+    enseña tal cual. Los motivos propios del panel de F-059 (exclusiones de un
+    ensayo, ensayo no válido) **no** salen en el objeto `volcado` y se quedan
+    en F-040.
+  - **R21.5.** El selector de estado ofrece los filtros `volcada` y `en_duda`
+    (R6), que van al servidor como los demás; y el resumen enseña los seis
+    estados con su etiqueta (R5).
+  - **R21.6.** Sobre una `volcada` o una `en_duda`, **ninguna acción ni
+    formulario** (R11): el backend las bloquea con 409 `accion_no_permitida`
+    (F-059 R2). La frase «Ya no se revisa aquí» acompaña a la etiqueta. Su
+    historial de revisiones se puede leer.
+  - **R21.7.** `volcado_por` es un correo (D-8): como el de las revisiones,
+    no va a la consola ni al almacenamiento del navegador (R15).
+- **R22.** *(Q-7, aprobada el 2026-10-20.)* CUANDO `revisado_por` (en la
+  lista) o `correo` (en el historial) es el literal
+  `sistema:normalizar_ubicacion`, la página debe enseñar «el sistema
+  (ubicación puesta en el texto exacto de Sigrid)» en lugar del literal;
+  cualquier otro valor que empiece por `sistema:`, «el sistema»; y un correo,
+  tal cual (D-8).
+- **R23.** *(Q-8, aprobada el 2026-10-20.)* La página **no** debe ofrecer
+  normalizar las ubicaciones ni llamar a `POST /api/revision/normalizar`: la
+  normalización corre sola tras cada importación (F-060 R31) y R15 sigue con
+  tres rutas más `/.auth/me`.
+- **R24.** *(Q-9, aprobada el 2026-10-20.)* CUANDO se abre el formulario de
+  una incidencia cuyo valor vigente de unidad, ubicación, oficio o proveedor
+  **no** está entre las opciones del catálogo de hoy, el formulario debe
+  **conservarlo** —como opción propia marcada «no está en la lista de Sigrid
+  de hoy»—, sin vaciarlo en silencio; si se guarda así, el backend responde
+  400 `valores_no_validos` en ese campo y la página lo enseña junto a él
+  (R12). Es el caso de las 38 ubicaciones fuera de lista que F-060 no
+  normaliza. Cambiar la unidad sigue vaciando la ubicación que no es de la
+  nueva (R9).
+- **R25.** *(Q-10, aprobada el 2026-10-20.)* En la tira de `bandeja.html`, el
+  paso **03** «Sigrid» (de la misma sección, `bandeja`, y para el que
+  `enlaceSeccion` devuelve `null`) debe ser un `<span>` **sin** `href` y
+  **sin** `aria-current`, porque el paso actual es solo el 02 (R86 de F-035);
+  y el paso 02, actual, lleva `data-construccion` y su `aria-label` mientras
+  la sección esté en construcción, como la pestaña de R2. **Cambio a
+  propósito de F-035**, declarado: la guardia de la tira
+  (`problemasDelRecorrido`, `tests_js/portal.test.js`) se ajusta en R85 para
+  el paso de la propia sección que no es el actual; y la última frase de R87
+  de F-035 («un paso actual sin enlace no lleva `aria-label`») queda
+  precisada por esta: un paso actual cuya sección está en construcción lleva
+  su `aria-label`, como ya exige la guardia y como la pestaña (el caso no se
+  había dado hasta `bandeja.html`).
 - **R26.** *(Contrato.)* Las tres funciones de revisión de `js/api.js` deben
   dar, en el error, además del texto y el `codigo` del servicio, **lo propio
   del cuerpo** de R12 (`errores`, `motivos`, `estado`, `acciones`, `total`),
@@ -339,8 +378,9 @@ otra alternativa.
 |---|---|
 | Estados, reglas, tabla, endpoints, paginación en el servidor, el correo guardado | **F-056** |
 | Los estados `volcada` y `en_duda`, el objeto `volcado` | **F-059** (backend, hecho) |
-| La línea del parte volcado, los motivos de rechazo, los filtros `volcada`/`en_duda`, el panel de volcado | **F-040** (su R50–R59; R21 aquí si Q-6 sale como se recomienda) |
-| Normalizar las ubicaciones | **F-060** (tras cada importación; R23 si Q-8 sale como se recomienda) |
+| El panel de volcado (ensayar, confirmar, volcar, los motivos propios del panel) | **F-040** (su R50–R53, R55–R59; su R54 pasa aquí, R21, por Q-6) |
+| Normalizar las ubicaciones | **F-060** (tras cada importación; R23) |
+| Editar o anular una incidencia ya volcada (backend y escritura en Sigrid) | **Ficha nueva (editar o anular partes ya volcados)**, que abre el líder aparte; F-038 no espera por ella |
 | La tabla ancha de `importar.html` y el enlace profundo `?incidencia=` | **F-057** |
 | Crear las incidencias en Sigrid | **F-040** |
 | Proponer industrial | **F-039** |

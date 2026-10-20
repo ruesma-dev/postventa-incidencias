@@ -153,6 +153,9 @@ aserción:
   por las mismas guardias desde `tests/test_f038_front.py`. Las listas de
   `entrada` (`PAGINAS_REMODELADAS`, `MIGAS_DE_ENTRADA`, `SUBNAV_DE_ENTRADA`,
   `PIE_PAGINAS_REALES`) no cambian.
+- (T4) `HUELLA_DE_IMPORTAR` gana UNA entrada, el `:href` del enlace a
+  `bandeja.html` de R14 de F-038: es el cambio de lógica legítimo que la
+  huella admite en el mismo commit (O11-5), y el único.
 
 Todo sin red, sin BBDD y sin IA.
 """
@@ -2999,7 +3002,8 @@ def test_f035_o10_3_control_la_huella_ve_el_ambito_y_el_orden():
 
 #: La huella funcional de `importar.html` en `9812d69`, generada con
 #: `huella_funcional` sobre ese fichero y escrita aquí a mano, a sabiendas; más
-#: la entrada de R74 (bloque 12), la única que añade su commit.
+#: la entrada de R74 (bloque 12), la única que añade su commit, y la del
+#: enlace a `bandeja.html` de R14 de F-038 (T4), la única que añade el suyo.
 HUELLA_DE_IMPORTAR = (
     ('div', (('x-data', 'appImportacion()'), ('x-init', 'iniciar()')), '', ()),
     ('input', (('@keydown.enter.prevent', 'descargarPlantilla()'), ('autocomplete', 'off'), ('type', 'text'), ('x-model', 'obra')), '', ('div[x-data=appImportacion()]',)),
@@ -3032,6 +3036,8 @@ HUELLA_DE_IMPORTAR = (
     ('td', (('x-text', "fila.avisos.join(' · ')"),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]', 'template[x-for=fila in resultado.filas]')),
     ('section', (('id', 'bandeja'),), '', ('div[x-data=appImportacion()]',)),
     ('button', ((':disabled', '!obraEscrita() || cargandoBandeja'), ('@click', 'cargarBandeja()'), ('type', 'button')), 'Ver la bandeja', ('div[x-data=appImportacion()]',)),
+    # R14 de F-038 (T4): el enlace a la bandeja de revisión de la obra del campo.
+    ('a', ((':href', "obraEscrita() ? 'bandeja.html?obra=' + encodeURIComponent(obraEscrita()) : 'bandeja.html'"),), '', ('div[x-data=appImportacion()]',)),
     ('p', (('x-show', 'errorBandeja'), ('x-text', 'errorBandeja')), '', ('div[x-data=appImportacion()]',)),
     ('p', (('x-show', 'bandejaCargada && !bandeja.length'),), '', ('div[x-data=appImportacion()]',)),
     ('span', (('x-text', 'bandejaObra'),), '', ('div[x-data=appImportacion()]',)),

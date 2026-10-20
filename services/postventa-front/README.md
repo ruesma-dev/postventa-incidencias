@@ -553,7 +553,10 @@ aquí está la página que los usa. Diseño: `specs/F-038-bandeja-revision/`.
   más» pide la siguiente con el `cursor` que dio el servidor, tal cual, y los
   mismos filtros, y **añade** sin repetir ninguna fila; debajo, «N de M». La
   página no manda `tamano` (el servidor da 100). Con `?obra=` en la URL, la
-  primera página se pide al abrir, que solo lee.
+  primera página se pide al abrir, que solo lee; así llega el enlace
+  «Revisar esta obra en la bandeja de revisión» del bloque de la bandeja de
+  `importar.html` (en la misma pestaña; esa bandeja sigue siendo de solo
+  lectura).
 - **El resumen** es el de **toda** la obra, del servicio. Tras una acción se
   ajusta aquí mismo con la diferencia entre la fila de antes y la de
   después, sin pedir nada. Hay una **deriva conocida**, que se corrige al

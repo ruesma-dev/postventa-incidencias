@@ -102,7 +102,7 @@
   `docs/ARCHITECTURE.md` (R20). La pestaña «Bandeja de revisión» lleva
   `data-construccion` (R2). |
   Verificación: `python -m pytest tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py`, `node --test "tests_js/*.test.js"` y, desde la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py` *(Precisado 2026-10-20, review del Bloque 1, D-b: en Node 24, `node --test tests_js` no ejecuta nada; se escribe `node --test "tests_js/*.test.js"`.)*
-- [ ] **T4**: el enlace de `importar.html` (R14), fuera de la `<table>` y como
+- [x] **T4**: el enlace de `importar.html` (R14), fuera de la `<table>` y como
   `<a>`, sin tocar `js/importacion.js` ni `test_f036_front.py`. |
   Verificación: `python -m pytest tests/test_f038_front.py tests/test_f036_front.py tests/test_f035_paginas.py`
 

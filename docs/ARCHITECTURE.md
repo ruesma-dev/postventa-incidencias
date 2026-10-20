@@ -1163,6 +1163,9 @@ la maqueta no pueden hablar con el backend. Diseño:
   páginas, también en `bandeja.html`, y `#/bandeja` sigue con su recuadro
   «En construcción». El paso a «En producción» es un único commit, el que
   pone F-038 en `done` (D-11 de F-038).
+- **`importar.html`** enlaza a la página de su obra («Revisar esta obra en la
+  bandeja de revisión», `bandeja.html?obra=<obra>`, misma pestaña); su
+  bandeja sigue siendo de solo lectura.
 
 ## Normalizar las ubicaciones (F-060)
 

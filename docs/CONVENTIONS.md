@@ -64,6 +64,11 @@
 - **Todo en español**, incluidos comentarios de código y mensajes de commit.
 - CSV de salida: UTF-8 BOM, `;` como separador, coma decimal (Excel ES).
 - PowerShell: UTF-8 con BOM y CRLF (salvo excepciones documentadas).
+  - **Excepción de este proyecto: los `.ps1` de `infra/` van en ASCII puro,
+    sin BOM, y con CRLF.** `test_f010_prompt_keys_infra.py` los lee con
+    `encoding="ascii"`: una tilde o un BOM lo rompen. Por eso sus comentarios
+    se escriben sin tildes ni eñes (`seccion`, `contrasena`). Hasta F-059 solo
+    lo explicaban las cabeceras de los tests de F-013, F-036 y F-059 (O-F-1).
 - Medidas DAX sin tildes.
 - Azure: imágenes con tags fechados (`rYYYYMMDD-HHmm`), nunca reescribir
   tags; secretos como secrets del recurso, jamás desplegar `.env`.

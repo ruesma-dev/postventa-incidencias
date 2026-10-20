@@ -3363,3 +3363,122 @@ tres): G3 (`app.route(route="volcado/otra", …)(volcado)` al final de `function
 
 **Verificación** (desde el scratchpad, sin `.env` ni `init.sh`): `test_f059_alcance_cerrado.py`, **165 passed in
 82.97s** (los 130 de antes y 35 nuevos de C-F-1); `ruff check`, `All checks passed!`.
+
+## T25 · guiones de consola · 2026-10-18
+
+Preparados (no ejecutados: ni el implementer los lanza ni abre el navegador) cuatro guiones para la consola (F12) de
+`importar.html` del front publicado, **fuera del repo**, junto a los de F-056 y F-060, con su estilo: todo en
+`window.T25`, `throw new Error('T25 para: …')` ante lo inesperado, identidad de `/.auth/me` con `Api.identidadDe`, y
+sin imprimir `oid`, correo, login, nombres de proveedor ni textos (solo códigos, recuentos, estados y `PVI-<id>`).
+Cada uno lleva el mismo preludio (helpers, lectura paginada de `GET /api/revision`, comprobación del `envio`), así
+que sobrevive a una recarga de la pestaña.
+
+| Fichero | Paso de T25 | Qué hace | Escribe |
+|---|---|---|---|
+| `C:\Users\pgris\t41_f059_paso2_fila_de_prueba.js` | 2 | Busca la fila «PRUEBA F-059 - ANULAR» (exactamente 1; `nueva`, `editada` o `aprobada`); elige con el catálogo de `GET /api/revision` una UPV con ubicaciones, una ubicación de su lista (recortada, ≤ 48) y un par de `catalogo.pares` (prefiere lo importado si vale; constantes `ELEGIR` para forzar); la edita con el detalle vacío, exige `motivos_no_aprobable: []`, la aprueba y relee. Re-ejecutado sobre una `aprobada` con esos valores no escribe | Solo nuestra base |
+| `C:\Users\pgris\t41_f059_paso3_ventana_cerrada.js` | 3 | Panel (la prueba candidata, `aprobada`, sin `ultimo_volcado`, sin `volcado_por`); ensayo (200, 1 `previsto`, `envio` con claves exactas, tipo `0002`, oficio, ubicación, UPV, `forma_comunicacion` 1, un interviniente `causante: false`, sin `descripcion_larga` sin detalle); volcar con `confirmado: true` → exige **503 `volcado_deshabilitado`**; un 200 lo grita (cerrar y T26) | Nada (ensayo `commit: false`) |
+| `C:\Users\pgris\t41_f059_paso4_volcar.js` | 4 | Sin `T25.autorizo = 'VOLCAR UNO'` para sin llamar a nada (la palabra se gasta en cada ejecución); ensayo nuevo solo con la prueba (exige 1 `previsto`, que sea la prueba y otro `ensayo_id`); **un** volcar cronometrado → 200, `creado`, `RS<aa>.<mm>/NNNN`; nunca reintenta (sin bucles; un segundo volcar desde la pestaña se bloquea, también tras recarga vía `sessionStorage`, salvo tras un 503 `volcado_deshabilitado`); 502 `volcado_sin_respuesta` para con «en duda, no reintentar»; siempre, en `finally`: «AHORA: 27_ventana_volcado.ps1 -Cerrar» | **Sigrid, un parte** |
+| `C:\Users\pgris\t41_f059_paso6_bandeja.js` | 6 | `GET /api/revision?obra=0626&estado=volcada`: la prueba `volcada`, `volcado.sigrid_cod` el del paso 4, `volcado_por` el correo de quien prueba (comparado, no impreso), sin `oid`; `editar` con los valores vigentes tal cual (si se aceptara, 400 `sin_cambios`) → 409 `accion_no_permitida`, estado `volcada`, acciones `[]`, y la `revision_id` no cambia; ensayo → `ensayo_id` nulo, 0 partes, 1 excluida `ya_volcada` con el mismo código | Nada |
+
+**Contraste con el código** (`interface_adapters/api/volcado.py`, `revision.py` y `function_app.py`): las formas de
+§11 «tal como están implementadas» coinciden; `volcar` pide `incidencias: [{incidencia_id, revision_id}]` (la
+`revision_id` sale del parte del ensayo); el 409 de una `volcada` sale de `comprobar_sin_sigrid` **antes** de
+`sin_cambios`, que es lo que hace inocuo el cuerpo del paso 6.
+
+**Decisiones y desviaciones** (para que el líder las valide):
+
+- **La fila se importa a mano en `importar.html`**, como dice T25.2 y como T19 de F-056: `POST /api/importaciones`
+  solo acepta el `.xlsx` de la plantilla en `multipart` y el front no carga ninguna librería de Excel, así que la
+  consola no puede crearla. Lo que sí hace el guion es **elegir** UPV, ubicación y par oficio–proveedor (la API los
+  lista) y fijarlos con `editar`: en el Excel vale cualquier UPV y oficio de los desplegables.
+- **El detalle se fija vacío** en el `editar`: el parte va sin `descripcion_larga` (sin texto libre en el ERP).
+- **Guarda añadida en el paso 3**: el guion exige `T25.ventana = 'CERRADA'`, declarado tras lanzar
+  `27_ventana_volcado.ps1` sin parámetros. Es el único guion que manda un `volcar` esperando el rechazo; con la
+  ventana abierta por error escribiría. No estaba en el encargo; se puede quitar si el líder no la quiere.
+
+**Verificación (sin red, sin navegador)**: `node --check` (node v24.14.1) de los cuatro, copiados a `.mjs` por el
+`await` de primer nivel que acepta la consola: **los cuatro OK**. Además, una simulación en el scratchpad contra
+una API falsa con estas formas: el camino feliz 2→3→4→6 pasa; el paso 3 sin `T25.ventana` para sin llamar; el
+paso 4 sin la palabra para sin volcar; el paso 4 repetido tras un 200 se bloquea (1 solo volcar); tras un 503 de la
+ventana se deja repetir con la palabra de nuevo; el paso 3 con la ventana abierta para y lo grita; el paso 2
+re-ejecutado no escribe. En la salida simulada, **0 de 35** líneas llevan el `oid`, el correo o el nombre del
+proveedor.
+
+**Pendiente**: que el humano ejecute T25 (pasos 1–7) y anote aquí los resultados; T26 y T27 siguen abiertas.
+
+## T25 · ejecución · 2026-10-19 (líder, con Claude in Chrome en la sesión del humano)
+
+Reparto acordado con el humano: el líder ejecuta los guiones en una pestaña de `importar.html` del front publicado,
+con la sesión ya iniciada por el humano; el humano lanza `28_` (la clave de la pasarela) y `27_ -Abrir` (la
+palabra tecleada). Una sola escritura en Sigrid, autorizada el 2026-10-18 («te autorizo»).
+
+| Paso | Qué | Resultado |
+|---|---|---|
+| 1 | Foto de antes (`28_ -CodigoObra 0626`, humano) | PASA. Serie `RS26.10/`, `MAX(cod)` `RS26.10/0073`. Un parte `PVI-` previo y ajeno a F-059: `RS26.09/0439`, referencia `PVI-PRUEBA-0001`, en SAT (ver «Abierto» abajo) |
+| 2a | Importar la fila | `POST /api/importaciones`: 1 leída, 1 nueva, 0 errores. Incidencia `PVI-1f01dbbc-…` |
+| 2b | `paso2` | OK. `editar` → revisión 117, `aprobar` → revisión 118. UPV `0626.03PORTAL 1.1.A`, ubicación «Hall entrada» (11 en su tipología), oficio `0005`, proveedor `5265` (25 pares en la obra), detalle vacío |
+| 3 | `27_` sin parámetros: cerrada. `paso3` | OK. Panel: 1 candidata. Ensayo: 1 previsto, tipo `0002`, `causante: false`, 1 interviniente, sin `descripcion_larga`. `volcar` → **503 `volcado_deshabilitado`** |
+| 4 | `27_ -Abrir` (humano). `paso4` | 1.ª ejecución, ~20 s tras abrir: el **ensayo** dio **502 a los 40,6 s** (la lectura a `sigrid-api` tardó 35 s; ver el paso 7); el guion paró antes del `volcar` (la red lo confirma: ningún `volcar` salvo el 503 del paso 3). 2.ª ejecución con la palabra de nuevo: ensayo 1 previsto; `volcar` → **200 `creado`, `RS26.10/0074`, 1,849 s**, resumen `creados: 1` y el resto a 0; `llamada_id` `b2d6ca93-…` |
+| 4b | `27_ -Cerrar` (líder, inmediatamente) | Releído del entorno: cerrada |
+| 6 | `paso6` | OK. Bandeja: `volcada`, `sigrid_cod` `RS26.10/0074`, `volcado_por` el correo de quien prueba (comparado, no impreso), sin `oid`, `volcado_at_utc` 2026-10-19T07:22:41Z. `editar` → 409 `accion_no_permitida`, estado `volcada`, acciones `[]`, revisión sin cambios. Ensayo → 0 previstos, 1 excluida `ya_volcada` con `RS26.10/0074` |
+
+**Desviaciones respecto a los guiones y a T25.2:**
+
+- **La fila no se importó a mano**: en la consola se bajó la plantilla de la 0626 (`descargarPlantilla`), se
+  escribió la fila 2 en el XML de la hoja con JSZip 3.10.1 (cdnjs), conservando estilos y validaciones, y se subió
+  con `Api.importarExcel` (el mismo `POST /api/importaciones` del botón). Valores del Excel: la primera UPV, la
+  primera ubicación, el primer oficio de los desplegables y su primer par oficio–proveedor; urgencia y listado en
+  blanco. El paso 2 los reeligió con el catálogo, como estaba previsto.
+- Los cuerpos de `paso3`, `paso4` y `paso6` se ejecutaron tal cual, pero dejando el resultado en `T25.salidaN` en
+  vez de `console.log`, y el 4 y el 6 lanzados sin `await` y leídos después: la herramienta del navegador corta a
+  los 45 s y el ensayo tardó más en la primera ejecución.
+- **Comprobación de la barrera en el borde tras cerrar: no hecha.** Un primer `volcar` con un ensayo inventado y
+  `incidencias: []` dio 400 `peticion_invalida` (la validación del cuerpo va antes que la barrera), así que no
+  demuestra nada. El segundo intento, ya bien formado, lo denegó el clasificador de permisos de la sesión. La
+  ventana consta cerrada por la relectura de `27_ -Cerrar`.
+
+**Abierto (humano):**
+
+- `RS26.09/0439` (`PVI-PRUEBA-0001`) sigue en SAT y no es de F-059; preguntar a sigrid-api si debería estar anulado.
+- Observación para T27: el primer ensayo tras abrir la ventana dio 502 `ensayo_sin_respuesta`. **Corregido el
+  2026-10-20 con las trazas**: no fue el arranque de nuestra Function, sino la lectura a `sigrid-api`, que tardó
+  35,17 s (`familia=sin_respuesta`); 98 s después la misma lectura tardó 5,84 s. Arranque en frío de la pasarela, lo
+  más probable.
+
+### T25 paso 7 · Application Insights (líder, 2026-10-20, solo lectura)
+
+Consulta al workspace `log-postventa-dev` (tabla `AppTraces`), del 2026-10-19 06:55 al 07:40 UTC. La consulta por
+el recurso de Application Insights (`az monitor app-insights query`) devolvía vacío para ese día; el workspace sí
+tiene los datos.
+
+- **Trazas de F-059**: panel (`obra`, recuentos), ensayo (`llamada`, recuentos, `referencia=PVI-…`, `estado`,
+  `motivo`, `sigrid_cod`), lote resuelto (`modo`, `commit`, `familia`, `segundos`), `enviados anotados` antes del
+  commit, `resultados guardados` y volcado (`creados=1`, `sigrid_cod=RS26.10/0074`). Duraciones: ensayo del paso 3,
+  1,23 s; primer ensayo del paso 4, 35,17 s y 502; segundo, 5,84 s; volcar, 1,43 s de lote y 1.656 ms de función.
+- **Sin datos personales**: de las 579 trazas de la ventana, **0** llevan `@`, **0** `oid` y **0** `login`, ni en
+  el mensaje ni en las propiedades.
+- El 503 del paso 3 y el 400 `peticion_invalida` del intento de comprobación en el borde constan como
+  `volcado/volcar no procede`, sin datos.
+
+**Paso 7: PASA.**
+
+### T25 paso 5 y T26 · 2026-10-20 (humano; anotado por el líder)
+
+| Foto `28_ -CodigoObra 0626 -Referencia PVI-1f01dbbc-…` | Antes de anular | Después de anular |
+|---|---|---|
+| Partes tip 708 con la referencia / ficha `rcp` | 1 / 1 | 1 / 1 |
+| `cod` | `RS26.10/0074` | `RS26.10/0074` |
+| Estado | **SAT** | **NPR** (NO PROCEDE) |
+| Tipo / oficio | `0002` / `0005` | `0002` / `0005` |
+| Longitud de la ubicación / intervinientes / causantes | 12 / 1 / 0 | 12 / 1 / 0 |
+| UPV de la obra | sí | sí |
+| `MAX(cod)` de la serie | `RS26.10/0077` | `RS26.10/0077` |
+| Partes `PVI-` de la obra | 2 (la nuestra y `PVI-PRUEBA-0001`) | 2 |
+
+- **Paso 5: PASA.** El `MAX(cod)` era `/0073` en la foto de antes del volcado y el parte salió `/0074`; los
+  `/0075`–`/0077` son altas posteriores de otros (O-F-2). El humano abrió el parte en Sigrid para anularlo; no se
+  pasó a PTE.
+- **T26: hecha.** Anulado desde la UI de Sigrid con Procesos → «Rechazar reclamación (NO enviar email)»; la foto
+  lo da en NPR. Ni `DELETE` ni `sql/write`. La ventana sigue cerrada desde el 2026-10-19. En la bandeja la fila de
+  prueba sigue `volcada` y no se ha tocado la tabla.
+- **T27**: `history.md`, poda de `current.md` (O-F-3), O-F-1 en `docs/CONVENTIONS.md`, `done` y `init.sh` (el líder).

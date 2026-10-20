@@ -39,7 +39,7 @@
 
 `js/revision.js` (lógica pura y componente) y `js/api.js`. Sin HTML todavía.
 
-- [ ] **T1 · RED**: `tests_js/revision.test.js` con lo puro de `design.md`
+- [x] **T1 · RED**: `tests_js/revision.test.js` con lo puro de `design.md`
   §2.4 (y su tabla «Conciliado 2026-10-20»), **salvo la presentación del
   volcado** (Bloque 1 ter): R3–R13 con la paginación (`consultaDe` sin
   `tamano` y con `activas` por defecto, el cursor tal cual, `anadirPagina` sin
@@ -56,7 +56,7 @@
   `mensajeDelServicio`) y el cuerpo del error en `clasificar` (R26). Traza del
   fallo pegada. |
   Verificación: `node --test tests_js/revision.test.js tests_js/api.test.js` **fallan** por lo nuevo (lo que ya pasaba en `api.test.js` sigue pasando)
-- [ ] **T2**: `js/revision.js` (lo puro y `crearAppRevision`, con abrir el
+- [x] **T2**: `js/revision.js` (lo puro y `crearAppRevision`, con abrir el
   detalle y el formulario como funciones que reciben un `incidencia_id`,
   `design.md` §2.4) y, en `js/api.js`, las tres funciones (las dos lecturas
   reintentan lo transitorio; `accionRevision` con `sinReintentos: true`; las

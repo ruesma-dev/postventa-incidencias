@@ -715,7 +715,10 @@ test("f038 R9 (a): los proveedores de un oficio salen de catalogo.pares; sin nom
     { codigo: "P-01", texto: "P-01 · Proveedor Ejemplo Uno", fueraDeLista: false },
     { codigo: "P-02", texto: "P-02", fueraDeLista: false },
   ]);
-  assert.deepEqual(Revision.proveedoresDe(catalogo(), "9003", valores({ oficio_codigo: "9003" })).map((p) => p.codigo), ["P-03"]);
+  assert.deepEqual(
+    Revision.proveedoresDe(catalogo(), "9003", valores({ oficio_codigo: "9003", proveedor_codigo: "P-03", proveedor_nombre: "Proveedor Ejemplo Tres" })).map((p) => p.codigo),
+    ["P-03"],
+  );
   assert.deepEqual(Revision.proveedoresDe(catalogo(), "9004", valores({ oficio_codigo: "9004", proveedor_codigo: null, proveedor_nombre: null })), []);
 });
 

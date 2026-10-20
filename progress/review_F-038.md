@@ -641,3 +641,244 @@ limpio antes y después (`git status`).
   paso 7), **O-B1b-4** (la frase «llegará con F-038» de `importar.html`; para T8 o F-057) y **O-B1b-5**
   (`subnav_esperada=None` mira solo la clase). La propuesta de automejora de la review del Bloque 1 bis sigue
   pendiente del humano.
+
+## Review del Bloque 1 ter · T4 bis y T4 ter (2026-10-20)
+
+- **Veredicto: CHANGES_REQUESTED.** Hay dos cambios: C-B1t-1, solo de tests, y C-B1t-2, de texto (un comentario, el
+  README y una aserción). El comportamiento de `js/revision.js` y `bandeja.html` es correcto y no tiene que cambiar
+  ninguna línea de código que se ejecute. Lo que falla es la guardia de R21.6 («ni un botón de acción»): solo cuenta los
+  botones cuyo `@click` está en `ACCION_DEL_CLIC`. Un botón sin clic, un enlace o un botón con un clic ajeno, a la vista
+  en una volcada, pasan **toda** la suite (familia «botón que no hace nada»). Además, el comentario y el README afirman
+  algo falso del contrato: qué motivos trae el objeto `volcado`.
+- **Alcance:** `12042ff` (T4 bis, RED), `453aa7e` (T4 ter) y `689b2eb` (el informe). Base fija `dev` `87a03f3`. He
+  revisado contra `requirements.md` R4 (e), R6, R11 y R21.1–R21.7, `design.md` §2.2, §2.4, §5, §6.9 y §10.4 (Q-6),
+  `tasks.md` (Bloque 1 ter) y `progress/spec_F-038.md`. Contrato real, en solo lectura:
+  `interface_adapters/api/volcado.py` (`volcado_de`), `domain/models/situacion_volcado.py`,
+  `domain/models/volcado.py`, `application/pipelines/volcado.py`, `infrastructure/persistencia/repositorio_volcado_pg.py`
+  y `azure-apps/sigrid_api.md` §8.9.
+- **Nivel de rigor:** `critico` (declarado). Pide RED con traza, «Evidencias», controles no ciegos y cero
+  supervivientes. La campaña con la herramienta es T5 (Bloque 1 quater), y `harness.mutacion` no muta `.js` ni `.html`:
+  aquí van **mutantes a mano** sobre lo nuevo.
+- **`bash harness/init.sh` no lo he ejecutado** (P-4); este veredicto no lo sustituye. Tampoco he tocado `.env` ni el
+  código.
+
+### Ejecutado (resultado real)
+
+| Desde | Comando | Resultado |
+|---|---|---|
+| `services/postventa-front` | `node --test --test-timeout=15000 "tests_js/*.test.js"` | 896 tests, 896 pass, 0 fail |
+| `services/postventa-front` | `python -m pytest -q -p no:cacheprovider` | 882 passed, 7 skipped |
+| raíz | `python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py` | 19 passed |
+
+- **El RED, reproducido.** He sacado `12042ff` con `git archive` a una copia en el scratchpad. `revision.test.js` da
+  162 tests: 140 pass y **22 fail**. `test_f038_front.py`: **15 failed** y 47 passed. Coincide con la traza del informe.
+  `git diff --stat 12042ff 453aa7e` toca solo `README.md`, `bandeja.html` y `js/revision.js`: T4 ter no cambia ningún
+  test.
+- `git diff --stat 87a03f3..HEAD -- services/postventa-api`: **vacío**.
+- **Tests ajenos:** en los dos ficheros de tests, las líneas quitadas son solo comentarios (la cabecera, el comentario
+  del test «`volcado` se pinta igual» y el JSDoc movido de O-B1b-6). Ninguna aserción se debilita.
+- **Datos:** `@ejemplo.invalid`, `RS99.99/000N`, la obra `9901` y UUID de ceros. `RS26.10/0074` solo sale en el
+  informe (T7 paso 5) y ya estaba en `dev` (`features.json`, `impl_F-059.md`). Ningún correo, nombre ni GUID real.
+
+### Mutantes a mano del reviewer (copia en el scratchpad, nunca en el árbol)
+
+**Cómo se ha hecho.** Hay una copia de `services/postventa-front`, con `docs/`, `harness/` y `specs/`, en el
+scratchpad. Se aplica cada mutante y se lanzan `node --test --test-timeout=15000 tests_js/revision.test.js` y
+`python -m pytest -q -p no:cacheprovider tests/test_f038_front.py tests/test_f035_paginas.py`. Los supervivientes se
+pasan además por las dos suites **enteras** del front. La primera pasada convertía los finales LF del original en CRLF,
+así que la repetí entera conservando los LF. Comprobé con `cmp` que la copia queda idéntica al original, y los
+resultados no cambian. `git status` del árbol estaba limpio antes y después.
+
+| # | Mutante | Resultado |
+|---|---|---|
+| J01 / J01b | `FILTROS_DE_ESTADO` sin `volcada` / sin `en_duda` | muere (node y pytest) |
+| J02 | `ESTADOS_DEL_VOLCADO` sin `en_duda` | muere (node) |
+| J03 | «Ya no se revisa aquí» vacío (aviso oculto) | muere |
+| J04 | `yaNoSeRevisa` invertido | muere |
+| J05 | guarda de R21.3 invertida | muere |
+| J06 | `presentarRevision` pasa un estado fijo (R21.3 nunca) | muere |
+| J07 | `switch` por el estado de la incidencia en vez del del objeto | muere |
+| J08 | `en_duda` sin línea | muere |
+| J09 | «no se creó» / «no se llegó a procesar» intercambiados | muere |
+| J10 | código desconocido → `""` | muere |
+| J11 | sin la rama de `null` (saldría «null») | muere |
+| J12 | dos textos de §8.9 intercambiados | muere |
+| J13 | una clave de la tabla con errata (`interviniente_ambiguos`) | muere |
+| J14 | «Volcada como» sin `sigrid_cod` | muere |
+| J15 | fecha y quién cruzados en la línea de una en duda | muere |
+| J16 | en duda sin su motivo | muere |
+| J17 | motivo crudo, sin `textoMotivoVolcado` | muere |
+| J18 / J19 | `volcada: ["editar"]` / `en_duda: ["descartar"]` | muere |
+| J20 | fecha cruda, sin hora de Madrid | muere |
+| J21 | sin objeto → `volcado = {}` | **equivalente** (`{}.estado` cae en `default` → `null`, igual que el original) |
+| J22 | `previsto` tratado como `rechazado` | muere |
+| J23 | `cargar()` sin `cerrarDetalle()` (formulario abierto antes de recargar) | muere |
+| J24 | `actuar` sin la puerta de `accionesDe` | muere |
+| H01 / H02 / H03 | `x-show` invertido: frase / línea de la lista / línea del detalle | muere |
+| H04 | línea del detalle con `x-show="false"` | muere |
+| H05 / H06 | sin `<option value="en_duda">` / `value="volcadas"` | muere (pytest) |
+| H07 | botón «Editar» para volcadas con `@click="abrirFormulario(…)"` | muere |
+| H09 / H10 | formulario / descarte sin la puerta de su estado | muere |
+| H11 | `<input x-model>` suelto en volcadas | muere |
+| H12 | etiqueta oculta en volcadas | muere |
+| H13 | historial oculto en volcadas | muere (node) |
+| H14 | la línea de la lista también para R21.3 | muere |
+| H15 / H16 | frase con otro texto / detalle con `revisadoPor` | muere |
+| H17 / H17b | línea de la lista con `@click` (`abrirFormulario` / `cerrarDetalle`) | muere (pytest, `_con_controles`) |
+| H08c | botón «Volcar otra vez» con `@click="cargar()"` en volcadas | muere, pero **por accidente** (el test de «un solo `cargar()`» de R3) |
+| H08 | `<button x-show="fila.yaNoSeRevisa">Volcar otra vez</button>`, sin clic | muere **solo por accidente**: caen dos **controles** porque su ancla `x-show="fila.yaNoSeRevisa"` sale ahora dos veces (y `test_f007_r32`, que relanza Node). Ninguna guardia lo ve |
+| **H08b** | `<button x-show="!fila.acciones.length">Volcar otra vez</button>`, sin clic | **sobrevive** a las dos suites enteras (896 node, 882 pytest) |
+| **H08d** | `<a x-show="!fila.acciones.length" href="#">Editar en Sigrid</a>` | **sobrevive** a las dos suites enteras |
+| **H08e** | `<template x-if="!fila.acciones.length"><button @click="cerrarDetalle()" class="rs-btn rs-btn--ok">Volcar otra vez</button></template>` | **sobrevive** a las dos suites enteras |
+
+**Total: 49 mutantes.** 45 muertos (dos de ellos, H08 y H08c, solo por accidente), 1 equivalente y **3
+supervivientes**: H08b, H08d y H08e, los tres de la familia «botón que no hace nada». Lo nuevo de `js/revision.js` está
+muy bien protegido: mueren los 24 mutantes de JS menos el equivalente. Lo mismo vale para las tres líneas, la frase, los
+quince textos, la hora de Madrid, `quienLegible` y los `x-show` invertidos y avisos ocultos del HTML.
+
+### Checkpoints
+
+Review **de bloque**: lo que solo se puede cumplir al cerrar la feature va como N/A con su motivo.
+
+**C1**
+- N/A · `init.sh` exit 0: P-4, lo ejecuta el líder. Hace falta antes de dar el bloque por cerrado.
+- [x] Existen los ficheros del arnés.
+
+**C2**
+- [x] Una sola `in_progress` (F-038, `rigor: critico`). Rama `feature/F-038-bandeja-revision`.
+- [x] `progress/current.md`: la sesión de F-038, con el Bloque 1 ter añadido.
+- N/A · resumen en `history.md`: el bloque no cierra ninguna feature.
+
+**C3**
+- [x] Arquitectura: la presentación es pura (`lineaDeVolcado`, `textoMotivoVolcado`, sin E/S). El HTML recibe la línea
+  ya compuesta y no lee el objeto `volcado` (guardia `test_f038_r21_7_*`). Ninguna ruta nueva y nada de
+  `services/postventa-api`.
+- [x] Primera línea con la ruta en los ficheros tocados. Sin `console.*`, TODOs, secretos ni dependencias nuevas.
+- N/A · parte, firma, manuscrito, reprocesar, `conest`: circuito de partes escaneados, que el bloque no toca.
+- [x] Nada se escribe sin clic: el bloque no añade ningún `@click` ni ningún campo (leído en el diff y confirmado por
+  `_con_controles`).
+- [x] Ningún escaneado ni PDF en git.
+
+**C3 bis** · N/A: el bloque no toca `docs/referencia/`.
+
+**C4**
+- [x] Cada R del bloque tiene su test, y pasa (tabla de abajo). El matiz de R21.6 está en C-B1t-1.
+- [x] Ningún test toca red ni BBDD: usan el `api` doble y `vm`. El control de R21.7 carga un `js/revision.js` estropeado
+  **en memoria**.
+- [x] MANUAL: T7 paso 5 (ver `volcada` y `en_duda` en producción) está en `tasks.md` y el informe lo da por pendiente.
+
+**C4 bis**
+- [x] `rigor: critico` declarado.
+- [x] Fase RED con la traza real: 22 fail en node y 15 failed en pytest, cada uno con su porqué y con los dos verdes
+  explicados. La he **reproducido** en una copia de `12042ff`.
+- N/A · Cobertura: la puerta de `init.sh` mide Python, y el bloque es JS, HTML, Markdown y tests (P-4 para `init.sh`).
+- N/A · Mutación con la herramienta: es T5 por plan, y `harness.mutacion` no muta `.js` ni `.html`. En su lugar, los 49
+  mutantes a mano de arriba.
+- [ ] **Cero supervivientes (mutantes a mano):** 3 supervivientes (H08b, H08d, H08e) en la guardia que el bloque
+  declara («en volcada y en duda, ni un botón de acción»). Ver C-B1t-1.
+- [x] «Evidencias» con los cuatro números. Cobertura y mutación figuran como «no disponible» y «pendiente por plan», con
+  su motivo.
+- [ ] **Controles no ciegos:** los de la línea, la frase, el selector, R21.7 y el README sí lo son. El de «ningún botón
+  en volcada» no tiene control para un botón cuyo `@click` no esté en `ACCION_DEL_CLIC`, ni para uno sin `@click`, ni
+  para un `<a>`. Ver C-B1t-1.
+- N/A · guarda por definiciones: ningún fichero sale de una lista de «no se toca».
+
+**C4 ter** · N/A: no existe `harness/rutas_sensibles.json`.
+
+**C5**
+- [x] T4 bis y T4 ter `[x]`, con sus commits `F-038 T4 bis:` y `F-038 T4 ter:`. Las casillas van en el commit del
+  informe y no en el de su tarea; el implementer lo declara, no tiene efecto y lo acepto.
+- [x] Árbol limpio antes y después de la review (salvo este fichero).
+- [x] `features.json`: F-038 `in_progress`.
+
+### Los motivos contra el contrato real (lo pedido en el encargo)
+
+- **Los quince códigos de parte** de `MOTIVOS_DE_VOLCADO` son, letra a letra y en el mismo orden, los de
+  `sigrid_api.md` §8.9 («Códigos de parte»). Los textos son fieles a lo que §8.9 cuenta de cada código. Los dos que
+  dicen «se puede volver a mandar sin riesgo» (`colision_de_clave` y `presupuesto_de_tiempo_agotado`) son exactamente
+  los que §8.9 da por reenviables. [x]
+- **Lo que manda `volcado_de` no son solo esos quince.** Ante un 400 **de lote**, `_resultados_del_volcado`
+  (`application/pipelines/volcado.py:538`) llama a `todos_no_procesados` (`domain/models/volcado.py:722`). Esa función
+  guarda cada parte como `no_procesado` con el **código de lote** como `motivo`, que es uno de los siete «Códigos del
+  lote» de §8.9: `escritura_reclamaciones_deshabilitada`, `base_de_datos_no_permitida`, `lote_demasiado_grande`,
+  `obra_no_encontrada`, `usuario_no_valido`, `serie_no_encontrada` y `estado_inicial_no_encontrado`. `volcado_de`
+  (`interface_adapters/api/volcado.py:148-154`) lo pasa tal cual. Consecuencia: una aprobada cuyo último volcado rechazó
+  el lote entero enseña hoy «Último intento de volcado: no se llegó a procesar el … por …: obra_no_encontrada». Esto
+  **cumple R21.4** (un código fuera de la lista sale tal cual), pero contradice el comentario de
+  `js/revision.js:105-109` («Son lo que trae el `motivo` del objeto `volcado`») y el README (`README.md:602-604`). Ver
+  C-B1t-2 y O-B1t-1.
+- **En duda con motivo:** con el backend de hoy no pasa nunca (respuesta a la observación del implementer). El último
+  evento de una `en_duda` es `enviado` (`repositorio_volcado_pg.py:180-181`, `motivo=None`) o `sin_respuesta`
+  (`_resultado(parte, SIN_RESPUESTA)`, sin motivo). La rama «. Motivo: …» es defensiva y no hace daño; no hay que
+  cambiar nada.
+
+### Cobertura: requisito → test (Bloque 1 ter)
+
+| Requisito | Test(s) |
+|---|---|
+| R21.1 | `f038 R21.1: una volcada…` (verano e invierno), `f038 R21.1, R22: quien volcó pasa por quienLegible`, recorrido `f038 R21.1-R21.3, R21.6: bandeja.html enseña…` (lista y detalle), `test_f038_r21_1_*` (+4 controles) |
+| R21.2 | `f038 R21.2: una en duda, sin motivo…`, `f038 R21.2, R21.4: …con motivo…`, recorrido (lista y detalle) |
+| R21.3 | `f038 R21.3: el último intento rechazado o no procesado…`, `f038 R21.3: …en cualquier estado que no sea volcada ni en duda`, recorrido (solo detalle) |
+| R21.4 | `f038 R21.4: textoMotivoVolcado da el texto de cada uno de los quince…`, `f038 R21.4: un código… tal cual; sin código, nada` |
+| R21.5 | `f038 R21.5: consultaDe…`, `f038 R21.5: el componente pide la primera página…`, `test_f038_r21_5_el_selector_de_estado_ofrece_los_ocho` |
+| R21.6 | `f038 R21.6: «Ya no se revisa aquí»…`, `presentarRevision` (0 acciones), recorrido (sin botones de acción ni campos; el historial se lee), `test_f038_r21_6_*` (+3 controles), y del Bloque 1 bis «en cada estado… los botones de accionesDe». **Ciego a botones y enlaces fuera de `ACCION_DEL_CLIC` (C-B1t-1)** |
+| R21.7 | `f038 R21.7: pintar volcadas… no escribe nada` (ejecutado, con espías) y sus 2 controles en memoria; `test_f038_r21_7_*` (+3 controles) |
+| R4 (e), R6 | los de R21 y R21.5, de arriba |
+| README (T4 ter) | `test_f038_r21_el_readme_cuenta_la_presentacion_del_volcado` y su control |
+
+### Cambios requeridos
+
+1. **C-B1t-1 · R21.6: la guardia de «ningún botón», por lista blanca** (solo tests). En `problemasDelVolcadoEnLaPagina`
+   (`tests_js/revision.test.js:2684`, el bloque `if (yaNoSeRevisa)`), los botones se filtran con `accionDelBoton(e)`.
+   Así no cuentan, aunque se vean en la fila de una volcada, un `<button>` sin `@click`, un `<button>` con un `@click`
+   que no esté en `ACCION_DEL_CLIC` ni un `<a>`. Hay que cambiarlo por una lista **blanca**: en `volcada` y `en_duda`,
+   con todo abierto y con el detalle cerrado, los `button` y `a` **visibles dentro de la fila** (bajo el `x-for` de
+   `vista().filas`) tienen que ser exactamente «Ver el detalle» (`abrirDetalle`) o «Cerrar el detalle»
+   (`cerrarDetalle`), según toque. Cualquier otro, con clic o sin él, es un problema.
+   La guardia lleva tres **controles** en memoria que no dependan de un ancla que el propio mutante duplique: H08b
+   (botón sin clic con `x-show="!fila.acciones.length"`), H08d (`<a href="#">`) y H08e (botón con
+   `@click="cerrarDetalle()"` dentro de `x-if="!fila.acciones.length"`). Las cadenas exactas están en la tabla de
+   mutantes. Hay que comprobar que los tres caen **en la guardia**, no en otro test.
+2. **C-B1t-2 · El comentario y el README dicen algo falso del contrato** (texto y una aserción). Hay que corregir
+   `js/revision.js:105-109` y `README.md:602-604`. El `motivo` del objeto `volcado` es un código de parte de §8.9 **o**,
+   en un `no_procesado` de un lote rechazado entero, uno de los siete códigos de lote de §8.9
+   (`todos_no_procesados`). Estos últimos salen hoy tal cual, como cualquier código desconocido (R21.4), hasta que el
+   humano decida O-B1t-1. Además, el test `f038 R21.3: el último intento rechazado o no procesado…` gana una aserción:
+   un `no_procesado` con `motivo: "obra_no_encontrada"` da «…: obra_no_encontrada». Así el comportamiento de hoy queda
+   fijado, y cambiarlo será un acto deliberado. El código que se ejecuta no cambia.
+
+### Observaciones (no bloquean)
+
+- **O-B1t-1 · Pregunta para el humano (vía el líder): ¿un texto para los siete códigos de lote?** Llegan a la bandeja
+  (ver arriba), y R21.4 solo pide los quince de parte. Dos de ellos son configuración del dueño de `sigrid-api`
+  (`escritura_reclamaciones_deshabilitada` y `base_de_datos_no_permitida`, el 503 de F-059); los otros cinco son
+  rechazos de la obra o del usuario. Propuesta: ampliar R21.4 con un texto para cada uno (por ejemplo,
+  `obra_no_encontrada` → «Sigrid no encuentra la obra»). Es un cambio de spec: antes de T5 o, como tarde, antes del
+  cierre.
+- **O-B1t-2 · J21 es un mutante equivalente**, no un superviviente: sin objeto, `{}` y `null` dan el mismo resultado.
+- **O-B1t-3 · Una `descartada` cuyo último intento fue rechazado** enseña «Último intento de volcado: …» en el detalle.
+  Es R21.3 al pie de la letra, y lo acepto. Si el humano lo quiere solo en `aprobada`, es un cambio de spec.
+- Siguen abiertas, como estaban: O-B1b-3, O-B1b-4 y O-B1b-5. O-B1b-6 está hecha (JSDoc recolocados) [x].
+
+### Respuesta a las decisiones del implementer (Bloque 1 ter)
+
+1. Manda el `estado` del objeto, y el de la incidencia solo para la condición de R21.3: **aceptada**. Es lo que deriva
+   `volcado_de`, y J07 muestra que está protegida.
+2. «. Motivo: <texto>» en una en duda, y sin «: » en R21.3 cuando no hay motivo: **aceptada** (la spec no fija la
+   forma).
+3. La línea de una en duda, en la lista y en el detalle: **aceptada**. Q-6 pide «con todo», y una en duda sale con
+   `activas`.
+4. El HTML no lee el objeto, y el detalle va con `rs-texto` y no con `rs-aviso--info`: **aceptada**.
+5. Los quince textos: **aceptados**, casan con §8.9 (ver arriba). Lo que falta son los de lote: O-B1t-1.
+6. Las etiquetas del selector y su orden: **aceptadas**.
+7. R21.7 ejecutado, con espías, y su control en memoria: **aceptada**. Es el listón que se pedía.
+
+### Automejora (propuesta, no aplicada)
+
+- Para `.claude/agents/reviewer.md` (mutantes a mano) y, como vale para cualquier proyecto, también para `arnes-base`:
+  - «Una guardia de *ninguna acción* se escribe con una **lista blanca** de lo que sí puede verse, no con una lista
+    negra de lo que no; y su control incluye un botón sin clic y un enlace».
+  - «Al aplicar un mutante desde Python en Windows, abre los ficheros con `newline=""`: `Path.read_text` y `write_text`
+    convierten LF en CRLF, y la copia deja de ser la del original».
+
+  Lo segundo ya pasó en la review del Bloque 1 bis y ha vuelto a pasar en esta.

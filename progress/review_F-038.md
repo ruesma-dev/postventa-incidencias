@@ -1266,3 +1266,75 @@ de N11 por el humano.
 - Apoyo el `harness/mutacion_a_mano.py` que propone el implementer. Yo he tenido que escribir otro guion para
   reejecutar su campaña (`rev_b1f/correr.py`). Con una lista declarativa y un ejecutor común, el reviewer reejecuta sin
   rehacer el guion, y la regla de «los muertos se comprueban» vale igual para lo que se muta a mano.
+
+## Re-review final del Bloque 1 (2026-10-21)
+
+- **Veredicto: APPROVED.** El Bloque 1 (1, 1 bis, 1 ter, T4 quater y 1 quater) está apto para publicar. Lo siguiente
+  es el Bloque 2 (T6, MANUAL).
+- **Condición del líder (P-4):** `bash harness/init.sh` en verde sobre `d94ab84`. El líder informa de que estaba verde
+  sobre `ec48271` (front 882 passed, raíz 115) y lo está relanzando. No lo he ejecutado, ni he tocado `.env`.
+- **Alcance:** `84645c3` (tests de C-B1f-1 a C-B1f-9), `d94ab84` (informe) y `bc8cfb9` (C-B1f-10 y N11 en
+  `current.md`, el líder). `git diff --name-only ec48271..HEAD` solo trae `tests_js/revision.test.js` y tres ficheros
+  de `progress/`. **Ningún fichero de producción cambia**, y `services/postventa-api` sigue intacto.
+
+### Ejecutado (resultado real)
+
+| Desde | Comando | Resultado |
+|---|---|---|
+| `services/postventa-front` | `node --test --test-timeout=60000 "tests_js/*.test.js"` | 997 tests, 997 pass, 0 fail |
+| `services/postventa-front` | `python -m pytest -q -p no:cacheprovider` | 882 passed, 7 skipped |
+| raíz | `python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py` | 19 passed |
+
+**Los tests anteriores no se debilitan.** El diff de `revision.test.js` solo quita el `vista.filas.reverse()` de
+`alcanceDeLaSegundaFila`, y lo vuelve a poner detrás de un parámetro nuevo, `pintarPrimeroLaAbierta = true`. Con el
+valor por defecto, la comprobación de la fila equivocada hace lo mismo que antes, y sus cinco controles FE siguen
+cayendo (ver abajo). Todo lo demás son líneas añadidas.
+
+### Los 14 RX, cazados por su test (en copia)
+
+He rehecho las cuatro copias desechables desde el árbol (`rev_b1f/c1`–`c4`, `cmp` idéntico antes y después). He
+relanzado la campaña a mano **entera**, con mis guiones: los 281 de la lista del implementer y mis 24 RX, 305 en total,
+con las cuatro suites.
+
+**Resultado: 305 evaluados, 304 muertos, 1 vivo (N11), 0 anclas que fallen, 0 muertos por tiempo y 0 muertos «solo
+por controles».** Coincide con el informe del implementer. Los 46 de T5 siguen cayendo en su test propio.
+
+Los 14 supervivientes de la review final caen todos en **su** test de comportamiento, no solo en su control:
+
+| RX | Test que cae (además de su control) |
+|---|---|
+| RX01, RX02 | «cada aviso de bandeja.html se ve justo cuando toca», con las filas nuevas del historial (C-B1f-1) |
+| RX10, RX12 | «C-B1f-2 · R8: … la fila cerrada enseña «Ver el detalle» y nada del detalle». RX11 cae ahora también aquí, además de en pytest |
+| RX14 | «C-B1f-3 (RX14): R7: dos «Cargar más» seguidos y esperados…» |
+| RX15 | «C-B1f-4 (RX15): R3: mientras la primera página está pendiente, cargando es true…» |
+| RX17 | «C-B1f-5 (RX17): … abrir el formulario vacía el mensaje de la acción anterior…» |
+| RX22 | «C-B1f-6 (RX22): … un «Cargar más» que falla enseña el texto del servicio…» |
+| RX23 | «C-B1f-7 (RX23): R8: … el historial en null mientras se pide…» |
+| RX16, RX18, RX19 | sus tres casos de C-B1f-8 (estado del componente) |
+| RX24 | «C-B1f-9 (RX24): … un incidencia_id que no está en la lista…» (comentado como fuera de contrato, igual que PR8) |
+
+Los tests son de comportamiento. Usan el doble de `api` con promesas que se sueltan a mano (`pendienteASoltar`) y
+miran el estado del componente o lo que pinta la página, nunca el texto del fichero. Los controles de este bloque
+exigen además una **señal**, un problema que nombre lo que rompe su mutante. Con eso, O-B1f-1 queda resuelta para lo
+nuevo. **[x]**
+
+### Checkpoints que cambian respecto a la review final
+
+- C4 · **[x]** MANUAL: T6 y T7 están en `progress/current.md` con sus comandos exactos: el worktree,
+  `desplegar_front.ps1 -SoloFront` y `24_ubicacion_sigrid.ps1 -CodigoObra 0677 …`. Llevan la precondición y la
+  instrucción de que la fila de prueba acabe `descartada`. Sin secretos: la raíz de la pasarela va como marcador, y el
+  nombre de la base ya figuraba en `current.md`.
+- C4 bis · **[x]** cero supervivientes: 304 muertos de 305, y el único vivo, N11, está **aceptado como equivalente
+  por el humano, por escrito, el 2026-10-20** («Sí, lo acepto»). Consta en `current.md` y en el informe.
+- C4 bis · [x] RED: cada test nuevo trae la traza de su fallo contra su mutante (`fail 1`), y la he reproducido con mi
+  campaña. [x] «Evidencias»: 305 mutantes, 4 copias y la suite con 997 tests.
+- C1 · N/A por P-4: `init.sh` sobre `d94ab84` lo lanza el líder. Es la única condición que queda para cerrar el
+  bloque.
+- Los demás checkpoints quedan como en la review final ([x] o N/A con su motivo).
+
+### Observaciones (no bloquean)
+
+- **O-B1f-4 · Un ancla de control solapada.** El test de RX14 hace caer también el control de RX22, porque las dos
+  anclas comparten `this.cargandoMas = false;`. Es inocuo: RX22 cae en su propio test.
+- Siguen como estaban: O-B1f-2 (N10 fija O-B1b-3, T7 paso 7), O-B1f-3 (la cabecera `--workers 1`), O-B1b-3/4/5,
+  O-T4q-1 y las propuestas de automejora, incluida la de las tres familias para `arnes-base`.

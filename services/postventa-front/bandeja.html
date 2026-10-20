@@ -19,7 +19,8 @@
   <!-- F-038 · specs/F-038-bandeja-revision/design.md §2.2 y §2.3. La bandeja
        de revisión: lo importado, antes de Sigrid. Editar, descartar, aprobar y
        recuperar cada incidencia contra los tres endpoints de F-056
-       (js/api.js), con el componente de js/revision.js.
+       (js/api.js), con el componente de js/revision.js. Lo volcado a Sigrid
+       (volcada, en duda) se ve, con su línea, y no se toca (R21).
        NADA SALE SIN UN CLIC (R10): cargar solo lee; cada acción sale de un
        @click y está dentro de la puerta de su estado
        (fila.acciones.includes(…), que es accionesDe de js/revision.js); sin
@@ -120,6 +121,8 @@
               <option value="editada">Editadas</option>
               <option value="aprobada">Aprobadas</option>
               <option value="descartada">Descartadas</option>
+              <option value="volcada">Volcadas a Sigrid</option>
+              <option value="en_duda">En duda</option>
             </select>
           </label>
           <label class="flex items-center gap-2 rs-texto">
@@ -189,7 +192,12 @@
                   <p class="rs-texto--fuerte" x-text="fila.descripcionCorta"></p>
                   <p class="mt-1 rs-nota" x-text="'Fila ' + fila.fila_origen + ' · ' + fila.unidad + ' · ' + (fila.ubicacion || 'sin ubicación')"></p>
                 </div>
-                <span class="rs-chip rs-chip--neutro" x-text="fila.etiquetaEstado"></span>
+                <!-- La etiqueta y, en una volcada o una en duda, «Ya no se
+                     revisa aquí» junto a ella (R21.6). -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="rs-chip rs-chip--neutro" x-text="fila.etiquetaEstado"></span>
+                  <span x-show="fila.yaNoSeRevisa" class="rs-nota" x-text="fila.yaNoSeRevisa"></span>
+                </div>
               </div>
               <p class="mt-2" x-text="'Oficio: ' + fila.oficio + ' · Proveedor: ' + fila.proveedor + ' · Urgencia: ' + (fila.urgencia || 'sin urgencia')"></p>
               <p x-show="fila.duplicada" class="mt-1 rs-nota rs-nota--atencion" x-text="fila.duplicada"></p>
@@ -199,6 +207,11 @@
                 </template>
               </ul>
               <p x-show="fila.revisadoPor" class="mt-1 rs-nota" x-text="fila.revisadoPor"></p>
+              <!-- La línea del volcado (R21.1, R21.2), ya compuesta por
+                   js/revision.js: en la lista, solo de una volcada o una en
+                   duda; el último intento fallido de otra (R21.3), solo en el
+                   detalle. -->
+              <p x-show="fila.yaNoSeRevisa && fila.lineaVolcado" class="mt-1 rs-nota" x-text="fila.lineaVolcado"></p>
               <div class="mt-3 flex flex-wrap gap-2">
                 <button type="button" x-show="abierta !== fila.incidencia_id" @click="abrirDetalle(fila.incidencia_id)"
                         class="rs-btn rs-btn--secundario rs-btn--compacto">Ver el detalle</button>
@@ -218,6 +231,11 @@
                       </div>
                     </template>
                   </dl>
+
+                  <!-- El volcado a Sigrid, en el detalle (R21.1-R21.3): la línea
+                       de una volcada o una en duda y el último intento fallido
+                       de otra. Solo se lee. -->
+                  <p x-show="fila.lineaVolcado" class="rs-texto" x-text="fila.lineaVolcado"></p>
 
                   <div>
                     <h3 class="rs-rotulo">Historial</h3>

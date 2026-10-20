@@ -1,5 +1,5 @@
 // services/postventa-front/js/revision.js
-// F-038 R3-R13, R22, R24 · La bandeja de revisión (`bandeja.html`).
+// F-038 R3-R13, R21, R22, R24 · La bandeja de revisión (`bandeja.html`).
 //
 // `specs/F-038-bandeja-revision/design.md` §2.4 (con su tabla «Conciliado
 // 2026-10-20»), contra el contrato **implementado** de F-056, F-059 y F-060
@@ -11,7 +11,7 @@
 //   estados, las acciones de cada estado, la consulta y la paginación, el
 //   ajuste del resumen, el formulario (unidad → ubicaciones, oficio →
 //   proveedores, lo que está fuera del catálogo de hoy), el cuerpo de cada
-//   acción y qué hacer con cada error.
+//   acción, qué hacer con cada error y la presentación del volcado (R21).
 // - **El componente Alpine** `appRevision`, construido por
 //   `crearAppRevision({api, parametros})`.
 //
@@ -24,8 +24,11 @@
 // navegador: aquí no hay ninguna de las dos cosas. La página no normaliza
 // ubicaciones (R23): esa ruta no se nombra.
 //
-// La presentación del volcado (R21: la línea «Volcada como …», los textos de
-// los motivos de Sigrid y los filtros `volcada` y `en_duda`) es del Bloque 1 ter.
+// **La presentación del volcado (R21, Q-6).** Del objeto `volcado` de cada
+// incidencia (F-059 R4; `volcado_de` del backend) sale UNA línea ya compuesta
+// (`lineaDeVolcado`, con la fecha de Madrid y quien volcó por `quienLegible`):
+// el HTML no lee el objeto. Una `volcada` o una `en_duda` no admite ninguna
+// acción (`accionesDe`) y lleva «Ya no se revisa aquí» junto a su etiqueta.
 
 (function () {
   "use strict";
@@ -89,11 +92,56 @@
   };
 
   /**
-   * El selector de estado (R6), con `activas` (todo menos descartadas y
-   * volcadas) primero, que es el de por defecto. `volcada` y `en_duda` entran
-   * con la presentación del volcado (Bloque 1 ter, R21.5).
+   * El selector de estado (R6, R21.5), con `activas` (todo menos descartadas
+   * y volcadas) primero, que es el de por defecto.
    */
-  const FILTROS_DE_ESTADO = ["activas", "todas", "nueva", "editada", "aprobada", "descartada"];
+  const FILTROS_DE_ESTADO = ["activas", "todas", "nueva", "editada", "aprobada", "descartada", "volcada", "en_duda"];
+
+  /** R21.6 · los estados que ya están, o pueden estar, en Sigrid: ninguna acción, y la frase. */
+  const ESTADOS_DEL_VOLCADO = ["volcada", "en_duda"];
+  const TEXTO_YA_NO_SE_REVISA = "Ya no se revisa aquí";
+
+  /**
+   * R21.4 · los códigos de parte de `POST /api/sigrid/partes-reclamacion`
+   * (`azure-apps/sigrid_api.md` §8.9), en su orden, con su texto. Son lo que
+   * trae el `motivo` del objeto `volcado`; los motivos propios del panel de
+   * volcado (exclusiones de un ensayo) no salen ahí y son de F-040.
+   */
+  const MOTIVOS_DE_VOLCADO = [
+    "referencia_no_permitida",
+    "referencia_duplicada_en_lote",
+    "referencia_en_conflicto",
+    "unidad_postventa_no_encontrada",
+    "tipo_no_valido",
+    "clase_no_valida",
+    "oficio_no_esta_en_la_obra",
+    "interviniente_no_esta_en_la_obra",
+    "interviniente_ambiguo",
+    "interviniente_repetido",
+    "numeracion_agotada",
+    "colision_de_clave",
+    "filas_afectadas_inesperadas",
+    "error_de_escritura",
+    "presupuesto_de_tiempo_agotado",
+  ];
+
+  const TEXTO_MOTIVO_VOLCADO = {
+    referencia_no_permitida: "Sigrid no admite la referencia del parte",
+    referencia_duplicada_en_lote: "La referencia del parte iba repetida en el mismo envío",
+    referencia_en_conflicto: "En Sigrid ya hay un parte con esa referencia que no casa (de otra unidad, sin ficha o repetido)",
+    unidad_postventa_no_encontrada: "La unidad no está en la obra en Sigrid",
+    tipo_no_valido: "El tipo de reclamación no existe en Sigrid",
+    clase_no_valida: "La clase de reclamación no existe en Sigrid",
+    oficio_no_esta_en_la_obra: "El oficio no está en la obra en Sigrid",
+    interviniente_no_esta_en_la_obra: "El oficio y el proveedor no están juntos en la obra en Sigrid",
+    interviniente_ambiguo: "El oficio tiene varios proveedores en la obra: hay que elegir uno",
+    interviniente_repetido: "El mismo oficio y proveedor iban dos veces en el parte",
+    numeracion_agotada: "Se ha agotado la numeración de partes en Sigrid",
+    colision_de_clave: "Sigrid estaba creando otro parte a la vez: se puede volver a mandar sin riesgo",
+    filas_afectadas_inesperadas: "Sigrid no escribió las filas que se esperaban; el parte no se creó",
+    error_de_escritura: "Sigrid dio un error al escribir el parte; no se creó",
+    presupuesto_de_tiempo_agotado: "Se acabó el tiempo antes de llegar a este parte: se puede volver a mandar sin riesgo",
+  };
 
   /** Las ocho claves de `valores` de una edición (`CAMPOS_PEDIDOS`). */
   const CAMPOS_PEDIDOS = [
@@ -303,6 +351,62 @@
     return accion + " por " + quienLegible(fila.revisado_por) + " el " + fechaDeMadrid(fila.revisado_at_utc);
   }
 
+  /** R21.4 · el texto de un código de parte de §8.9; uno desconocido, tal cual; sin código, nada. */
+  function textoMotivoVolcado(codigo) {
+    if (codigo === null || codigo === undefined || codigo === "") {
+      return "";
+    }
+    return Object.prototype.hasOwnProperty.call(TEXTO_MOTIVO_VOLCADO, codigo)
+      ? TEXTO_MOTIVO_VOLCADO[codigo]
+      : String(codigo);
+  }
+
+  /**
+   * R21.1-R21.3 · la línea del objeto `volcado` de una incidencia en `estado`,
+   * o `null`. Manda el `estado` del objeto:
+   *
+   * - `volcada`: «Volcada como <sigrid_cod> por <quien> el <fecha>»;
+   * - `en_duda`: «Se mandó a Sigrid el <fecha> por <quien> y no consta si se
+   *   creó: …» y, si trae motivo, «. Motivo: <texto>»;
+   * - `rechazado` o `no_procesado` (el último intento no creó el parte), solo
+   *   si la incidencia no está volcada ni en duda: «Último intento de volcado:
+   *   no se creó | no se llegó a procesar el <fecha> por <quien>: <texto>».
+   *
+   * Sin objeto, o con otro estado, nada. La fecha, en hora de Madrid; quien
+   * volcó (un correo, D-8), por `quienLegible`, y a ningún otro sitio (R21.7).
+   */
+  function lineaDeVolcado(volcado, estado) {
+    if (!volcado || typeof volcado !== "object") {
+      return null;
+    }
+    const fecha = fechaDeMadrid(volcado.volcado_at_utc);
+    const quien = quienLegible(volcado.volcado_por);
+    const motivo = textoMotivoVolcado(volcado.motivo);
+    switch (volcado.estado) {
+      case "volcada":
+        return "Volcada como " + comoTexto(volcado.sigrid_cod) + " por " + quien + " el " + fecha;
+      case "en_duda":
+        return (
+          "Se mandó a Sigrid el " + fecha + " por " + quien +
+          " y no consta si se creó: volver a ensayar y volcar lo aclara sin duplicar" +
+          (motivo ? ". Motivo: " + motivo : "")
+        );
+      case "rechazado":
+      case "no_procesado":
+        if (ESTADOS_DEL_VOLCADO.indexOf(estado) !== -1) {
+          return null;
+        }
+        return (
+          "Último intento de volcado: " +
+          (volcado.estado === "rechazado" ? "no se creó" : "no se llegó a procesar") +
+          " el " + fecha + " por " + quien +
+          (motivo ? ": " + motivo : "")
+        );
+      default:
+        return null;
+    }
+  }
+
   /** R11, R12 · «Aprobar» solo con motivos `[]` y en un estado que lo admite. */
   function puedeAprobar(fila) {
     return (
@@ -321,7 +425,12 @@
     return limpio.slice(0, LARGO_DESCRIPCION_CORTA).trimEnd() + "…";
   }
 
-  /** R4 · las filas listas para pintar. `respuesta` es `{obra, catalogo, incidencias}`. */
+  /**
+   * R4, R21 · las filas listas para pintar. `respuesta` es `{obra, catalogo,
+   * incidencias}`. La línea del volcado va ya compuesta (`lineaVolcado`): en
+   * la lista sale con `yaNoSeRevisa` (volcada y en duda) y en el detalle,
+   * siempre que la haya (también el último intento fallido, R21.3).
+   */
   function presentarRevision(respuesta) {
     const datos = respuesta || {};
     const cargadas = datos.incidencias || [];
@@ -350,6 +459,8 @@
             ? TEXTO_RECARGA_PARA_APROBAR
             : "",
         revisadoPor: lineaDeRevision(incidencia),
+        yaNoSeRevisa: ESTADOS_DEL_VOLCADO.indexOf(incidencia.estado) !== -1 ? TEXTO_YA_NO_SE_REVISA : "",
+        lineaVolcado: lineaDeVolcado(incidencia.volcado, incidencia.estado),
         acciones: accionesDe(incidencia.estado),
         cambios: (incidencia.cambios || []).slice(),
       };
@@ -1256,6 +1367,7 @@
     ESTADOS: ESTADOS,
     MOTIVOS: MOTIVOS,
     TEXTO_MOTIVO: TEXTO_MOTIVO,
+    MOTIVOS_DE_VOLCADO: MOTIVOS_DE_VOLCADO,
     FILTROS_DE_ESTADO: FILTROS_DE_ESTADO,
     CAMPOS_PEDIDOS: CAMPOS_PEDIDOS,
     MAX_DESCRIPCION: MAX_DESCRIPCION,
@@ -1268,6 +1380,8 @@
     fechaDeMadrid: fechaDeMadrid,
     duplicadaDe: duplicadaDe,
     lineaDeRevision: lineaDeRevision,
+    textoMotivoVolcado: textoMotivoVolcado,
+    lineaDeVolcado: lineaDeVolcado,
     puedeAprobar: puedeAprobar,
     presentarRevision: presentarRevision,
     presentarResumen: presentarResumen,

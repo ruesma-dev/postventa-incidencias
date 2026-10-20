@@ -583,8 +583,31 @@ aquí está la página que los usa. Diseño: `specs/F-038-bandeja-revision/`.
   pestaña y de los pasos 02 y 03, y fuera los restos de F-038 de la maqueta.
   Si se parte, las guardias de la raíz se ponen en rojo.
 
-Lo que **todavía** no hace: enseñar el volcado a Sigrid de una incidencia
-(Bloque 1 ter de F-038), el panel de volcado (F-040), el industrial propuesto
+- **Lo que ya está en Sigrid se ve y no se toca** (R21; decisión Q-6 del
+  2026-10-20). El filtro de estado ofrece también `volcada` («Volcadas a
+  Sigrid») y `en_duda` («En duda»), que van al servidor como los demás
+  (`activas` deja fuera las volcadas, no las que están en duda). Cada
+  incidencia trae su objeto `volcado` (F-059), y `js/revision.js` compone con
+  él **una línea**, con la fecha en hora de Madrid y quien volcó (su correo,
+  o «el sistema»); el HTML no lee el objeto:
+  - una **Volcada a Sigrid**: «Volcada como RS… por <correo> el <fecha>», en
+    la lista y en el detalle;
+  - una **En duda** (se mandó y no consta si se creó): «Se mandó a Sigrid el
+    <fecha> por <correo> y no consta si se creó: volver a ensayar y volcar lo
+    aclara sin duplicar», con el motivo si lo hay, en la lista y en el detalle;
+  - una que no está volcada ni en duda pero cuyo último intento no creó el
+    parte: «Último intento de volcado: no se creó | no se llegó a procesar el
+    <fecha> por <correo>: <motivo>», solo en el detalle.
+
+  Los motivos son los quince códigos de parte de `sigrid-api`
+  (`azure-apps/sigrid_api.md` §8.9), en castellano; uno que no se conozca
+  sale tal cual. Junto a la etiqueta de una volcada o una en duda,
+  «Ya no se revisa aquí»: **ningún botón ni formulario** (el servicio las
+  rechazaría con 409); su historial sí se lee. El correo de quien volcó, como el de
+  quien revisó, no va a la consola ni al almacenamiento del navegador.
+
+Lo que **todavía** no hace: el panel de volcado (ensayar y volcar, F-040),
+editar o anular una incidencia ya volcada (F-062), el industrial propuesto
 (F-039), aprobar o descartar varias a la vez (F-043) y abrir una incidencia
 por enlace (F-057).
 

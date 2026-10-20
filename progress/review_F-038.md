@@ -278,3 +278,59 @@ JavaScript, lanzar `node --test` **con `--test-timeout`** (y un `timeout` en el 
 que deja una promesa sin resolver cuelga la campaña en vez de contarse como muerto, y un mutante «colgado» que se mata a
 mano es fácil de confundir con uno que sobrevivió. Vale para cualquier proyecto con tests JS: si se aprueba, va también
 a `arnes-base`.
+
+## Re-review del Bloque 1 (2026-10-20)
+
+- **Veredicto: APPROVED** (Bloque 1, T1 y T2, con sus correcciones). Sigue condicionado a lo que ya dice P-4: el líder
+  informa `bash harness/init.sh` en verde sobre `fc70ef4` (front 815 passed); las correcciones posteriores son solo de
+  tests y de texto de la spec, y las he verificado yo con los comandos de abajo. No he ejecutado `init.sh` ni tocado
+  `.env`.
+- **Qué se revisa:** solo las correcciones. `0701eeb` (implementer: solo `tests_js/revision.test.js` y su informe) y
+  `bf862d1` (spec-author: R3, R4, `design.md` §2.4, `tasks.md`). `git diff 26d346d..HEAD --name-only`: nada de
+  `js/`, nada de `services/postventa-api`.
+
+### Ejecutado (resultado real, desde `services/postventa-front`)
+
+| Comando | Resultado |
+|---|---|
+| `node --test --test-timeout=15000 tests_js/revision.test.js tests_js/api.test.js` | 194 tests, 194 pass, 0 fail |
+| `node --test --test-timeout=15000 "tests_js/*.test.js"` | 831 tests, 831 pass, 0 fail |
+| `python -m pytest -q -p no:cacheprovider` | 815 passed, 7 skipped |
+
+### Los cambios pedidos
+
+| Cambio | Qué hay en `0701eeb` | Comprobación del reviewer |
+|---|---|---|
+| **C-B1-1** | `sitiosDeConfirmado` (clave en literal, con o sin comillas; asignación; corchetes; sin contar comentarios) y `exigirUnSoloSitioDeConfirmado` (un sitio, y dentro del tramo de `function cuerpoDeAccion`). Control no ciego en memoria: cuatro formas de un segundo sitio, el sitio movido fuera de la función y un comentario que no cuenta | El mutante `cuerpo["confirmado"] = true;` en `actuar`, que antes **sobrevivía**, ahora **muere**. **[x]** |
+| **C-B1-2** | El test carga primero una página buena (2 filas, `siguiente`, resumen, «2 de 5») y luego un error; comprueba filas, `siguiente`, `resumen` y `nDeM` vacíos | El mutante «un error de carga conserva la lista», antes **superviviente**, ahora **muere**. **[x]** |
+| **C-B1-3** | Test de los seis estados (contra `Revision.ESTADOS`, para que un séptimo no pase sin verbo) en `lineaDeRevision` y en `presentarRevision`, más «sin `revisado_at_utc` no hay línea» en los seis | El mutante «una `volcada`/`en_duda` dice Revisada», antes **superviviente**, ahora **muere**. **[x]** |
+| **O-B1-6** | Los intentos de mientras se guarda se lanzan sin esperarlos; se cuenta `accionRevision` **antes** de soltar la primera | Con la puerta `puedeActuar` bajada por debajo de la llamada, el test cae en **1 ms** (antes se colgaba hasta el `--test-timeout`). **[x]** |
+
+**Mi campaña a mano, otra vez entera**, sobre una exportación de `HEAD` (`0701eeb` + `bf862d1`) en el scratchpad, con
+`--test-timeout=15000`: **38 mutantes, 38 muertos, 0 supervivientes** (los 34 por familias y los 4 de orden; los de
+orden, cada uno por un test de la propia feature, los mismos de la tabla de la primera review). `git status` del árbol
+de trabajo, limpio antes y después.
+
+### Los retoques de la spec (`bf862d1`)
+
+- R3 (O-B1-5), R4 (D-a, con la tabla de verbos por estado), §2.4 con las funciones que faltaban (lista completa para
+  T5), D-b en T2, T3, T4 ter y T8, O-B1-1 (a) en T1 bis y `--test-timeout` en T5: dicen lo que propuse y casan con el
+  código y los tests de este bloque. **[x]**
+- Un matiz para T5, sin bloquear: un mutante que solo cae por tiempo (`--test-timeout`) se cuenta como muerto, pero el
+  informe de mutación tiene que **decir que murió por tiempo** y con qué test; un cuelgue no es lo mismo que un rojo
+  (O-B1-6 lo ha convertido en rojo en el único caso conocido).
+
+### Checkpoints que cambian respecto a la primera review
+
+- C4 bis · cero supervivientes (mutantes a mano del bloque): **[x]** (38/38).
+- C5 · `0701eeb` no es un commit `F-038 Tn:` sino `F-038 C-B1:`; es la corrección de una review, no una tarea nueva,
+  y el formato es claro. Lo acepto así.
+- El resto, como en la primera review (los N/A con el mismo motivo: P-4 para `init.sh`, mutación y cobertura en T5 y
+  la puerta de `init.sh`, MANUAL en los Bloques 2–4).
+
+### Lo que queda abierto (no bloquea este bloque)
+
+- **O-B1-2** (`hayCambios` normaliza también los vigentes), **O-B1-3** (textos que prometen una recarga que no hay en
+  una lectura) y **O-B1-4** (`cuerpoDeAccion` lanza fuera del `try` de `actuar`): siguen como observaciones; que T5 las
+  tenga delante al montar las familias, y el líder decide si alguna merece tarea.
+- **O-B1-1 (b)** (guarda de `puedeAprobar` en el propio `aprobar`): no aplicada; queda cubierta por la (a) en T1 bis.

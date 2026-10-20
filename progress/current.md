@@ -21,6 +21,11 @@
 > - **Bloque 1 hecho (implementer, 2026-10-20)**: T1 `7c4598f` (RED) y T2 `77122eb` (`js/revision.js`, tres funciones
 >   en `js/api.js`, `ErrorApi.detalle`). Suite JS 829/829, pytest del front 815 passed. Informe, decisiones y dudas
 >   (D-a, D-b) en `progress/impl_F-038.md`. **Siguiente**: review del Bloque 1 e `init.sh` del líder (P-4).
+> - **Bloque 1 bis hecho (implementer, 2026-10-20)**: T1 bis `fa433f5` (RED), T3 `7d9b926` (`bandeja.html`,
+>   `Portal.PAGINAS`, README, ARCHITECTURE) y T4 `7b44fed` (enlace de `importar.html`). Front 865 passed, JS 858/858,
+>   raíz 19 passed. Cambios a propósito en tests de F-035 (listas a cinco páginas, tres controles a `impresion`, guardia
+>   de la tira por Q-10, huella de `importar.html`), cada uno con su porqué en `progress/impl_F-038.md`. **Siguiente**:
+>   review del Bloque 1 bis e `init.sh` del líder (P-4).
 
 > ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
 > Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y

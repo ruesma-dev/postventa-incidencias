@@ -305,3 +305,331 @@ Bloque 1 bis o la spec) y quedan para el líder.
 | Cobertura de las líneas cambiadas | **No disponible** para JavaScript: la puerta `PUERTA COBERTURA` de `init.sh` mide Python, y aquí no hay `.py` de producción. Además `init.sh` no lo ejecuto yo (P-4): la línea la da el líder |
 | Mutantes generados / supervivientes | **Pendiente por plan**: la mutación de F-038 es el Bloque 1 quater (T5), con `--base 87a03f3`; `harness.mutacion` no muta `.js`, y las de `js/revision.js` van a mano por familias en T5 |
 | Tiempo de la suite | `revision.test.js` + `api.test.js`: 1,25 s; suite JS entera: 4,08 s; pytest del front: 28,06 s |
+
+
+## Bloque 1 bis · T1 bis, T3 y T4 (2026-10-20)
+
+Encargo: solo el Bloque 1 bis de `specs/F-038-bandeja-revision/tasks.md` (la página `bandeja.html`, las guardias del
+portal y el enlace de `importar.html`). Solo `services/postventa-front` y la guardia de la raíz que nombra la spec
+(`tests/test_f035_placeholders_vivos.py`); nada de `services/postventa-api`, ni Sigrid, ni SharePoint. `bash
+harness/init.sh` **no** se ha ejecutado (P-4: lo ejecuta el líder). Base fija, la de siempre: `dev` `87a03f3`.
+
+### Commits
+
+| Commit | Tarea |
+|---|---|
+| `fa433f5` | F-038 T1 bis: RED de `bandeja.html` y de las guardias del portal |
+| `7d9b926` | F-038 T3: `bandeja.html`, `Portal.PAGINAS`, README y ARCHITECTURE |
+| `7b44fed` | F-038 T4: el enlace de `importar.html` a la bandeja de revisión (R14) |
+
+### Ficheros tocados
+
+| Fichero | Tarea | Qué |
+|---|---|---|
+| `services/postventa-front/tests/test_f038_front.py` (nuevo) | T1 bis | 45 tests: R1, R2, R3, R6, R7, R9–R11, R13–R15, R19, R20, R23, con sus controles en memoria |
+| `services/postventa-front/tests_js/revision.test.js` | T1 bis | 10 tests nuevos al final: `bandeja.html` evaluada contra el componente de verdad (ver decisión 1) |
+| `services/postventa-front/tests/test_f035_paginas.py` | T1 bis, T4 | Listas a cinco páginas, parámetros de `problemas_r71`/`problemas_r72`, una entrada de la huella de `importar.html` (T4) |
+| `services/postventa-front/tests/test_f035_portal.py` | T1 bis | `_paginas_del_front` con `bandeja.html` |
+| `services/postventa-front/tests_js/f035_paginas.test.js` | T1 bis | Listas de barras, R44 de `bandeja.html`, controles de R70 por página, control de R66 → `impresion` |
+| `services/postventa-front/tests_js/portal.test.js` | T1 bis | Listas de la tira, la guardia de R85 (Q-10), cinco controles nuevos de la tira de `bandeja.html` |
+| `tests/test_f035_placeholders_vivos.py` (raíz) | T1 bis | Los dos controles de R62 → F-044 / `impresion` |
+| `services/postventa-front/bandeja.html` (nuevo) | T3 | La página |
+| `services/postventa-front/js/portal.js` | T3 | `"bandeja.html": "bandeja"` en `Portal.PAGINAS` y dos comentarios (cinco páginas, el 03 de R25) |
+| `services/postventa-front/README.md` | T3, T4 | Sección nueva «La bandeja de revisión (F-038)» (R19); `Portal.PAGINAS` y la tira, puestos al día; el enlace (T4) |
+| `docs/ARCHITECTURE.md` | T3, T4 | Sección nueva «La página de revisión (F-038)» (R20); el enlace (T4) |
+| `services/postventa-front/importar.html` | T4 | El enlace de R14, fuera de la `<table>` y como `<a>` |
+| `specs/F-038-bandeja-revision/tasks.md` | T1 bis, T3, T4 | `[x]` |
+
+**No se ha tocado**: `js/revision.js`, `js/api.js`, `js/importacion.js`, `tests/test_f036_front.py`,
+`css/styles.css` (la página usa solo clases `rs-*` que ya existen: la `?v=` de la hoja no cambia), `index.html`,
+`partes.html`, `oficios.html`, `staticwebapp.config.json`, `services/postventa-api/`.
+
+### Los cambios a propósito en tests de F-035, cada uno con su porqué
+
+Inventario de `design.md` §3.1 confirmado con `grep -rn "oficios.html" tests tests_js` (y `test_f035_placeholders_vivos.py`
+de la raíz). Ninguna aserción se debilita: o la lista crece (la página nueva cumple lo mismo que las demás), o el control
+se muda a otra sección que sigue en construcción, o una guardia gana un parámetro con nombre cuyo valor por defecto es el
+de siempre.
+
+**Listas de páginas que pasan a incluir `bandeja.html`:**
+
+| Dónde | Antes → ahora | Porqué |
+|---|---|---|
+| `PAGINAS_ESPERADAS` (`test_f035_paginas.py`) | 2 → 3 entradas | Es el `Portal.PAGINAS` esperado (R1). El nombre del test que lo usa (`…_de_entrada`) se deja: cambiarlo no aporta y rompe el rastro |
+| `PAGINAS_DEL_FRONT` (ídem, R73) | 4 → 5 | Ningún enlace con `target` ni `window.open` en la página nueva, con sus dos controles por página |
+| `PAGINAS_REALES_CON_VERSION` (ídem, T21) | 2 → 3 | La hoja con la `?v=` de su contenido, con su control |
+| `_paginas_del_front` (`test_f035_portal.py`, R53) | 4 → 5 | Afirma el conjunto exacto de `*.html` del front: con la página nueva, el conjunto es otro |
+| `PAGINAS_CON_BARRA` (`f035_paginas.test.js`, R66) | 4 → 5 | La pestaña de cada sección en construcción, marcada también en la barra nueva |
+| `PAGINAS_REALES_CON_BARRA` (ídem, R70) | 2 → 3 | Los `href` de la barra contra `enlaceSeccion(id, "bandeja.html")` |
+| `PAGINAS_CON_RECORRIDO` (`portal.test.js`, R84–R87) | 4 → 5 (`["bandeja.html", "bandeja.html"]`) | La tira contra `Portal.RECORRIDO`; el control «07 cambiado a datos» la recorre también |
+| `PAGINAS_CON_RECORRIDO_ESTATICO` (ídem, R88) | 3 → 4 | La tira de la página nueva es HTML estático |
+| Test de R44 desde las páginas reales (`f035_paginas.test.js`) | el de `importar.html` y `oficios.html` sin cambios; **uno nuevo** para `bandeja.html` | Su sección actual es `bandeja` y `entrada` es un enlace: no cabe en el bucle de las dos de entrada sin cambiar sus aserciones |
+
+**Listas de `entrada` que no se amplían** (como dice §3.1): `PAGINAS_REMODELADAS`, `MIGAS_DE_ENTRADA`,
+`SUBNAV_DE_ENTRADA`, `PIE_PAGINAS_REALES`. Tampoco, por ser de `entrada` o del portal y no de las páginas:
+`TARJETAS_DE_ENTRADA` y los tests de R67/R68 (el portal no enlaza `bandeja.html` hasta el cierre, T8), `_ENLACES_F036`
+(R59 g, los enlaces del portal), los controles de `oficios.html` (T31, O10-3, R75, R88) y el recuento de selectores de
+fichero de O10-2. `test_f036_front.py`: **sin tocar** (sus guardias siguen valiendo con el enlace de R14).
+
+**Guardias que ganan un parámetro** (`test_f035_paginas.py`):
+
+- `problemas_r71(pagina, html, migas_esperadas=MIGAS_DE_ENTRADA, subnav_esperada=SUBNAV_DE_ENTRADA)`: con
+  `subnav_esperada=None` la página **no** puede llevar `rs-subnav` (R1: la sección `bandeja` tiene una sola página
+  real). Por qué: `bandeja.html` tiene otras migas y ninguna subnavegación, y así pasa por la misma guardia que las de
+  `entrada` en vez de una copia.
+- `problemas_r72(…, texto_del_pie=PIE_PAGINAS_REALES)` y `_r72(…, pie=…)`: el pie es la estructura común y su texto,
+  de cada sección (R1 conciliado). Por qué: igual.
+- Control de que los parámetros no aflojan nada: `test_f038_r1_control_las_guardias_de_entrada_siguen_pidiendo_lo_suyo`
+  (por defecto, lo de siempre; con la subnavegación quitada, o con las migas o el pie de la bandeja, `importar.html`
+  salta). Al hacerlo se cazó un choque de nombres (`pie` y `migas` eran ya variables locales de las dos funciones): la
+  primera ejecución puso en rojo `test_f035_r72_…[importar.html]` y `[oficios.html]`; se renombró el parámetro y
+  volvieron a verde **sin tocar ninguna aserción**.
+- El mensaje de T21 dice «las cinco páginas» en vez de «las cuatro» (solo el texto del error).
+
+**Los tres controles que miraban `bandeja`, mudados a `impresion` (F-044), R18:**
+
+| Control | Antes → ahora | Porqué |
+|---|---|---|
+| `test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done` (raíz) | F-038 `done` → `bandeja` `parcial` · ahora F-044 `done` → `impresion` **`real`** | `impresion` solo tiene F-044: con ella `done` es `real`, no `parcial`; el control sigue exigiendo un solo problema y que nombre la sección |
+| `test_f035_r62_control_el_lector_de_estados_lee_el_texto` (raíz) | `bandeja` → `parcial` · ahora `impresion` → `parcial` | Tras el cierre, `bandeja` ya está en `parcial` y la copia no cambiaría |
+| «f035 R66: control: quitar data-construccion de una pestaña de partes.html salta» | pestaña `bandeja` · ahora `impresion` | El cierre quita esa marca de verdad (R17) |
+
+Cada uno **sigue cazando su copia estropeada**, también después del cierre. Comprobado simulando el cierre en memoria
+(F-038 `done` y `bandeja` en `parcial` en `js/portal.js`; en `partes.html`, fuera las tres marcas de `bandeja`):
+
+```
+cierre simulado: estados que no cuadran = []
+control R62 (F-044): ['«impresion» declara estado «construccion» y sus fichas dicen «real»: cámbialo en Portal.SECCIONES (js/portal.js, R62)']
+control lector (impresion): True ['«impresion» declara estado «parcial» y sus fichas dicen «construccion»: cámbialo en Portal.SECCIONES (js/portal.js, R62)']
+control lector VIEJO tras el cierre: la copia cambia = False
+control R62 VIEJO (F-038 done) tras el cierre: problemas = []
+
+marcas de bandeja quitadas: 3
+control VIEJO (bandeja) tras el cierre: encuentra algo que quitar = false
+control NUEVO (impresion) tras el cierre: encuentra algo que quitar = true
+```
+
+Es decir: los controles viejos se habrían quedado ciegos (o en rojo por «no encuentra») en el commit de cierre; los
+nuevos siguen cazando.
+
+**Controles de R70 reorganizados** (`f035_paginas.test.js`): «un href distinto» y «la pestaña actual como enlace»
+dependen de la sección de la página (en las de `entrada` la actual es «Entrada»; en `bandeja.html`, «Bandeja de
+revisión»), así que van en `CONTROLES_R70_POR_PAGINA`: **los de `importar.html` y `oficios.html` son exactamente los de
+antes**, con el mismo nombre de test, y `bandeja.html` lleva los suyos. Los otros cinco controles valen para las tres.
+
+**Cambio a propósito de F-035 en la guardia de la tira (R25, Q-10)** (`problemasDelRecorrido`, `portal.test.js`):
+
+- R85: si `enlaceSeccion` da `null` y el paso **no** es el actual (el 03 en `bandeja.html`), se exige `<span>` sin
+  `href` **y sin** `aria-current`; si es el actual, lo de siempre (`<span aria-current="step">`). En las páginas que ya
+  había no cambia nada: en ellas el único paso sin enlace es el actual.
+- R87: la guardia ya exigía la marca y el `aria-label` al paso actual cuya sección está en construcción; se deja
+  escrito en su comentario como la precisión de R25 (el caso no se había dado).
+- Por qué hacía falta: la guardia **vieja** (la de `87a03f3`) sobre la `bandeja.html` de T3 da exactamente el choque
+  de R85 con R86 que describe la spec:
+
+```
+✖ GUARDIA VIEJA sobre bandeja.html (34.3667ms)
+  + actual - expected
+  + [
+  +   'paso 3 (03 Sigrid): es el paso de esta página: <span aria-current="step"> sin href (R85)'
+  + ]
+  - []
+```
+
+- Controles nuevos (todos sobre `bandeja.html`, en memoria): un 03 con `aria-current="step"` salta (R85); el 03 como
+  enlace a `./#/bandeja` salta (R85); el 02 actual sin su `aria-label` salta (R87); el 02 sin su `data-construccion`
+  salta (R87); el 02 sin `aria-current` salta (R85).
+
+**La huella funcional de `importar.html` (T4)**: `HUELLA_DE_IMPORTAR` gana **una** entrada, el `:href` del enlace. Es
+el mecanismo previsto (O11-5: «un cambio de lógica legítimo la amplía en el MISMO commit»). Antes de ampliarla, la
+huella cazó el enlace y solo el enlace:
+
+```
+FAILED tests/test_f035_paginas.py::test_f035_o11_5_importar_conserva_su_huella_funcional
+E         + ('a', ((':href', "obraEscrita() ? 'bandeja.html?obra=' + encodeURIComponent(obraEscrita()) : 'bandeja.html'"),), '', ('div[x-data=appImportacion()]',))
+1 failed, 466 passed in 11.36s
+```
+
+### T1 bis · RED
+
+Desde `services/postventa-front`:
+
+```
+python -m pytest -q -p no:cacheprovider tests/test_f038_front.py
+...
+FAILED tests/test_f038_front.py::test_f038_r19_r20_la_documentacion_cuenta_la_pagina[readme-r19]
+FAILED tests/test_f038_front.py::test_f038_r19_r20_la_documentacion_cuenta_la_pagina[architecture-r20]
+44 failed, 1 passed in 6.75s
+E       FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\pgris\\PycharmProjects\\postventa-incidencias\\services\\postventa-front\\bandeja.html'
+E       AssertionError: assert None == 'bandeja'                       (Portal.PAGINAS sin bandeja.html)
+E       AssertionError: importar.html: 0 enlaces a bandeja.html; tiene que haber uno
+E       AssertionError: README.md: falta la sección «La bandeja de revisión (F-038)»
+E       AssertionError: ARCHITECTURE.md: falta la sección «La página de revisión (F-038)»
+```
+
+El único que pasa es `test_f038_r1_control_las_guardias_de_entrada_siguen_pidiendo_lo_suyo`, que no lee
+`bandeja.html`: vigila los parámetros nuevos de R71/R72 sobre `importar.html` y pasa por construcción.
+
+```
+node --test --test-timeout=15000 tests_js/portal.test.js tests_js/f035_paginas.test.js
+✖ f035 R66: en la barra de bandeja.html, data-construccion y aria-label solo en las secciones en construcción
+✖ f035 R66: control: el lector ve las ocho pestañas de cada barra, en su orden
+✖ f035 R44 / f038 R1: enlaceSeccion desde bandeja.html: Bandeja de revisión es la actual
+  AssertionError [ERR_ASSERTION]: Portal.PAGINAS declara bandeja.html en su sección
+  + undefined
+  - 'bandeja'
+✖ f035 R70: la barra de bandeja.html tiene las ocho pestañas, en su orden, con los href de enlaceSeccion(id, "bandeja.html")
+✖ f035 R70: control: (los siete) … en la barra de bandeja.html salta
+✖ f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, enlaceSeccion y enConstruccion
+✖ f035 R88: la tira de bandeja.html es HTML estático
+✖ f035 R84-R87: control: (los cinco de bandeja.html) … salta
+✖ f035 R84-R87: control: la guardia lee la fuente: con la sección de 07 cambiada a datos, la tira salta
+  Error: ENOENT: no such file or directory, open 'C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front\bandeja.html'
+ℹ tests 231
+ℹ pass 212
+ℹ fail 19
+```
+
+Los 212 que pasan son los de siempre (las dos de entrada, el portal y el circuito), sin cambios en sus aserciones.
+
+```
+node --test --test-timeout=15000 tests_js/revision.test.js
+✖ f038 T1 bis: cada expresión de Alpine de bandeja.html se evalúa contra el componente sin error
+✖ f038 R11, R21.6: en cada estado, bandeja.html pinta justo los botones de accionesDe, ni uno más
+✖ f038 R10, R11 (O-B1-1 a): el :disabled de «Aprobar» lee fila.aprobable Y puedeActuar(), ni uno sin el otro
+✖ f038 R10: sin puedeActuar() (sin oid, sin correo o guardando), ningún botón de acción está habilitado
+✖ f038 R13: la guarda de salida pide confirmación solo con una edición sin guardar
+… (y sus controles)
+  Error: ENOENT: no such file or directory, open '…\services\postventa-front\bandeja.html'
+ℹ tests 124
+ℹ pass 114
+ℹ fail 10
+```
+
+Raíz, que tenía que seguir en verde con los controles ya mudados:
+
+```
+python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py        (desde la raíz)
+19 passed in 0.40s
+```
+
+### T3 · verde (salvo R14, que es de T4)
+
+```
+python -m pytest -q -p no:cacheprovider tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py
+FAILED tests/test_f038_front.py::test_f038_r14_importar_enlaza_a_la_bandeja_de_su_obra_en_la_misma_pestana
+FAILED tests/test_f038_front.py::test_f038_r14_control_el_enlace_estropeado_salta[con-target]
+FAILED tests/test_f038_front.py::test_f038_r14_control_el_enlace_estropeado_salta[como-boton]
+FAILED tests/test_f038_front.py::test_f038_r14_control_el_enlace_estropeado_salta[otro-dentro-de-la-tabla]
+4 failed, 560 passed, 7 skipped in 13.27s
+
+node --test --test-timeout=15000 "tests_js/*.test.js"
+ℹ tests 858
+ℹ pass 858
+ℹ fail 0
+
+python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py        (desde la raíz)
+19 passed in 0.40s
+```
+
+La verificación de T3 en `tasks.md` incluye `tests/test_f038_front.py`, que lleva los tests de R14 escritos en T1 bis y
+que solo pasan con T4: tras T3, esos cuatro eran los únicos rojos, y tras T4 todo verde (abajo). No es una desviación de
+alcance, solo el orden de las tareas; lo dejo dicho.
+
+### T4 · verde, y el bloque entero
+
+```
+python -m pytest -q -p no:cacheprovider tests/test_f038_front.py tests/test_f036_front.py tests/test_f035_paginas.py
+467 passed in 9.62s
+
+python -m pytest -q -p no:cacheprovider                       (todo el front)
+865 passed, 7 skipped in 34.81s
+
+node --test --test-timeout=15000 "tests_js/*.test.js"
+ℹ tests 858
+ℹ pass 858
+ℹ fail 0
+ℹ duration_ms 4382.9898
+
+python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py        (desde la raíz)
+19 passed in 0.40s
+```
+
+(Los 7 `skipped` son de antes; ninguno es de F-038.)
+
+### Decisiones de diseño (para el reviewer)
+
+1. **Tests de Node sobre el HTML, además de los de pytest** (`tests_js/revision.test.js`, no nombrado en T1 bis). El
+   texto del HTML no dice si una expresión de Alpine existe en el componente ni qué se pinta en cada estado, y sin
+   navegador era la única forma de probarlo. `recorrerBandeja` lee `bandeja.html` como lo pintaría Alpine con el
+   componente **de verdad** (`crearAppRevision` con el `api` doble, una incidencia cargada, el detalle, el historial,
+   el formulario y el segundo clic de descartar forzados en el alcance): un `x-if` falso no pinta lo de dentro, un
+   `x-for` pinta su primer elemento, un `x-show` falso deja oculto, y cada expresión se evalúa con `with` (como Alpine).
+   Con él: (a) en los **234 elementos** que se pintan con todo abierto, cada expresión se evalúa sin error y cada
+   manejador es una función del componente; (b) en **cada uno de los seis estados**, los botones de acción pintados son exactamente los
+   de `accionesDe` (una `volcada` o `en_duda`: ninguno, ni formulario ni motivo, R21.6); (c) el `:disabled` de «Aprobar»
+   evaluado en las cuatro combinaciones de `fila.aprobable` × `puedeActuar()` (O-B1-1 a); (d) sin `puedeActuar()`,
+   todos los botones de acción deshabilitados; (e) la guarda de salida ejecutada en un contexto aparte. Cada uno con su
+   control en memoria. Lo que se ve leyendo el texto (estructura, guardias de F-035, cargas, enlaces) está en pytest.
+2. **La puerta de cada acción es un `x-if`, no un `x-show`**: un botón que no es de su estado no está en el DOM (ni se
+   enfoca). `fila.acciones` sale de `accionesDe` (vía `presentarRevision`). El formulario y el panel de descarte llevan
+   también `fila.acciones.includes('editar'|'descartar')` en su `x-if`, aunque el componente ya no los abre en un estado
+   que no los admite: la puerta está en los dos sitios.
+3. **«Aprobar»**: `:disabled="!fila.aprobable || !puedeActuar()"` (O-B1-1 a), con los motivos a la vista («No se puede
+   aprobar: …») y el aviso de `fila.avisoAprobar` (R12, `motivos_no_aprobable: null`). O-B1-1 (b) (la guarda en el propio
+   `aprobar`) **no** se aplica: es `js/revision.js`, aprobado, y no está en este bloque.
+4. **El selector de estado lleva sus opciones escritas** (con su texto: «Activas (todo menos descartadas y volcadas)»,
+   «Todas», «Nuevas»…), y un test exige que sus `value` sean `FILTROS_DE_ESTADO` de `js/revision.js`, en su orden. Cuando
+   el Bloque 1 ter añada `volcada` y `en_duda` a esa lista, el test se pondrá en rojo hasta que el HTML las ofrezca: es
+   a propósito.
+5. **El `beforeunload` es un `<script>` en línea de `bandeja.html`** (design §2.4: «vive en `bandeja.html`»), **antes**
+   de los cuatro scripts propios: `problemas_de_carga` de F-036 exige que los scripts propios cierren el `<body>`. Lee
+   `Revision.hayEdicionSinGuardar(Alpine.$data(<div x-data="appRevision()">))` dentro de un `try`; si no puede leer,
+   no pregunta. Una sola escucha, sin red, sin almacenamiento, sin navegar. No es `js/guarda_salida.js` (R81 de F-035).
+6. **Detalle en su sitio**: «Ver el detalle» abre el detalle bajo su fila (`abrirDetalle(fila.incidencia_id)`, que solo
+   lee). El mensaje de una acción (`mensajeAccion`) se enseña en el detalle abierto y, si la acción recargó la lista y el
+   detalle se cerró, en el panel de la obra. «Editar» se deshabilita mientras el formulario está abierto.
+7. **Las opciones de los desplegables llevan `:selected`** además del `x-model`, porque las opciones salen de un
+   `x-for` y el valor elegido tiene que verse aunque las opciones lleguen después del modelo. Unidad, oficio, proveedor,
+   urgencia y listado ofrecen solo lo de `opciones()` (las funciones puras de T2: catálogo de la respuesta, y el vigente
+   fuera de lista conservado y marcado, R24); la ubicación vacía se ofrece como «Sin ubicación (no se podrá aprobar)».
+8. **Sin sesión completa**, tras cargar, un aviso dice que se puede consultar pero no revisar (sin enseñar el correo ni
+   el `oid`).
+9. **El enlace de `importar.html`** (T4): `href="bandeja.html"` (sin JavaScript, lleva a la página) y
+   `:href="obraEscrita() ? 'bandeja.html?obra=' + encodeURIComponent(obraEscrita()) : 'bandeja.html'"`, con la obra del
+   campo «Código de obra», que es de la que es la bandeja de ese bloque. Fuera de la `<table>`, en `section#bandeja`, en
+   la misma pestaña, tras «Para corregir, elegir el oficio, poner la ubicación o aprobar:» (design §2.5).
+
+### Observaciones (no bloquean; para el líder)
+
+- **La frase de `importar.html`** «Solo lectura: revisar, corregir o descartar incidencias llegará con F-038.» queda
+  junto al enlace nuevo y ya no es del todo cierta. **No la he cambiado**: R14 dice «ningún otro cambio en esa página».
+  Propuesta: quitar «llegará con F-038» en el cierre (T8) o dejárselo a F-057, que rehace esa tabla.
+- **«Ya no se revisa aquí»** (R21.6) no está todavía en la página: `tasks.md` lo pone en T4 ter (Bloque 1 ter). Hoy una
+  `volcada` o `en_duda` sale con su etiqueta y **sin** ningún botón ni formulario (probado en los seis estados).
+- **Párrafos fechados de F-035** en el README y en `docs/ARCHITECTURE.md` siguen diciendo «cuatro páginas» (las
+  enmiendas del 2026-10-05 y del 2026-10-06). He puesto al día los dos del README que describen `Portal.PAGINAS` y la
+  tira, y las secciones nuevas cuentan la quinta página; el resto son historia fechada y no los he reescrito.
+- O-B1-2, O-B1-3 y O-B1-4 (Bloque 1) siguen abiertas: no son de este bloque.
+
+### Fuera de este bloque (y quién lo hace)
+
+- La presentación del volcado (`lineaDeVolcado`, `textoMotivoVolcado`, los filtros `volcada`/`en_duda`, «Ya no se
+  revisa aquí»): Bloque 1 ter (T4 bis, T4 ter).
+- Mutación (herramienta y a mano por familias, también sobre `bandeja.html` y las guardias): Bloque 1 quater (T5).
+- `bash harness/init.sh`: el líder (P-4).
+- `azure-apps/postventa_incidencias.md` (R20): el líder, al publicar (T6).
+
+### Verificaciones MANUAL pendientes
+
+- Ver la página en un navegador (Alpine de verdad, el CDN de Tailwind, el aspecto): **no** lo he hecho; es T7 en
+  producción. Lo que sí se ha probado sin navegador está en la decisión 1.
+
+## Evidencias (Bloque 1 bis)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | pytest del front: **865 passed, 7 skipped** (815 antes del bloque; +45 de `test_f038_front.py` y +5 por las listas que crecen); suite JS entera: **858, 858 pass** (831 antes; +10 en `revision.test.js`, +17 en `portal.test.js` y `f035_paginas.test.js`); raíz `test_f035_placeholders_vivos.py`: **19 passed** |
+| Cobertura de las líneas cambiadas | **No disponible**: lo cambiado es HTML, JavaScript y tests; la puerta `PUERTA COBERTURA` de `init.sh` mide Python y aquí no hay `.py` de producción. Además `init.sh` lo ejecuta el líder (P-4) |
+| Mutantes generados / supervivientes | **Pendiente por plan** (T5, Bloque 1 quater). En este bloque, cada guardia nueva lleva su control en memoria (la página estropeada a propósito hace saltar su test), y los tres controles mudados se han comprobado contra un cierre simulado (arriba) |
+| Tiempo de la suite | pytest del front: 34,81 s; suite JS entera: 4,38 s; raíz: 0,40 s |

@@ -932,3 +932,74 @@ filtros.
   la aserción de `obra_no_encontrada` y los comentarios de C-B1t-2 cambian con ella.
 - **O-B1t-3**, decidida: se deja. Siguen como estaban O-B1b-3, O-B1b-4 y O-B1b-5, y también las dos propuestas de
   automejora (la de la lista blanca y la de `newline=""`), que esperan al humano.
+
+## Review de T4 quater (2026-10-20)
+
+- **Veredicto: APPROVED** (T4 quater: los siete códigos de lote de R21.4 con su texto; O-B1t-1, que decidió el humano).
+  Sujeto a P-4: no he ejecutado `bash harness/init.sh` ni he tocado `.env`.
+- **Alcance:** la spec en `f024bd3` (R21.4 ampliada con su tabla, design §2.4 y T4 quater en `tasks.md`) y la tarea en
+  `ba919e5`: `js/revision.js`, `README.md`, `tests_js/revision.test.js` y la casilla de `tasks.md`. El informe está en
+  `progress/impl_F-038.md`, «T4 quater». No toca `bandeja.html`, y `git diff --stat 87a03f3..HEAD --
+  services/postventa-api` sale vacío.
+
+### Ejecutado (resultado real)
+
+| Desde | Comando | Resultado |
+|---|---|---|
+| `services/postventa-front` | `node --test --test-timeout=15000 "tests_js/*.test.js"` | 902 tests, 902 pass, 0 fail (899 + 3 nuevos) |
+| `services/postventa-front` | `python -m pytest -q -p no:cacheprovider` | 882 passed, 7 skipped |
+| raíz | `python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py` | 19 passed |
+
+### Lo pedido
+
+- **Los siete códigos y sus textos.** Los he comparado con un script, no a ojo. La tabla de R21.4 (`requirements.md`) y
+  `TEXTO_MOTIVO_LOTE` (`js/revision.js`) son **idénticas**: los mismos siete códigos y el mismo texto, letra a letra.
+  Los códigos, y su orden en `MOTIVOS_DE_LOTE`, son exactamente los «Códigos del lote» de `azure-apps/sigrid_api.md`
+  §8.9: `escritura_reclamaciones_deshabilitada`, `base_de_datos_no_permitida`, `lote_demasiado_grande`,
+  `obra_no_encontrada`, `usuario_no_valido`, `serie_no_encontrada` y `estado_inicial_no_encontrado`. Los dos de
+  precondición dicen «Avisa a sistemas», que es lo que pide R21.4 para la configuración del dueño de `sigrid-api`. Los
+  quince de parte no cambian, y su test tampoco. **[x]**
+- **El cambio de la aserción de C-B1t-2 es a propósito y está declarado** en tres sitios: en T4 quater (`tasks.md`), en
+  el comentario del propio test y en el informe. El diff del fichero de tests solo quita esa línea esperada
+  («…: obra_no_encontrada» pasa a «…: Sigrid no encuentra la obra») y las dos líneas viejas de su comentario. Ninguna
+  otra aserción cambia. **[x]**
+- **El RED falló por lo nuevo.** Va en un solo commit, así que lo he reproducido en una copia del scratchpad: los tests
+  de `ba919e5` contra el `js/revision.js` de `cbfed5a`. Da **168 tests, 164 pass y 4 fail**: los tres nuevos y el
+  cambiado a propósito, que son exactamente los de la traza del informe. El control de la errata cae en RED porque
+  aún no existe el ancla. Es lo esperable: su ancla es lo nuevo. **[x]**
+- **Control no ciego.** Lo he hecho con mutantes a mano en una copia del scratchpad, con `newline=""` y la copia idéntica
+  por `cmp`, lanzando la suite de Node **entera**. `git status` del árbol queda limpio.
+
+| # | Mutante en `js/revision.js` | Resultado |
+|---|---|---|
+| K1 | un código sin texto (`serie_no_encontrada` fuera de `TEXTO_MOTIVO_LOTE`) | muere (2 tests) |
+| K2 | dos textos cruzados (`obra_no_encontrada` ↔ `usuario_no_valido`) | muere (3) |
+| K3 | un código de lote tratado como de parte (`obra_no_encontrada` en `MOTIVOS_DE_VOLCADO`) | muere (el de los quince y el de los siete) |
+| K4 | el texto de `obra_no_encontrada` movido de la tabla de lote a la de parte | **equivalente**: ninguna de las dos tablas se exporta y `textoMotivoVolcado` da lo mismo para cualquier entrada |
+| K5 | sin la rama de lote (todos tal cual) | muere (3) |
+| K6 | `MOTIVOS_DE_LOTE` sin `estado_inicial_no_encontrado` | muere |
+| K7 | una letra cambiada en un texto («Avisa a sistema») | muere (2) |
+| K8 | buscar en lote antes que en parte | **equivalente**: los dos conjuntos de claves son disjuntos |
+| K9 | la rama de lote lee la tabla de parte (`undefined`) | muere (3) |
+
+  Resultado: 7 muertos, 2 equivalentes y **0 supervivientes**. Además, el control propio de la tarea (la errata en una
+  clave cargada en memoria) señala el código concreto. **[x]**
+
+### Checkpoints (solo lo que toca T4 quater)
+
+- C3: [x] Primera línea con la ruta, sin `console.*`, TODOs ni secretos. Datos de test inventados (`@ejemplo.invalid`).
+  No toca nada de `services/postventa-api`.
+- C4: [x] R21.4 ampliada tiene sus tres tests, y pasan. Ninguno toca red ni BBDD.
+- C4 bis: [x] RED con traza, reproducido. [x] «Evidencias» con los cuatro números: la cobertura y la mutación con la
+  herramienta figuran como N/A, la cobertura por el lenguaje (JS) y la mutación por plan (T5). [x] Control no ciego y
+  cero supervivientes de los mutantes a mano.
+- C5: [x] T4 quater `[x]` con su commit `F-038 T4 quater: …`. Lleva RED y verde en un solo commit, como declara el
+  informe, porque es una sola tarea. Lo acepto, porque el RED se ha reproducido. Árbol limpio.
+- C1: N/A por P-4. La review del cierre de bloque exige ver `init.sh` en verde.
+
+### Observaciones (no bloquean)
+
+- **O-T4q-1 · Una línea larga en el README** (`README.md:606`, «encuentra la obra»). Un código que no se conozca…»
+  pasa del ancho del resto del párrafo. Es solo formato, y se arregla la próxima vez que se toque el fichero.
+- O-B1t-1 queda **cerrada** con esta tarea. Siguen como estaban O-B1t-3 (se deja, por decisión del humano), O-B1b-3,
+  O-B1b-4 y O-B1b-5, y también las propuestas de automejora pendientes.

@@ -587,3 +587,57 @@ mal, se para y se dice.
   puede hacerse en un alcance que fije a verdadero otro término de la misma disyunción.»** Origen: los seis
   supervivientes de este bloque. Vale para cualquier front con Alpine, así que, si el humano lo aprueba, iría también a
   `arnes-base`.
+
+## Re-review del Bloque 1 bis (2026-10-20)
+
+- **Veredicto: APPROVED** (Bloque 1 bis: T1 bis, T3 y T4, con sus correcciones). Sigue sujeto a P-4: el líder informa
+  `bash harness/init.sh` en verde sobre `cee7cf6` (front: 865 passed, 7 skipped). La corrección posterior solo toca
+  tests de Node, y la he verificado con los comandos de abajo. No he ejecutado `init.sh` ni tocado `.env`.
+- **Qué se revisa:** solo `45bc0bb` (implementer). `git diff 827b4d5..HEAD --name-only` da
+  `services/postventa-front/tests_js/revision.test.js` y `progress/impl_F-038.md`. Nada de `bandeja.html`,
+  `importar.html`, `js/`, documentos ni `services/postventa-api`.
+
+### Ejecutado (resultado real)
+
+| Desde | Comando | Resultado |
+|---|---|---|
+| `services/postventa-front` | `node --test --test-timeout=15000 "tests_js/*.test.js"` | 874 tests, 874 pass, 0 fail (858 + 16 nuevos) |
+| `services/postventa-front` | `python -m pytest -q -p no:cacheprovider` | 865 passed, 7 skipped |
+| raíz | `python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py` | 19 passed |
+
+### Los cambios pedidos
+
+| Punto | Qué hay en `45bc0bb` | Comprobación del reviewer |
+|---|---|---|
+| **C-B1b-1** | `problemasDelDisabled`: para «Editar», «Descartar», «Sí, descartarla», «Guardar cambios» y «Recuperar» (en una `descartada`), el `:disabled` se evalúa en un alcance hijo **sin** los bloqueos forzados. Sin sesión → deshabilitado; con sesión → habilitado; con su bloqueo propio → deshabilitado, con sesión y sin ella; «Descartar» con el segundo clic pedido sobre **otra** fila → habilitado. Lleva los seis controles en memoria | M1, M2, M3, M4, M5 y M11 en **rojo**, y cada uno lo pone en rojo la guardia `…(C-B1b-1): el :disabled de cada botón de acción cumple su tabla de verdad`, no solo su control. Un mutante extra mío, X1 (`confirmandoDescarte !== null`: el descarte de otra fila bloquea esta), también muere. **[x]** |
+| **C-B1b-2** | `problemasDelClic`: cada `@click` de acción se **ejecuta** contra el componente, con el `api` doble que cuenta (`LLAMADAS_DEL_ALCANCE`). Las cuatro que escriben tienen que mandar exactamente una `accionRevision` con `ID_1` y su acción; abrir el formulario y pedir el descarte actúan sobre su fila y no mandan nada. Lleva cinco controles de errata | M10 muere ahora en la guardia `…(C-B1b-2): cada botón de acción, pulsado, actúa sobre SU fila`, que no es un control. Otro mutante extra mío, X2 («Aprobar» llama a `recuperar`), lo cazan esa guardia y la de «en cada estado». **[x]** |
+| **O-B1b-2** (y O-B1b-1) | `problemasDeLosAvisos`: tabla de verdad del aviso de sesión incompleta (8 casos) y de «No se puede aprobar: …» (4 casos, más visible). Se recorre una fila con motivos, así que los chips de motivos se evalúan | M13 y M15 en **rojo** por su guardia. **[x]** |
+
+**Mi campaña a mano, otra vez entera:** los 16 mutantes de la review sobre la `bandeja.html` de una copia del front
+en el scratchpad, con `node --test --test-timeout=60000 "tests_js/*.test.js"` y el pytest de
+`test_f038_front.py`, `test_f035_paginas.py` y `test_f035_portal.py`. Resultado: **16 mutantes, 16 muertos, 0
+supervivientes**, más X1 y X2, también muertos. Ningún mutante muere ya solo por un control que pierde su ancla. Una
+nota de método: en la primera review, mi script reescribía la copia con finales CRLF. Esta vez la copia conserva los
+bytes del original (lo he comprobado con `cmp`). Repetidos así, los seis supervivientes de entonces sobreviven a pytest
+como antes y ahora mueren en Node, así que el diagnóstico de la primera review se sostiene. El árbol de trabajo estaba
+limpio antes y después (`git status`).
+
+### Checkpoints que cambian respecto a la review del Bloque 1 bis
+
+- C4 bis · cero supervivientes (mutantes a mano del bloque): **[x]** (16/16, más 2 extra).
+- C4 bis · controles no ciegos: **[x]**. El `:disabled` de cada botón, el clic ejecutado y los dos avisos tienen ahora
+  su guardia evaluada y sus controles.
+- C5 · `45bc0bb` lleva `F-038 C-B1b:`, no `F-038 Tn:`. Es la corrección de una review, como `0701eeb` en el Bloque 1, y
+  la acepto igual.
+- El resto queda como en la review del Bloque 1 bis. Los N/A tienen el mismo motivo: P-4 para `init.sh`; mutación con
+  la herramienta y cobertura, en T5 y en la puerta de `init.sh`; las MANUAL, en los Bloques 2–4.
+
+### Observaciones
+
+- **O-B1b-6 · Un comentario JSDoc descolgado** (`tests_js/revision.test.js:1809-1815`). El bloque que describe
+  `alcanceConTodoAbierto` ha quedado encima de la constante `LLAMADAS_DEL_ALCANCE`, con otro JSDoc entre los dos. Es
+  solo legibilidad: que se recoloque la próxima vez que alguien toque ese fichero (Bloque 1 ter).
+- Siguen abiertas, sin bloquear: **O-B1b-3** (recargar o abrir otro detalle tira una edición sin preguntar; para T7,
+  paso 7), **O-B1b-4** (la frase «llegará con F-038» de `importar.html`; para T8 o F-057) y **O-B1b-5**
+  (`subnav_esperada=None` mira solo la clase). La propuesta de automejora de la review del Bloque 1 bis sigue
+  pendiente del humano.

@@ -88,6 +88,9 @@ forma salvo una clave nueva:
 - **R3.** La página debe tener un campo «Código de obra» (relleno con `?obra=`
   si la URL lo trae) y «Cargar», que pide la **primera página** de
   `GET /api/revision` con los filtros elegidos.
+  *Precisado 2026-10-20 (review del Bloque 1, O-B1-5):* CUANDO la URL trae
+  `?obra=`, la página debe pedir esa primera página **al iniciar**, sin
+  esperar a «Cargar»; es una lectura y no dispara ninguna acción.
 - **R4.** La lista debe enseñar, por incidencia: unidad, ubicación,
   descripción corta, oficio («código · nombre», «sin elegir: varios códigos
   en la obra» o «sin oficio»), proveedor, urgencia, estado, la marca
@@ -106,6 +109,13 @@ forma salvo una clave nueva:
   estado es uno de los **seis** (R21); (d) quien revisó por última vez es
   `revisado_por`, que en las revisiones del sistema no es un correo (R22); y
   (e) el objeto `volcado` se enseña como dice R21 (Q-6, aprobada).
+  *Precisado 2026-10-20 (review del Bloque 1, D-a, aceptada):* la fila no
+  trae la acción de la última revisión, así que «<acción>» se **deduce del
+  estado**: «Aprobada» en `aprobada`, `volcada` y `en_duda` (la última
+  revisión de esas dos es siempre un `aprobar`, F-059 design §4.1);
+  «Descartada» en `descartada`; y «Revisada» en `nueva` y `editada` (puede
+  venir de editar o de recuperar). El verbo exacto de cada revisión está en
+  el historial (R8).
 - **R5.** El resumen de la obra (total, por estado, aprobadas, con algo que
   corregir y por motivo) debe salir del `resumen` de la respuesta, que es de
   **toda** la obra, no de lo cargado.

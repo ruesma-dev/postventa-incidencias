@@ -62,7 +62,7 @@
   reintentan lo transitorio; `accionRevision` con `sinReintentos: true`; las
   tres con `mensajeDelServicio: true`) y el cuerpo del error en `clasificar`,
   aditivo (R26). Ningún otro cambio en `js/api.js`. |
-  Verificación: `node --test tests_js/revision.test.js tests_js/api.test.js` y `node --test tests_js` en verde
+  Verificación: `node --test tests_js/revision.test.js tests_js/api.test.js` y `node --test "tests_js/*.test.js"` en verde *(Precisado 2026-10-20, review del Bloque 1, D-b: en Node 24, `node --test tests_js` no ejecuta nada; se escribe `node --test "tests_js/*.test.js"`.)*
 
 **Parar. Review del Bloque 1.**
 
@@ -78,6 +78,9 @@
   - las listas de páginas pasan a cinco (no las de `entrada`:
     `PAGINAS_REMODELADAS`, `MIGAS_DE_ENTRADA`, `SUBNAV_DE_ENTRADA`,
     `PIE_PAGINAS_REALES`); buscarlas con `grep -rn "oficios.html" tests tests_js`;
+  - *Precisado 2026-10-20 (review del Bloque 1, O-B1-1 a):* el test de la
+    página fija que el `:disabled` de «Aprobar» lee **`fila.aprobable`** (o
+    `puedeAprobar`) **y** `puedeActuar()`: ni uno sin el otro;
   - los **tres** controles que miran `bandeja` pasan a `impresion` (F-044):
     `test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done` y
     `test_f035_r62_control_el_lector_de_estados_lee_el_texto` (raíz) y «f035
@@ -98,7 +101,7 @@
   `README.md` (R19, con la deriva conocida del resumen, §2.3) y
   `docs/ARCHITECTURE.md` (R20). La pestaña «Bandeja de revisión» lleva
   `data-construccion` (R2). |
-  Verificación: `python -m pytest tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py`, `node --test tests_js` y, desde la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py`
+  Verificación: `python -m pytest tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py`, `node --test "tests_js/*.test.js"` y, desde la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py` *(Precisado 2026-10-20, review del Bloque 1, D-b: en Node 24, `node --test tests_js` no ejecuta nada; se escribe `node --test "tests_js/*.test.js"`.)*
 - [ ] **T4**: el enlace de `importar.html` (R14), fuera de la `<table>` y como
   `<a>`, sin tocar `js/importacion.js` ni `test_f036_front.py`. |
   Verificación: `python -m pytest tests/test_f038_front.py tests/test_f036_front.py tests/test_f035_paginas.py`
@@ -124,7 +127,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
 - [ ] **T4 ter**: `lineaDeVolcado`, `textoMotivoVolcado` y los dos filtros en
   `js/revision.js`; la línea, la etiqueta y «Ya no se revisa aquí» en
   `bandeja.html`; el `README.md` cuenta la presentación del volcado. |
-  Verificación: `node --test tests_js` y `python -m pytest tests/test_f038_front.py tests/test_f035_paginas.py`
+  Verificación: `node --test "tests_js/*.test.js"` y `python -m pytest tests/test_f038_front.py tests/test_f035_paginas.py` *(Precisado 2026-10-20, review del Bloque 1, D-b: en Node 24, `node --test tests_js` no ejecuta nada; se escribe `node --test "tests_js/*.test.js"`.)*
 
 **Parar. Review del Bloque 1 ter.**
 
@@ -141,7 +144,11 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
   recarga, `quienLegible`, la línea del volcado (un `sigrid_cod` o una fecha
   que no salen, un motivo sin texto), los filtros `volcada`/`en_duda`, la
   guarda de salida, el `target`, la marca de construcción y el paso 03 de la
-  tira. Después, **el líder** ejecuta `bash harness/init.sh` (P-4). |
+  tira. Después, **el líder** ejecuta `bash harness/init.sh` (P-4).
+  *Precisado 2026-10-20 (review del Bloque 1, O-B1-6):* cada mutante a mano
+  se lanza con `node --test --test-timeout=<ms> …` (p. ej. 60000), para que un
+  mutante que cuelga un test (un bucle o una promesa que no se resuelve)
+  cuente como muerto por tiempo y no deje la campaña parada. |
   Verificación: `python -m harness.mutacion --feature F-038 --base 87a03f3 --timeout 900` → `progress/mutacion_F-038.md`; y `bash harness/init.sh` en verde (el líder)
 
 **Parar. Review final del Bloque 1 (1 a 1 quater).**
@@ -232,7 +239,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
   ejemplo que use `MaquetaDatos.propuestas`, a su bloque de F-039; y
   `docs/ARCHITECTURE.md` con la sección «En producción». Los tres controles de
   la sección `bandeja` ya se mudaron en T1 bis: aquí no se tocan. |
-  Verificación: `python -m pytest tests/test_f035_placeholders_vivos.py` (raíz), `node --test tests_js` y `python -m pytest tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py` (front)
+  Verificación: `python -m pytest tests/test_f035_placeholders_vivos.py` (raíz), `node --test "tests_js/*.test.js"` *(Precisado 2026-10-20, review del Bloque 1, D-b: en Node 24, `node --test tests_js` no ejecuta nada; se escribe `node --test "tests_js/*.test.js"`.)* y `python -m pytest tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py` (front)
 - [ ] **T9**: review corta de T8 y `bash harness/init.sh` en verde **sobre ese
   commit** (el líder, P-4); si algo falla, se revierte T8 entero. |
   Verificación: `bash harness/init.sh`

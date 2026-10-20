@@ -220,3 +220,7 @@ producción: diez pasos, con el 4 y el 5 nuevos) y 4 (cierre) como estaban.
 
 **Queda abierto, fuera de F-038**: la conciliación de F-040 (soltar su R54);
 la ficha nueva de editar o anular partes ya volcados (la abre el líder); P-4.
+
+## Precisiones de la review del Bloque 1 · 2026-10-20
+
+Aplicadas (solo texto de la spec, marca «Precisado 2026-10-20 (review del Bloque 1)»): R3 carga al iniciar con `?obra=` (O-B1-5); R4 «<acción>» deducida del estado (D-a); `design.md` §2.4 con la lista completa de funciones puras de `js/revision.js` para T5; `node --test "tests_js/*.test.js"` en T2, T3, T4 ter y T8 (D-b) y `--test-timeout` en T5 (O-B1-6); T1 bis fija el `:disabled` de «Aprobar» con `fila.aprobable`/`puedeAprobar` y `puedeActuar()` (O-B1-1 a).

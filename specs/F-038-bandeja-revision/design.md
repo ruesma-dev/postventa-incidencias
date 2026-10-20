@@ -247,6 +247,24 @@ Lógica pura, con `node --test` (`tests_js/revision.test.js`):
 > | `hayCambios(formulario, vigentes)` | Con la normalización del backend (descripción con blancos colapsados; detalle, ubicación y motivo recortados) | R9 (e) |
 > | `queHacerConElError(error)` | La tabla completa de R12, leyendo `error.codigo`, `error.http` y `error.detalle` (R26); una acción sin respuesta (`http: null`) → «no se sabe si se ha guardado» y primera página | R12 |
 > | `fechaDeMadrid(iso)` | `js/importacion.js` **no** exporta su fecha (y la suya es solo día): `js/revision.js` lleva la suya, con hora, sin tocar ese módulo | R4, R8 |
+>
+> *Precisado 2026-10-20 (review del Bloque 1) · las funciones puras que
+> creó T2 y que piden los R* (nombres de `js/revision.js` en `77122eb`); con
+> las de arriba, es la **lista completa** que recorre la mutación de T5:
+>
+> | Función | Qué hace | R |
+> |---|---|---|
+> | `lineaDeRevision(fila)` | «<acción> por <quien> el <fecha>», con la acción deducida del estado (R4, D-a); nada sin revisiones | R4, R22 |
+> | `puedeAprobar(fila)` | «Aprobar» solo con `motivos_no_aprobable` `[]` y en un estado que lo admite (`accionesDe`) | R11, R12 |
+> | `presentarResumen(resumen)` | El resumen de toda la obra: seis estados y nueve motivos, con su texto | R5 |
+> | `detalleDe(incidencia, catalogo)` | Los vigentes y, en cada campo de `cambios`, «llegó así: …» | R8 |
+> | `presentarHistorial(respuesta)` | El historial, con fecha de Madrid y quién legible | R8, R22 |
+> | `opcionesDeUnidad(catalogo, vigentes)` | Las unidades de la obra y, si la vigente ya no lo es, ella marcada | R9, R24 |
+> | `opcionesDeUbicacion(catalogo, unidadCodigo, vigentes)` | Las ubicaciones de la unidad elegida y, si la vigente no está, ella marcada | R9, R24 |
+> | `contador(texto, maximo)` | «N / máximo» de la descripción (128) y el detalle (2000) | R9 |
+> | `obraDeLaUrl(busqueda)` | La obra de `?obra=`, recortada, o vacío | R3 |
+> | `formularioDe(vigentes, catalogo)` | (firma definitiva) los valores del formulario, los vigentes para `hayCambios` y qué vigente no está en el catálogo de hoy; nada se vacía al abrir | R9, R24 |
+> | `queHacerConElError(error, enAccion)` | (firma definitiva) la tabla de R12; `enAccion` distingue la acción sin respuesta («no se sabe si se ha guardado» y recarga) de una lectura (solo su error) | R12 |
 
 La identidad es la de `identidadDe` de `js/api.js`, que ya devuelve
 `{usuarioOid, correo}` (claim de correo o `userDetails`): no se escribe otra.

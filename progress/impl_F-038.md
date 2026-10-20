@@ -723,3 +723,291 @@ python -m pytest -q -p no:cacheprovider                         (desde services/
 
 O-B1b-3 (recargar o abrir otro detalle tira una edición sin preguntar; para T7 paso 7), O-B1b-4 (la frase «llegará con
 F-038» de `importar.html`, para T8 o F-057) y O-B1b-5 (`subnav_esperada=None` mira solo la clase): sin cambios.
+
+
+## Bloque 1 ter · T4 bis y T4 ter (2026-10-20)
+
+La presentación del volcado (R21, Q-6 aprobada por el humano el 2026-10-20). Rama `feature/F-038-bandeja-revision`,
+base fija `87a03f3`. `bash harness/init.sh` **no** lo he ejecutado (P-4: lo ejecuta el líder). Solo
+`services/postventa-front`; nada de `services/postventa-api`, Sigrid ni SharePoint. Datos de test inventados
+(`RS99.99/000N`, `@ejemplo.invalid`, obra `9901`, UUID de ceros).
+
+### Commits
+
+| Tarea | Commit | Qué |
+|---|---|---|
+| T4 bis · RED | `12042ff` | Los tests de R21 en `tests_js/revision.test.js` y `tests/test_f038_front.py`, en rojo |
+| T4 ter | `453aa7e` | `js/revision.js`, `bandeja.html` y el `README.md` |
+| (este informe) | el siguiente | `progress/impl_F-038.md`, `progress/current.md` y las dos casillas de `tasks.md` |
+
+Las casillas `[x]` de T4 bis y T4 ter van en el commit del informe, no en el de cada tarea (en el Bloque 1 bis iban
+en el de la tarea). Es un despiste mío, sin efecto en el código.
+
+### Ficheros tocados
+
+- `services/postventa-front/js/revision.js`: `FILTROS_DE_ESTADO` con `volcada` y `en_duda` (ocho);
+  `ESTADOS_DEL_VOLCADO`, `TEXTO_YA_NO_SE_REVISA`, `MOTIVOS_DE_VOLCADO` y `TEXTO_MOTIVO_VOLCADO` (los quince códigos de
+  parte de §8.9); `textoMotivoVolcado(codigo)` y `lineaDeVolcado(volcado, estado)`, nuevas y exportadas; en
+  `presentarRevision`, dos campos por fila: `lineaVolcado` y `yaNoSeRevisa`. La cabecera del fichero, al día.
+- `services/postventa-front/bandeja.html`: dos `<option>` («Volcadas a Sigrid», «En duda»); la etiqueta de la fila,
+  ahora con «Ya no se revisa aquí» al lado (`x-show`/`x-text` de `fila.yaNoSeRevisa`); la línea del volcado en la lista
+  (`x-show="fila.yaNoSeRevisa && fila.lineaVolcado"`) y en el detalle (`x-show="fila.lineaVolcado"`), las dos
+  `x-text="fila.lineaVolcado"`. **Ningún botón, campo ni `@click` nuevo.**
+- `services/postventa-front/README.md`: la sección «La bandeja de revisión (F-038)» cuenta la presentación del volcado
+  (filtros, las tres líneas, los códigos de §8.9, «Ya no se revisa aquí», nada de acciones, el correo fuera de la
+  consola) y «Lo que todavía no hace» deja de decir «Bloque 1 ter» y nombra F-040 y F-062.
+- `services/postventa-front/tests_js/revision.test.js`: los tests nuevos (abajo).
+- `services/postventa-front/tests/test_f038_front.py`: los tests nuevos (abajo) y su docstring.
+
+`docs/ARCHITECTURE.md` no lo he tocado: T4 ter no lo pide y su sección de F-038 (R20) cuenta la página y sus rutas, que
+no cambian. `azure-apps/` tampoco: es del líder al publicar (R20, T6).
+
+### Cambios en tests que ya existían (ninguna aserción se debilita)
+
+- `tests_js/revision.test.js`, cabecera: ya no dice que la presentación del volcado «NO se prueba aquí».
+- `tests_js/revision.test.js`, comentario del test «una incidencia con `volcado` se pinta igual…»: apunta a la sección
+  nueva. El test sigue igual.
+- `tests_js/revision.test.js`, **O-B1b-6** (de la re-review del Bloque 1 bis, «que se recoloque la próxima vez que
+  alguien toque ese fichero (Bloque 1 ter)»): el JSDoc de `alcanceConTodoAbierto` vuelve a estar encima de su función,
+  y el de `LLAMADAS_DEL_ALCANCE` encima de su constante. Solo se mueven comentarios.
+- `tests/test_f038_front.py`, docstring del módulo: añade R21.
+- `test_f038_r3_r6_el_campo_de_obra_cargar_y_los_filtros_van_al_servidor` (opciones == `FILTROS_DE_ESTADO`) **no se
+  toca**. La decisión 4 del Bloque 1 bis avisaba de que se pondría en rojo si `FILTROS_DE_ESTADO` crecía sin el HTML.
+  No ha llegado a ponerse porque los dos cambian en el mismo commit (T4 ter). El RED del selector lo da el test nuevo
+  `test_f038_r21_5_el_selector_de_estado_ofrece_los_ocho`, que escribe los ocho valores tal cual.
+
+### T4 bis · RED
+
+Tests nuevos en `tests_js/revision.test.js` (22):
+
+- Lo puro: `textoMotivoVolcado` con los quince códigos y sus textos exactos (tabla `TEXTOS_DE_PARTE`, y que son quince
+  distintos), con uno desconocido tal cual, con un motivo de la revisión (`sin_ubicacion`, que no es de parte) tal cual
+  y con `null`/`undefined` → `""`. `lineaDeVolcado`: `volcada` (en verano, 08:00 UTC → 10:00; en invierno, 08:00 →
+  09:00); `volcado_por` del sistema por `quienLegible` (literal de F-060 y otro `sistema:…`); `en_duda` sin motivo, con
+  motivo de §8.9 y con uno desconocido; `rechazado` y `no_procesado` de una aprobada, con motivo, con uno desconocido y
+  sin motivo (sin «: »); el último intento en `nueva`, `editada`, `aprobada` y `descartada`, y nada en `volcada` y
+  `en_duda`; `null`, `undefined` y un estado del objeto desconocido (`previsto`) → `null` en los seis estados.
+  `presentarRevision` con cuatro filas (`volcada`, `en_duda`, `aprobada` con un rechazo y `nueva`): etiqueta,
+  `yaNoSeRevisa`, `lineaVolcado` y cuántas acciones (0, 0, 2, 3); «Ya no se revisa aquí» estado a estado, también sin
+  objeto `volcado`.
+- R21.5: `consultaDe` con `volcada` y `en_duda`, y `FILTROS_DE_ESTADO` con los ocho en su orden. Y el componente:
+  `cambiarFiltro()` con cada uno pide la primera página con ese `estado` tal cual (no cae en `activas`).
+- R21.7, **ejecutado**: el componente carga una `volcada`, una `en_duda` y una `aprobada` con un rechazo, pinta la lista
+  y el resumen y abre el detalle de las tres, con `console.*` (ocho métodos), `localStorage` y `sessionStorage`
+  espiados: nada. **Controles**: el mismo recorrido con un `js/revision.js` estropeado en memoria (cargado con
+  `Function("module", …)`) que manda el correo de quien volcó a `console.log` o a `localStorage.setItem`: el espía lo ve.
+- El recorrido de `bandeja.html` (`problemasDelVolcadoEnLaPagina`): con el componente de verdad, el `x-text` de cada
+  elemento visible se evalúa con el detalle **abierto** y **cerrado** (cerrado, lo que se ve es la lista). En cinco
+  casos (una volcada, una en duda con motivo, una aprobada con el último intento rechazado, otra sin procesar y una nueva
+  sin volcado): la línea exacta sale una vez en la lista solo si es volcada o en duda y una vez en el detalle; ninguna
+  otra línea de volcado; «Ya no se revisa aquí» una vez en la lista solo en volcada y en duda; la etiqueta a la vista;
+  en volcada y en duda, ni un botón de acción ni un campo **con el objeto `volcado` puesto**, y el historial se lee.
+  **Controles** (cinco, en memoria): la línea de la lista sin su puerta, la de la lista oculta, la del detalle solo en
+  volcada y en duda, la del detalle con otro texto y la frase oculta.
+
+Tests nuevos en `tests/test_f038_front.py` (17): el selector con los ocho valores literales (y `FILTROS_DE_ESTADO`
+igual); la línea, dos elementos `x-text="fila.lineaVolcado"`, uno en la lista con su puerta y otro en el detalle, los dos
+en la fila y sin controles (4 controles); la frase con `x-show`, con el mismo padre que la etiqueta, en la lista y sin
+controles, y su texto en `js/revision.js` (3 controles); `volcada: []` y `en_duda: []` en la tabla de acciones;
+`volcado_por` solo como `quienLegible(volcado.volcado_por)`, sin consola ni almacenamiento en `js/revision.js` ni en
+`bandeja.html`, y el HTML sin leer `volcado_por` (3 controles); el README (y su control).
+
+Desde `services/postventa-front`, con los tests escritos y el código sin tocar:
+
+```
+node --test --test-timeout=15000 tests_js/revision.test.js
+✖ f038 R21.4: textoMotivoVolcado da el texto de cada uno de los quince códigos de parte de §8.9
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + undefined
+  - [
+  -   'referencia_no_permitida',
+  …
+✖ f038 R21.4: un código de parte que no está en la lista se enseña tal cual; sin código, nada
+  TypeError: Revision.textoMotivoVolcado is not a function
+✖ f038 R21.1: una volcada: «Volcada como <sigrid_cod> por <quien> el <fecha>», en hora de Madrid
+  TypeError: Revision.lineaDeVolcado is not a function
+  (y lo mismo en los otros seis de lineaDeVolcado: R21.1/R22, R21.2 ×2, R21.3 ×2, R21 sin objeto)
+✖ f038 R21.1-R21.3, R21.6: presentarRevision da la línea del volcado y «Ya no se revisa aquí»
+      [
+        'Volcada a Sigrid',
+  +     undefined,
+  +     undefined
+  -     'Ya no se revisa aquí',
+  -     'Volcada como RS99.99/0001 por revisora@ejemplo.invalid el 20/10/2026 10:00'
+      ],
+  …
+✖ f038 R21.6: «Ya no se revisa aquí» va con volcada y en duda aunque no traigan objeto, y con ningún otro estado
+  AssertionError [ERR_ASSERTION]: nueva
+  undefined !== ''
+✖ f038 R21.5: consultaDe lleva también los filtros volcada y en_duda; el selector tiene los ocho
+  +   estado: 'activas',
+  -   estado: 'volcada',
+✖ f038 R21.5: el componente pide la primera página con el filtro volcada o en_duda tal cual
+  AssertionError [ERR_ASSERTION]: volcada
+  +     estado: 'activas'
+  -     estado: 'volcada'
+✖ f038 R21.7: pintar volcadas y abrir su detalle no escribe nada en la consola ni en el almacenamiento
+  AssertionError [ERR_ASSERTION]: las tres líneas, pintadas
+  0 !== 3
+✖ f038 R21.7: control: el correo de quien volcó a console.log salta
+  AssertionError [ERR_ASSERTION]: el control no encuentra una sola vez: quienLegible(volcado.volcado_por)
+  (y el de localStorage)
+✖ f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, la etiqueta y «Ya no se revisa aquí» donde toca
+  + [
+  +   'una volcada: la línea del volcado sale 0 veces en la lista, no 1',
+  +   'una volcada: la línea del volcado sale 0 veces en el detalle, no 1',
+  +   'una volcada: «Ya no se revisa aquí» sale 0 veces en la lista, no 1',
+  +   'una en duda con motivo: la línea del volcado sale 0 veces en la lista, no 1',
+  +   'una en duda con motivo: la línea del volcado sale 0 veces en el detalle, no 1',
+  +   'una en duda con motivo: «Ya no se revisa aquí» sale 0 veces en la lista, no 1',
+  +   'una aprobada con el último intento rechazado: la línea del volcado sale 0 veces en el detalle, no 1',
+  +   'una aprobada con el último intento sin procesar: la línea del volcado sale 0 veces en el detalle, no 1'
+  + ]
+✖ f038 R21 (T4 bis): control: la línea de la lista sin su puerta (el último intento, en la lista) salta
+  AssertionError [ERR_ASSERTION]: el control no encuentra una sola vez: x-show="fila.yaNoSeRevisa && fila.lineaVolcado"
+  (y los otros cuatro controles del recorrido, por su ancla)
+ℹ tests 162
+ℹ pass 140
+ℹ fail 22
+```
+
+Los 140 que pasan son los que ya había en el fichero (124 del Bloque 1 bis y 16 de sus correcciones), sin cambios.
+
+```
+python -m pytest -q -p no:cacheprovider tests/test_f038_front.py
+E       AssertionError: assert ['activas', '... 'descartada'] == ['activas', '...cartada', ...]
+E         Right contains 2 more items, first extra item: 'volcada'
+E       AssertionError: 0 elementos con x-text="fila.lineaVolcado"; tiene que haber dos (lista y detalle)
+E       AssertionError: el control ya no encuentra una sola vez: 'x-show="fila.yaNoSeRevisa && fila.lineaVolcado"'
+E       AssertionError: assert ['0 frases y ...er una y una'] == []
+E         Left contains one more item: '0 frases y 1 etiquetas de la fila; tiene que haber una y una'
+E       AssertionError: js/revision.js no lee volcado_por: ¿quién volcó?
+E       AssertionError: el control no encuentra una sola vez: quienLegible(volcado.volcado_por)
+E       AssertionError: «La bandeja de revisión (F-038)» no dice «Volcada a Sigrid»; … no dice «Ya no se revisa aquí»;
+        … no dice «F-062»; el README aún dice que la presentación del volcado es del Bloque 1 ter
+FAILED tests/test_f038_front.py::test_f038_r21_5_el_selector_de_estado_ofrece_los_ocho
+FAILED tests/test_f038_front.py::test_f038_r21_1_la_linea_del_volcado_en_la_lista_y_en_el_detalle
+FAILED tests/test_f038_front.py::test_f038_r21_1_control_la_linea_estropeada_salta[la-de-la-lista-sin-su-puerta]
+FAILED tests/test_f038_front.py::test_f038_r21_1_control_la_linea_estropeada_salta[sin-la-del-detalle]
+FAILED tests/test_f038_front.py::test_f038_r21_1_control_la_linea_estropeada_salta[la-del-detalle-dentro-de-un-boton]
+FAILED tests/test_f038_front.py::test_f038_r21_1_control_la_linea_estropeada_salta[la-del-detalle-con-clic]
+FAILED tests/test_f038_front.py::test_f038_r21_6_ya_no_se_revisa_aqui_acompana_a_la_etiqueta
+FAILED tests/test_f038_front.py::test_f038_r21_6_control_la_frase_estropeada_salta[la-frase-siempre]
+FAILED tests/test_f038_front.py::test_f038_r21_6_control_la_frase_estropeada_salta[la-frase-lejos-de-la-etiqueta]
+FAILED tests/test_f038_front.py::test_f038_r21_7_volcado_por_solo_pasa_por_quien_legible
+FAILED tests/test_f038_front.py::test_f038_r21_7_control_el_correo_de_quien_volco_suelto_salta[a-la-consola]
+FAILED tests/test_f038_front.py::test_f038_r21_7_control_el_correo_de_quien_volco_suelto_salta[sin-quien-legible]
+FAILED tests/test_f038_front.py::test_f038_r21_7_control_el_correo_de_quien_volco_suelto_salta[leido-en-el-html]
+FAILED tests/test_f038_front.py::test_f038_r21_el_readme_cuenta_la_presentacion_del_volcado
+FAILED tests/test_f038_front.py::test_f038_r21_control_el_readme_sin_la_frase_salta
+15 failed, 47 passed in 3.79s
+```
+
+De los 17 nuevos, dos pasan ya en RED, y es lo esperado:
+`test_f038_r21_6_volcada_y_en_duda_no_admiten_ninguna_accion` (la tabla sin acciones es del Bloque 1) y el control
+`[sin-la-etiqueta]` (sin frase, la guardia ya se queja con el mensaje «… etiquetas …» que el control busca). Los otros 45
+son los del Bloque 1 bis, sin cambios.
+
+### T4 ter · verde
+
+```
+node --test --test-timeout=15000 "tests_js/*.test.js"                                   (services/postventa-front)
+ℹ tests 896
+ℹ pass 896
+ℹ fail 0
+ℹ duration_ms 5935.6728
+
+python -m pytest -q -p no:cacheprovider tests/test_f038_front.py tests/test_f035_paginas.py
+439 passed in 9.76s
+
+python -m pytest -q -p no:cacheprovider                                                  (todo el front)
+882 passed, 7 skipped in 29.67s
+
+python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py             (desde la raíz)
+19 passed in 0.44s
+```
+
+Hubo un rojo de paso en la primera pasada: el control del README no encontraba «Ya no se revisa aquí» porque en el
+README la frase partía línea. **He corregido el README** (la frase en una sola línea) y el test no lo he tocado.
+
+**Sonda** (no es la campaña de T5): nueve mutantes de lo nuevo en `js/revision.js`, aplicados a una copia del front (y
+de `docs/`) en el directorio temporal de la sesión, con `node --test --test-timeout=60000 tests_js/revision.test.js` y
+`python -m pytest -q -p no:cacheprovider tests/test_f038_front.py` en la copia. `git status` del árbol, antes y después:
+solo lo de T4 ter, sin commit todavía. **Los nueve mueren en Node**:
+
+```
+=== R21.3 sin la guarda de estado: node exit 1, 1 fallan; pytest: 62 passed
+    ✖ f038 R21.3: el último intento sale en cualquier estado que no sea volcada ni en duda
+=== yaNoSeRevisa en todos: node exit 1, 3 fallan; pytest: 62 passed
+    ✖ f038 R21.1-R21.3, R21.6: presentarRevision da la línea del volcado y «Ya no se revisa aquí»
+    ✖ f038 R21.6: «Ya no se revisa aquí» va con volcada y en duda aunque no traigan objeto, y con ningún otro estado
+    ✖ f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, la etiqueta y «Ya no se revisa aquí» donde toca
+=== en duda sin su motivo: node exit 1, 2 fallan; pytest: 62 passed
+=== sin el filtro en_duda: node exit 1, 2 fallan; pytest: 2 failed, 60 passed
+=== no_procesado dice no se creó: node exit 1, 2 fallan; pytest: 62 passed
+=== sin sigrid_cod: node exit 1, 4 fallan; pytest: 62 passed
+=== la fecha en UTC: node exit 1, 7 fallan; pytest: 62 passed
+=== quien sin quienLegible: node exit 1, 3 fallan; pytest: 4 failed, 58 passed
+=== motivo desconocido vacío: node exit 1, 3 fallan; pytest: 62 passed
+```
+
+### Decisiones de diseño (para el reviewer)
+
+1. **Qué decide la línea.** En `lineaDeVolcado(volcado, estado)` manda el `estado` **del objeto** (`volcada`,
+   `en_duda`, `rechazado`, `no_procesado`), que es el que deriva el backend (`volcado_de`). El de la incidencia solo
+   aplica la condición de R21.3: el último intento fallido sale solo si la incidencia no está `volcada` ni `en_duda`.
+   Sin objeto, o con un estado del objeto que no es ninguno de los cuatro, devuelve `null` y no se inventa nada.
+2. **El formato de lo que la spec no fija.** R21.2 dice «y, si `volcado.motivo` no es `null`, su texto» sin decir
+   cómo: he puesto `«<línea>. Motivo: <texto>»`. En R21.3, sin motivo, la línea acaba en `por <quien>`, sin el `: ` del
+   final. Ninguna línea acaba en punto, como la de R21.1. Un `sigrid_cod` o una fecha que no llegan (en una `volcada`
+   el backend siempre los manda) salen vacíos, no con un texto inventado. Si el humano prefiere otra forma, se cambia
+   en un sitio y en sus tests.
+3. **Dónde sale cada línea.** `presentarRevision` da por fila **una** `lineaVolcado` (la que toque de las tres) y
+   `yaNoSeRevisa` («Ya no se revisa aquí» en `volcada` y `en_duda`, `""` en los demás, **haya o no objeto**). La lista
+   pinta la línea con `fila.yaNoSeRevisa && fila.lineaVolcado` (R21.1 y R21.2: lista y detalle) y el detalle con
+   `fila.lineaVolcado` (también R21.3, que solo va en el detalle). R21.2 no dice dónde va la línea de una en duda. La he
+   puesto en la lista y en el detalle, como la de R21.1, porque una en duda sale con `activas` y es lo que más conviene
+   ver.
+4. **El HTML no lee el objeto `volcado`.** Recibe la línea ya compuesta. Así `volcado_por` (un correo, D-8) se lee en
+   un único sitio, `quienLegible(volcado.volcado_por)`, y una guardia de texto lo exige (R21.7). La línea del detalle va
+   con `class="rs-texto"`, no con `rs-aviso--info`: `problemasDeLosAvisos` cuenta un único `rs-aviso--info`, que es el
+   aviso de sesión incompleta.
+5. **Los quince textos de §8.9** son míos, sacados de lo que cuenta `sigrid_api.md` §8.9 de cada código, y van fijos
+   en el test (`TEXTOS_DE_PARTE`). Dos dicen que se puede volver a mandar sin riesgo (`colision_de_clave` y
+   `presupuesto_de_tiempo_agotado`), porque §8.9 lo dice. Los motivos de la revisión (`sin_ubicacion`…) no son códigos
+   de parte y salen tal cual, como cualquier código desconocido.
+6. **Las etiquetas del selector**: «Volcadas a Sigrid» y «En duda», al final, en el orden de `FILTROS_DE_ESTADO`.
+   `activas` sigue siendo el de por defecto y su texto ya decía «todo menos descartadas y volcadas».
+7. **R21.7 se ejecuta, no solo se lee.** Además de la guardia de texto (pytest), el test de Node hace el recorrido del
+   componente con la consola y el almacenamiento espiados. Su control carga un `js/revision.js` estropeado en memoria
+   con `Function("module", fuente)`, sin tocar el fichero.
+
+### Observaciones (no bloquean; para el líder)
+
+- El objeto `volcado` de una `en_duda` puede traer `motivo` (`volcado_de` pasa el del último evento, `enviado` o
+  `sin_respuesta`). No he encontrado en el backend qué código pone ahí, si pone alguno. Si llega un código fuera de
+  §8.9, sale tal cual (R21.4).
+- Una `descartada` cuyo último intento fue rechazado enseña también «Último intento de volcado: …» en el detalle. Es lo
+  que dice R21.3 («una incidencia que no está `volcada` ni `en_duda`»), aunque la spec piensa en una `aprobada`.
+- O-B1b-3, O-B1b-4 y O-B1b-5 siguen abiertas, como estaban. O-B1b-6, hecha (arriba).
+
+### Fuera de este bloque (y quién lo hace)
+
+- La mutación de la herramienta y a mano por familias (incluida «la línea del volcado» y «los filtros
+  `volcada`/`en_duda`»): Bloque 1 quater, T5, otro encargo tras la review.
+- `bash harness/init.sh`: el líder (P-4).
+- `azure-apps/postventa_incidencias.md`: el líder, al publicar (T6).
+
+### Verificaciones MANUAL pendientes
+
+- T7 paso 5, en producción: `bandeja.html?obra=0626` con el filtro `volcada`, la línea de `RS26.10/0074` en hora de
+  Madrid y sin botones, y el filtro `en_duda`. **No** lo he visto en un navegador.
+
+## Evidencias (Bloque 1 ter)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Suite JS entera: **896, 896 pass** (874 antes; +22 en `revision.test.js`). pytest del front: **882 passed, 7 skipped** (865 antes; +17 en `test_f038_front.py`). Raíz `test_f035_placeholders_vivos.py`: **19 passed** |
+| Cobertura de las líneas cambiadas | **No disponible**: lo cambiado es JavaScript, HTML, Markdown y tests. La línea `PUERTA COBERTURA` de `init.sh` mide Python y aquí no hay `.py` de producción. Además, `init.sh` lo ejecuta el líder (P-4) |
+| Mutantes generados / supervivientes | **Pendiente por plan** (T5, Bloque 1 quater). En este bloque: 18 controles en memoria (7 en Node: 5 del recorrido y 2 de R21.7; 11 en pytest: 4 de la línea, 3 de la frase, 3 de R21.7 y 1 del README), y la sonda de 9 mutantes sobre `js/revision.js`: **9 muertos, 0 supervivientes** |
+| Tiempo de la suite | Suite JS: 5,94 s; pytest del front: 29,67 s; raíz: 0,44 s |

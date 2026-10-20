@@ -26,6 +26,11 @@
 >   raíz 19 passed. Cambios a propósito en tests de F-035 (listas a cinco páginas, tres controles a `impresion`, guardia
 >   de la tira por Q-10, huella de `importar.html`), cada uno con su porqué en `progress/impl_F-038.md`. **Siguiente**:
 >   review del Bloque 1 bis e `init.sh` del líder (P-4).
+> - **Bloque 1 ter hecho (implementer, 2026-10-20)**: T4 bis `12042ff` (RED) y T4 ter `453aa7e` (la presentación del
+>   volcado, R21: `lineaDeVolcado`, `textoMotivoVolcado`, filtros `volcada`/`en_duda`, «Ya no se revisa aquí», README).
+>   JS 896/896, front 882 passed, raíz 19 passed. Decisiones (formato del motivo de una en duda, dónde sale cada línea)
+>   en `progress/impl_F-038.md`, «Bloque 1 ter». **Siguiente**: review del Bloque 1 ter e `init.sh` del líder (P-4);
+>   después, Bloque 1 quater (T5, mutación).
 
 > ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
 > Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y

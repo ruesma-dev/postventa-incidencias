@@ -112,7 +112,7 @@
 
 Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
 
-- [ ] **T4 bis · RED**: en `tests_js/revision.test.js`, `lineaDeVolcado` en
+- [x] **T4 bis · RED**: en `tests_js/revision.test.js`, `lineaDeVolcado` en
   los cuatro estados del objeto `volcado` (`volcada`, `en_duda` con y sin
   motivo, `rechazado` y `no_procesado` de una aprobada) y con `null`, con la
   fecha en hora de Madrid y quien por `quienLegible` (R21.1–R21.3);
@@ -124,7 +124,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
   acción en esas filas (R21.5, R21.6) y `volcado_por` fuera de `console` y del
   almacenamiento (R21.7). Traza del fallo pegada. |
   Verificación: `node --test tests_js/revision.test.js` y `python -m pytest tests/test_f038_front.py` **fallan** por lo nuevo
-- [ ] **T4 ter**: `lineaDeVolcado`, `textoMotivoVolcado` y los dos filtros en
+- [x] **T4 ter**: `lineaDeVolcado`, `textoMotivoVolcado` y los dos filtros en
   `js/revision.js`; la línea, la etiqueta y «Ya no se revisa aquí» en
   `bandeja.html`; el `README.md` cuenta la presentación del volcado. |
   Verificación: `node --test "tests_js/*.test.js"` y `python -m pytest tests/test_f038_front.py tests/test_f035_paginas.py` *(Precisado 2026-10-20, review del Bloque 1, D-b: en Node 24, `node --test tests_js` no ejecuta nada; se escribe `node --test "tests_js/*.test.js"`.)*

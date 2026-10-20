@@ -1011,3 +1011,71 @@ solo lo de T4 ter, sin commit todavía. **Los nueve mueren en Node**:
 | Cobertura de las líneas cambiadas | **No disponible**: lo cambiado es JavaScript, HTML, Markdown y tests. La línea `PUERTA COBERTURA` de `init.sh` mide Python y aquí no hay `.py` de producción. Además, `init.sh` lo ejecuta el líder (P-4) |
 | Mutantes generados / supervivientes | **Pendiente por plan** (T5, Bloque 1 quater). En este bloque: 18 controles en memoria (7 en Node: 5 del recorrido y 2 de R21.7; 11 en pytest: 4 de la línea, 3 de la frase, 3 de R21.7 y 1 del README), y la sonda de 9 mutantes sobre `js/revision.js`: **9 muertos, 0 supervivientes** |
 | Tiempo de la suite | Suite JS: 5,94 s; pytest del front: 29,67 s; raíz: 0,44 s |
+
+
+## Correcciones de la review del Bloque 1 ter (2026-10-20)
+
+Review `progress/review_F-038.md` (`58a148c`), «Review del Bloque 1 ter»: CHANGES_REQUESTED. Se corrigen los dos
+cambios. El código que se ejecuta no cambia: en `js/revision.js` solo cambia un comentario, y `bandeja.html` no se
+toca. `bash harness/init.sh` no lo he ejecutado (P-4).
+
+| Punto | Qué cambia |
+|---|---|
+| **C-B1t-1** (solo tests) | En `problemasDelVolcadoEnLaPagina` (`tests_js/revision.test.js`), en `volcada` y `en_duda`, una **lista blanca**. Con el detalle abierto, los `<button>` y `<a>` visibles dentro de la fila (alcance con `fila`, el del `x-for` de `vista().filas`) tienen que ser exactamente uno: `<button @click="cerrarDetalle()">`. Con el detalle cerrado, exactamente `<button @click="abrirDetalle(fila.incidencia_id)">`. Cualquier otro, con clic o sin él, es un problema «(lista blanca de R21.6)». La comprobación antigua (botones de `ACCION_DEL_CLIC` y campos) se queda: no se debilita nada. Tres controles en memoria, H08b, H08d y H08e, con las cadenas exactas de la review. Se meten en la fila delante de `<p x-show="fila.yaNoSeRevisa && fila.lineaVolcado"`, un ancla que el mutante no repite. Cada control exige que el problema sea **el de la lista blanca** (busca «lista blanca de R21.6»), no uno cualquiera |
+| **C-B1t-2** (texto y una aserción) | El comentario de `MOTIVOS_DE_VOLCADO` en `js/revision.js` y el README («La bandeja de revisión (F-038)») dicen ahora lo que el contrato hace de verdad. El `motivo` es un código de parte de §8.9 o, en un `no_procesado` de un lote rechazado entero, uno de los siete códigos de lote de §8.9 (`todos_no_procesados`). Estos salen tal cual, como cualquier código desconocido (R21.4; O-B1t-1 sigue abierta, para el humano). El test «f038 R21.3: el último intento rechazado o no procesado…» gana la aserción: `no_procesado` con `motivo: "obra_no_encontrada"` da «Último intento de volcado: no se llegó a procesar el 20/10/2026 10:00 por revisora@ejemplo.invalid: obra_no_encontrada» |
+
+### H08b, H08d y H08e, cazados por la guardia (en COPIA)
+
+Hice una copia de `services/postventa-front` (con `docs/`, `harness/` y `specs/`) en el directorio temporal de la
+sesión, con bytes LF como el original (`read_bytes`/`write_bytes`). En la `bandeja.html` de la copia metí cada mutante
+delante de la línea de la lista y lancé las dos suites **enteras**: `node --test --test-timeout=60000
+"tests_js/*.test.js"` y `python -m pytest -q -p no:cacheprovider`. `git status` del árbol, antes y después: solo los
+tres ficheros de esta corrección, sin commit.
+
+```
+=== H08b: <button x-show="!fila.acciones.length">Volcar otra vez</button>
+  node exit 1 ℹ tests 899 ℹ pass 898 ℹ fail 1
+    ✖ f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, la etiqueta y «Ya no se revisa aquí» donde toca
+       +   'una volcada, con el detalle abierto: en la fila se puede pulsar [<button @click="">, <button @click="cerrarDetalle()">], no solo <button @click="cerrarDetalle()"> (lista blanca de R21.6)',
+       +   'una volcada, con el detalle cerrado: en la fila se puede pulsar [<button @click="">, <button @click="abrirDetalle(fila.incidencia_id)">], no solo <button @click="abrirDetalle(fila.incidencia_id)"> (lista blanca de R21.6)',
+       +   'una en duda con motivo, con el detalle abierto: … (lista blanca de R21.6)',
+  pytest: 1 failed, 881 passed, 7 skipped
+=== H08d: <a x-show="!fila.acciones.length" href="#">Editar en Sigrid</a>
+  node exit 1 ℹ tests 899 ℹ pass 898 ℹ fail 1
+    ✖ f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, la etiqueta y «Ya no se revisa aquí» donde toca
+       +   'una volcada, con el detalle abierto: en la fila se puede pulsar [<a @click="">, <button @click="cerrarDetalle()">], no solo <button @click="cerrarDetalle()"> (lista blanca de R21.6)',
+       …
+  pytest: 1 failed, 881 passed, 7 skipped
+=== H08e: <template x-if="!fila.acciones.length"><button @click="cerrarDetalle()" class="rs-btn rs-btn--ok">Volcar otra vez</button></template>
+  node exit 1 ℹ tests 899 ℹ pass 898 ℹ fail 1
+    ✖ f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, la etiqueta y «Ya no se revisa aquí» donde toca
+       +   'una volcada, con el detalle abierto: en la fila se puede pulsar [<button @click="cerrarDetalle()">, <button @click="cerrarDetalle()">], no solo <button @click="cerrarDetalle()"> (lista blanca de R21.6)',
+       +   'una volcada, con el detalle cerrado: en la fila se puede pulsar [<button @click="cerrarDetalle()">, <button @click="abrirDetalle(fila.incidencia_id)">], no solo … (lista blanca de R21.6)',
+       …
+  pytest: 1 failed, 881 passed, 7 skipped
+```
+
+En Node, cada mutante tumba **un solo** test, y es la guardia, con el mensaje de la lista blanca. El único fallo de
+pytest es `tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde`. Lo comprobé con H08b: es el test
+que relanza la suite de Node, así que cae por esa misma guardia. Ningún otro test los ve, que es lo que pedía la review.
+
+### Verificación
+
+```
+node --test --test-timeout=15000 "tests_js/*.test.js"          (desde services/postventa-front)
+ℹ tests 899
+ℹ pass 899
+ℹ fail 0
+ℹ duration_ms 4581.7539
+
+python -m pytest -q -p no:cacheprovider                         (desde services/postventa-front)
+882 passed, 7 skipped in 25.76s
+```
+
+899 = 896 + los 3 controles nuevos. La aserción de `obra_no_encontrada` va dentro de un test que ya existía.
+
+### Lo que queda abierto
+
+O-B1t-1 (¿un texto para los siete códigos de lote?) es una pregunta para el humano, a través del líder. Hasta que se
+decida, el test fija el comportamiento de hoy, que es enseñarlos tal cual. O-B1t-3, O-B1b-3, O-B1b-4 y O-B1b-5 siguen
+como estaban.

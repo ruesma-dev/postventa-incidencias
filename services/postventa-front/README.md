@@ -599,9 +599,11 @@ aquí está la página que los usa. Diseño: `specs/F-038-bandeja-revision/`.
     parte: «Último intento de volcado: no se creó | no se llegó a procesar el
     <fecha> por <correo>: <motivo>», solo en el detalle.
 
-  Los motivos son los quince códigos de parte de `sigrid-api`
-  (`azure-apps/sigrid_api.md` §8.9), en castellano; uno que no se conozca
-  sale tal cual. Junto a la etiqueta de una volcada o una en duda,
+  Los quince códigos de parte de `sigrid-api` (`azure-apps/sigrid_api.md`
+  §8.9) salen en castellano. Si Sigrid rechazó el lote entero, cada parte
+  queda «no se llegó a procesar» con uno de los siete códigos de lote de
+  §8.9 como motivo; esos, como cualquier código que no se conozca, salen tal
+  cual. Junto a la etiqueta de una volcada o una en duda,
   «Ya no se revisa aquí»: **ningún botón ni formulario** (el servicio las
   rechazaría con 409); su historial sí se lee. El correo de quien volcó, como el de
   quien revisó, no va a la consola ni al almacenamiento del navegador.

@@ -589,6 +589,13 @@ test("f038 R21.3: el último intento rechazado o no procesado de una aprobada, c
     "Último intento de volcado: no se creó el " + FECHA_DEL_VOLCADO + " por " + CORREO,
     "sin motivo, sin «: »",
   );
+  // C-B1t-2 · un lote rechazado entero deja cada parte `no_procesado` con el
+  // CÓDIGO DE LOTE de §8.9 como motivo (`todos_no_procesados`): hoy sale tal
+  // cual, como cualquier código que no es de parte (R21.4; O-B1t-1, abierta).
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "no_procesado", sigrid_cod: null, motivo: "obra_no_encontrada" }), "aprobada"),
+    "Último intento de volcado: no se llegó a procesar el " + FECHA_DEL_VOLCADO + " por " + CORREO + ": obra_no_encontrada",
+  );
 });
 
 test("f038 R21.3: el último intento sale en cualquier estado que no sea volcada ni en duda", () => {
@@ -2721,6 +2728,24 @@ async function problemasDelVolcadoEnLaPagina(html) {
       if (!abierto.textos.some((t) => t.startsWith("Importada el "))) {
         problemas.push(`${caso.que}: su historial no se lee (R21.6)`);
       }
+      // C-B1t-1 · lista BLANCA: en la fila de una volcada o una en duda, lo
+      // único que se pulsa es abrir o cerrar su detalle. Cualquier otro
+      // <button> o <a> a la vista, con clic o sin él, es un problema.
+      for (const [como, vista, permitido] of [
+        ["con el detalle abierto", abierto, "cerrarDetalle()"],
+        ["con el detalle cerrado", cerrado, "abrirDetalle(fila.incidencia_id)"],
+      ]) {
+        const pulsables = vista.elementos.filter(
+          (e) => ["button", "a"].includes(e.nombre) && e.visible && "fila" in e.alcance,
+        );
+        const descritos = pulsables.map((e) => `<${e.nombre} @click="${e.atributos["@click"] || ""}">`);
+        if (descritos.join() !== `<button @click="${permitido}">`) {
+          problemas.push(
+            `${caso.que}, ${como}: en la fila se puede pulsar [${descritos.join(", ")}], ` +
+              `no solo <button @click="${permitido}"> (lista blanca de R21.6)`,
+          );
+        }
+      }
     }
   }
   return problemas;
@@ -2740,5 +2765,29 @@ for (const [nombre, viejo, nuevo] of [
   test(`f038 R21 (T4 bis): control: ${nombre} salta`, async () => {
     const problemas = await problemasDelVolcadoEnLaPagina(cambiarUnaVez(leerBandeja(), viejo, nuevo));
     assert.notDeepEqual(problemas, [], `${nombre}: el recorrido no lo ve`);
+  });
+}
+
+// C-B1t-1 · los tres supervivientes de la review del Bloque 1 ter (familia
+// «botón que no hace nada»), metidos en la fila delante de la línea de la
+// lista: un ancla que el mutante no repite. Tienen que caer en la LISTA BLANCA.
+const ANCLA_DE_LA_FILA = '<p x-show="fila.yaNoSeRevisa && fila.lineaVolcado"';
+
+for (const [nombre, intruso] of [
+  ["H08b un botón sin clic en las volcadas", '<button x-show="!fila.acciones.length">Volcar otra vez</button>'],
+  ["H08d un enlace en las volcadas", '<a x-show="!fila.acciones.length" href="#">Editar en Sigrid</a>'],
+  [
+    "H08e un botón con un clic ajeno en las volcadas",
+    '<template x-if="!fila.acciones.length"><button @click="cerrarDetalle()" class="rs-btn rs-btn--ok">Volcar otra vez</button></template>',
+  ],
+]) {
+  test(`f038 R21.6 (C-B1t-1): control: ${nombre} salta en la lista blanca`, async () => {
+    const problemas = await problemasDelVolcadoEnLaPagina(
+      cambiarUnaVez(leerBandeja(), ANCLA_DE_LA_FILA, intruso + "\n              " + ANCLA_DE_LA_FILA),
+    );
+    assert.ok(
+      problemas.some((p) => p.includes("lista blanca de R21.6")),
+      `${nombre}: la lista blanca no lo ve (${problemas.join(" | ")})`,
+    );
   });
 }

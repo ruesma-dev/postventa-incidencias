@@ -103,9 +103,12 @@
 
   /**
    * R21.4 · los códigos de parte de `POST /api/sigrid/partes-reclamacion`
-   * (`azure-apps/sigrid_api.md` §8.9), en su orden, con su texto. Son lo que
-   * trae el `motivo` del objeto `volcado`; los motivos propios del panel de
-   * volcado (exclusiones de un ensayo) no salen ahí y son de F-040.
+   * (`azure-apps/sigrid_api.md` §8.9), en su orden, con su texto. El
+   * `motivo` del objeto `volcado` es uno de ellos o, en un `no_procesado` de un
+   * lote que Sigrid rechazó entero, uno de los siete códigos de lote de §8.9
+   * (`todos_no_procesados` del backend), que salen tal cual, como cualquier
+   * código que no está aquí (R21.4). Los motivos propios del panel de volcado
+   * (exclusiones de un ensayo) no salen en el objeto y son de F-040.
    */
   const MOTIVOS_DE_VOLCADO = [
     "referencia_no_permitida",

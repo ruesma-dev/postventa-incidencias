@@ -1178,3 +1178,835 @@ python -m pytest -q -p no:cacheprovider                         (desde services/
 | Cobertura de las líneas cambiadas | **No disponible**: JavaScript, Markdown y tests; la puerta de `init.sh` mide Python (y `init.sh` es del líder, P-4) |
 | Mutantes | Pendiente por plan (T5). Aquí, el control en memoria de la errata en una clave, cazado por la guardia |
 | Tiempo de la suite | JS: 3,23 s; pytest del front: 21,12 s |
+
+## Bloque 1 quater · T5: la mutación (2026-10-20)
+
+El encargo era solo T5. Hay dos partes: la campaña de la herramienta y los mutantes a mano por familias, con la traza
+de cada uno. Los supervivientes se corrigen con tests. **No he tocado código de producción**: ningún superviviente ha
+destapado un defecto de `js/revision.js`, `js/api.js`, `bandeja.html`, `importar.html` ni `js/portal.js`. Todos eran
+huecos de los tests. No he ejecutado `bash harness/init.sh` (P-4: lo ejecuta el líder). No he lanzado pytest dentro de
+`services/postventa-api`, ni he tocado `.env`. El código del backend lo he leído, sin ejecutarlo, para dos
+justificaciones (R99, más abajo).
+
+### Commits
+
+- `e800242` · `F-038 T5: tests para los supervivientes de la campaña de mutación a mano`: solo
+  `services/postventa-front/tests_js/revision.test.js`, con 71 tests nuevos al final del fichero.
+- El de este informe, que lleva además `progress/mutacion_F-038.md` (lo escribe la herramienta), T5 `[x]` en
+  `tasks.md` y `progress/current.md`.
+
+### Ficheros tocados
+
+- `services/postventa-front/tests_js/revision.test.js`: dos bloques nuevos al final del fichero. No cambia ni se
+  debilita ningún test anterior.
+  - **«Bloque 1 quater (T5) · los supervivientes»**: `CASOS_T5`, 21 casos de lógica y del componente. Cada caso tiene
+    su comprobación `problemas(M)` y un **control no ciego**. El control carga en memoria un `js/revision.js` con el
+    mutante superviviente (`revisionMutada`, con un ancla que sale una sola vez) y exige que la comprobación lo señale.
+    Son 42 tests.
+  - **«bandeja.html: avisos, botones que no son de acción y la fila equivocada»**: cuatro comprobaciones sobre el
+    recorrido de `bandeja.html` y 25 controles, uno por mutante de HTML superviviente. Son 29 tests.
+    - `problemasDeLaVisibilidad` evalúa la tabla de visibilidad de 23 avisos, entre ellos los ocho problemas por campo.
+    - `problemasDeCargar` comprueba el `:disabled` de «Cargar».
+    - `problemasDeLosOtrosBotones` ejecuta el clic de «No, dejarla», «Cancelar», «Ver el detalle», «Cerrar el detalle»,
+      «Cargar» y «Cargar más».
+    - `problemasDeLaFilaEquivocada` usa dos filas, con el detalle abierto en la segunda.
+- `progress/mutacion_F-038.md`: el informe de la herramienta.
+- `specs/F-038-bandeja-revision/tasks.md`: T5 `[x]`.
+- `progress/current.md`: una entrada de este bloque.
+
+### 1 · La herramienta: `python -m harness.mutacion --feature F-038 --base 87a03f3 --timeout 900`
+
+**Antes de lanzarla** miré qué ejecuta, por P-4. `harness/mutacion.py` solo lanza pytest **por mutante**
+(`EjecutorPytest.ejecutar`, con `cwd` en la carpeta del servicio del fichero mutado), y solo genera mutantes sobre
+líneas `.py` de producción del alcance. `harness/alcance.py:134` descarta lo que no acaba en `.py`, y `tests`, `specs`,
+`progress`, `docs` y `harness` quedan excluidos como segmento. El diff `87a03f3..HEAD` no tiene ningún `.py` de
+producción. Los cuatro `.py` que toca son tests: `services/postventa-front/tests/test_f035_paginas.py`,
+`test_f035_portal.py`, `test_f038_front.py` y `tests/test_f035_placeholders_vivos.py`. Con 0 mutantes, la campaña
+paralela entra por la rama `efectivo < 2` de `harness/mutacion_paralela.py:510`, con la lista vacía. No crea ningún
+worktree ni lanza ninguna suite. Por eso no había riesgo de pytest en `services/postventa-api` y la lancé:
+
+```
+$ python -m harness.mutacion --feature F-038 --base 87a03f3 --timeout 900
+F-038: 0 fichero(s), 0 línea(s) de producción (origen rama, 87a03f3d765952581a8bf06cc49df902b14c1138..feature/F-038-bandeja-revision)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-038.md
+exit=0
+```
+
+**Por qué 0 mutantes, y por qué es lo correcto.** F-038 es un front estático. Su código es JavaScript y HTML, y la
+herramienta del arnés solo muta Python (`ast`). Lo que la herramienta no puede mutar va **a mano**, en la sección 2.
+Con 0 mutantes, el «coste por mutante» de C4 bis no se puede calcular (división por cero), y la regla de los 5 minutos
+tampoco aplica: no hay muertos que comprobar. Un detalle sin importancia: la cabecera del informe pone
+`--workers 1`, aunque el comando no lo llevaba. Ese número son los workers **efectivos** (`informe.workers`), y con 0
+mutantes salen 1. Lo dejo dicho para que el reviewer no lo tome por otro comando.
+
+### 2 · La campaña a mano por familias
+
+**Cómo.** Hice una copia del árbol en el scratchpad: `services/postventa-front`, `docs/`, `harness/`, `specs/`,
+`tests/` y `CHECKPOINTS.md`. Luego la repliqué en cuatro copias, una por worker.
+
+- **Primero, los finales de línea.** `git archive` sacaba CRLF con `core.autocrlf=true`, y en el árbol hay ficheros
+  con LF (`js/revision.js`, `js/api.js`, `bandeja.html`) y otros con CRLF (`importar.html`, `js/portal.js`). Por eso
+  la copia final sale del **árbol de trabajo**, y `cmp` la da idéntica en los cinco ficheros mutados. Los mutantes se
+  aplican con `newline=""`, y el ancla se adapta al final de línea de cada fichero. Tras cada mutante se restaura el
+  original y se comprueba que el contenido es idéntico (`assert`).
+- **Cada mutante** cambia **una** ancla que tiene que salir **una sola vez**: si no sale una vez, error y no cuenta.
+  Después se ejecutan dos cosas:
+  - `node --test --test-timeout=60000 "tests_js/*.test.js"`: la suite JS entera, con un `timeout` de 600 s en el
+    proceso que la lanza.
+  - `python -m pytest -q -p no:cacheprovider tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py`,
+    con `PYTHONDONTWRITEBYTECODE=1`.
+
+  Si las dos quedan en verde, se lanzan además la suite pytest **entera** del front y
+  `tests/test_f035_placeholders_vivos.py` desde la raíz de la copia. Solo cuenta como superviviente el que pasa las
+  cuatro.
+- **Línea base de la copia**, sin mutar: node **902/902** (3,8 s) y pytest del front **882 passed, 7 skipped**
+  (25,95 s). El dirigido da 581 passed y 7 skipped (15,2 s), y el de la raíz, 19 passed.
+- **Los muertos se comprueban, no se cuentan.** Para cada muerto guardé qué tests cayeron.
+  - Un muerto cuyos tests caídos son **todos controles** se trata como superviviente: muere «por accidente», porque el
+    control pierde su ancla. Fueron cinco, FE1–FE5.
+  - **Ningún mutante murió por tiempo**: no hubo ningún `timed out` ni `cancelled` en ninguna ejecución de node
+    (O-B1-6).
+- **Tiempo**: la primera pasada tardó unos 40 min de reloj con 4 copias en paralelo (22:02–22:42). Sumando cada
+  ejecución, son 9.552 s, unos 34 s por mutante. La segunda pasada, la de los 47 corregidos, tardó unos 7 min.
+- **Lo que no es de la herramienta del arnés:** el guion y la lista de mutantes (`campania.py`, `mutantes.py`,
+  `red.py`) están en el scratchpad de la sesión y no se versionan. La tabla completa de abajo trae cada mutante, con el
+  cambio y su veredicto.
+
+**Las familias.** Lancé todas las de T5. Además, las tablas de los reviewers de cada bloque:
+
+- Bloque 1: los 34 por familias y los de orden.
+- Bloque 1 bis: M1–M16 y X1–X2.
+- Bloque 1 ter: J01–J24 y H01–H17.
+- T4 quater: K1–K9.
+
+Y lo que pedía el líder: el botón que no hace nada, el `:disabled` con su tabla de verdad, el `x-show`/`x-if` de cada
+aviso (invertido o con el operador cambiado) y el clic sobre la fila equivocada. Los equivalentes ya aceptados por el
+reviewer (J21, K4, K8) no se repiten, salvo que caigan dentro de una familia de T5.
+
+| Familia | Generados | Muertos de entrada | Supervivientes | Solo por accidente | Muertos con los tests de T5 | Equivalentes propuestos |
+|---|---|---|---|---|---|---|
+| confirmado | 4 | 4 | 0 | 0 | 0 | 0 |
+| revision_previa | 3 | 2 | 1 | 0 | 1 | 0 |
+| usuario_correo | 6 | 6 | 0 | 0 | 0 | 0 |
+| filtro por defecto | 6 | 6 | 0 | 0 | 0 | 0 |
+| cursor y deduplicación | 14 | 13 | 1 | 0 | 1 | 0 |
+| ajuste del resumen | 9 | 9 | 0 | 0 | 0 | 0 |
+| proveedor y pares | 10 | 8 | 2 | 0 | 2 | 0 |
+| ubicación vacía | 8 | 7 | 1 | 0 | 1 | 0 |
+| hayCambios | 8 | 5 | 3 | 0 | 3 | 0 |
+| acciones por estado | 14 | 12 | 2 | 0 | 2 | 0 |
+| R26 detalle | 10 | 9 | 1 | 0 | 1 | 0 |
+| R12 recarga | 13 | 12 | 1 | 0 | 1 | 0 |
+| quienLegible | 7 | 5 | 2 | 0 | 2 | 0 |
+| línea del volcado | 21 | 21 | 0 | 0 | 0 | 0 |
+| filtros volcada/en_duda | 5 | 5 | 0 | 0 | 0 | 0 |
+| guarda de salida | 10 | 8 | 2 | 0 | 2 | 0 |
+| target | 9 | 9 | 0 | 0 | 0 | 0 |
+| marca de construcción | 8 | 8 | 0 | 0 | 0 | 0 |
+| paso 03 | 6 | 6 | 0 | 0 | 0 | 0 |
+| :disabled | 18 | 17 | 1 | 0 | 1 | 0 |
+| botón que no hace nada | 17 | 15 | 2 | 0 | 2 | 0 |
+| fila equivocada | 11 | 5 | 1 | 5 | 6 | 0 |
+| x-show/x-if | 38 | 21 | 17 | 0 | 17 | 0 |
+| nada sin un clic | 11 | 9 | 2 | 0 | 1 | 1 |
+| presentación | 15 | 12 | 3 | 0 | 3 | 0 |
+| **Total** | **281** | **234** | **42** | **5** | **46** | **1** |
+
+«Solo por accidente» son los mutantes FE1–FE5, el clic de cada botón de acción con `incidencias[0].incidencia_id` en
+lugar de `fila.incidencia_id`. Solo caían porque perdían el ancla de un control (C-B1b-2 y otros). El recorrido de
+`alcanceConTodoAbierto` pinta **una** fila, así que `incidencias[0]` y `fila` eran la misma y ninguna comprobación podía
+ver el cambio.
+
+### 3 · Los 47 que había que cerrar, y cómo se cierran
+
+En total son 47: 42 supervivientes y 5 que morían por accidente. 46 se cierran con un test y 1 se propone como
+equivalente. Los tests son de comportamiento: miran qué hace la página o qué viaja en el cuerpo, no el texto del fichero.
+
+**Lógica y componente** (`CASOS_T5`, contra el módulo):
+
+| Mutante | Qué no veía ningún test | Test nuevo |
+|---|---|---|
+| RP2 | Una fila **sin la clave** `revision_id` mandaba el cuerpo sin `revision_previa`: la clave `undefined` no viaja en el JSON | «R10: una fila sin la clave revision_id manda revision_previa: null (la clave viaja)» |
+| UB6 | Unos `valores` incompletos mandaban menos de ocho claves | «R9 (c), R10: editar con valores a los que les falta una clave…» |
+| PR4 | Un par de `catalogo.pares` sin proveedor (`null` o `""`) salía como opción | «R9 (a): un par de catalogo.pares sin proveedor no sale como opción» |
+| PR8 | Un proveedor ambiguo con código se marcaba «fuera de la lista» | «R24: un proveedor ambiguo no se marca…» (ver la decisión 1) |
+| CU9 | Dos «Cargar más» seguidos, sin esperar, pedían dos páginas: la guarda `cargandoMas` no la miraba nadie | «R7: dos «Cargar más» seguidos… piden UNA página» |
+| HC5 | Unos vigentes sin una clave (`undefined`) daban «hay cambios» sin tocar nada | «R9 (e): una clave que no viene en los vigentes cuenta como null» |
+| HC2, HC7 | La ubicación o el detalle vigentes con blancos alrededor daban «hay cambios» sin tocar nada (el backend recorta, F-056 R16) | dos tests «R9 (e): … con blancos alrededor, sin tocar, no es un cambio» |
+| AC12 | `pedirDescarte` sobre una `descartada`, `volcada` o `en_duda` abría la confirmación | «R11: «Descartar» pedido sobre una fila que no lo admite no abre la confirmación» |
+| AC14 | `accionesDe("toString")` (o `constructor`, `__proto__`) **lanzaba**: el `hasOwnProperty` no lo vigilaba nadie | «R11: accionesDe de un nombre del prototipo… no ofrece nada ni lanza» |
+| Q2 | Un texto con «sistema:» en medio pasaba a «el sistema» | «R22: solo un texto que EMPIEZA por «sistema:» es el sistema» |
+| Q4 | `quienLegible(42)` daba «42» | «R22: quienLegible de algo que no es un texto da vacío» |
+| D10 | Un error de `valores_no_validos` sin `campo` de texto se pintaba como `undefined` o `7` | «R12, R26: un error … sin campo de texto no se pinta junto a ningún campo» |
+| GS7 | Un formulario sin `vigentes` hacía preguntar a la guarda | «R13: un formulario sin sus vigentes es ilegible: la guarda no pregunta» |
+| GS6 | Si leer el estado lanzaba, la guarda preguntaba | «R13: si leer el estado lanza, la guarda no pregunta» |
+| N10 | Abrir el detalle de **otra** fila dejaba el formulario, el descarte pedido y los errores de la anterior | «R8: abrir el detalle de OTRA fila cierra el formulario…» |
+| TX11 | Con el oficio **no** ambiguo, un oficio cuyo grupo se llamara igual que el nombre vigente salía «del grupo» | «R9 (b): con el oficio vigente NO ambiguo no hay grupo…» |
+| TX12 | Un oficio ambiguo con código se conservaba como «fuera de la lista» | «R24: un oficio ambiguo no se conserva como «fuera de la lista»» (ver la decisión 1) |
+| TX5 | La frontera de los 80 caracteres de la descripción corta | «R4: la descripción corta llega a 80 caracteres sin cortarse…» |
+| FE10 | «Guardar cambios» sobre la primera fila y no sobre la abierta (con una sola fila, era la misma) | «R9, R10: «Guardar cambios» edita la fila ABIERTA…». La caza también la comprobación de HTML de la fila equivocada |
+| E7 | Tras recargar, el mensaje de la acción no se restauraba | «R12: el mensaje de una acción que recarga sigue a la vista después de recargar…» (ver la decisión 2) |
+
+**`bandeja.html`** (cuatro comprobaciones, cada una contra el componente de verdad):
+
+| Mutantes | Comprobación |
+|---|---|
+| XS1, XS2, XS3, XS10, XS11, XS12, XS13, XS14, XS18, XS19, XS20, XS22, XS23, XS24, XS32, XS33, XS35 | «R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca». Cada aviso se busca por su `x-text` o, si no lo tiene, por su texto exacto (`marcarPorTexto` le pone un `data-t5`), **nunca por el `x-show` que se muta**. Se recorre la página en dos o tres escenarios: con el aviso y sin él, y con la otra condición del `&&`. Los ocho problemas por campo, cada uno con el suyo y con el de otro campo |
+| DS13 | «R3 (T5): «Cargar» se deshabilita sin obra y mientras carga»: la tabla de verdad de obra `""`, `"   "` y `"9901"` × `cargando` |
+| BN10, BN12 | «R7, R8, R9, R11 (T5): «No, dejarla», «Cancelar», los del detalle, «Cargar» y «Cargar más», pulsados, hacen lo suyo»: el clic de cada uno, **ejecutado** |
+| FE1–FE5 (y FE10) | «R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera». Hay dos filas y el detalle está abierto en la **segunda**, que la vista pinta primero (el recorrido pinta el primer elemento de cada `x-for`). Así `fila` es ID_2 e `incidencias[0]` es ID_1, y la comprobación verifica que el recorrido pinta de verdad la segunda |
+
+**Equivalente propuesto (1). Necesita la aceptación escrita del humano (nivel `critico`).**
+
+- **N11**: en `abrirDetalle`, `api.historialRevision(this.abierta)` en lugar de `api.historialRevision(incidenciaId)`.
+  Es **equivalente** porque la línea anterior acaba de hacer `this.abierta = incidenciaId`, y entre esa asignación y
+  la evaluación del argumento no hay ningún `await`, así que no puede cambiar nada. Las dos expresiones valen lo mismo
+  para cualquier entrada. Con Alpine, `this` es el proxy reactivo y devuelve el valor recién escrito. Ningún test puede
+  distinguirlos. Lo metí en la familia «nada sin un clic» como sonda de orden, sabiendo que podía salir equivalente.
+
+### 4 · Decisiones (para el reviewer)
+
+1. **PR8 y TX12 se cierran con un test sobre una entrada fuera del contrato, y no como equivalentes.** El backend
+   garantiza que, si una marca es ambigua, no hay código. Es R99: `_comprobar_elegido` en
+   `services/postventa-api/domain/models/importacion.py:588`, que usan `IncidenciaEnBandeja` y `ValoresIncidencia`
+   (`domain/models/revision.py:242`). Por eso, con datos reales, `Boolean(v.proveedor_codigo)` y `v.oficio_codigo` ya
+   tapan las puertas `!v.proveedor_ambiguo` y `!v.oficio_ambiguo`. Aun así, se pueden distinguir con una entrada, y la
+   puerta dice algo de R24: un ambiguo se **elige**, no se marca como «fuera de la lista». He preferido un test con
+   esa entrada, comentado como fuera de contrato, a cargar al humano con dos equivalentes. Si el reviewer prefiere
+   declararlos equivalentes, basta con quitar esos dos casos.
+2. **E7 se cierra simulando un cambio de `mensajeAccion` durante la recarga.** `cargar()` no toca `mensajeAccion`,
+   así que, sin nada más, la línea `this.mensajeAccion = mensaje` no cambia nada. Pero la página sí puede tocarlo
+   mientras la recarga espera a la red: `abrirFormulario` lo vacía. Para que se distinga, el doble de `api.revision`
+   lo vacía durante la recarga, y el test pide que el mensaje siga ahí al terminar. Eso es lo que la línea promete.
+3. **Los controles van en el propio fichero, como permanentes.** Cada mutante superviviente es el control de su
+   comprobación, en memoria: `revisionMutada` para el JS y `cambiarUnaVez` para el HTML. Si alguien debilita una
+   comprobación, su control cae. Es la misma forma que T4 quater y C-B1b-1.
+4. **No toco `alcanceConTodoAbierto` ni `recorrerBandeja`.** La fila equivocada usa un alcance propio,
+   `alcanceDeLaSegundaFila`, que sobrescribe `vista()` en el alcance hijo para pintar primero la fila abierta. El
+   componente no cambia. Lo que se prueba es el `@click` del HTML.
+
+### 5 · RED: cada test nuevo, contra su mutante (en una copia; el árbol, nunca)
+
+En una copia limpia (`copia_red`) con el `revision.test.js` nuevo, se aplicó cada mutante al fichero de producción de
+la copia y se lanzó **solo** su test (`--test-name-pattern`). Cada uno da `fail 1`. Después se restauró y se comprobó
+que el fichero quedaba idéntico. Esta es la salida real, sin las líneas de pila:
+
+```
+### RP2 · sin revision_id, la clave queda undefined (no viaja)
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(RP2\): R" tests_js/revision.test.js
+✖ f038 T5 (RP2): R10: una fila sin la clave revision_id manda revision_previa: null (la clave viaja) (9.255ms)
+  +   'revision_previa: undefined (en el cuerpo: false)'
+ℹ fail 1
+### UB6 · valores con undefined
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(UB6\): R" tests_js/revision.test.js
+✖ f038 T5 (UB6): R9 (c), R10: editar con valores a los que les falta una clave manda las ocho, la que falta en null (15.763ms)
+  +   'viajan 6 claves de valores',
+  +   'detalle: undefined',
+  +   'listado: undefined'
+ℹ fail 1
+### PR4 · un par sin proveedor sale como opción
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(PR4\): R" tests_js/revision.test.js
+✖ f038 T5 (PR4): R9 (a): un par de catalogo.pares sin proveedor no sale como opción (16.2354ms)
+  +   'proveedores de 9003: ["P-03",null,""]'
+ℹ fail 1
+### PR8 · proveedor ambiguo marcado fuera de lista
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(PR8\): R" tests_js/revision.test.js
+✖ f038 T5 (PR8): R24: un proveedor ambiguo no se marca «fuera de la lista» (aunque la fila trajera un código) (13.616ms)
+  +   'el proveedor ambiguo sale marcado fuera de la lista'
+ℹ fail 1
+### CU9 · cargarMas sin la guarda de cargandoMas
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(CU9\): R" tests_js/revision.test.js
+✖ f038 T5 (CU9): R7: dos «Cargar más» seguidos, sin esperar al primero, piden UNA página (20.0428ms)
+  +   'mientras se carga la página 2 se han pedido 2 páginas siguientes'
+ℹ fail 1
+### HC5 · normalizado deja undefined
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(HC5\): R" tests_js/revision.test.js
+✖ f038 T5 (HC5): R9 (e): una clave que no viene en los vigentes cuenta como null, no como cambio (16.0715ms)
+  +   'sin tocar nada, hayCambios dice que sí (una clave ausente de los vigentes)'
+ℹ fail 1
+### HC2 · ubicación vigente sin recortar
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(HC2\): R" tests_js/revision.test.js
+✖ f038 T5 (HC2): R9 (e): una ubicación vigente con blancos alrededor, sin tocar, no es un cambio (el backend la recorta) (13.0341ms)
+  +   'sin tocar nada, hayCambios dice que sí (la ubicación vigente con blancos)'
+ℹ fail 1
+### HC7 · detalle vigente sin recortar
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(HC7\): R" tests_js/revision.test.js
+✖ f038 T5 (HC7): R9 (e): un detalle vigente con blancos alrededor, sin tocar, no es un cambio (el backend lo recorta) (13.5596ms)
+  +   'sin tocar nada, hayCambios dice que sí (el detalle vigente con blancos)'
+ℹ fail 1
+### AC12 · pedirDescarte sin la puerta de descartar
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(AC12\): R" tests_js/revision.test.js
+✖ f038 T5 (AC12): R11: «Descartar» pedido sobre una fila que no lo admite no abre la confirmación (17.4373ms)
+  +   'descartada: confirmandoDescarte = 00000000-0000-4000-8000-000000000001',
+  +   'volcada: confirmandoDescarte = 00000000-0000-4000-8000-000000000001',
+  +   'en_duda: confirmandoDescarte = 00000000-0000-4000-8000-000000000001'
+ℹ fail 1
+### AC14 · accionesDe con el prototipo (toString, constructor)
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(AC14\): R" tests_js/revision.test.js
+✖ f038 T5 (AC14): R11: accionesDe de un nombre del prototipo (toString, constructor, __proto__) no ofrece nada ni lanza (62.3017ms)
+  +   'toString: lanza acciones.slice is not a function',
+  +   'constructor: lanza acciones.slice is not a function',
+  +   '__proto__: lanza acciones.slice is not a function',
+  +   'hasOwnProperty: lanza acciones.slice is not a function'
+ℹ fail 1
+### Q2 · «sistema:» en cualquier sitio
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(Q2\): R" tests_js/revision.test.js
+✖ f038 T5 (Q2): R22: solo un texto que EMPIEZA por «sistema:» es el sistema; uno que lo lleva dentro sale tal cual (16.1159ms)
+  +   'quienLegible(copia-sistema:ejemplo@ejemplo.invalid) = el sistema'
+ℹ fail 1
+### Q4 · un no-texto como String
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(Q4\): R" tests_js/revision.test.js
+✖ f038 T5 (Q4): R22: quienLegible de algo que no es un texto da vacío (12.9207ms)
+  +   '42 → «42»',
+  +   'true → «true»',
+  +   '{} → «[object Object]»',
+  +   '["x"] → «x»'
+ℹ fail 1
+### D10 · un error sin campo entra como "undefined"
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(D10\): R" tests_js/revision.test.js
+✖ f038 T5 (D10): R12, R26: un error de valores_no_validos sin campo de texto no se pinta junto a ningún campo (15.9126ms)
+  +   'erroresPorCampo: {"7":"campo que no es texto","undefined":"sin campo, inventado","ubicacion":"No está en la lista"}'
+ℹ fail 1
+### GS7 · sin vigentes no se mira
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(GS7\): R" tests_js/revision.test.js
+✖ f038 T5 (GS7): R13: un formulario sin sus vigentes es ilegible: la guarda no pregunta (15.5485ms)
+  +   'sin vigentes, pregunta'
+ℹ fail 1
+### GS6 · hayEdicionSinGuardar ilegible = true
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(GS6\): R" tests_js/revision.test.js
+✖ f038 T5 (GS6): R13: si leer el estado lanza, la guarda no pregunta (16.565ms)
+  +   'con un estado que lanza, pregunta'
+ℹ fail 1
+### N10 · abrir otro detalle conserva el formulario de la otra
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(N10\): R" tests_js/revision.test.js
+✖ f038 T5 (N10): R8: abrir el detalle de OTRA fila cierra el formulario, el descarte pedido y los errores de la anterior (17.2747ms)
+  +   'el formulario de la fila 1 sigue abierto en el detalle de la 2',
+  +   'el descarte pedido sigue: 00000000-0000-4000-8000-000000000001',
+  +   'los errores por campo de la fila 1 siguen'
+ℹ fail 1
+### TX11 · grupo sin mirar ambiguo
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(TX11\): R" tests_js/revision.test.js
+✖ f038 T5 (TX11): R9 (b): con el oficio vigente NO ambiguo no hay grupo que poner primero, aunque su nombre case con una etiqueta (14.5639ms)
+  +   'marcadas del grupo sin ambigüedad: 9003'
+ℹ fail 1
+### TX12 · oficio ambiguo conservado y marcado
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(TX12\): R" tests_js/revision.test.js
+✖ f038 T5 (TX12): R24: un oficio ambiguo no se conserva como «fuera de la lista» (aunque la fila trajera un código) (14.0795ms)
+  +   'oficio ambiguo conservado y marcado: 9999'
+ℹ fail 1
+### TX5 · frontera de la descripción corta
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(TX5\): R" tests_js/revision.test.js
+✖ f038 T5 (TX5): R4: la descripción corta llega a 80 caracteres sin cortarse; a partir de 81, se corta con «…» (12.3146ms)
+  +   '80 caracteres: «xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…»'
+ℹ fail 1
+### FE10 · guardar edita la primera fila
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(FE10\): R" tests_js/revision.test.js
+✖ f038 T5 (FE10): R9, R10: «Guardar cambios» edita la fila ABIERTA, también cuando no es la primera de la lista (17.1016ms)
+  +   'edita [00000000-0000-4000-8000-000000000001], no la abierta (00000000-0000-4000-8000-000000000002)'
+ℹ fail 1
+### E7 · tras recargar se pierde el mensaje
+$ node --test --test-timeout=60000 "--test-name-pattern=T5 \(E7\): R" tests_js/revision.test.js
+✖ f038 T5 (E7): R12: el mensaje de una acción que recarga sigue a la vista después de recargar, pase lo que pase durante la recarga (21.8964ms)
+  +   'tras recargar, mensajeAccion = «»'
+ℹ fail 1
+### XS1 · error de carga invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (356.4292ms)
+  +   'el error de carga (sin error): se ve, y no tiene que verse',
+  +   'el error de carga (con error): no se ve, y tiene que verse'
+ℹ fail 1
+### XS2 · mensaje fuera del detalle invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (463.1545ms)
+  +   'el mensaje de una acción, fuera del detalle (con mensaje y el detalle cerrado): no se ve, y tiene que verse',
+  +   'el mensaje de una acción, fuera del detalle (con mensaje y el detalle abierto): se ve, y no tiene que verse'
+ℹ fail 1
+### XS3 · mensaje fuera del detalle con OR
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (324.2466ms)
+  +   'el mensaje de una acción, fuera del detalle (con mensaje y el detalle abierto): se ve, y no tiene que verse',
+  +   'el mensaje de una acción, fuera del detalle (sin mensaje y el detalle cerrado): se ve, y no tiene que verse'
+ℹ fail 1
+### XS10 · aviso de aprobar invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (369.6767ms)
+  +   '«Recarga para ver si se puede aprobar» (con los motivos leídos): se ve, y no tiene que verse',
+  +   '«Recarga para ver si se puede aprobar» (con motivos_no_aprobable: null): no se ve, y tiene que verse'
+ℹ fail 1
+### XS11 · mensaje del detalle invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (278.6848ms)
+  +   'el mensaje de una acción, en el detalle (con mensaje): no se ve, y tiene que verse',
+  +   'el mensaje de una acción, en el detalle (sin mensaje): se ve, y no tiene que verse'
+ℹ fail 1
+### XS12 · error del historial invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (403.7042ms)
+  +   'el error del historial (sin error): se ve, y no tiene que verse',
+  +   'el error del historial (con error): no se ve, y tiene que verse'
+ℹ fail 1
+### XS13 · duplicada invertida
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (355.7737ms)
+  +   'la línea de duplicada (sin duplicada_de): se ve, y no tiene que verse',
+  +   'la línea de duplicada (con duplicada_de): no se ve, y tiene que verse'
+ℹ fail 1
+### XS14 · revisado por invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (425.3817ms)
+  +   'la línea de la última revisión (revisada): no se ve, y tiene que verse',
+  +   'la línea de la última revisión (sin revisar): se ve, y no tiene que verse'
+ℹ fail 1
+### XS18 · aviso del formulario invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (289.5875ms)
+  +   'el aviso del formulario (sin aviso): se ve, y no tiene que verse',
+  +   'el aviso del formulario (con aviso): no se ve, y tiene que verse'
+ℹ fail 1
+### XS19 · problema de la ubicación oculto
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (295.0903ms)
+  +   'el problema de ubicacion, junto al campo (con el suyo): no se ve, y tiene que verse'
+ℹ fail 1
+### XS20 · resumen invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (290.7894ms)
+  +   'el resumen (con resumen): no se ve, y tiene que verse',
+  +   `el resumen (sin resumen): <dd x-text="vistaResumen().total">: Cannot read properties of null (reading 'total')`,
+  +   `el resumen (sin resumen): <dd x-text="vistaResumen().aprobadas">: Cannot read properties of null (reading 'aprobadas')`,
+  +   `el resumen (sin resumen): <dd x-text="vistaResumen().conMotivos">: Cannot read properties of null (reading 'conMotivos')`,
+  +   `el resumen (sin resumen): <template x-for="vistaResumen().porEstado">: Cannot read properties of null (reading 'porEstado')`,
+  +   `el resumen (sin resumen): <template x-for="vistaResumen().porMotivo">: Cannot read properties of null (reading 'porMotivo')`,
+  +   'el resumen (sin resumen): se ve, y no tiene que verse'
+ℹ fail 1
+### XS22 · «Ninguna incidencia» invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (324.9664ms)
+  +   '«Ninguna incidencia de la obra con estos filtros» (con filas): se ve, y no tiene que verse',
+  +   '«Ninguna incidencia de la obra con estos filtros» (cargada y vacía): no se ve, y tiene que verse'
+ℹ fail 1
+### XS23 · Guardando… invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (398.2127ms)
+  +   '«Guardando…» (sin guardar): se ve, y no tiene que verse',
+  +   '«Guardando…» (guardando): no se ve, y tiene que verse'
+ℹ fail 1
+### XS24 · chips de motivos invertidos
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (324.1759ms)
+  +   'los chips de motivos (con un motivo): no se ve, y tiene que verse'
+ℹ fail 1
+### XS32 · «Leyendo el historial» con OR
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (315.7079ms)
+  +   '«Leyendo el historial…» (ya leído): se ve, y no tiene que verse',
+  +   '«Leyendo el historial…» (con error): se ve, y no tiene que verse'
+ℹ fail 1
+### XS33 · «llegó así» invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (339.2758ms)
+  +   '«llegó así» del primer campo (la unidad) (la unidad no cambió): se ve, y no tiene que verse',
+  +   '«llegó así» del primer campo (la unidad) (la unidad cambió): no se ve, y tiene que verse'
+ℹ fail 1
+### XS35 · «Leyendo la bandeja» invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (342.4763ms)
+  +   '«Leyendo la bandeja y Sigrid…» (cargando): no se ve, y tiene que verse',
+  +   '«Leyendo la bandeja y Sigrid…» (sin cargar): se ve, y no tiene que verse'
+ℹ fail 1
+### DS13 · Cargar sin mirar la obra
+$ node --test --test-timeout=60000 "--test-name-pattern=Cargar» se deshabilita" tests_js/revision.test.js
+✖ f038 R3 (T5): «Cargar» se deshabilita sin obra y mientras carga (71.4999ms)
+  +   '«Cargar» con obra «» y cargando=false: deshabilitado ≠ true',
+  +   '«Cargar» con obra «   » y cargando=false: deshabilitado ≠ true'
+ℹ fail 1
+### BN10 · No, dejarla sin @click
+$ node --test --test-timeout=60000 "--test-name-pattern=pulsados, hacen lo suyo" tests_js/revision.test.js
+✖ f038 R7, R8, R9, R11 (T5): «No, dejarla», «Cancelar», los del detalle, «Cargar» y «Cargar más», pulsados, hacen lo suyo (118.0458ms)
+  +   'no-dejarla: sin @click'
+ℹ fail 1
+### BN12 · Cancelar sin @click
+$ node --test --test-timeout=60000 "--test-name-pattern=pulsados, hacen lo suyo" tests_js/revision.test.js
+✖ f038 R7, R8, R9, R11 (T5): «No, dejarla», «Cancelar», los del detalle, «Cargar» y «Cargar más», pulsados, hacen lo suyo (107.7297ms)
+  +   'cancelar: sin @click'
+ℹ fail 1
+### FE1 · Aprobar sobre la primera fila
+$ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
+✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (80.4891ms)
+  +   'aprobar: manda [aprobar de 00000000-0000-4000-8000-000000000001], no «aprobar de 00000000-0000-4000-8000-000000000002»'
+ℹ fail 1
+### FE2 · Descartar sobre la primera fila
+$ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
+✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (80.3678ms)
+  +   'pedirDescarte: pide el descarte de «00000000-0000-4000-8000-000000000001»'
+ℹ fail 1
+### FE3 · Recuperar sobre la primera fila
+$ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
+✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (73.0497ms)
+  +   'recuperar: manda [recuperar de 00000000-0000-4000-8000-000000000001], no «recuperar de 00000000-0000-4000-8000-000000000002»'
+ℹ fail 1
+### FE4 · Sí, descartarla sobre la primera fila
+$ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
+✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (81.597ms)
+  +   'confirmarDescarte: manda [], no «descartar de 00000000-0000-4000-8000-000000000002»'
+ℹ fail 1
+### FE5 · Editar sobre la primera fila
+$ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
+✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (56.5388ms)
+  +   'abrirFormulario: no abre el formulario de SU fila'
+ℹ fail 1
+```
+
+**La segunda pasada** se hizo con el `revision.test.js` nuevo en las cuatro copias: los 47 mutantes, otra vez, con
+las cuatro suites. Resultado: **46 muertos y 1 vivo, N11**, el equivalente propuesto. Cada uno de los 46 cae en **su**
+test nuevo, no solo en su control. Ninguno muere por tiempo. Un mutante que ya moría sigue muerto: añadir tests no
+puede revivirlo.
+
+### 6 · Verde, en el árbol de trabajo (después del commit `e800242`)
+
+```
+node --test --test-timeout=60000 "tests_js/*.test.js"          (desde services/postventa-front)
+ℹ tests 973
+ℹ pass 973
+ℹ fail 0
+ℹ duration_ms 6257.4689
+
+python -m pytest -q -p no:cacheprovider                         (desde services/postventa-front)
+882 passed, 7 skipped in 23.79s
+
+python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py      (desde la raíz)
+19 passed in 0.34s
+```
+
+Son 973 tests: los 902 de antes y los 71 nuevos (42 de `CASOS_T5`, 4 comprobaciones de HTML y 25 controles de HTML).
+En pytest no hay tests nuevos. La suite de pytest incluye el puente a Node (`test_f007_js.py`).
+
+### 7 · La tabla completa, mutante por mutante
+
+«Lo mata» da el número de tests que cayeron en node y en pytest y el nombre del primero. «muere con T5» es un
+superviviente, o un muerto por accidente, que ahora cae en el test nuevo que se nombra.
+
+| # | Familia | Fichero | Mutante | Veredicto | Lo mata (node / pytest) |
+|---|---|---|---|---|---|
+| C1 | confirmado | `js/revision.js` | confirmado: true -> false en cuerpoDeAccion | muere | node 4: «f038 R10: aprobar y recuperar llevan exactamente las seis claves co…» |
+| C2 | confirmado | `js/revision.js` | un segundo sitio que confirma: cuerpo["confirmado"] = true en actuar | muere | node 1: «f038 R10: confirmado: true se escribe en UN solo sitio de js/revisi…» |
+| C3 | confirmado | `js/revision.js` | sin la clave confirmado | muere | node 5: «f038 R10: aprobar y recuperar llevan exactamente las seis claves co…» |
+| C4 | confirmado | `js/revision.js` | confirmado como texto "true" | muere | node 4: «f038 R10: aprobar y recuperar llevan exactamente las seis claves co…» |
+| RP1 | revision_previa | `js/revision.js` | revision_previa siempre null | muere | node 1: «f038 R10: aprobar y recuperar llevan exactamente las seis claves co…» |
+| RP2 | revision_previa | `js/revision.js` | sin revision_id, la clave queda undefined (no viaja) | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (RP2): R10: una fila sin la clave revision_id manda revisio…» |
+| RP3 | revision_previa | `js/revision.js` | revision_previa = incidencia_id | muere | node 3: «f038 R10: aprobar y recuperar llevan exactamente las seis claves co…» |
+| UC1 | usuario_correo | `js/revision.js` | el oid en lugar del correo | muere | node 2: «f038 R10: aprobar y recuperar llevan exactamente las seis claves co…» |
+| UC2 | usuario_correo | `js/revision.js` | el correo en lugar del oid | muere | node 2: «f038 R10: aprobar y recuperar llevan exactamente las seis claves co…» |
+| UC3 | usuario_correo | `js/revision.js` | cuerpoDeAccion no exige correo | muere | node 1: «f038 R10: sin oid, sin correo, con una acción desconocida o editar …» |
+| UC4 | usuario_correo | `js/revision.js` | puedeActuar no exige correo | muere | node 2: «f038 R10: puedeActuar: sin oid, sin correo o guardando, no» |
+| UC5 | usuario_correo | `js/revision.js` | puedeActuar ignora guardando | muere | node 2: «f038 R10: puedeActuar: sin oid, sin correo o guardando, no» |
+| UC6 | usuario_correo | `js/revision.js` | actuar sin la puerta puedeActuar | muere | node 2: «f038 R10: sin correo en la sesión, ninguna acción sale» |
+| FD1 | filtro por defecto | `js/revision.js` | consultaDe por defecto todas | muere | node 3: «f038 R3/R6: consultaDe sin filtros pide la obra con «activas» por d…» |
+| FD2 | filtro por defecto | `js/revision.js` | el componente arranca con todas | muere | node 3: «f038 R3: con ?obra= el campo sale relleno y se pide la primera pági…» |
+| FD3 | filtro por defecto | `js/revision.js` | todas primero en FILTROS_DE_ESTADO | muere | node 7: «f038 R3/R6: consultaDe sin filtros pide la obra con «activas» por d…»; pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| FD4 | filtro por defecto | `js/revision.js` | con_motivos se manda sin pedirlo | muere | node 5: «f038 R3/R6: consultaDe sin filtros pide la obra con «activas» por d…» |
+| FD5 | filtro por defecto | `js/revision.js` | un estado fuera del selector pasa tal cual | muere | node 1: «f038 R6: un estado que no está en el selector cae en «activas»» |
+| FD6 | filtro por defecto | `bandeja.html` | la opción por defecto con otro valor | muere | pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| CU1 | cursor y deduplicación | `js/revision.js` | anadirPagina sin deduplicar | muere | node 2: «f038 R7: anadirPagina añade sin repetir por incidencia_id y da «N d…» |
+| CU2 | cursor y deduplicación | `js/api.js` | cursor sin escapar | muere | node 1: «f038 R7: revision lleva la obra, el estado, con_motivos y el cursor…» |
+| CU3 | cursor y deduplicación | `js/api.js` | &tamano=100 añadido | muere | node 2: «f007 R27 / f019 / f009 / f012 / f028 / f036 / f038: los VEINTE endp…» |
+| CU4 | cursor y deduplicación | `js/revision.js` | consultaDe pierde el cursor | muere | node 2: «f038 R7: consultaDe lleva el cursor tal cual, sin decodificarlo ni …» |
+| CU5 | cursor y deduplicación | `js/revision.js` | cargarMas sin cursor (repite la primera) | muere | node 1: «f038 R7: «Cargar más» pide con el cursor y los MISMOS filtros, y añ…» |
+| CU6 | cursor y deduplicación | `js/revision.js` | siguiente sin normalizar a null | muere | node 1: «f038 R7: anadirPagina sin siguiente, o con algo que no es un cursor…» |
+| CU7 | cursor y deduplicación | `js/revision.js` | N de M con M = cargadas | muere | node 3: «f038 R7: anadirPagina añade sin repetir por incidencia_id y da «N d…» |
+| CU8 | cursor y deduplicación | `js/revision.js` | total ignora total_filtrado | muere | node 3: «f038 R7: anadirPagina añade sin repetir por incidencia_id y da «N d…» |
+| CU9 | cursor y deduplicación | `js/revision.js` | cargarMas sin la guarda de cargandoMas | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (CU9): R7: dos «Cargar más» seguidos, sin esperar al primer…» |
+| CU10 | cursor y deduplicación | `js/revision.js` | cargarMas con los filtros del campo | muere | node 1: «f038 R7: «Cargar más» pide con el cursor y los MISMOS filtros, y añ…» |
+| CU11 | cursor y deduplicación | `js/revision.js` | la página nueva antes que lo cargado | muere | node 2: «f038 R7: anadirPagina añade sin repetir por incidencia_id y da «N d…» |
+| CU12 | cursor y deduplicación | `js/api.js` | con_motivos=false no viaja | muere | node 1: «f038 R7: revision lleva la obra, el estado, con_motivos y el cursor…» |
+| CU13 | cursor y deduplicación | `js/api.js` | el estado no viaja | muere | node 1: «f038 R7: revision lleva la obra, el estado, con_motivos y el cursor…» |
+| CU14 | cursor y deduplicación | `js/revision.js` | cargarMas sustituye en vez de añadir | muere | node 1: «f038 R7: «Cargar más» pide con el cursor y los MISMOS filtros, y añ…» |
+| AR1 | ajuste del resumen | `js/revision.js` | el estado de antes suma | muere | node 4: «f038 R12: ajustarResumen tras aprobar mueve el estado y deja los mo…» |
+| AR2 | ajuste del resumen | `js/revision.js` | el estado de después no suma | muere | node 5: «f038 R12: ajustarResumen tras aprobar mueve el estado y deja los mo…» |
+| AR3 | ajuste del resumen | `js/revision.js` | motivos null tratados como [] | muere | node 1: «f038 R12: ajustarResumen tras descartar o recuperar (motivos null) …» |
+| AR4 | ajuste del resumen | `js/revision.js` | AND -> OR en la condición de motivos | muere | node 2: «f038 R12: ajustarResumen tras descartar o recuperar (motivos null) …» |
+| AR5 | ajuste del resumen | `js/revision.js` | con_motivos no resta la de antes | muere | node 2: «f038 R12: ajustarResumen tras editar mueve el estado y los motivos …» |
+| AR6 | ajuste del resumen | `js/revision.js` | ajustarResumen muta el resumen recibido | muere | node 1: «f038 R12: ajustarResumen no toca el resumen que recibe» |
+| AR7 | ajuste del resumen | `js/revision.js` | actuar no ajusta el resumen | muere | node 2: «f038 R10/R12: aprobar con un clic manda el cuerpo, sustituye la fil…» |
+| AR8 | ajuste del resumen | `js/revision.js` | antes y después cruzados | muere | node 2: «f038 R10/R12: aprobar con un clic manda el cuerpo, sustituye la fil…» |
+| AR9 | ajuste del resumen | `js/revision.js` | el motivo de antes no resta | muere | node 2: «f038 R12: ajustarResumen tras editar mueve el estado y los motivos …» |
+| PR1 | proveedor y pares | `js/revision.js` | alCambiarOficio no vacía el proveedor | muere | node 3: «f038 R9: cambiar el oficio vacía el proveedor que no casa, con aviso» |
+| PR2 | proveedor y pares | `js/revision.js` | sin el aviso del proveedor | muere | node 1: «f038 R9: cambiar el oficio vacía el proveedor que no casa, con aviso» |
+| PR3 | proveedor y pares | `js/revision.js` | pares de cualquier oficio | muere | node 3: «f038 R9 (a): los proveedores de un oficio salen de catalogo.pares; …» |
+| PR4 | proveedor y pares | `js/revision.js` | un par sin proveedor sale como opción | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (PR4): R9 (a): un par de catalogo.pares sin proveedor no sa…» |
+| PR5 | proveedor y pares | `js/revision.js` | proveedor vigente conservado con otro oficio | muere | node 3: «f038 R9: cambiar el oficio vacía el proveedor que no casa, con aviso» |
+| PR6 | proveedor y pares | `js/revision.js` | oficio ambiguo sin elegir: sin su proveedor | muere | node 1: «f038 R9 (c): con el oficio ambiguo sin elegir, solo el proveedor vi…» |
+| PR7 | proveedor y pares | `js/revision.js` | proveedores que no salen de catalogo.pares | muere | node 3: «f038 R9 (a): los proveedores de un oficio salen de catalogo.pares; …» |
+| PR8 | proveedor y pares | `js/revision.js` | proveedor ambiguo marcado fuera de lista | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (PR8): R24: un proveedor ambiguo no se marca «fuera de la l…» |
+| PR9 | proveedor y pares | `js/revision.js` | vacía el que sí casa | muere | node 4: «f038 R9: cambiar el oficio vacía el proveedor que no casa, con aviso» |
+| PR10 | proveedor y pares | `js/revision.js` | sin oficio, los pares de oficio vacío | muere | node 1: «f038 R9 (c): con el oficio ambiguo sin elegir, solo el proveedor vi…» |
+| UB1 | ubicación vacía | `js/revision.js` | ubicación vacía como "" | muere | node 1: «f038 R9 (d): valoresDelFormulario: las ocho claves exactas; ubicaci…» |
+| UB2 | ubicación vacía | `js/revision.js` | códigos vacíos como "" | muere | node 3: «f038 R9 (d): valoresDelFormulario: las ocho claves exactas; ubicaci…» |
+| UB3 | ubicación vacía | `js/revision.js` | detalle sin recortar ni null | muere | node 7: «f038 R9 (d): valoresDelFormulario: las ocho claves exactas; ubicaci…» |
+| UB4 | ubicación vacía | `js/revision.js` | alCambiarUnidad no vacía la ubicación | muere | node 5: «f038 R9: al cambiar la unidad, una ubicación que no es de la nueva …» |
+| UB5 | ubicación vacía | `js/revision.js` | comparación de ubicación sin mayúsculas | muere | node 1: «f038 R9: la comparación de la ubicación es exacta: una mayúscula de…» |
+| UB6 | ubicación vacía | `js/revision.js` | valores con undefined | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (UB6): R9 (c), R10: editar con valores a los que les falta …» |
+| UB7 | ubicación vacía | `js/revision.js` | recortadoONull sin recortar | muere | node 2: «f038 R9 (d): valoresDelFormulario: las ocho claves exactas; ubicaci…» |
+| UB8 | ubicación vacía | `js/revision.js` | ubicación vigente conservada con otra unidad | muere | node 1: «f038 R24: cambiar la unidad sigue vaciando la ubicación conservada» |
+| HC1 | hayCambios | `js/revision.js` | descripción sin colapsar blancos | muere | node 2: «f038 R9 (e): hayCambios con la normalización del backend» |
+| HC2 | hayCambios | `js/revision.js` | ubicación vigente sin recortar | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (HC2): R9 (e): una ubicación vigente con blancos alrededor,…» |
+| HC3 | hayCambios | `js/revision.js` | el listado no cuenta | muere | node 1: «f038 R9 (e): hayCambios mira cada uno de los ocho campos» |
+| HC4 | hayCambios | `js/revision.js` | OR -> AND entre urgencia y listado | muere | node 1: «f038 R9 (e): hayCambios mira cada uno de los ocho campos» |
+| HC5 | hayCambios | `js/revision.js` | normalizado deja undefined | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (HC5): R9 (e): una clave que no viene en los vigentes cuent…» |
+| HC6 | hayCambios | `js/revision.js` | guardar sin mirar hayCambios | muere | node 1: «f038 R9 (e): guardar sin cambios no manda nada y lo dice» |
+| HC7 | hayCambios | `js/revision.js` | detalle vigente sin recortar | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (HC7): R9 (e): un detalle vigente con blancos alrededor, si…» |
+| HC8 | hayCambios | `js/revision.js` | la unidad no cuenta | muere | node 1: «f038 R9 (e): hayCambios mira cada uno de los ocho campos» |
+| AC1 | acciones por estado | `js/revision.js` | una aprobada ofrece Aprobar | muere | node 4: «f038 R11: accionesDe da solo las acciones de cada estado (_PERMITIDAS)» |
+| AC2 | acciones por estado | `js/revision.js` | una volcada con Editar | muere | node 7: «f038 R11: accionesDe da solo las acciones de cada estado (_PERMITIDAS)»; pytest 1: `test_f038_front.py::test_f038_r21_6_volcada_y_en_duda_no_admiten_ni…` |
+| AC3 | acciones por estado | `js/revision.js` | una en_duda con Descartar | muere | node 4: «f038 R11: accionesDe da solo las acciones de cada estado (_PERMITIDAS)»; pytest 1: `test_f038_front.py::test_f038_r21_6_volcada_y_en_duda_no_admiten_ni…` |
+| AC4 | acciones por estado | `js/revision.js` | estado desconocido con Editar | muere | node 1: «f038 R11: accionesDe da solo las acciones de cada estado (_PERMITIDAS)» |
+| AC5 | acciones por estado | `js/revision.js` | accionesDe sin copia | muere | node 4: «f038 R11: lo que devuelve accionesDe es una copia: tocarla no cambi…» |
+| AC6 | acciones por estado | `js/revision.js` | una descartada con Editar | muere | node 2: «f038 R11: accionesDe da solo las acciones de cada estado (_PERMITIDAS)» |
+| AC7 | acciones por estado | `js/revision.js` | una nueva sin Aprobar | muere | node 15: «f038 R11: accionesDe da solo las acciones de cada estado (_PERMITIDAS)» |
+| AC8 | acciones por estado | `js/revision.js` | puedeAprobar sin mirar el estado | muere | node 2: «f038 R11: «Aprobar» solo con motivos [] y en un estado que lo admite» |
+| AC9 | acciones por estado | `js/revision.js` | aprobable con un motivo | muere | node 1: «f038 R11: «Aprobar» solo con motivos [] y en un estado que lo admite» |
+| AC10 | acciones por estado | `js/revision.js` | actuar sin la puerta de accionesDe | muere | node 1: «f038 R11: una acción que el estado no ofrece no sale» |
+| AC11 | acciones por estado | `js/revision.js` | abrirFormulario sin la puerta de editar | muere | node 1: «f038 R9/R11: abrirFormulario(incidencia_id) abre el formulario solo…» |
+| AC12 | acciones por estado | `js/revision.js` | pedirDescarte sin la puerta de descartar | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (AC12): R11: «Descartar» pedido sobre una fila que no lo ad…» |
+| AC13 | acciones por estado | `js/revision.js` | puedeAprobar con motivos null | muere | node 3: «f038 R11: «Aprobar» solo con motivos [] y en un estado que lo admite» |
+| AC14 | acciones por estado | `js/revision.js` | accionesDe con el prototipo (toString, constructor) | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (AC14): R11: accionesDe de un nombre del prototipo (toStrin…» |
+| D1 | R26 detalle | `js/api.js` | clasificar no guarda el cuerpo | muere | node 2: «f038 R26: el error de la accion trae su codigo y lo propio del cuer…» |
+| D2 | R26 detalle | `js/api.js` | ErrorApi sin detalle inicial | muere | node 1: «f038 R26: clasificar deja el cuerpo en `detalle`; sin JSON, null» |
+| D3 | R26 detalle | `js/revision.js` | queHacerConElError no lee detalle | muere | node 7: «f038 R12: 400 valores_no_validos da el problema junto a cada campo;…» |
+| D4 | R26 detalle | `js/revision.js` | el problema de cada campo se pierde | muere | node 2: «f038 R12: 400 valores_no_validos da el problema junto a cada campo;…» |
+| D5 | R26 detalle | `js/revision.js` | no aprobable sin sus motivos | muere | node 2: «f038 R12: 409 incidencia_no_aprobable: sus motivos en texto» |
+| D6 | R26 detalle | `js/revision.js` | accion_no_permitida sin el estado del cuerpo | muere | node 1: «f038 R12: 409 accion_no_permitida dice el estado en que está, y pri…» |
+| D7 | R26 detalle | `js/revision.js` | bandeja_demasiado_grande sin el total | muere | node 2: «f038 R12: 409 bandeja_demasiado_grande: la obra pasa del tope, con …» |
+| D8 | R26 detalle | `js/api.js` | la acción se reintenta sola | muere | node 2: «f038 R10/R26: accionRevision NO se reintenta: ni un 502, ni la red» |
+| D9 | R26 detalle | `js/api.js` | historial sin el texto del servicio | muere | node 1: «f038 R26: un 503 de las tres ensena el texto del servicio, no la pu…» |
+| D10 | R26 detalle | `js/revision.js` | un error sin campo entra como "undefined" | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (D10): R12, R26: un error de valores_no_validos sin campo d…» |
+| E1 | R12 recarga | `js/revision.js` | acción sin respuesta no recarga | muere | node 2: «f038 R12: una acción sin respuesta: «no se sabe si se ha guardado» …» |
+| E2 | R12 recarga | `js/revision.js` | accion_no_permitida no recarga | muere | node 1: «f038 R12: 409 accion_no_permitida dice el estado en que está, y pri…» |
+| E3 | R12 recarga | `js/revision.js` | incidencia_no_aprobable recarga | muere | node 2: «f038 R12: 409 incidencia_no_aprobable: sus motivos en texto» |
+| E4 | R12 recarga | `js/revision.js` | revision_desactualizada no recarga | muere | node 2: «f038 R12: 409 revision_desactualizada: «otra persona la ha cambiado…» |
+| E5 | R12 recarga | `js/revision.js` | incidencia_no_encontrada no recarga | muere | node 1: «f038 R12: 404 incidencia_no_encontrada: ya no está, y primera página» |
+| E6 | R12 recarga | `js/revision.js` | 500 en acción sin «No se ha guardado nada» | muere | node 1: «f038 R12: 500 sin codigo: el texto del servicio y, en una acción, q…» |
+| E7 | R12 recarga | `js/revision.js` | tras recargar se pierde el mensaje | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (E7): R12: el mensaje de una acción que recarga sigue a la …» |
+| E8 | R12 recarga | `js/revision.js` | sin_cambios recarga | muere | node 1: «f038 R12: 400 sin_cambios: «No hay cambios que guardar»; el formula…» |
+| E9 | R12 recarga | `js/revision.js` | una lectura sin respuesta dice lo de la acción | muere | node 1: «f038 R12: una lectura sin respuesta no dice «no se sabe si se ha gu…» |
+| E10 | R12 recarga | `js/revision.js` | actuar recarga al revés | muere | node 7: «f038 R10/R12: aprobar con un clic manda el cuerpo, sustituye la fil…» |
+| E11 | R12 recarga | `js/revision.js` | 500 de lectura dice «No se ha guardado nada» | muere | node 1: «f038 R12: 500 sin codigo: el texto del servicio y, en una acción, q…» |
+| E12 | R12 recarga | `js/revision.js` | peticion_invalida recarga | muere | node 1: «f038 R12: 400 peticion_invalida es un fallo de la página: no se ha …» |
+| E13 | R12 recarga | `js/revision.js` | los errores por campo no llegan al formulario | muere | node 1: «f038 R12: 400 valores_no_validos deja el formulario abierto con el …» |
+| Q1 | quienLegible | `js/revision.js` | literal de normalizar tal cual | muere | node 4: «f038 R22: quienLegible: un correo tal cual, el literal del sistema …» |
+| Q2 | quienLegible | `js/revision.js` | «sistema:» en cualquier sitio | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (Q2): R22: solo un texto que EMPIEZA por «sistema:» es el s…» |
+| Q3 | quienLegible | `js/revision.js` | otro literal del sistema tal cual | muere | node 2: «f038 R22: quienLegible: un correo tal cual, el literal del sistema …» |
+| Q4 | quienLegible | `js/revision.js` | un no-texto como String | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (Q4): R22: quienLegible de algo que no es un texto da vacío» |
+| Q5 | quienLegible | `js/revision.js` | lineaDeRevision sin quienLegible | muere | node 1: «f038 R4/R8 D-8: quien revisó por última vez, «<acción> por <correo>…» |
+| Q6 | quienLegible | `js/revision.js` | historial sin quienLegible | muere | node 1: «f038 R8/R22: el historial con fecha de Madrid, acción, quién, campo…» |
+| Q7 | quienLegible | `js/revision.js` | volcado sin quienLegible | muere | node 3: «f038 R21.1, R22: quien volcó pasa por quienLegible»; pytest 4: `test_f038_front.py::test_f038_r21_7_volcado_por_solo_pasa_por_quien…` |
+| V1 | línea del volcado | `js/revision.js` | volcada sin sigrid_cod | muere | node 4: «f038 R21.1: una volcada: «Volcada como <sigrid_cod> por <quien> el …» |
+| V2 | línea del volcado | `js/revision.js` | volcada sin fecha | muere | node 4: «f038 R21.1: una volcada: «Volcada como <sigrid_cod> por <quien> el …» |
+| V3 | línea del volcado | `js/revision.js` | en duda sin fecha | muere | node 5: «f038 R21.1, R22: quien volcó pasa por quienLegible» |
+| V4 | línea del volcado | `js/revision.js` | en duda sin motivo | muere | node 2: «f038 R21.2, R21.4: una en duda con motivo lleva su texto; uno desco…» |
+| V5 | línea del volcado | `js/revision.js` | rechazado sin motivo | muere | node 4: «f038 R21.3, R21.4 (T4 quater): un no_procesado de un lote rechazado…» |
+| V6 | línea del volcado | `js/revision.js` | motivo sin texto (código crudo) | muere | node 5: «f038 R21.3, R21.4 (T4 quater): un no_procesado de un lote rechazado…» |
+| V7 | línea del volcado | `js/revision.js` | un código de parte sin texto | muere | node 3: «f038 R21.4: textoMotivoVolcado da el texto de cada uno de los quinc…» |
+| V8 | línea del volcado | `js/revision.js` | un código de lote sin texto | muere | node 2: «f038 R21.4 (T4 quater): textoMotivoVolcado da el texto de cada uno …» |
+| V9 | línea del volcado | `js/revision.js` | sin la rama de lote | muere | node 3: «f038 R21.4 (T4 quater): textoMotivoVolcado da el texto de cada uno …» |
+| V10 | línea del volcado | `js/revision.js` | rechazado / no_procesado cruzados | muere | node 5: «f038 R21.3, R21.4 (T4 quater): un no_procesado de un lote rechazado…» |
+| V11 | línea del volcado | `js/revision.js` | guarda de R21.3 invertida | muere | node 8: «f038 R21.3, R21.4 (T4 quater): un no_procesado de un lote rechazado…» |
+| V12 | línea del volcado | `js/revision.js` | presentarRevision pasa un estado fijo | muere | node 5: «f038 R21.1-R21.3, R21.6: presentarRevision da la línea del volcado …» |
+| V13 | línea del volcado | `js/revision.js` | la fecha en UTC | muere | node 13: «f038 R4/R8: fechaDeMadrid da dd/mm/aaaa hh:mm en hora de Madrid» |
+| V14 | línea del volcado | `js/revision.js` | último intento fallido también en una volcada | muere | node 1: «f038 R21.3: el último intento sale en cualquier estado que no sea v…» |
+| V15 | línea del volcado | `js/revision.js` | yaNoSeRevisa invertido | muere | node 3: «f038 R21.1-R21.3, R21.6: presentarRevision da la línea del volcado …» |
+| V16 | línea del volcado | `js/revision.js` | en duda sin línea | muere | node 8: «f038 R21.1, R22: quien volcó pasa por quienLegible» |
+| V17 | línea del volcado | `js/revision.js` | otro estado da "" en vez de null | muere | node 1: «f038 R21: sin objeto volcado, o con un estado del volcado desconoci…» |
+| V18 | línea del volcado | `js/revision.js` | sin código sale "null" | muere | node 5: «f038 R21.4: un código de parte que no está en la lista se enseña ta…» |
+| V19 | línea del volcado | `js/revision.js` | rechazado sin fecha | muere | node 4: «f038 R21.3, R21.4 (T4 quater): un no_procesado de un lote rechazado…» |
+| V20 | línea del volcado | `js/revision.js` | frase vacía | muere | node 3: «f038 R21.1-R21.3, R21.6: presentarRevision da la línea del volcado …»; pytest 1: `test_f038_front.py::test_f038_r21_6_ya_no_se_revisa_aqui_acompana_a…` |
+| V21 | línea del volcado | `js/revision.js` | una volcada o en duda dice Revisada | muere | node 1: «f038 R4 D-8: el verbo de la línea se deduce del estado, en los seis…» |
+| FV1 | filtros volcada/en_duda | `js/revision.js` | FILTROS sin volcada | muere | node 2: «f038 R21.5: consultaDe lleva también los filtros volcada y en_duda;…»; pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| FV2 | filtros volcada/en_duda | `js/revision.js` | FILTROS sin en_duda | muere | node 2: «f038 R21.5: consultaDe lleva también los filtros volcada y en_duda;…»; pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| FV3 | filtros volcada/en_duda | `bandeja.html` | opción volcada con otro valor | muere | pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| FV4 | filtros volcada/en_duda | `bandeja.html` | sin la opción en_duda | muere | pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| FV5 | filtros volcada/en_duda | `js/revision.js` | ESTADOS_DEL_VOLCADO sin en_duda | muere | node 4: «f038 R21.3: el último intento sale en cualquier estado que no sea v…» |
+| GS1 | guarda de salida | `bandeja.html` | sin returnValue | muere | node 1: «f038 R13: la guarda de salida pide confirmación solo con una edició…» |
+| GS2 | guarda de salida | `bandeja.html` | ilegible pregunta | muere | node 1: «f038 R13: si no puede leer el estado, la guarda no pregunta ni lanza» |
+| GS3 | guarda de salida | `bandeja.html` | selector [x-data] | muere | node 1: «f038 R13: la guarda lee el componente de la página por su x-data, n…» |
+| GS4 | guarda de salida | `bandeja.html` | pregunta al revés | muere | node 2: «f038 R13: la guarda de salida pide confirmación solo con una edició…» |
+| GS5 | guarda de salida | `bandeja.html` | sin preventDefault | muere | node 1: «f038 R13: la guarda de salida pide confirmación solo con una edició…» |
+| GS6 | guarda de salida | `js/revision.js` | hayEdicionSinGuardar ilegible = true | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (GS6): R13: si leer el estado lanza, la guarda no pregunta» |
+| GS7 | guarda de salida | `js/revision.js` | sin vigentes no se mira | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (GS7): R13: un formulario sin sus vigentes es ilegible: la …» |
+| GS8 | guarda de salida | `bandeja.html` | unload en vez de beforeunload | muere | node 1: «f038 R13: la guarda de salida pide confirmación solo con una edició…»; pytest 1: `test_f038_front.py::test_f038_r13_un_solo_beforeunload_que_solo_lee` |
+| GS9 | guarda de salida | `js/revision.js` | con formulario abierto siempre pregunta | muere | node 3: «f038 R13: hayEdicionSinGuardar con y sin cambios, y con un estado i…» |
+| GS10 | guarda de salida | `bandeja.html` | lee el nodo, no el estado | muere | node 1: «f038 R13: la guarda de salida pide confirmación solo con una edició…»; pytest 1: `test_f038_front.py::test_f038_r13_un_solo_beforeunload_que_solo_lee` |
+| T1 | target | `importar.html` | enlace de importar con target | muere | pytest 2: `test_f038_front.py::test_f038_r14_importar_enlaza_a_la_bandeja_de_s…` |
+| T2 | target | `importar.html` | obra sin escapar | muere | pytest 2: `test_f038_front.py::test_f038_r14_importar_enlaza_a_la_bandeja_de_s…` |
+| T3 | target | `importar.html` | enlace sin la obra | muere | pytest 2: `test_f038_front.py::test_f038_r14_importar_enlaza_a_la_bandeja_de_s…` |
+| T4 | target | `importar.html` | obra vacía da ?obra= | muere | pytest 2: `test_f038_front.py::test_f038_r14_importar_enlaza_a_la_bandeja_de_s…` |
+| T5 | target | `bandeja.html` | pestaña con target | muere | node 2: «f035 R70: la barra de bandeja.html tiene las ocho pestañas, en su o…»; pytest 2: `test_f038_front.py::test_f038_r1_ningun_enlace_con_target_ni_otra_v…` |
+| T6 | target | `bandeja.html` | paso 01 con target | muere | node 1: «f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, …»; pytest 2: `test_f038_front.py::test_f038_r1_ningun_enlace_con_target_ni_otra_v…` |
+| T7 | target | `importar.html` | href estático a otra página | muere | pytest 3: `test_f038_front.py::test_f038_r14_importar_enlaza_a_la_bandeja_de_s…` |
+| T8 | target | `importar.html` | abre otra ventana por script | muere | pytest 2: `test_f035_paginas.py::test_f035_r73_ninguna_pagina_del_front_abre_o…` |
+| T9 | target | `bandeja.html` | miga con target | muere | pytest 2: `test_f038_front.py::test_f038_r1_ningun_enlace_con_target_ni_otra_v…` |
+| MC1 | marca de construcción | `bandeja.html` | pestaña actual sin data-construccion | muere | node 1: «f035 R66: en la barra de bandeja.html, data-construccion y aria-lab…»; pytest 2: `test_f038_front.py::test_f038_r2_la_pestana_de_la_bandeja_es_la_act…` |
+| MC2 | marca de construcción | `bandeja.html` | pestaña actual sin aria-label | muere | node 1: «f035 R66: en la barra de bandeja.html, data-construccion y aria-lab…»; pytest 2: `test_f038_front.py::test_f038_r2_la_pestana_de_la_bandeja_es_la_act…` |
+| MC3 | marca de construcción | `bandeja.html` | paso 02 sin marca | muere | node 4: «f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, …» |
+| MC4 | marca de construcción | `bandeja.html` | marca en una sección construida | muere | node 1: «f035 R66: en la barra de bandeja.html, data-construccion y aria-lab…» |
+| MC5 | marca de construcción | `js/portal.js` | PAGINAS sin bandeja.html | muere | node 8: «f035 R44 / f038 R1: enlaceSeccion desde bandeja.html: Bandeja de re…»; pytest 2: `test_f038_front.py::test_f038_r1_portal_paginas_declara_bandeja_htm…` |
+| MC6 | marca de construcción | `js/portal.js` | bandeja.html en la sección entrada | muere | node 7: «f035 R44 / f038 R1: enlaceSeccion desde bandeja.html: Bandeja de re…»; pytest 2: `test_f038_front.py::test_f038_r1_portal_paginas_declara_bandeja_htm…` |
+| MC7 | marca de construcción | `bandeja.html` | sin la leyenda | muere | pytest 1: `test_f038_front.py::test_f038_r1_la_barra_comun_primera_y_estatica` |
+| MC8 | marca de construcción | `bandeja.html` | otra pestaña sin su marca | muere | node 1: «f035 R66: en la barra de bandeja.html, data-construccion y aria-lab…» |
+| P1 | paso 03 | `bandeja.html` | paso 03 como enlace | muere | node 3: «f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, …» |
+| P2 | paso 03 | `bandeja.html` | paso 03 actual | muere | node 3: «f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, …» |
+| P3 | paso 03 | `bandeja.html` | paso 03 sin marca | muere | node 3: «f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, …» |
+| P4 | paso 03 | `bandeja.html` | paso 02 sin aria-current | muere | node 4: «f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, …» |
+| P5 | paso 03 | `bandeja.html` | paso 02 como enlace | muere | node 4: «f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, …» |
+| P6 | paso 03 | `bandeja.html` | paso 03 con otra etiqueta | muere | node 1: «f035 R84-R87: la tira de bandeja.html cumple con Portal.RECORRIDO, …» |
+| DS1 | :disabled | `bandeja.html` | Editar sin la negación (M1) | muere | node 3: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| DS2 | :disabled | `bandeja.html` | Descartar sin la negación (M2) | muere | node 2: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| DS3 | :disabled | `bandeja.html` | Recuperar siempre deshabilitado (M3) | muere | node 2: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| DS4 | :disabled | `bandeja.html` | Guardar siempre deshabilitado (M4) | muere | node 2: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| DS5 | :disabled | `bandeja.html` | Editar deshabilitado con el formulario cerrado (M5) | muere | node 3: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| DS6 | :disabled | `bandeja.html` | Sí, descartarla siempre deshabilitado (M11) | muere | node 2: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| DS7 | :disabled | `bandeja.html` | Aprobar con AND (M6) | muere | node 2: «f038 R10, R11 (O-B1-1 a): el :disabled de «Aprobar» lee fila.aproba…» |
+| DS8 | :disabled | `bandeja.html` | Aprobar sin mirar aprobable | muere | node 1: «f038 R10, R11 (O-B1-1 a): el :disabled de «Aprobar» lee fila.aproba…»; pytest 1: `test_f038_front.py::test_f038_r10_o_b1_1_aprobar_lee_la_fila_y_pued…` |
+| DS9 | :disabled | `bandeja.html` | Aprobar sin mirar puedeActuar | muere | node 2: «f038 R10, R11 (O-B1-1 a): el :disabled de «Aprobar» lee fila.aproba…»; pytest 2: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| DS10 | :disabled | `bandeja.html` | Descartar bloqueado por el descarte de otra fila (X1) | muere | node 2: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| DS11 | :disabled | `bandeja.html` | Recuperar sin :disabled | muere | node 3: «f038 R10: sin puedeActuar() (sin oid, sin correo o guardando), ning…»; pytest 2: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| DS12 | :disabled | `bandeja.html` | Cargar más sin :disabled (M12) | muere | pytest 1: `test_f038_front.py::test_f038_r7_cargar_mas_con_n_de_m` |
+| DS13 | :disabled | `bandeja.html` | Cargar sin mirar la obra | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R3 (T5): «Cargar» se deshabilita sin obra y mientras carga» |
+| DS14 | :disabled | `bandeja.html` | Sí, descartarla sin :disabled | muere | node 3: «f038 R10: sin puedeActuar() (sin oid, sin correo o guardando), ning…»; pytest 1: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| DS15 | :disabled | `bandeja.html` | Guardar con la negación quitada | muere | node 3: «f038 R10: sin puedeActuar() (sin oid, sin correo o guardando), ning…» |
+| DS16 | :disabled | `bandeja.html` | Aprobar con aprobable invertido | muere | node 1: «f038 R10, R11 (O-B1-1 a): el :disabled de «Aprobar» lee fila.aproba…» |
+| DS17 | :disabled | `bandeja.html` | Editar habilitado con el formulario ya abierto | muere | node 3: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| DS18 | :disabled | `bandeja.html` | Descartar habilitado con el panel ya abierto | muere | node 2: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…» |
+| BN1 | botón que no hace nada | `bandeja.html` | Aprobar con errata en el argumento (M10) | muere | node 4: «f038 T1 bis: control: un nombre que el componente no tiene, en band…» |
+| BN2 | botón que no hace nada | `bandeja.html` | Recuperar sin argumento | muere | node 3: «f038 R10 (C-B1b-1): control: M3 «Recuperar» siempre deshabilitado s…»; pytest 1: `test_f038_front.py::test_f038_r10_control_un_boton_que_no_mira_pued…` |
+| BN3 | botón que no hace nada | `bandeja.html` | Sí, descartarla sin @click | muere | node 4: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…»; pytest 2: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| BN4 | botón que no hace nada | `bandeja.html` | Guardar llama a cancelar | muere | node 3: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…»; pytest 1: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| BN5 | botón que no hace nada | `bandeja.html` | Editar no abre el formulario | muere | node 3: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…»; pytest 1: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| BN6 | botón que no hace nada | `bandeja.html` | Aprobar llama a recuperar (X2) | muere | node 9: «f038 T1 bis: control: un nombre que el componente no tiene, en band…»; pytest 4: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| BN7 | botón que no hace nada | `bandeja.html` | Descartar sin segundo clic | muere | node 4: «f038 R10, R11 (C-B1b-1): el :disabled de cada botón de acción cumpl…»; pytest 2: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| BN8 | botón que no hace nada | `bandeja.html` | botón sin clic en volcadas (H08b) | muere | node 1: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …» |
+| BN9 | botón que no hace nada | `bandeja.html` | Cargar más sin @click | muere | pytest 1: `test_f038_front.py::test_f038_r7_cargar_mas_con_n_de_m` |
+| BN10 | botón que no hace nada | `bandeja.html` | No, dejarla sin @click | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R7, R8, R9, R11 (T5): «No, dejarla», «Cancelar», los del detal…» |
+| BN11 | botón que no hace nada | `bandeja.html` | Cargar sin @click | muere | pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| BN12 | botón que no hace nada | `bandeja.html` | Cancelar sin @click | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R7, R8, R9, R11 (T5): «No, dejarla», «Cancelar», los del detal…» |
+| BN13 | botón que no hace nada | `bandeja.html` | Aprobar referencia sin llamar | muere | node 8: «f038 T1 bis: control: un nombre que el componente no tiene, en band…»; pytest 3: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| BN14 | botón que no hace nada | `bandeja.html` | el selector no recarga | muere | pytest 1: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| BN15 | botón que no hace nada | `bandeja.html` | cambiar oficio no revalida el proveedor | muere | pytest 1: `test_f038_front.py::test_f038_r9_r12_el_formulario_y_el_problema_ju…` |
+| BN16 | botón que no hace nada | `bandeja.html` | cambiar unidad no revalida la ubicación | muere | pytest 1: `test_f038_front.py::test_f038_r9_r12_el_formulario_y_el_problema_ju…` |
+| BN17 | botón que no hace nada | `bandeja.html` | Ver el detalle sin argumento | muere | node 1: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …» |
+| FE1 | fila equivocada | `bandeja.html` | Aprobar sobre la primera fila | muere con T5 | solo caía en controles ajenos (por accidente); ahora «f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle…» |
+| FE2 | fila equivocada | `bandeja.html` | Descartar sobre la primera fila | muere con T5 | solo caía en controles ajenos (por accidente); ahora «f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle…» |
+| FE3 | fila equivocada | `bandeja.html` | Recuperar sobre la primera fila | muere con T5 | solo caía en controles ajenos (por accidente); ahora «f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle…» |
+| FE4 | fila equivocada | `bandeja.html` | Sí, descartarla sobre la primera fila | muere con T5 | solo caía en controles ajenos (por accidente); ahora «f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle…» |
+| FE5 | fila equivocada | `bandeja.html` | Editar sobre la primera fila | muere con T5 | solo caía en controles ajenos (por accidente); ahora «f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle…» |
+| FE6 | fila equivocada | `bandeja.html` | Ver el detalle de la primera fila | muere | node 1: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …» |
+| FE7 | fila equivocada | `js/revision.js` | actuar sustituye las demás filas | muere | node 3: «f038 R10/R12: aprobar con un clic manda el cuerpo, sustituye la fil…» |
+| FE8 | fila equivocada | `js/revision.js` | filaDe da la primera | muere | node 4: «f038 R9/R11: abrirFormulario(incidencia_id) abre el formulario solo…» |
+| FE9 | fila equivocada | `js/revision.js` | confirmarDescarte sin comprobar la fila | muere | node 1: «f038 R11: confirmar el descarte de otra fila que la pedida no desca…» |
+| FE10 | fila equivocada | `js/revision.js` | guardar edita la primera fila | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (FE10): R9, R10: «Guardar cambios» edita la fila ABIERTA, t…» |
+| FE11 | fila equivocada | `js/revision.js` | pedirDescarte marca la abierta | muere | node 1: «f038 R11: descartar pide un segundo clic y lleva el motivo» |
+| XS1 | x-show/x-if | `bandeja.html` | error de carga invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS2 | x-show/x-if | `bandeja.html` | mensaje fuera del detalle invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS3 | x-show/x-if | `bandeja.html` | mensaje fuera del detalle con OR | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS4 | x-show/x-if | `bandeja.html` | sesión incompleta con AND (M13) | muere | node 2: «f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se pue…» |
+| XS5 | x-show/x-if | `bandeja.html` | sesión incompleta nunca | muere | node 2: «f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se pue…» |
+| XS6 | x-show/x-if | `bandeja.html` | sesión incompleta con consulta invertida | muere | node 2: «f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se pue…» |
+| XS7 | x-show/x-if | `bandeja.html` | «No se puede aprobar» oculto (M15) | muere | node 2: «f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se pue…» |
+| XS8 | x-show/x-if | `bandeja.html` | «No se puede aprobar» con OR | muere | node 2: «f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se pue…» |
+| XS9 | x-show/x-if | `bandeja.html` | «No se puede aprobar» sin motivos | muere | node 2: «f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se pue…» |
+| XS10 | x-show/x-if | `bandeja.html` | aviso de aprobar invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS11 | x-show/x-if | `bandeja.html` | mensaje del detalle invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS12 | x-show/x-if | `bandeja.html` | error del historial invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS13 | x-show/x-if | `bandeja.html` | duplicada invertida | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS14 | x-show/x-if | `bandeja.html` | revisado por invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS15 | x-show/x-if | `bandeja.html` | Ya no se revisa aquí invertido (H01) | muere | node 2: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …»; pytest 2: `test_f038_front.py::test_f038_r21_6_ya_no_se_revisa_aqui_acompana_a…` |
+| XS16 | x-show/x-if | `bandeja.html` | línea de la lista con OR (H14) | muere | node 6: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …»; pytest 2: `test_f038_front.py::test_f038_r21_1_la_linea_del_volcado_en_la_list…` |
+| XS17 | x-show/x-if | `bandeja.html` | línea del detalle invertida (H03) | muere | node 3: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …»; pytest 4: `test_f038_front.py::test_f038_r21_1_la_linea_del_volcado_en_la_list…` |
+| XS18 | x-show/x-if | `bandeja.html` | aviso del formulario invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS19 | x-show/x-if | `bandeja.html` | problema de la ubicación oculto | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS20 | x-show/x-if | `bandeja.html` | resumen invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS21 | x-show/x-if | `bandeja.html` | lista invertida | muere | node 4: «f038 R11, R21.6: en cada estado, bandeja.html pinta justo los boton…» |
+| XS22 | x-show/x-if | `bandeja.html` | «Ninguna incidencia» invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS23 | x-show/x-if | `bandeja.html` | Guardando… invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS24 | x-show/x-if | `bandeja.html` | chips de motivos invertidos | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS25 | x-show/x-if | `bandeja.html` | detalle invertido | muere | node 10: «f038 T1 bis: control: un nombre que el componente no tiene, en band…»; pytest 3: `test_f038_front.py::test_f038_r21_1_la_linea_del_volcado_en_la_list…` |
+| XS26 | x-show/x-if | `bandeja.html` | panel de descarte con OR | muere | node 3: «f038 R11, R21.6: en cada estado, bandeja.html pinta justo los boton…» |
+| XS27 | x-show/x-if | `bandeja.html` | formulario sin la puerta de editar (M9) | muere | node 3: «f038 R11, R21.6: en cada estado, bandeja.html pinta justo los boton…»; pytest 2: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| XS28 | x-show/x-if | `bandeja.html` | Aprobar en la puerta de editar | muere | node 2: «f038 R11, R21.6: en cada estado, bandeja.html pinta justo los boton…»; pytest 2: `test_f038_front.py::test_f038_r10_cada_boton_de_accion_esta_en_su_p…` |
+| XS29 | x-show/x-if | `bandeja.html` | Recuperar invertido | muere | node 6: «f038 R11, R21.6: en cada estado, bandeja.html pinta justo los boton…»; pytest 1: `test_f038_front.py::test_f038_r11_control_un_boton_fuera_de_su_puer…` |
+| XS30 | x-show/x-if | `bandeja.html` | Ver el detalle invertido | muere | node 1: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …» |
+| XS31 | x-show/x-if | `bandeja.html` | Cargar más invertido | muere | pytest 1: `test_f038_front.py::test_f038_r7_cargar_mas_con_n_de_m` |
+| XS32 | x-show/x-if | `bandeja.html` | «Leyendo el historial» con OR | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS33 | x-show/x-if | `bandeja.html` | «llegó así» invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS34 | x-show/x-if | `bandeja.html` | Descartar en todos los estados | muere | node 3: «f038 R11, R21.6: en cada estado, bandeja.html pinta justo los boton…» |
+| XS35 | x-show/x-if | `bandeja.html` | «Leyendo la bandeja» invertido | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve j…» |
+| XS36 | x-show/x-if | `bandeja.html` | Cerrar el detalle invertido | muere | node 1: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …» |
+| XS37 | x-show/x-if | `bandeja.html` | historial invertido | muere | node 1: «f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, …» |
+| XS38 | x-show/x-if | `bandeja.html` | Editar también en volcadas | muere | node 3: «f038 R11, R21.6: en cada estado, bandeja.html pinta justo los boton…» |
+| N1 | nada sin un clic | `js/revision.js` | iniciar aprueba la primera fila | muere | node 1: «f038 R3: con ?obra= el campo sale relleno y se pide la primera pági…» |
+| N2 | nada sin un clic | `bandeja.html` | x-init aprueba todo | muere | pytest 3: `test_f038_front.py::test_f038_r1_carga_sus_cuatro_scripts_y_monta_a…` |
+| N3 | nada sin un clic | `js/revision.js` | un error de carga conserva la lista | muere | node 1: «f038 R3/R12: un error al cargar se enseña y vacía lo que había (fil…» |
+| N4 | nada sin un clic | `js/revision.js` | cargar sin cerrarDetalle | muere | node 1: «f038 R12: 409 revision_desactualizada: lo dice y vuelve a pedir la …» |
+| N5 | nada sin un clic | `js/revision.js` | actuar no marca guardando | muere | node 1: «f038 R10: mientras una acción se guarda, ninguna otra sale» |
+| N6 | nada sin un clic | `js/revision.js` | guardando no se suelta | muere | node 2: «f038 R10/R12: aprobar con un clic manda el cuerpo, sustituye la fil…» |
+| N7 | nada sin un clic | `js/revision.js` | tras editar el formulario sigue abierto | muere | node 1: «f038 R9/R10: guardar la edición manda `valores` del formulario y ci…» |
+| N8 | nada sin un clic | `bandeja.html` | Intro en la obra aprueba | muere | pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
+| N9 | nada sin un clic | `js/revision.js` | el motivo del descarte se pierde | muere | node 1: «f038 R11: descartar pide un segundo clic y lleva el motivo» |
+| N10 | nada sin un clic | `js/revision.js` | abrir otro detalle conserva el formulario de la otra | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (N10): R8: abrir el detalle de OTRA fila cierra el formular…» |
+| N11 | nada sin un clic | `js/revision.js` | abrirDetalle pide el historial de this.abierta en vez de incidenciaId | **equivalente (propuesto)** | sobrevivía; sigue vivo con los tests de T5: ver «Equivalentes» |
+| TX1 | presentación | `js/revision.js` | duplicada con su propia fila | muere | node 2: «f038 R4 (b): duplicada de la fila N con la original cargada» |
+| TX2 | presentación | `js/revision.js` | acciones del historial cruzadas | muere | node 1: «f038 R8/R22: el historial con fecha de Madrid, acción, quién, campo…» |
+| TX3 | presentación | `js/revision.js` | aprobadas lee nueva | muere | node 1: «f038 R5: el resumen sale del de la respuesta: seis estados y nueve …» |
+| TX4 | presentación | `js/revision.js` | «llegó así» invertido en detalleDe | muere | node 1: «f038 R8: el detalle da los vigentes y, en cada campo de `cambios`, …» |
+| TX5 | presentación | `js/revision.js` | frontera de la descripción corta | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (TX5): R4: la descripción corta llega a 80 caracteres sin c…» |
+| TX6 | presentación | `js/revision.js` | aviso de recargar invertido | muere | node 1: «f038 R12: motivos null en la fila → «recarga para ver si se puede a…» |
+| TX7 | presentación | `js/revision.js` | con motivos lee total | muere | node 1: «f038 R5: el resumen sale del de la respuesta: seis estados y nueve …» |
+| TX8 | presentación | `js/revision.js` | motivos desconocidos del resumen se pierden | muere | node 1: «f038 R5: un motivo del resumen que no se conoce sale tal cual, al f…» |
+| TX9 | presentación | `js/revision.js` | obra de la URL sin recortar | muere | node 1: «f038 R3: obraDeLaUrl lee ?obra= de la cadena de consulta» |
+| TX10 | presentación | `js/revision.js` | desfase con el signo al revés | muere | node 1: «f038 R4/R8: fechaDeMadrid da dd/mm/aaaa hh:mm en hora de Madrid» |
+| TX11 | presentación | `js/revision.js` | grupo sin mirar ambiguo | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (TX11): R9 (b): con el oficio vigente NO ambiguo no hay gru…» |
+| TX12 | presentación | `js/revision.js` | oficio ambiguo conservado y marcado | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (TX12): R24: un oficio ambiguo no se conserva como «fuera d…» |
+| TX13 | presentación | `js/revision.js` | unidad fuera del catálogo se pierde | muere | node 1: «f038 R24: una unidad vigente que ya no es de la obra se conserva ma…» |
+| TX14 | presentación | `js/revision.js` | frontera del motivo | muere | node 1: «f038 R10/R11: un motivo de más de 500 no sale» |
+| TX15 | presentación | `js/revision.js` | motivo sin recortar | muere | node 1: «f038 R10: descartar lleva el motivo recortado si lo hay, y sin moti…» |
+
+### Fuera de este bloque, y lo que falta para cerrarlo
+
+- **`bash harness/init.sh` en verde**: lo ejecuta el líder (P-4). No lo he ejecutado.
+- **La aceptación escrita del humano para N11**, el único equivalente propuesto. Nivel `critico`: CHECKPOINTS C4 bis.
+  Sin ella, C4 bis queda con un mutante abierto.
+- **La review final del Bloque 1** (de 1 a 1 quater). Después vienen los Bloques 2 a 4 (MANUAL).
+- Siguen como estaban: O-B1b-3, O-B1b-4 y O-B1b-5, O-B1t-3 y O-T4q-1. El comportamiento que describe O-B1b-3 (abrir
+  otro detalle tira la edición sin preguntar) queda ahora **fijado por un test** (N10). Si el humano decidiera que
+  hay que preguntar, ese test cambiaría a propósito.
+
+### Observaciones (para el líder)
+
+- **Automejora (propuesta, no aplicada; vale para `arnes-base`).** La campaña a mano de un front JS se repite en cada
+  feature de este tipo, y aquí la he montado con tres guiones de usar y tirar. El primero, `campania.py`, aplica el
+  mutante en una copia con el final de línea correcto, lanza las suites, comprueba la restauración y clasifica los
+  muertos por accidente. Los otros dos son la lista de mutantes y el RED por mutante. Un `harness/mutacion_a_mano.py`
+  genérico haría la campaña reproducible por el reviewer: una lista declarativa de (id, familia, fichero, ancla,
+  cambio), el comando de la suite en `servicios.json`, una o varias copias y la tabla como salida. También dejaría
+  claras dos trampas que han costado tiempo aquí. La primera son los finales de línea mixtos (`git archive` con
+  `autocrlf`). La segunda son los muertos «solo por controles», que hay que contar como supervivientes.
+- La cabecera de `progress/mutacion_F-038.md` pone `--workers 1` aunque el comando no lo llevaba (sección 1). No es
+  ningún error, pero confunde, y en `arnes-base` se podría cambiar para que el comando de la cabecera no incluya los
+  workers efectivos.
+
+### Verificaciones MANUAL pendientes
+
+Ninguna de este bloque. Las de F-038 son T6 y T7 (Bloques 2 y 3).
+
+## Evidencias (Bloque 1 quater · T5)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Suite JS: **973, 973 pass** (antes 902; +71). Pytest del front: **882 passed, 7 skipped**. Raíz (`test_f035_placeholders_vivos.py`): **19 passed** |
+| Cobertura de las líneas cambiadas | **No aplica**: la puerta de cobertura de `init.sh` mide solo Python, y F-038 no tiene `.py` de producción (JS, HTML y tests). `init.sh` lo ejecuta el líder (P-4) y dirá su `N/A` con el motivo impreso |
+| Mutación con la herramienta | `python -m harness.mutacion --feature F-038 --base 87a03f3 --timeout 900` → **0 generados, 0 supervivientes**, 0,0 s, 1 worker efectivo (`progress/mutacion_F-038.md`). Justificado en la sección 1: no hay líneas `.py` de producción en el alcance. El coste por mutante no se puede calcular (0 mutantes) |
+| Mutación a mano | **281 generados**: 234 muertos de entrada, 42 supervivientes y 5 muertos solo por accidente. Con los tests de T5, **46 muertos** más y **1 equivalente propuesto (N11)**, pendiente de aceptación del humano. **0 supervivientes sin cerrar**. 0 muertos por tiempo. 4 copias en paralelo: unos 40 min de reloj la primera pasada (9.552 s sumando cada ejecución) y unos 7 min la segunda (47 mutantes) |
+| Tiempo de la suite | JS: 6,26 s (973 tests). Pytest del front: 23,79 s. Raíz: 0,34 s |

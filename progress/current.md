@@ -31,6 +31,12 @@
 >   JS 896/896, front 882 passed, raíz 19 passed. Decisiones (formato del motivo de una en duda, dónde sale cada línea)
 >   en `progress/impl_F-038.md`, «Bloque 1 ter». **Siguiente**: review del Bloque 1 ter e `init.sh` del líder (P-4);
 >   después, Bloque 1 quater (T5, mutación).
+> - **Bloque 1 quater hecho (implementer, 2026-10-20)**: T5 `e800242` (71 tests para los supervivientes) e informe.
+>   La herramienta da 0 mutantes (sin `.py` de producción; no lanza ninguna suite). A mano, 281 mutantes por familias:
+>   234 muertos, 42 supervivientes y 5 muertos solo por accidente; con los tests de T5 mueren 46 y queda **1 equivalente
+>   propuesto (N11)**, que necesita la aceptación escrita del humano. JS 973/973, front 882 passed, raíz 19 passed. Sin
+>   cambios de producción. Detalle en `progress/impl_F-038.md`, «Bloque 1 quater». **Siguiente**: `init.sh` del líder
+>   (P-4), aceptación de N11 y review final del Bloque 1 (1 a 1 quater).
 
 > ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
 > Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y

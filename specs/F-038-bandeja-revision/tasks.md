@@ -150,7 +150,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
 
 ## Bloque 1 quater · Mutación y verde
 
-- [ ] **T5**: mutación: la campaña de la herramienta y las mutaciones a mano
+- [x] **T5**: mutación: la campaña de la herramienta y las mutaciones a mano
   por familias, con la traza de cada una: el `confirmado`, la
   `revision_previa`, el `usuario_correo`, el filtro por defecto, el `cursor`
   y la deduplicación, el ajuste del resumen, el proveedor que no casa (y los

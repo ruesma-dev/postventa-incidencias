@@ -224,3 +224,7 @@ la ficha nueva de editar o anular partes ya volcados (la abre el líder); P-4.
 ## Precisiones de la review del Bloque 1 · 2026-10-20
 
 Aplicadas (solo texto de la spec, marca «Precisado 2026-10-20 (review del Bloque 1)»): R3 carga al iniciar con `?obra=` (O-B1-5); R4 «<acción>» deducida del estado (D-a); `design.md` §2.4 con la lista completa de funciones puras de `js/revision.js` para T5; `node --test "tests_js/*.test.js"` en T2, T3, T4 ter y T8 (D-b) y `--test-timeout` en T5 (O-B1-6); T1 bis fija el `:disabled` de «Aprobar» con `fila.aprobable`/`puedeAprobar` y `puedeActuar()` (O-B1-1 a).
+
+## Decidido por el humano · 2026-10-20 (O-B1t-1)
+
+R21.4 ampliado con un texto para cada uno de los siete códigos de lote de `sigrid_api.md` §8.9 (tabla código → texto; los dos de configuración dicen «avisa a sistemas»); `design.md` §2.4 al día; nueva **T4 quater** en el Bloque 1 ter (RED y verde de `textoMotivoVolcado`, con el cambio a propósito de la aserción `obra_no_encontrada` de C-B1t-2) y «Parar. Review corta».

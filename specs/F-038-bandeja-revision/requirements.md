@@ -333,6 +333,29 @@ preguntas Q-6 a Q-10, **aprobadas por el humano el 2026-10-20** (`design.md`
     enseña tal cual. Los motivos propios del panel de F-059 (exclusiones de un
     ensayo, ensayo no válido) **no** salen en el objeto `volcado` y se quedan
     en F-040.
+
+    *Decidido por el humano el 2026-10-20 (O-B1t-1).* Debe haber también un
+    texto para **cada uno de los siete códigos de lote** de §8.9 (los 400 de
+    lote, «nada escrito»). Llegan como `volcado.motivo` de un `no_procesado`
+    cuando la pasarela rechaza el lote entero y el backend marca así todos
+    sus partes (`todos_no_procesados`, F-059 R14 y R24). Dos son
+    configuración del dueño de `sigrid-api` (`CODIGOS_DE_PRECONDICION` de
+    F-059, el 503); los otros cinco, rechazos de la obra, del usuario o del
+    lote (`CODIGOS_DE_RECHAZO`, el 409). En el tono de los de parte y sin
+    jerga:
+
+    | Código de lote | Texto |
+    |---|---|
+    | `escritura_reclamaciones_deshabilitada` | «Sigrid no admite ahora crear partes; no se creó nada. Avisa a sistemas» |
+    | `base_de_datos_no_permitida` | «Sigrid no admite ahora crear partes en esa base de datos; no se creó nada. Avisa a sistemas» |
+    | `lote_demasiado_grande` | «Se mandaron más partes de los que Sigrid admite de una vez; no se creó ninguno» |
+    | `obra_no_encontrada` | «Sigrid no encuentra la obra» |
+    | `usuario_no_valido` | «Sigrid no reconoce el usuario de quien volcó» |
+    | `serie_no_encontrada` | «Sigrid no encuentra la serie de partes de reclamación del mes» |
+    | `estado_inicial_no_encontrado` | «Sigrid no encuentra el estado con el que nace un parte» |
+
+    Un código que no esté ni entre los quince de parte ni entre estos siete
+    se sigue enseñando tal cual.
   - **R21.5.** El selector de estado ofrece los filtros `volcada` y `en_duda`
     (R6), que van al servidor como los demás; y el resumen enseña los seis
     estados con su etiqueta (R5).

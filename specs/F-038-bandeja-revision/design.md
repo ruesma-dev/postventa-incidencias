@@ -238,7 +238,7 @@ Lógica pura, con `node --test` (`tests_js/revision.test.js`):
 > | `duplicadaDe(fila, cargadas)` (nueva) | «duplicada de la fila N» con el `fila_origen` de la original si está cargada; si no, «duplicada de otra fila del mismo fichero» | R4 (b) |
 > | `presentarRevision(respuesta)` | Usa `quienLegible`, `duplicadaDe`, `accionesDe` y `lineaDeVolcado` | R4, R21 |
 > | `lineaDeVolcado(volcado, estado)` (nueva) | La línea de R21.1 (`volcada`: «Volcada como <sigrid_cod> por <quien> el <fecha>»), R21.2 (`en_duda`, con el motivo si lo hay) o R21.3 (último intento `rechazado` / `no_procesado` de una que no está volcada ni en duda); `null` sin `volcado`. Fecha con `fechaDeMadrid`, quien con `quienLegible` | R21.1–R21.3 |
-> | `textoMotivoVolcado(codigo)` (nueva) | Castellano para los quince códigos de parte de `sigrid_api.md` §8.9; uno desconocido, tal cual | R21.4 |
+> | `textoMotivoVolcado(codigo)` (nueva) | Castellano para los quince códigos de parte de `sigrid_api.md` §8.9 y, *decidido por el humano el 2026-10-20 (O-B1t-1)*, para los siete códigos de lote (tabla de R21.4; T4 quater); uno desconocido, tal cual | R21.4 |
 > | `consultaDe(obra, filtros, cursor)` | `estado` puede ser también `volcada` o `en_duda` | R6, R21.5 |
 > | `opcionesDeOficio(catalogo, vigentes)` | «El grupo de la fila»: las entradas de `catalogo.oficios` cuyo `grupo.etiqueta` es el `oficio_nombre` vigente, primero | R9 (b) |
 > | `proveedoresDe(catalogo, oficio, vigentes)` | De **`catalogo.pares`** (los de ese `oficio_codigo`); con el oficio ambiguo sin elegir, solo el vigente o ninguno (F-056 R15) | R9 (a), (c) |

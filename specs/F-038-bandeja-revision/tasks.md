@@ -131,6 +131,23 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
 
 **Parar. Review del Bloque 1 ter.**
 
+- [ ] **T4 quater** · *Decidido por el humano el 2026-10-20 (O-B1t-1)*: los
+  textos de los **siete códigos de lote** de §8.9 (tabla de R21.4) en
+  `textoMotivoVolcado` de `js/revision.js`. Primero RED en
+  `tests_js/revision.test.js` —cada uno de los siete con su texto exacto, un
+  `no_procesado` de lote en `lineaDeVolcado` con su texto, y un código
+  desconocido que sigue tal cual—, con la traza del fallo pegada; luego el
+  verde. **Cambio a propósito, declarado:** la aserción literal
+  `obra_no_encontrada` del test «f038 R21.3: el último intento rechazado o no
+  procesado…» (la que añadió C-B1t-2 para fijar el comportamiento de antes,
+  «…: obra_no_encontrada») pasa a esperar «…: Sigrid no encuentra la obra».
+  El comentario de `js/revision.js` y el `README.md` que hablan de qué
+  motivos trae el objeto `volcado` dejan de decir que los de lote salen tal
+  cual. Sin otro cambio. |
+  Verificación: RED, `node --test tests_js/revision.test.js` **falla** por lo nuevo; verde, `node --test "tests_js/*.test.js"` y `python -m pytest tests/test_f038_front.py`
+
+**Parar. Review corta de T4 quater.**
+
 ## Bloque 1 quater · Mutación y verde
 
 - [ ] **T5**: mutación: la campaña de la herramienta y las mutaciones a mano

@@ -1,13 +1,23 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-038 · `in_progress` · 2026-10-20 · paso 1: poner la spec al día con `dev`
+> Rama `feature/F-038-bandeja-revision` **nueva** desde `dev` **`87a03f3`** (base fija: F-056, F-060 y F-059 cerradas y
+> mergeadas). La rama anterior (spec del 2026-10-06 sobre `349ba06`) queda como `archivo/F-038-spec-2026-10-06`; su
+> spec se trae tal cual; worktree `postventa-f038` retirado. Orden aceptado por el humano (2026-10-20): rama → spec-author
+> concilia → el humano da el OK → implementer por bloques con review en cada uno.
+> - Repaso del líder (2026-10-20), lo que la spec no recoge: estados `volcada` y `en_duda`, objeto `volcado` y 409
+>   `accion_no_permitida` (F-059; `activas` excluye ya las volcadas); motivo `ubicacion_fuera_de_lista`, revisiones del
+>   sistema `sistema:normalizar_ubicacion` y la ruta `POST /api/revision/normalizar` (F-060); `catalogo.pares`, marcas
+>   `oficio_ambiguo`/`proveedor_ambiguo`, motivos `par_fuera_de_la_obra` y `proveedor_ambiguo`, 400 `sin_cambios`
+>   (F-056); la dependencia de F-056 ya cumplida; F-057 también toca `importar.html`.
+
 > ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
 > Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y
 > de F-060 se podó de aquí (O-F-3, 2026-10-20).
 > - **T25 (2026-10-19)**: una escritura en la 0626, **`RS26.10/0074`**, creado en 1,8 s; ventana cerrada enseguida.
 >   **T26 (2026-10-20)**: anulado desde la UI de Sigrid (Procesos → «Rechazar reclamación (NO enviar email)»), foto en NPR.
 > - Merge del cierre en `dev` y `main` (locales). **Push pendiente del humano**: `dev`, `main`, `azure-apps` y `arnes-base`.
-> - Ajeno a F-059: `RS26.09/0439` (`PVI-PRUEBA-0001`) sigue en SAT; preguntar a `sigrid-api`.
 > - Antes de un volcado real: un ensayo de calentamiento (la primera lectura a `sigrid-api` puede pasar de 35 s).
 > - **Siguiente** (prioridad del humano, 2026-10-15): **F-038** (`bandeja.html`; su spec, en el worktree `postventa-f038`,
 >   es anterior a F-060 y hay que ponerla al día) y después **F-040** (panel de volcado).

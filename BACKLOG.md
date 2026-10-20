@@ -5,11 +5,13 @@
 
 Resumen: **60 features**, 31 abiertas, 29 terminadas.
 
+En curso: **F-038**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | spec lista | critico | `feature/F-038-bandeja-revision` |
+| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | en curso | critico | `feature/F-038-bandeja-revision` |
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | spec lista | critico | `feature/F-040-volcado-sigrid` |
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 5 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
 | F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 6 | pendiente | critico | `feature/F-058-plantilla-ubicaciones-sigrid` |
@@ -79,9 +81,9 @@ Resumen: **60 features**, 31 abiertas, 29 terminadas.
 
 ### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
 
-estado **spec lista** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
+estado **en curso** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
 
-Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar.
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano.
 
 ### F-040 · Volcar a Sigrid las incidencias aprobadas
 

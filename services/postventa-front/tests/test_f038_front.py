@@ -22,6 +22,10 @@ leyendo los ficheros, con el mismo `html.parser` de `test_f035_portal.py`:
   **R15, R23**: ninguna ruta propia, nada en consola ni en el almacenamiento,
   y nada nombra `/revision/normalizar`; **R19, R20**: el README y
   `docs/ARCHITECTURE.md`.
+- **R21** (Bloque 1 ter, T4 bis): el selector con los ocho estados, la línea
+  del volcado en la lista y en el detalle, «Ya no se revisa aquí» junto a la
+  etiqueta, nada que se pulse en ellas, `volcado_por` solo por `quienLegible`
+  y el README que lo cuenta.
 
 La tira del recorrido de la página (R25) se prueba en `tests_js/portal.test.js`
 y la barra contra `enlaceSeccion` en `tests_js/f035_paginas.test.js`.
@@ -631,3 +635,248 @@ def test_f038_r19_r20_la_documentacion_cuenta_la_pagina(ruta: Path, titulo: str,
     problemas = palabras_que_faltan(ruta.read_text(encoding="utf-8"), titulo, palabras)
 
     assert problemas == [], f"{ruta.name}: " + "; ".join(problemas)
+
+
+# --- R21 · La presentación del volcado (Bloque 1 ter, Q-6) -------------------------------------
+#
+# Lo que se ve leyendo el texto. Lo que se pinta en cada estado (la línea en la
+# lista y en el detalle, la frase, ningún botón ni campo), con el componente de
+# verdad, en `tests_js/revision.test.js` («Bloque 1 ter»).
+
+#: Los ocho valores del selector de estado, en su orden (R6, R21.5).
+OCHO_FILTROS_DE_ESTADO = ["activas", "todas", "nueva", "editada", "aprobada", "descartada", "volcada", "en_duda"]
+
+#: La puerta del detalle de una fila (design.md §2.2, punto 5).
+_PUERTA_DEL_DETALLE = "abierta === fila.incidencia_id"
+
+#: La frase que acompaña a la etiqueta de una volcada o una en duda (R21.6).
+YA_NO_SE_REVISA = "Ya no se revisa aquí"
+
+_CONTROLES = ("button", "a", "input", "select", "textarea", "form")
+
+
+def _en_el_detalle(elemento) -> bool:
+    return any(n.atributos.get("x-if") == _PUERTA_DEL_DETALLE for n in elemento.ancestros())
+
+
+def _en_las_filas(elemento) -> bool:
+    return any("fila in vista().filas" in n.atributos.get("x-for", "") for n in elemento.ancestros())
+
+
+def _con_controles(elemento) -> list[str]:
+    """Lo que hace de un elemento algo que se pulsa o se rellena: él o algo de dentro."""
+    problemas = []
+    for e in [elemento, *elemento.elementos()]:
+        if e.nombre in _CONTROLES:
+            problemas.append(f"<{e.nombre}>")
+        problemas.extend(f"{a}=" for a in e.atributos if a.split(".")[0] in ("@click", "x-on:click", "x-model"))
+    return problemas
+
+
+def problemas_r21_linea(html: str) -> list[str]:
+    """La línea del volcado: una en la lista (solo volcada y en duda) y una en el detalle (R21.1-R21.3). Vacío = correcto."""
+    lineas = [e for e in leer_html_texto(html).elementos() if e.atributos.get("x-text") == "fila.lineaVolcado"]
+    if len(lineas) != 2:
+        return [f'{len(lineas)} elementos con x-text="fila.lineaVolcado"; tiene que haber dos (lista y detalle)']
+    en_lista = [e for e in lineas if not _en_el_detalle(e)]
+    en_detalle = [e for e in lineas if _en_el_detalle(e)]
+    if len(en_lista) != 1 or len(en_detalle) != 1:
+        return [f"{len(en_lista)} en la lista y {len(en_detalle)} en el detalle; tiene que haber una y una"]
+    problemas = []
+    for donde, e in (("lista", en_lista[0]), ("detalle", en_detalle[0])):
+        if not _en_las_filas(e):
+            problemas.append(f"la línea de la {donde} no está en la fila (x-for de vista().filas)")
+        if _con_controles(e):
+            problemas.append(f"la línea de la {donde} lleva controles: {_con_controles(e)}")
+    if en_lista[0].atributos.get("x-show") != "fila.yaNoSeRevisa && fila.lineaVolcado":
+        problemas.append('en la lista, la línea sale solo en volcada y en duda (x-show="fila.yaNoSeRevisa && fila.lineaVolcado")')
+    if en_detalle[0].atributos.get("x-show") != "fila.lineaVolcado":
+        problemas.append('en el detalle, la línea sale siempre que la haya, también el último intento (x-show="fila.lineaVolcado")')
+    return problemas
+
+
+def test_f038_r21_5_el_selector_de_estado_ofrece_los_ocho():
+    doc = leer_html_texto(_bandeja())
+    estado = _con_atributo(doc, "x-model", "filtros.estado")
+    opciones = [e.atributos.get("value") for e in estado[0].elementos() if e.nombre == "option"]
+
+    assert opciones == OCHO_FILTROS_DE_ESTADO
+    assert _filtros_de_estado() == OCHO_FILTROS_DE_ESTADO, "FILTROS_DE_ESTADO de js/revision.js, los mismos ocho"
+
+
+def test_f038_r21_1_la_linea_del_volcado_en_la_lista_y_en_el_detalle():
+    problemas = problemas_r21_linea(_bandeja())
+
+    assert problemas == [], "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        ('x-show="fila.yaNoSeRevisa && fila.lineaVolcado"', 'x-show="fila.lineaVolcado"', "en la lista"),
+        ('x-show="fila.lineaVolcado" class="rs-texto" x-text="fila.lineaVolcado"', 'class="rs-texto"', "elementos con"),
+        (
+            'x-show="fila.lineaVolcado" class="rs-texto" x-text="fila.lineaVolcado"></p>',
+            'x-show="fila.lineaVolcado" class="rs-texto"><button type="button" @click="cerrarDetalle()"'
+            ' x-text="fila.lineaVolcado"></button></p>',
+            "controles",
+        ),
+        (
+            'x-show="fila.lineaVolcado" class="rs-texto" x-text="fila.lineaVolcado"></p>',
+            'x-show="fila.lineaVolcado" class="rs-texto" x-text="fila.lineaVolcado" @click="cerrarDetalle()"></p>',
+            "controles",
+        ),
+    ],
+    ids=["la-de-la-lista-sin-su-puerta", "sin-la-del-detalle", "la-del-detalle-dentro-de-un-boton", "la-del-detalle-con-clic"],
+)
+def test_f038_r21_1_control_la_linea_estropeada_salta(viejo, nuevo, senal):
+    real = _bandeja()
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    problemas = problemas_r21_linea(real.replace(viejo, nuevo))
+    assert any(senal in p for p in problemas), problemas
+
+
+def problemas_r21_6_frase(html: str) -> list[str]:
+    """«Ya no se revisa aquí» junto a la etiqueta de la fila, en la lista, sin controles (R21.6). Vacío = correcto."""
+    doc = leer_html_texto(html)
+    frases = [e for e in doc.elementos() if e.atributos.get("x-text") == "fila.yaNoSeRevisa"]
+    etiquetas = [e for e in doc.elementos() if e.atributos.get("x-text") == "fila.etiquetaEstado"]
+    if len(frases) != 1 or len(etiquetas) != 1:
+        return [f"{len(frases)} frases y {len(etiquetas)} etiquetas de la fila; tiene que haber una y una"]
+    frase, etiqueta = frases[0], etiquetas[0]
+    problemas = []
+    if frase.atributos.get("x-show") != "fila.yaNoSeRevisa":
+        problemas.append('la frase sale solo en volcada y en duda (x-show="fila.yaNoSeRevisa")')
+    if frase.padre is not etiqueta.padre:
+        problemas.append("la frase acompaña a la etiqueta: el mismo padre")
+    if _en_el_detalle(frase) or not _en_las_filas(frase):
+        problemas.append("la frase va en la fila de la lista, no en el detalle")
+    if _con_controles(frase):
+        problemas.append(f"la frase lleva controles: {_con_controles(frase)}")
+    return problemas
+
+
+def test_f038_r21_6_ya_no_se_revisa_aqui_acompana_a_la_etiqueta():
+    assert problemas_r21_6_frase(_bandeja()) == []
+    assert f'"{YA_NO_SE_REVISA}"' in _sin_comentarios(REVISION_JS.read_text(encoding="utf-8")), (
+        "el texto lo da js/revision.js (presentarRevision)"
+    )
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        (' x-show="fila.yaNoSeRevisa"', "", "x-show"),
+        ('<span class="rs-chip rs-chip--neutro" x-text="fila.etiquetaEstado"></span>', "", "etiquetas"),
+        (
+            '<span class="rs-chip rs-chip--neutro" x-text="fila.etiquetaEstado"></span>',
+            '<p><span class="rs-chip rs-chip--neutro" x-text="fila.etiquetaEstado"></span></p>',
+            "el mismo padre",
+        ),
+    ],
+    ids=["la-frase-siempre", "sin-la-etiqueta", "la-frase-lejos-de-la-etiqueta"],
+)
+def test_f038_r21_6_control_la_frase_estropeada_salta(viejo, nuevo, senal):
+    real = _bandeja()
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    assert any(senal in p for p in problemas_r21_6_frase(real.replace(viejo, nuevo)))
+
+
+def test_f038_r21_6_volcada_y_en_duda_no_admiten_ninguna_accion():
+    """La tabla de `js/revision.js` (`_PERMITIDAS`): vacía para las dos. Pintado estado a estado, en Node."""
+    codigo = _sin_comentarios(REVISION_JS.read_text(encoding="utf-8"))
+
+    assert re.search(r"^\s*volcada: \[\],\s*$", codigo, flags=re.MULTILINE)
+    assert re.search(r"^\s*en_duda: \[\],\s*$", codigo, flags=re.MULTILINE)
+
+
+def problemas_r21_7(revision_js: str, html: str) -> list[str]:
+    """`volcado_por` solo pasa por `quienLegible` y no va a la consola ni al almacenamiento (R21.7). Vacío = correcto."""
+    codigo = _sin_comentarios(revision_js)
+    problemas = []
+    todas = len(re.findall(r"volcado_por", codigo))
+    por_quien = len(re.findall(r"quienLegible\(volcado\.volcado_por\)", codigo))
+    if not todas:
+        problemas.append("js/revision.js no lee volcado_por: ¿quién volcó?")
+    if todas != por_quien:
+        problemas.append(f"volcado_por sale {todas} veces en js/revision.js y solo {por_quien} por quienLegible")
+    for nombre, texto in (("js/revision.js", codigo), ("bandeja.html", _sin_comentarios(_sin_comentarios_html(html)))):
+        for prohibido in ("console.", "localStorage", "sessionStorage", "indexedDB", "document.cookie"):
+            if prohibido in texto:
+                problemas.append(f"{nombre} usa {prohibido}")
+    if "volcado_por" in _sin_comentarios_html(html):
+        problemas.append("bandeja.html lee volcado_por: la página pinta la línea ya compuesta")
+    return problemas
+
+
+def test_f038_r21_7_volcado_por_solo_pasa_por_quien_legible():
+    problemas = problemas_r21_7(REVISION_JS.read_text(encoding="utf-8"), _bandeja())
+
+    assert problemas == [], "\n".join(problemas)
+
+
+_ANCLA_R21_7 = "quienLegible(volcado.volcado_por)"
+
+
+@pytest.mark.parametrize(
+    ("estropear", "senal"),
+    [
+        (
+            lambda js, html: (
+                js.replace(_ANCLA_R21_7, f"(console.log(volcado.volcado_por), {_ANCLA_R21_7})", 1),
+                html,
+            ),
+            "usa console.",
+        ),
+        (lambda js, html: (js.replace(_ANCLA_R21_7, "volcado.volcado_por", 1), html), "solo"),
+        (
+            lambda js, html: (js, html.replace("</main>", '<span x-text="incidencias[0].volcado.volcado_por"></span></main>', 1)),
+            "bandeja.html lee",
+        ),
+    ],
+    ids=["a-la-consola", "sin-quien-legible", "leido-en-el-html"],
+)
+def test_f038_r21_7_control_el_correo_de_quien_volco_suelto_salta(estropear, senal):
+    js, html = REVISION_JS.read_text(encoding="utf-8"), _bandeja()
+    assert js.count(_ANCLA_R21_7) == 1, f"el control no encuentra una sola vez: {_ANCLA_R21_7}"
+    js_estropeado, html_estropeado = estropear(js, html)
+
+    assert any(senal in p for p in problemas_r21_7(js_estropeado, html_estropeado))
+
+
+#: Lo que la sección de F-038 del README cuenta de la presentación del volcado (T4 ter).
+PALABRAS_DEL_VOLCADO_EN_EL_README = (
+    "Volcada a Sigrid",
+    "En duda",
+    "Ya no se revisa aquí",
+    "Volcada como",
+    "Último intento de volcado",
+    "hora de Madrid",
+    "volcada",
+    "en_duda",
+    "§8.9",
+    "F-040",
+    "F-062",
+)
+
+
+def problemas_readme_r21(readme: str) -> list[str]:
+    problemas = palabras_que_faltan(readme, "La bandeja de revisión (F-038)", PALABRAS_DEL_VOLCADO_EN_EL_README)
+    if "Bloque 1 ter" in readme:
+        problemas.append("el README aún dice que la presentación del volcado es del Bloque 1 ter")
+    return problemas
+
+
+def test_f038_r21_el_readme_cuenta_la_presentacion_del_volcado():
+    problemas = problemas_readme_r21(README.read_text(encoding="utf-8"))
+
+    assert problemas == [], "; ".join(problemas)
+
+
+def test_f038_r21_control_el_readme_sin_la_frase_salta():
+    real = README.read_text(encoding="utf-8")
+    assert YA_NO_SE_REVISA in real, "el control no encuentra la frase en el README"
+
+    assert any(YA_NO_SE_REVISA in p for p in problemas_readme_r21(real.replace(YA_NO_SE_REVISA, "x")))

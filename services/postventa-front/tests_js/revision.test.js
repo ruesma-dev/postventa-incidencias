@@ -4,13 +4,15 @@
 // `specs/F-038-bandeja-revision/design.md` §2.4 y su tabla «Conciliado
 // 2026-10-20», contra el contrato **implementado** del backend
 // (`services/postventa-api/interface_adapters/api/revision.py` y
-// `domain/models/revision.py`). La presentación del volcado (R21:
-// `lineaDeVolcado`, `textoMotivoVolcado`, los filtros `volcada` y `en_duda`)
-// es del Bloque 1 ter y NO se prueba aquí.
+// `domain/models/revision.py`).
 //
 // Bloque 1 bis (T1 bis): al final, `bandeja.html` leída como texto y sus
 // expresiones de Alpine evaluadas contra este componente (R10, R11, R13,
 // R21.6).
+//
+// Bloque 1 ter (T4 bis): la presentación del volcado (R21: `lineaDeVolcado`,
+// `textoMotivoVolcado`, los filtros `volcada` y `en_duda`, «Ya no se revisa
+// aquí»), en lo puro, en el componente y en el recorrido de `bandeja.html`.
 //
 // Todo inventado: obra 9901, unidades U-01…, oficios 9001…, proveedores P-0N
 // «Ejemplo», correos @ejemplo.invalid, UUID con ceros que no son de nadie.
@@ -453,8 +455,8 @@ test("f038 R12: motivos null en la fila → «recarga para ver si se puede aprob
 });
 
 test("f038 R11/R21.6: una incidencia con `volcado` se pinta igual, sin acciones si está volcada", () => {
-  // La línea del volcado (R21.1-R21.3) es del Bloque 1 ter: aquí solo que el
-  // objeto no rompe la fila y que una volcada no ofrece nada.
+  // Que el objeto no rompe la fila y que una volcada no ofrece nada. La línea
+  // del volcado (R21.1-R21.3), en «R21 · la presentación del volcado».
   const volcado = {
     estado: "volcada",
     sigrid_cod: "RS99.01/0001",
@@ -468,6 +470,178 @@ test("f038 R11/R21.6: una incidencia con `volcado` se pinta igual, sin acciones 
   assert.equal(fila.etiquetaEstado, "Volcada a Sigrid");
   assert.deepEqual(fila.acciones, []);
   assert.equal(fila.aprobable, false);
+});
+
+// --- R21 · la presentación del volcado (Bloque 1 ter, Q-6) ----------------------------
+//
+// El objeto `volcado` es el de `volcado_de` (`interface_adapters/api/volcado.py`):
+// `null` o `{estado, sigrid_cod, volcado_at_utc, volcado_por, motivo}`, con
+// `estado` `volcada`, `en_duda`, `rechazado` o `no_procesado`. Códigos de
+// parte inventados no; los quince son los de `azure-apps/sigrid_api.md` §8.9.
+
+/** Un objeto `volcado` de mentira: `RS99.99/NNNN`, correo de ejemplo. */
+function objetoVolcado(cambios) {
+  return Object.assign(
+    {
+      estado: "volcada",
+      sigrid_cod: "RS99.99/0001",
+      volcado_at_utc: "2026-10-20T08:00:00.000000+00:00",
+      volcado_por: CORREO,
+      motivo: null,
+    },
+    cambios || {},
+  );
+}
+
+/** R21.4 · los quince códigos de parte de `POST /api/sigrid/partes-reclamacion` (§8.9), en su orden, con su texto. */
+const TEXTOS_DE_PARTE = [
+  ["referencia_no_permitida", "Sigrid no admite la referencia del parte"],
+  ["referencia_duplicada_en_lote", "La referencia del parte iba repetida en el mismo envío"],
+  ["referencia_en_conflicto", "En Sigrid ya hay un parte con esa referencia que no casa (de otra unidad, sin ficha o repetido)"],
+  ["unidad_postventa_no_encontrada", "La unidad no está en la obra en Sigrid"],
+  ["tipo_no_valido", "El tipo de reclamación no existe en Sigrid"],
+  ["clase_no_valida", "La clase de reclamación no existe en Sigrid"],
+  ["oficio_no_esta_en_la_obra", "El oficio no está en la obra en Sigrid"],
+  ["interviniente_no_esta_en_la_obra", "El oficio y el proveedor no están juntos en la obra en Sigrid"],
+  ["interviniente_ambiguo", "El oficio tiene varios proveedores en la obra: hay que elegir uno"],
+  ["interviniente_repetido", "El mismo oficio y proveedor iban dos veces en el parte"],
+  ["numeracion_agotada", "Se ha agotado la numeración de partes en Sigrid"],
+  ["colision_de_clave", "Sigrid estaba creando otro parte a la vez: se puede volver a mandar sin riesgo"],
+  ["filas_afectadas_inesperadas", "Sigrid no escribió las filas que se esperaban; el parte no se creó"],
+  ["error_de_escritura", "Sigrid dio un error al escribir el parte; no se creó"],
+  ["presupuesto_de_tiempo_agotado", "Se acabó el tiempo antes de llegar a este parte: se puede volver a mandar sin riesgo"],
+];
+
+const FECHA_DEL_VOLCADO = "20/10/2026 10:00"; // 08:00 UTC, en hora de verano de Madrid
+const LINEA_EN_DUDA =
+  "Se mandó a Sigrid el " + FECHA_DEL_VOLCADO + " por " + CORREO +
+  " y no consta si se creó: volver a ensayar y volcar lo aclara sin duplicar";
+
+test("f038 R21.4: textoMotivoVolcado da el texto de cada uno de los quince códigos de parte de §8.9", () => {
+  assert.deepEqual(Revision.MOTIVOS_DE_VOLCADO, TEXTOS_DE_PARTE.map(([codigo]) => codigo));
+  for (const [codigo, texto] of TEXTOS_DE_PARTE) {
+    assert.equal(Revision.textoMotivoVolcado(codigo), texto, codigo);
+  }
+  assert.equal(new Set(TEXTOS_DE_PARTE.map(([, texto]) => texto)).size, 15, "quince textos distintos");
+});
+
+test("f038 R21.4: un código de parte que no está en la lista se enseña tal cual; sin código, nada", () => {
+  assert.equal(Revision.textoMotivoVolcado("codigo_inventado"), "codigo_inventado");
+  assert.equal(Revision.textoMotivoVolcado("sin_ubicacion"), "sin_ubicacion", "los motivos de la revisión no son de parte");
+  assert.equal(Revision.textoMotivoVolcado(null), "");
+  assert.equal(Revision.textoMotivoVolcado(undefined), "");
+});
+
+test("f038 R21.1: una volcada: «Volcada como <sigrid_cod> por <quien> el <fecha>», en hora de Madrid", () => {
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado(), "volcada"),
+    "Volcada como RS99.99/0001 por " + CORREO + " el " + FECHA_DEL_VOLCADO,
+  );
+  // En invierno, Madrid va una hora por delante de UTC (no dos).
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ sigrid_cod: "RS99.99/0002", volcado_at_utc: "2026-12-01T08:00:00+00:00", volcado_por: OTRO_CORREO }), "volcada"),
+    "Volcada como RS99.99/0002 por " + OTRO_CORREO + " el 01/12/2026 09:00",
+  );
+});
+
+test("f038 R21.1, R22: quien volcó pasa por quienLegible", () => {
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ volcado_por: "sistema:normalizar_ubicacion" }), "volcada"),
+    "Volcada como RS99.99/0001 por el sistema (ubicación puesta en el texto exacto de Sigrid) el " + FECHA_DEL_VOLCADO,
+  );
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "en_duda", sigrid_cod: null, volcado_por: "sistema:otro" }), "en_duda"),
+    LINEA_EN_DUDA.replace(CORREO, "el sistema"),
+  );
+});
+
+test("f038 R21.2: una en duda, sin motivo: cuándo, quién y que volver a ensayar lo aclara", () => {
+  assert.equal(Revision.lineaDeVolcado(objetoVolcado({ estado: "en_duda", sigrid_cod: null }), "en_duda"), LINEA_EN_DUDA);
+});
+
+test("f038 R21.2, R21.4: una en duda con motivo lleva su texto; uno desconocido, tal cual", () => {
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "en_duda", sigrid_cod: null, motivo: "colision_de_clave" }), "en_duda"),
+    LINEA_EN_DUDA + ". Motivo: Sigrid estaba creando otro parte a la vez: se puede volver a mandar sin riesgo",
+  );
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "en_duda", sigrid_cod: null, motivo: "codigo_inventado" }), "en_duda"),
+    LINEA_EN_DUDA + ". Motivo: codigo_inventado",
+  );
+});
+
+test("f038 R21.3: el último intento rechazado o no procesado de una aprobada, con su motivo", () => {
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "rechazado", sigrid_cod: null, motivo: "oficio_no_esta_en_la_obra" }), "aprobada"),
+    "Último intento de volcado: no se creó el " + FECHA_DEL_VOLCADO + " por " + CORREO + ": El oficio no está en la obra en Sigrid",
+  );
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "no_procesado", sigrid_cod: null, motivo: "presupuesto_de_tiempo_agotado" }), "aprobada"),
+    "Último intento de volcado: no se llegó a procesar el " + FECHA_DEL_VOLCADO + " por " + CORREO +
+      ": Se acabó el tiempo antes de llegar a este parte: se puede volver a mandar sin riesgo",
+  );
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "rechazado", sigrid_cod: null, motivo: "codigo_inventado" }), "aprobada"),
+    "Último intento de volcado: no se creó el " + FECHA_DEL_VOLCADO + " por " + CORREO + ": codigo_inventado",
+  );
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "rechazado", sigrid_cod: null, motivo: null }), "aprobada"),
+    "Último intento de volcado: no se creó el " + FECHA_DEL_VOLCADO + " por " + CORREO,
+    "sin motivo, sin «: »",
+  );
+});
+
+test("f038 R21.3: el último intento sale en cualquier estado que no sea volcada ni en duda", () => {
+  const rechazado = objetoVolcado({ estado: "rechazado", sigrid_cod: null, motivo: "error_de_escritura" });
+  for (const estado of ["nueva", "editada", "aprobada", "descartada"]) {
+    assert.match(Revision.lineaDeVolcado(rechazado, estado), /^Último intento de volcado: no se creó /, estado);
+  }
+  for (const estado of ["volcada", "en_duda"]) {
+    assert.equal(Revision.lineaDeVolcado(rechazado, estado), null, estado);
+    assert.equal(Revision.lineaDeVolcado(Object.assign({}, rechazado, { estado: "no_procesado" }), estado), null, estado);
+  }
+});
+
+test("f038 R21: sin objeto volcado, o con un estado del volcado desconocido, no hay línea", () => {
+  for (const estado of Revision.ESTADOS) {
+    assert.equal(Revision.lineaDeVolcado(null, estado), null, estado);
+    assert.equal(Revision.lineaDeVolcado(undefined, estado), null, estado);
+    assert.equal(Revision.lineaDeVolcado(objetoVolcado({ estado: "previsto" }), estado), null, estado);
+  }
+});
+
+test("f038 R21.1-R21.3, R21.6: presentarRevision da la línea del volcado y «Ya no se revisa aquí»", () => {
+  const filas = Revision.presentarRevision(
+    respuesta({
+      incidencias: [
+        incidencia({ incidencia_id: ID_1, estado: "volcada", volcado: objetoVolcado() }),
+        incidencia({ incidencia_id: ID_2, estado: "en_duda", volcado: objetoVolcado({ estado: "en_duda", sigrid_cod: null }) }),
+        incidencia({
+          incidencia_id: ID_3,
+          estado: "aprobada",
+          volcado: objetoVolcado({ estado: "rechazado", sigrid_cod: null, motivo: "numeracion_agotada" }),
+        }),
+        incidencia({ incidencia_id: ID_4, estado: "nueva" }),
+      ],
+    }),
+  ).filas;
+  assert.deepEqual(
+    filas.map((f) => [f.etiquetaEstado, f.yaNoSeRevisa, f.lineaVolcado]),
+    [
+      ["Volcada a Sigrid", "Ya no se revisa aquí", "Volcada como RS99.99/0001 por " + CORREO + " el " + FECHA_DEL_VOLCADO],
+      ["En duda", "Ya no se revisa aquí", LINEA_EN_DUDA],
+      ["Aprobada", "", "Último intento de volcado: no se creó el " + FECHA_DEL_VOLCADO + " por " + CORREO + ": Se ha agotado la numeración de partes en Sigrid"],
+      ["Nueva", "", null],
+    ],
+  );
+  assert.deepEqual(filas.map((f) => f.acciones.length), [0, 0, 2, 3], "R21.6: ni una acción en volcada ni en duda");
+});
+
+test("f038 R21.6: «Ya no se revisa aquí» va con volcada y en duda aunque no traigan objeto, y con ningún otro estado", () => {
+  for (const estado of Revision.ESTADOS) {
+    const fila = Revision.presentarRevision(respuesta({ incidencias: [incidencia({ estado: estado })] })).filas[0];
+    assert.equal(fila.yaNoSeRevisa, ["volcada", "en_duda"].includes(estado) ? "Ya no se revisa aquí" : "", estado);
+  }
 });
 
 // --- R5 · el resumen de toda la obra -------------------------------------------------
@@ -533,6 +707,28 @@ test("f038 R6: un estado que no está en el selector cae en «activas»", () => 
   assert.deepEqual(Revision.consultaDe("9901", { estado: "inventado" }), { obra: "9901", estado: "activas" });
   assert.deepEqual(Revision.FILTROS_DE_ESTADO.slice(0, 6), ["activas", "todas", "nueva", "editada", "aprobada", "descartada"]);
   assert.equal(Revision.FILTROS_DE_ESTADO[0], "activas", "el primero es el de por defecto");
+});
+
+test("f038 R21.5: consultaDe lleva también los filtros volcada y en_duda; el selector tiene los ocho", () => {
+  for (const estado of ["volcada", "en_duda"]) {
+    assert.deepEqual(Revision.consultaDe("9901", { estado: estado }), { obra: "9901", estado: estado });
+  }
+  assert.deepEqual(Revision.FILTROS_DE_ESTADO, [
+    "activas", "todas", "nueva", "editada", "aprobada", "descartada", "volcada", "en_duda",
+  ]);
+});
+
+test("f038 R21.5: el componente pide la primera página con el filtro volcada o en_duda tal cual", async () => {
+  for (const estado of ["volcada", "en_duda"]) {
+    const { app, llamadas } = componente();
+    await app.iniciar();
+    app.obra = "9901";
+    app.filtros.estado = estado;
+    await app.cambiarFiltro();
+    const pedidas = llamadas.filter((l) => l.nombre === "revision");
+    assert.equal(pedidas.length, 1, estado);
+    assert.deepEqual(pedidas[0].args, ["9901", { estado: estado, con_motivos: undefined }, undefined], estado);
+  }
 });
 
 test("f038 R7: consultaDe lleva el cursor tal cual, sin decodificarlo ni construirlo", () => {
@@ -1672,6 +1868,91 @@ test("f038 R15: js/revision.js no escribe en console ni en el almacenamiento del
   assert.doesNotMatch(fuente, /\/revision\/normalizar/, "R23: la página no normaliza");
 });
 
+// R21.7 · `volcado_por` es un correo (D-8): ni a la consola ni al almacenamiento.
+// Se EJECUTA el recorrido del componente con una volcada, una en duda y un
+// intento rechazado (cargar, pintar, abrir el detalle y su historial) con la
+// consola y el almacenamiento espiados; el control repite lo mismo con un
+// `js/revision.js` estropeado en memoria que sí escribe el correo.
+
+const METODOS_DE_CONSOLA = ["log", "info", "warn", "error", "debug", "trace", "table", "dir"];
+
+async function conConsolaYAlmacenamientoEspiados(hacer) {
+  const tocados = [];
+  const originales = {};
+  for (const metodo of METODOS_DE_CONSOLA) {
+    originales[metodo] = console[metodo];
+    console[metodo] = (...args) => tocados.push(`console.${metodo}(${args.map(String).join(", ")})`);
+  }
+  const descriptores = {};
+  for (const nombre of ["localStorage", "sessionStorage"]) {
+    descriptores[nombre] = Object.getOwnPropertyDescriptor(globalThis, nombre);
+    const almacen = {};
+    for (const metodo of ["getItem", "setItem", "removeItem", "clear", "key"]) {
+      almacen[metodo] = (...args) => tocados.push(`${nombre}.${metodo}(${args.map(String).join(", ")})`);
+    }
+    Object.defineProperty(globalThis, nombre, { value: almacen, configurable: true, writable: true });
+  }
+  try {
+    await hacer();
+  } finally {
+    for (const metodo of METODOS_DE_CONSOLA) console[metodo] = originales[metodo];
+    for (const nombre of ["localStorage", "sessionStorage"]) {
+      if (descriptores[nombre]) Object.defineProperty(globalThis, nombre, descriptores[nombre]);
+      else delete globalThis[nombre];
+    }
+  }
+  return tocados;
+}
+
+/** Lo que el recorrido de una página con volcados deja en la consola o en el almacenamiento. Vacío = correcto. */
+async function rastroDelVolcado(Modulo) {
+  return conConsolaYAlmacenamientoEspiados(async () => {
+    const incidencias = [
+      incidencia({ incidencia_id: ID_1, estado: "volcada", volcado: objetoVolcado({ volcado_por: OTRO_CORREO }) }),
+      incidencia({ incidencia_id: ID_2, estado: "en_duda", volcado: objetoVolcado({ estado: "en_duda", sigrid_cod: null, volcado_por: OTRO_CORREO }) }),
+      incidencia({
+        incidencia_id: ID_3,
+        estado: "aprobada",
+        volcado: objetoVolcado({ estado: "rechazado", sigrid_cod: null, volcado_por: OTRO_CORREO, motivo: "error_de_escritura" }),
+      }),
+    ];
+    const { api } = apiDoble({
+      identidad: IDENTIDAD,
+      revision: () => respuesta({ incidencias: incidencias }),
+      historialRevision: { incidencia_id: ID_1, importada: null, revisiones: [] },
+    });
+    const app = Modulo.crearAppRevision({ api: api, parametros: "?obra=9901" });
+    await app.iniciar();
+    const filas = app.vista().filas;
+    assert.equal(filas.filter((f) => f.lineaVolcado && f.lineaVolcado.includes(OTRO_CORREO)).length, 3, "las tres líneas, pintadas");
+    app.vistaResumen();
+    for (const id of [ID_1, ID_2, ID_3]) {
+      await app.abrirDetalle(id);
+      app.detalle();
+    }
+  });
+}
+
+test("f038 R21.7: pintar volcadas y abrir su detalle no escribe nada en la consola ni en el almacenamiento", async () => {
+  assert.deepEqual(await rastroDelVolcado(Revision), []);
+});
+
+for (const [nombre, estropear] of [
+  ["el correo de quien volcó a console.log", (y) => `(console.log(${y}), quienLegible(${y}))`],
+  ["el correo de quien volcó a localStorage", (y) => `(localStorage.setItem("quien", ${y}), quienLegible(${y}))`],
+]) {
+  test(`f038 R21.7: control: ${nombre} salta`, async () => {
+    const fuente = fs.readFileSync(path.join(__dirname, "..", "js", "revision.js"), "utf-8");
+    const ancla = "quienLegible(volcado.volcado_por)";
+    assert.equal(fuente.split(ancla).length, 2, `el control no encuentra una sola vez: ${ancla}`);
+    const modulo = { exports: {} };
+    // eslint-disable-next-line no-new-func
+    Function("module", fuente.replace(ancla, estropear("volcado.volcado_por")))(modulo);
+    const rastro = await rastroDelVolcado(modulo.exports);
+    assert.ok(rastro.some((r) => r.includes(OTRO_CORREO)), `${nombre}: el espía no lo ve (${rastro.join("; ")})`);
+  });
+}
+
 // --- Bloque 1 bis (T1 bis) · `bandeja.html`, evaluada contra el componente ----------------------
 //
 // El HTML de la página se lee como texto y sus expresiones de Alpine se evalúan
@@ -1806,6 +2087,9 @@ function accionDelBoton(elemento) {
   return llamada && Object.prototype.hasOwnProperty.call(ACCION_DEL_CLIC, llamada[1]) ? ACCION_DEL_CLIC[llamada[1]] : null;
 }
 
+/** Las llamadas al `api` doble de cada alcance de `alcanceConTodoAbierto` (C-B1b-2). */
+const LLAMADAS_DEL_ALCANCE = new WeakMap();
+
 /**
  * El componente con todo abierto sobre UNA incidencia en `estado`: cargada,
  * con su detalle, su historial, el formulario y el segundo clic de descartar
@@ -1813,9 +2097,6 @@ function accionDelBoton(elemento) {
  * no los abre en un estado que no los admite): así lo que se mide es la puerta
  * del HTML, no la del componente.
  */
-/** Las llamadas al `api` doble de cada alcance de `alcanceConTodoAbierto` (C-B1b-2). */
-const LLAMADAS_DEL_ALCANCE = new WeakMap();
-
 async function alcanceConTodoAbierto(estado, cambios, guion) {
   const fila = incidencia(
     Object.assign(
@@ -2322,5 +2603,142 @@ for (const [nombre, viejo, nuevo] of [
   test(`f038 R10, R11 (O-B1b-2): control: ${nombre} salta`, async () => {
     const problemas = await problemasDeLosAvisos(cambiarUnaVez(leerBandeja(), viejo, nuevo));
     assert.notDeepEqual(problemas, [], `${nombre}: la tabla de verdad no lo ve`);
+  });
+}
+
+// --- Bloque 1 ter (T4 bis) · la presentación del volcado en bandeja.html (R21) -------------------
+//
+// Como el resto del recorrido: `bandeja.html` evaluada contra el componente de
+// verdad, ahora con el `x-text` de cada elemento visible evaluado, con el
+// detalle abierto y cerrado (cerrado, lo que se ve es la lista).
+
+/** Los `x-text` evaluados de los elementos que se ven con ese alcance, y los elementos. */
+function textosVisibles(html, alcance) {
+  const { elementos, problemas } = recorrerBandeja(html, alcance);
+  const textos = [];
+  for (const e of elementos) {
+    if (!e.visible || !("x-text" in e.atributos)) continue;
+    try {
+      textos.push(String(evaluarEn(e.alcance, e.atributos["x-text"])));
+    } catch (error) {
+      problemas.push(`x-text="${e.atributos["x-text"]}": ${error.message}`);
+    }
+  }
+  return { textos, elementos, problemas };
+}
+
+function conElDetalleCerrado(alcance) {
+  const cerrado = Object.create(alcance);
+  cerrado.abierta = null;
+  return cerrado;
+}
+
+const VOLCADO_RECHAZADO = objetoVolcado({ estado: "rechazado", sigrid_cod: null, motivo: "interviniente_ambiguo" });
+const VOLCADO_NO_PROCESADO = objetoVolcado({ estado: "no_procesado", sigrid_cod: null, motivo: "presupuesto_de_tiempo_agotado" });
+
+/**
+ * Cada caso: el estado de la fila, su objeto `volcado`, la línea que tiene que
+ * salir (o `null`), si sale también en la lista (R21.1, R21.2) o solo en el
+ * detalle (R21.3) y si lleva «Ya no se revisa aquí» (R21.6).
+ */
+const CASOS_DEL_VOLCADO = [
+  {
+    que: "una volcada",
+    estado: "volcada",
+    volcado: objetoVolcado(),
+    linea: "Volcada como RS99.99/0001 por " + CORREO + " el " + FECHA_DEL_VOLCADO,
+    enLista: true,
+  },
+  {
+    que: "una en duda con motivo",
+    estado: "en_duda",
+    volcado: objetoVolcado({ estado: "en_duda", sigrid_cod: null, motivo: "colision_de_clave" }),
+    linea: LINEA_EN_DUDA + ". Motivo: Sigrid estaba creando otro parte a la vez: se puede volver a mandar sin riesgo",
+    enLista: true,
+  },
+  {
+    que: "una aprobada con el último intento rechazado",
+    estado: "aprobada",
+    volcado: VOLCADO_RECHAZADO,
+    linea:
+      "Último intento de volcado: no se creó el " + FECHA_DEL_VOLCADO + " por " + CORREO +
+      ": El oficio tiene varios proveedores en la obra: hay que elegir uno",
+    enLista: false,
+  },
+  {
+    que: "una aprobada con el último intento sin procesar",
+    estado: "aprobada",
+    volcado: VOLCADO_NO_PROCESADO,
+    linea:
+      "Último intento de volcado: no se llegó a procesar el " + FECHA_DEL_VOLCADO + " por " + CORREO +
+      ": Se acabó el tiempo antes de llegar a este parte: se puede volver a mandar sin riesgo",
+    enLista: false,
+  },
+  { que: "una nueva sin volcado", estado: "nueva", volcado: null, linea: null, enLista: false },
+];
+
+const PRINCIPIO_DE_LINEA_DE_VOLCADO = /^(?:Volcada como |Se mandó a Sigrid |Último intento de volcado: )/;
+const YA_NO_SE_REVISA = "Ya no se revisa aquí";
+
+/** R21.1-R21.3, R21.6 · lo que la página no enseña (o enseña de más) del volcado. Vacío = correcto. */
+async function problemasDelVolcadoEnLaPagina(html) {
+  const problemas = [];
+  const veces = (textos, texto) => textos.filter((t) => t === texto).length;
+  for (const caso of CASOS_DEL_VOLCADO) {
+    const alcance = await alcanceConTodoAbierto(caso.estado, { volcado: caso.volcado });
+    const abierto = textosVisibles(html, alcance);
+    const cerrado = textosVisibles(html, conElDetalleCerrado(alcance));
+    problemas.push(...[...abierto.problemas, ...cerrado.problemas].map((p) => `${caso.que}: ${p}`));
+    if (caso.linea) {
+      const enLista = veces(cerrado.textos, caso.linea);
+      const enDetalle = veces(abierto.textos, caso.linea) - enLista;
+      if (enLista !== (caso.enLista ? 1 : 0)) {
+        problemas.push(`${caso.que}: la línea del volcado sale ${enLista} veces en la lista, no ${caso.enLista ? 1 : 0}`);
+      }
+      if (enDetalle !== 1) problemas.push(`${caso.que}: la línea del volcado sale ${enDetalle} veces en el detalle, no 1`);
+    }
+    const otras = abierto.textos.filter((t) => PRINCIPIO_DE_LINEA_DE_VOLCADO.test(t) && t !== caso.linea);
+    if (otras.length) problemas.push(`${caso.que}: líneas de volcado que no son la suya: ${otras.join(" | ")}`);
+    const yaNoSeRevisa = ["volcada", "en_duda"].includes(caso.estado);
+    const frase = veces(cerrado.textos, YA_NO_SE_REVISA);
+    if (frase !== (yaNoSeRevisa ? 1 : 0)) {
+      problemas.push(`${caso.que}: «${YA_NO_SE_REVISA}» sale ${frase} veces en la lista, no ${yaNoSeRevisa ? 1 : 0}`);
+    }
+    if (!cerrado.textos.includes(Revision.etiquetaEstado(caso.estado))) {
+      problemas.push(`${caso.que}: no se ve su etiqueta «${Revision.etiquetaEstado(caso.estado)}»`);
+    }
+    if (yaNoSeRevisa) {
+      const botones = abierto.elementos.filter((e) => e.nombre === "button" && e.visible && accionDelBoton(e));
+      const campos = abierto.elementos.filter(
+        (e) =>
+          ["select", "textarea", "input"].includes(e.nombre) &&
+          e.visible &&
+          !/^(?:obra|filtros\.)/.test(e.atributos["x-model"] || ""),
+      );
+      if (botones.length || campos.length) {
+        problemas.push(`${caso.que}: ${botones.length} botones de acción y ${campos.length} campos (R21.6: ninguno)`);
+      }
+      if (!abierto.textos.some((t) => t.startsWith("Importada el "))) {
+        problemas.push(`${caso.que}: su historial no se lee (R21.6)`);
+      }
+    }
+  }
+  return problemas;
+}
+
+test("f038 R21.1-R21.3, R21.6: bandeja.html enseña la línea del volcado, la etiqueta y «Ya no se revisa aquí» donde toca", async () => {
+  assert.deepEqual(await problemasDelVolcadoEnLaPagina(leerBandeja()), []);
+});
+
+for (const [nombre, viejo, nuevo] of [
+  ["la línea de la lista sin su puerta (el último intento, en la lista)", 'x-show="fila.yaNoSeRevisa && fila.lineaVolcado"', 'x-show="fila.lineaVolcado"'],
+  ["la línea de la lista oculta", 'x-show="fila.yaNoSeRevisa && fila.lineaVolcado"', 'x-show="false"'],
+  ["la línea del detalle solo en volcada y en duda", 'x-show="fila.lineaVolcado"', 'x-show="fila.yaNoSeRevisa && fila.lineaVolcado"'],
+  ["la línea del detalle con otro texto", 'x-show="fila.lineaVolcado" class="rs-texto" x-text="fila.lineaVolcado"', 'x-show="fila.lineaVolcado" class="rs-texto" x-text="fila.revisadoPor"'],
+  ["«Ya no se revisa aquí» oculta", 'x-show="fila.yaNoSeRevisa"', 'x-show="false"'],
+]) {
+  test(`f038 R21 (T4 bis): control: ${nombre} salta`, async () => {
+    const problemas = await problemasDelVolcadoEnLaPagina(cambiarUnaVez(leerBandeja(), viejo, nuevo));
+    assert.notDeepEqual(problemas, [], `${nombre}: el recorrido no lo ve`);
   });
 }

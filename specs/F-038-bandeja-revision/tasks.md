@@ -95,7 +95,7 @@
     `aria-current`.
   Traza del fallo pegada. |
   Verificación: `python -m pytest tests/test_f038_front.py` y `node --test tests_js/portal.test.js tests_js/f035_paginas.test.js` **fallan** por lo nuevo; `python -m pytest tests/test_f035_placeholders_vivos.py` (raíz) sigue **en verde**
-- [ ] **T3**: `bandeja.html` (`design.md` §2.2, §2.3; la tira con el 03 de
+- [x] **T3**: `bandeja.html` (`design.md` §2.2, §2.3; la tira con el 03 de
   R25; ningún botón ni formulario en `volcada` y `en_duda`, R21.6),
   `"bandeja.html": "bandeja"` en `Portal.PAGINAS`, el `beforeunload` (R13), el
   `README.md` (R19, con la deriva conocida del resumen, §2.3) y

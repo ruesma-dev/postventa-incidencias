@@ -1,0 +1,427 @@
+<!-- services/postventa-front/bandeja.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bandeja de revisión · Posventa · Ruesma</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine con defer y versión fija, como en index.html: se ejecuta después
+       de nuestros scripts (al final del body) y encuentra appRevision. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css?v=6e073b5414">
+</head>
+<body class="rs-cuerpo">
+  <!-- F-038 · specs/F-038-bandeja-revision/design.md §2.2 y §2.3. La bandeja
+       de revisión: lo importado, antes de Sigrid. Editar, descartar, aprobar y
+       recuperar cada incidencia contra los tres endpoints de F-056
+       (js/api.js), con el componente de js/revision.js.
+       NADA SALE SIN UN CLIC (R10): cargar solo lee; cada acción sale de un
+       @click y está dentro de la puerta de su estado
+       (fila.acciones.includes(…), que es accionesDe de js/revision.js); sin
+       sesión completa o mientras se guarda, ningún botón de acción se puede
+       pulsar (puedeActuar()). La confirmación la escribe un único sitio,
+       cuerpoDeAccion, nunca este HTML.
+       Es la primera página real de la sección «Bandeja de revisión» del
+       portal (Portal.PAGINAS), con la identidad de F-035 (R70-R72). -->
+  <div x-data="appRevision()" x-init="iniciar()" class="min-h-screen flex flex-col">
+
+    <!-- F-035 · Barra superior común (R44, R70), en HTML PLANO: ni una
+         directiva de Alpine, ni script, ni botón (R45), y esta página no
+         carga nada de la maqueta (R77). «Bandeja de revisión» es la sección
+         de esta página (Portal.PAGINAS), la actual, y lleva su marca de
+         construcción mientras la sección lo esté (R2 de F-038). Las demás
+         pestañas llevan a Portal.enlaceSeccion(id, "bandeja.html"), todas en
+         la MISMA pestaña (R73). La marca no es un enlace (R51). -->
+    <nav data-barra-portal aria-label="Secciones de posventa" class="rs-barra">
+      <div class="rs-barra__fila">
+        <span class="rs-barra__marca">
+          <img class="rs-barra__logo" src="img/logo-ruesma.svg" alt="Construcciones Ruesma">
+          <span class="rs-barra__sep" aria-hidden="true"></span>
+          <span class="rs-barra__etiqueta">Posventa</span>
+        </span>
+        <div class="rs-barra__pestanas">
+          <a href="./#/inicio" class="rs-pestana">Inicio</a>
+          <a href="./#/entrada" class="rs-pestana">Entrada</a>
+          <span aria-current="page" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)">Bandeja de revisión</span>
+          <a href="./#/incidencias" class="rs-pestana" data-construccion aria-label="Incidencias (en construcción)">Incidencias</a>
+          <a href="./#/impresion" class="rs-pestana" data-construccion aria-label="Impresión de partes (en construcción)">Impresión de partes</a>
+          <a href="partes.html" class="rs-pestana">Partes firmados</a>
+          <a href="./#/economico" class="rs-pestana" data-construccion aria-label="Coste y venta (en construcción)">Coste y venta</a>
+          <a href="./#/datos" class="rs-pestana" data-construccion aria-label="Datos y datamart (en construcción)">Datos y datamart</a>
+        </div>
+      </div>
+      <p class="rs-barra__leyenda">Las pestañas con punto ámbar están en construcción y enseñan datos de ejemplo.</p>
+    </nav>
+
+    <!-- F-035 · El recorrido de una incidencia (R83-R88), en HTML PLANO como
+         la barra. 02 Revisión es el paso de esta página (Portal.pasoDeSeccion
+         de su sección): el actual, sin enlace y con su marca de construcción.
+         03 Sigrid es de la MISMA sección y no es el actual: un <span> sin href
+         ni aria-current (R25 de F-038, Q-10). Los demás href son los de
+         Portal.enlaceSeccion(paso.seccion, "bandeja.html"), en la misma
+         pestaña (R73). -->
+    <nav data-recorrido aria-label="El ciclo de una incidencia" class="rs-recorrido-banda">
+      <div class="rs-contenedor">
+        <ol class="rs-recorrido">
+          <li><a href="./#/entrada" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</a></li>
+          <li><span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</span></li>
+          <li><span class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</span></li>
+          <li><a href="./#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
+          <li><a href="./#/impresion" class="rs-recorrido__paso" data-construccion aria-label="Parte (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
+          <li><a href="partes.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>
+          <li><a href="./#/economico" class="rs-recorrido__paso" data-construccion aria-label="Coste (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
+        </ol>
+      </div>
+    </nav>
+
+    <!-- Migas de la sección «Bandeja de revisión» (R1). Sin subnavegación: la
+         sección tiene una sola página real. -->
+    <header class="rs-cabecera">
+      <div class="rs-contenedor rs-cabecera__fila">
+        <div>
+          <nav aria-label="Estás en" class="rs-migas">
+            <a href="index.html" class="rs-enlace">Portal de posventa</a>
+            <span aria-hidden="true">›</span>
+            <a href="./#/bandeja" class="rs-enlace">Bandeja de revisión</a>
+          </nav>
+          <h1 class="rs-titulo">Bandeja de revisión</h1>
+          <p class="rs-subtitulo">Revisa lo importado antes de que llegue a Sigrid: corrige, elige el código del oficio, pon la ubicación, descarta o aprueba. Solo lo aprobado se podrá volcar.</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="rs-contenedor rs-principal flex-1">
+
+      <!-- ── Obra y filtros (R3, R6) ──────────────────────────────────────
+           Cargar y cambiar un filtro piden la PRIMERA página al servidor:
+           los filtros no se aplican sobre lo cargado (design.md §2.3). -->
+      <section class="rs-panel rs-panel--destacado">
+        <p class="rs-texto">
+          Cargar solo lee: nada cambia hasta que pulses una acción en una incidencia.
+        </p>
+        <div class="mt-4 flex flex-wrap items-end gap-3">
+          <label class="flex w-40 flex-col gap-1">
+            <span class="rs-campo__etiqueta">Código de obra</span>
+            <input type="text" x-model="obra" autocomplete="off"
+                   @keydown.enter.prevent="cargar()"
+                   class="rs-campo">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="rs-campo__etiqueta">Estado</span>
+            <select x-model="filtros.estado" @change="cambiarFiltro()" class="rs-campo">
+              <option value="activas">Activas (todo menos descartadas y volcadas)</option>
+              <option value="todas">Todas</option>
+              <option value="nueva">Nuevas</option>
+              <option value="editada">Editadas</option>
+              <option value="aprobada">Aprobadas</option>
+              <option value="descartada">Descartadas</option>
+            </select>
+          </label>
+          <label class="flex items-center gap-2 rs-texto">
+            <input type="checkbox" x-model="filtros.conMotivos" @change="cambiarFiltro()">
+            Solo las que tienen algo que corregir
+          </label>
+          <button type="button" @click="cargar()" :disabled="!obra.trim() || cargando"
+                  class="rs-btn rs-btn--primario">Cargar</button>
+          <span x-show="cargando" class="rs-nota">Leyendo la bandeja y Sigrid…</span>
+        </div>
+        <p x-show="errorCarga" x-text="errorCarga"
+           class="mt-4 rs-aviso rs-aviso--error"></p>
+        <p x-show="mensajeAccion && !abierta" x-text="mensajeAccion"
+           class="mt-4 rs-aviso rs-aviso--atencion"></p>
+        <p x-show="consulta && (!usuario.usuarioOid || !usuario.correo)" class="mt-4 rs-aviso rs-aviso--info">
+          No se ha podido leer tu sesión entera (identificador y correo): puedes consultar la bandeja, pero no revisarla. Vuelve a entrar en el portal.
+        </p>
+      </section>
+
+      <!-- ── Resumen de TODA la obra (R5), del resumen de la respuesta ────── -->
+      <template x-if="resumen">
+        <section class="rs-panel">
+          <h2 class="rs-rotulo">Resumen de la obra <span x-text="obraCargada"></span></h2>
+          <p class="mt-2 rs-nota">De toda la obra, no solo de lo cargado. Tras una acción se ajusta aquí mismo; al volver a cargar, sale del servicio.</p>
+          <dl class="mt-3 flex flex-wrap gap-x-8 gap-y-2 rs-texto">
+            <div>
+              <dt class="rs-campo__etiqueta">Total</dt>
+              <dd class="rs-texto--fuerte" x-text="vistaResumen().total"></dd>
+            </div>
+            <div>
+              <dt class="rs-campo__etiqueta">Aprobadas</dt>
+              <dd class="rs-texto--fuerte" x-text="vistaResumen().aprobadas"></dd>
+            </div>
+            <div>
+              <dt class="rs-campo__etiqueta">Con algo que corregir</dt>
+              <dd class="rs-texto--fuerte" x-text="vistaResumen().conMotivos"></dd>
+            </div>
+          </dl>
+          <ul class="mt-3 flex flex-wrap gap-2">
+            <template x-for="cuenta in vistaResumen().porEstado" :key="cuenta.estado">
+              <li class="rs-chip rs-chip--neutro" x-text="cuenta.etiqueta + ': ' + cuenta.n"></li>
+            </template>
+          </ul>
+          <details class="mt-3">
+            <summary class="rs-texto">Cuántas hay por cada motivo</summary>
+            <ul class="mt-2 space-y-1 rs-texto">
+              <template x-for="cuenta in vistaResumen().porMotivo" :key="cuenta.motivo">
+                <li><span x-text="cuenta.texto"></span>: <span class="rs-texto--fuerte" x-text="cuenta.n"></span></li>
+              </template>
+            </ul>
+          </details>
+        </section>
+      </template>
+
+      <!-- ── La lista (R4) y «Cargar más» (R7) ────────────────────────────
+           Una fila por incidencia; el detalle se abre en su sitio (no es un
+           modal). Tras una acción la fila se sustituye en su sitio aunque ya
+           no cumpla el filtro: el filtro se aplica al volver a cargar. -->
+      <section x-show="consulta" class="rs-panel">
+        <h2 class="rs-rotulo">Incidencias</h2>
+        <p x-show="!incidencias.length" class="mt-3 rs-texto">Ninguna incidencia de la obra con estos filtros.</p>
+        <ul class="mt-4 space-y-3">
+          <template x-for="fila in vista().filas" :key="fila.incidencia_id">
+            <li class="rs-panel rs-panel--suave rs-texto">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p class="rs-texto--fuerte" x-text="fila.descripcionCorta"></p>
+                  <p class="mt-1 rs-nota" x-text="'Fila ' + fila.fila_origen + ' · ' + fila.unidad + ' · ' + (fila.ubicacion || 'sin ubicación')"></p>
+                </div>
+                <span class="rs-chip rs-chip--neutro" x-text="fila.etiquetaEstado"></span>
+              </div>
+              <p class="mt-2" x-text="'Oficio: ' + fila.oficio + ' · Proveedor: ' + fila.proveedor + ' · Urgencia: ' + (fila.urgencia || 'sin urgencia')"></p>
+              <p x-show="fila.duplicada" class="mt-1 rs-nota rs-nota--atencion" x-text="fila.duplicada"></p>
+              <ul x-show="fila.motivos.length" class="mt-2 flex flex-wrap gap-1">
+                <template x-for="(motivo, n) in fila.motivos" :key="n">
+                  <li class="rs-chip rs-chip--atencion" x-text="motivo"></li>
+                </template>
+              </ul>
+              <p x-show="fila.revisadoPor" class="mt-1 rs-nota" x-text="fila.revisadoPor"></p>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button type="button" x-show="abierta !== fila.incidencia_id" @click="abrirDetalle(fila.incidencia_id)"
+                        class="rs-btn rs-btn--secundario rs-btn--compacto">Ver el detalle</button>
+                <button type="button" x-show="abierta === fila.incidencia_id" @click="cerrarDetalle()"
+                        class="rs-btn rs-btn--texto rs-btn--compacto">Cerrar el detalle</button>
+              </div>
+
+              <!-- ── El detalle (R8) y las acciones (R9-R12) ──────────────── -->
+              <template x-if="abierta === fila.incidencia_id">
+                <div class="mt-4 space-y-4">
+                  <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+                    <template x-for="campo in detalle()" :key="campo.campo">
+                      <div>
+                        <dt class="rs-campo__etiqueta" x-text="campo.etiqueta"></dt>
+                        <dd x-text="campo.valor"></dd>
+                        <dd x-show="campo.llegoAsi" class="rs-nota" x-text="campo.llegoAsi"></dd>
+                      </div>
+                    </template>
+                  </dl>
+
+                  <div>
+                    <h3 class="rs-rotulo">Historial</h3>
+                    <p x-show="errorHistorial" x-text="errorHistorial" class="mt-2 rs-aviso rs-aviso--error"></p>
+                    <p x-show="!historial && !errorHistorial" class="mt-2 rs-nota">Leyendo el historial…</p>
+                    <template x-if="historial">
+                      <ul class="mt-2 space-y-1">
+                        <li class="rs-nota" x-text="'Importada el ' + historial.importada"></li>
+                        <template x-for="revision in historial.revisiones" :key="revision.revision_id">
+                          <li>
+                            <span x-text="revision.fecha"></span> ·
+                            <span x-text="revision.accion + ' por ' + revision.quien"></span>
+                            <span x-show="revision.campos.length" class="rs-texto--apagado" x-text="'· ' + revision.campos.join(', ')"></span>
+                            <span x-show="revision.motivo" class="rs-texto--apagado" x-text="'· motivo: ' + revision.motivo"></span>
+                          </li>
+                        </template>
+                      </ul>
+                    </template>
+                  </div>
+
+                  <p x-show="mensajeAccion" x-text="mensajeAccion" class="rs-aviso rs-aviso--atencion"></p>
+
+                  <!-- Las acciones: SOLO las de su estado (R11, accionesDe), cada
+                       una en su x-if; sin puedeActuar(), ninguna se puede pulsar
+                       (R10). En una volcada o en duda no hay ninguna (R21.6). -->
+                  <div class="flex flex-wrap items-center gap-2">
+                    <template x-if="fila.acciones.includes('editar')">
+                      <button type="button" @click="abrirFormulario(fila.incidencia_id)" :disabled="!puedeActuar() || formulario !== null"
+                              class="rs-btn rs-btn--secundario rs-btn--compacto">Editar</button>
+                    </template>
+                    <template x-if="fila.acciones.includes('aprobar')">
+                      <button type="button" @click="aprobar(fila.incidencia_id)" :disabled="!fila.aprobable || !puedeActuar()"
+                              class="rs-btn rs-btn--ok rs-btn--compacto">Aprobar</button>
+                    </template>
+                    <template x-if="fila.acciones.includes('descartar')">
+                      <button type="button" @click="pedirDescarte(fila.incidencia_id)" :disabled="!puedeActuar() || confirmandoDescarte === fila.incidencia_id"
+                              class="rs-btn rs-btn--peligro rs-btn--compacto">Descartar</button>
+                    </template>
+                    <template x-if="fila.acciones.includes('recuperar')">
+                      <button type="button" @click="recuperar(fila.incidencia_id)" :disabled="!puedeActuar()"
+                              class="rs-btn rs-btn--secundario rs-btn--compacto">Recuperar</button>
+                    </template>
+                    <span x-show="guardando" class="rs-nota">Guardando…</span>
+                  </div>
+                  <!-- «Aprobar» deshabilitado, con los motivos a la vista (R11), o
+                       con «recarga para ver si se puede aprobar» (R12). -->
+                  <p x-show="fila.acciones.includes('aprobar') && fila.motivos.length"
+                     class="rs-nota rs-nota--atencion" x-text="'No se puede aprobar: ' + fila.motivos.join(' · ')"></p>
+                  <p x-show="fila.avisoAprobar" class="rs-nota rs-nota--atencion" x-text="fila.avisoAprobar"></p>
+
+                  <!-- Descartar pide un segundo clic en el propio panel, con el
+                       motivo opcional (R11). -->
+                  <template x-if="confirmandoDescarte === fila.incidencia_id && fila.acciones.includes('descartar')">
+                    <div class="rs-panel rs-panel--atencion">
+                      <p class="rs-texto rs-texto--atencion">¿Descartar esta incidencia? No llegará a Sigrid; se puede recuperar después.</p>
+                      <label class="mt-3 flex flex-col gap-1">
+                        <span class="rs-campo__etiqueta">Motivo (opcional)</span>
+                        <textarea x-model="motivoDescarte" maxlength="500" rows="2" class="rs-campo"></textarea>
+                        <span class="rs-nota" x-text="motivoDescarte.length + ' / 500'"></span>
+                      </label>
+                      <div class="mt-3 flex flex-wrap gap-2">
+                        <button type="button" @click="confirmarDescarte(fila.incidencia_id)" :disabled="!puedeActuar()"
+                                class="rs-btn rs-btn--peligro rs-btn--compacto">Sí, descartarla</button>
+                        <button type="button" @click="cancelarDescarte()"
+                                class="rs-btn rs-btn--texto rs-btn--compacto">No, dejarla</button>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- El formulario de edición (R9): solo valores del catálogo de
+                       la respuesta; un valor vigente que ya no está en la lista
+                       de Sigrid de hoy sale conservado y marcado (R24). El
+                       problema de cada campo, junto a él (R12). -->
+                  <template x-if="formulario && fila.acciones.includes('editar')">
+                    <div class="rs-panel">
+                      <h3 class="rs-rotulo">Editar la incidencia</h3>
+                      <p x-show="formulario.aviso" x-text="formulario.aviso" class="mt-3 rs-aviso rs-aviso--atencion"></p>
+                      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <label class="flex flex-col gap-1">
+                          <span class="rs-campo__etiqueta">Unidad</span>
+                          <select x-model="formulario.unidad_codigo" @change="cambiarUnidad()" class="rs-campo">
+                            <option value="" disabled>Elige la unidad</option>
+                            <template x-for="opcion in opciones().unidades" :key="opcion.codigo">
+                              <option :value="opcion.codigo" :selected="opcion.codigo === formulario.unidad_codigo" x-text="opcion.texto"></option>
+                            </template>
+                          </select>
+                          <span x-show="erroresPorCampo && erroresPorCampo.unidad_codigo" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.unidad_codigo"></span>
+                        </label>
+                        <label class="flex flex-col gap-1">
+                          <span class="rs-campo__etiqueta">Ubicación</span>
+                          <select x-model="formulario.ubicacion" class="rs-campo">
+                            <option value="">Sin ubicación (no se podrá aprobar)</option>
+                            <template x-for="opcion in opciones().ubicaciones" :key="opcion.codigo">
+                              <option :value="opcion.codigo" :selected="opcion.codigo === formulario.ubicacion" x-text="opcion.texto"></option>
+                            </template>
+                          </select>
+                          <span x-show="erroresPorCampo && erroresPorCampo.ubicacion" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.ubicacion"></span>
+                        </label>
+                        <label class="flex flex-col gap-1">
+                          <span class="rs-campo__etiqueta">Oficio</span>
+                          <select x-model="formulario.oficio_codigo" @change="cambiarOficio()" class="rs-campo">
+                            <option value="">Sin elegir</option>
+                            <template x-for="opcion in opciones().oficios" :key="opcion.codigo">
+                              <option :value="opcion.codigo" :selected="opcion.codigo === formulario.oficio_codigo" x-text="opcion.texto"></option>
+                            </template>
+                          </select>
+                          <span x-show="erroresPorCampo && erroresPorCampo.oficio_codigo" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.oficio_codigo"></span>
+                        </label>
+                        <label class="flex flex-col gap-1">
+                          <span class="rs-campo__etiqueta">Proveedor</span>
+                          <select x-model="formulario.proveedor_codigo" class="rs-campo">
+                            <option value="">Sin proveedor</option>
+                            <template x-for="opcion in opciones().proveedores" :key="opcion.codigo">
+                              <option :value="opcion.codigo" :selected="opcion.codigo === formulario.proveedor_codigo" x-text="opcion.texto"></option>
+                            </template>
+                          </select>
+                          <span x-show="erroresPorCampo && erroresPorCampo.proveedor_codigo" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.proveedor_codigo"></span>
+                        </label>
+                        <label class="flex flex-col gap-1">
+                          <span class="rs-campo__etiqueta">Urgencia</span>
+                          <select x-model="formulario.urgencia" class="rs-campo">
+                            <option value="">Sin urgencia</option>
+                            <template x-for="opcion in opciones().urgencias" :key="opcion.codigo">
+                              <option :value="opcion.codigo" :selected="opcion.codigo === formulario.urgencia" x-text="opcion.etiqueta"></option>
+                            </template>
+                          </select>
+                          <span x-show="erroresPorCampo && erroresPorCampo.urgencia" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.urgencia"></span>
+                        </label>
+                        <label class="flex flex-col gap-1">
+                          <span class="rs-campo__etiqueta">Listado</span>
+                          <select x-model="formulario.listado" class="rs-campo">
+                            <option value="">Sin listado</option>
+                            <template x-for="opcion in opciones().listados" :key="opcion.codigo">
+                              <option :value="opcion.codigo" :selected="opcion.codigo === formulario.listado" x-text="opcion.etiqueta"></option>
+                            </template>
+                          </select>
+                          <span x-show="erroresPorCampo && erroresPorCampo.listado" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.listado"></span>
+                        </label>
+                        <label class="flex flex-col gap-1 sm:col-span-2">
+                          <span class="rs-campo__etiqueta">Descripción</span>
+                          <input type="text" x-model="formulario.descripcion" maxlength="128" class="rs-campo">
+                          <span class="rs-nota" x-text="formulario.descripcion.length + ' / 128'"></span>
+                          <span x-show="erroresPorCampo && erroresPorCampo.descripcion" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.descripcion"></span>
+                        </label>
+                        <label class="flex flex-col gap-1 sm:col-span-2">
+                          <span class="rs-campo__etiqueta">Detalle</span>
+                          <textarea x-model="formulario.detalle" maxlength="2000" rows="3" class="rs-campo"></textarea>
+                          <span class="rs-nota" x-text="formulario.detalle.length + ' / 2000'"></span>
+                          <span x-show="erroresPorCampo && erroresPorCampo.detalle" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.detalle"></span>
+                        </label>
+                      </div>
+                      <div class="mt-4 flex flex-wrap gap-2">
+                        <button type="button" @click="guardarEdicion()" :disabled="!puedeActuar()"
+                                class="rs-btn rs-btn--primario rs-btn--compacto">Guardar cambios</button>
+                        <button type="button" @click="cancelarFormulario()"
+                                class="rs-btn rs-btn--texto rs-btn--compacto">Cancelar</button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </li>
+          </template>
+        </ul>
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <span class="rs-nota" x-text="nDeM"></span>
+          <button type="button" x-show="siguiente" @click="cargarMas()" :disabled="cargandoMas"
+                  class="rs-btn rs-btn--secundario">Cargar más</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="rs-pie">
+      <div class="rs-contenedor rs-pie__texto">Construcciones Ruesma · Posventa · bandeja de revisión.</div>
+    </footer>
+  </div>
+
+  <!-- R13 · La guarda de salida de ESTA página (D-12): con un formulario con
+       cambios sin guardar, salir pide confirmación; sin cambios, nada. Solo
+       lee el estado del componente (Alpine.$data y
+       Revision.hayEdicionSinGuardar); si no puede leerlo, no pregunta. No
+       reutiliza la guarda de salida del circuito, que está cerrada (R81 de
+       F-035). -->
+  <script>
+    window.addEventListener("beforeunload", function (evento) {
+      var preguntar = false;
+      try {
+        var raiz = document.querySelector('[x-data="appRevision()"]');
+        preguntar = Boolean(
+          raiz && window.Alpine && window.Revision &&
+          window.Revision.hayEdicionSinGuardar(window.Alpine.$data(raiz))
+        );
+      } catch (error) {
+        preguntar = false;
+      }
+      if (preguntar) {
+        evento.preventDefault();
+        evento.returnValue = "";
+      }
+    });
+  </script>
+  <script src="js/config.js"></script>
+  <script src="js/traza.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/revision.js"></script>
+</body>
+</html>

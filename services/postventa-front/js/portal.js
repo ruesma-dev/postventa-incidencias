@@ -9,7 +9,7 @@
 //                  cada una con su estado (R62)
 //   PAGINAS        las páginas reales de una sección, con su sección (R17, §16.8)
 //   RECORRIDO      los siete pasos del ciclo de una incidencia, la tira bajo la
-//                  barra de las cuatro páginas (R83, §16.16)
+//                  barra de las cinco páginas (R83, §16.16)
 //   PLACEHOLDERS   las acciones sin construir, con la ficha que las hará (R8)
 //   ESTADOS        los cinco estados de conest, por código y resumen (R21)
 //   resolverRuta / hashDe / enlaceSeccion   rutas por hash y enlaces (R4-R7, R31, R44, R46, R70)
@@ -68,19 +68,23 @@
    * backend desde sus propios módulos y no cargan nada de la maqueta. El
    * portal puede enlazarlas, en la misma ventana y con un ancla opcional
    * (R17, enmienda del 2026-10-05). `partes.html` no está aquí: es la sección
-   * `partes` entera (su `pagina` en SECCIONES).
+   * `partes` entera (su `pagina` en SECCIONES). `bandeja.html` es la página de
+   * revisión de F-038 (su R1), la primera real de `bandeja`.
    */
   const PAGINAS = Object.freeze({
     "importar.html": "entrada",
     "oficios.html": "entrada",
+    "bandeja.html": "bandeja",
   });
 
   /**
-   * El ciclo de una incidencia, la tira bajo la barra de las cuatro páginas
+   * El ciclo de una incidencia, la tira bajo la barra de las cinco páginas
    * (R83-R87, design.md §16.16). `seccion` es la de Portal.SECCIONES a la que
    * lleva el paso; el enlace sale de enlaceSeccion(seccion, desde). 02 y 03
    * van a la misma sección (la bandeja): el actual es el PRIMERO
    * (pasoDeSeccion), así que 03 no se marca mientras no tenga sitio propio.
+   * En `bandeja.html` (F-038, R25) el 03 es un <span> sin enlace ni
+   * aria-current: es de la sección de la página, pero no es el paso actual.
    */
   const RECORRIDO = congelarLista([
     { num: "01", etiqueta: "Entrada", seccion: "entrada" },

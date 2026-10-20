@@ -218,13 +218,16 @@ como R28). `Portal.enConstruccion(id)` lo consulta.
    (R67). Y bajo la barra, el aviso permanente (R13).
 
 **Las páginas reales: `Portal.PAGINAS`.** `importar.html` y `oficios.html`
-son **páginas propias** del portal, de la sección `entrada`:
-`Portal.PAGINAS = {"importar.html": "entrada", "oficios.html": "entrada"}` es
-la única fuente de qué página real pertenece a qué sección (`partes.html` no
-entra: es la sección `partes` misma). Llevan la barra común en HTML estático
+son **páginas propias** del portal, de la sección `entrada`, y desde F-038
+`bandeja.html` lo es de la sección `bandeja`:
+`Portal.PAGINAS = {"importar.html": "entrada", "oficios.html": "entrada",
+"bandeja.html": "bandeja"}` es la única fuente de qué página real pertenece a
+qué sección (`partes.html` no entra: es la sección `partes` misma). Llevan la barra común en HTML estático
 con «Entrada» como pestaña actual, migas y subnavegación, la identidad
 Ruesma y nada de la maqueta (R70–R73, R77); los enlaces de su barra los da
-`Portal.enlaceSeccion(id, "<página>.html")`. El portal las presenta desde
+`Portal.enlaceSeccion(id, "<página>.html")`. `bandeja.html` lleva lo mismo
+con «Bandeja de revisión» como pestaña actual, sus migas y su pie, y sin
+subnavegación (ver «La bandeja de revisión (F-038)»). El portal las presenta desde
 `#/entrada` con dos tarjetas «En producción», y el recuadro de `bandeja`
 enlaza a `importar.html#bandeja`, donde está la bandeja de solo lectura de
 F-036 (R68, R69).
@@ -243,11 +246,13 @@ a mano, como la barra, y una guardia (`problemasDelRecorrido`, en
 correspondencia: cada sección marca el **primer** paso que lleva a ella
 —entrada → 01, bandeja → 02 (nunca 03, que también va a la bandeja),
 incidencias y su ficha → 04, impresión → 05, partes → 06, económico →
-07—; inicio y datos no marcan ninguno, e `importar.html` y `oficios.html`
-marcan 01. En `partes.html`, `importar.html` y `oficios.html` la tira es
-HTML estático y el paso actual va fijo; en el portal lo marca un
-`:aria-current` por paso. Sus estilos viven en `css/styles.css`, que cargan
-las cuatro páginas.
+07—; inicio y datos no marcan ninguno, `importar.html` y `oficios.html`
+marcan 01 y `bandeja.html`, 02. En `bandeja.html`, el 03 es de su misma
+sección y no es el actual: un `<span>` sin enlace ni `aria-current` (R25 de
+F-038, un cambio a propósito de la guardia de la tira). En `partes.html`,
+`importar.html`, `oficios.html` y `bandeja.html` la tira es HTML estático y
+el paso actual va fijo; en el portal lo marca un `:aria-current` por paso.
+Sus estilos viven en `css/styles.css`, que cargan las cinco páginas.
 
 ### Todo en la misma pestaña, y la guarda de salida del circuito
 
@@ -524,6 +529,61 @@ quedan deshabilitados, como el cierre.
 Los dos consumos son **tolerantes**: el front puede publicarse antes que
 F-053 sin romper nada. Los dos datos son del backend, otro servicio, y por
 eso son de otra ficha y no de F-035 (R76).
+
+## La bandeja de revisión (F-038)
+
+**`bandeja.html`** (`js/revision.js`) es la página real de la sección
+«Bandeja de revisión» del portal (`Portal.PAGINAS`: `"bandeja.html":
+"bandeja"`): lo importado, antes de que llegue a Sigrid. Cada incidencia se
+puede **editar**, **descartar**, **aprobar** o **recuperar**, con constancia de
+quién (su correo) y cuándo; solo lo **aprobado** es candidato al volcado
+(F-040). Las reglas, la tabla y los endpoints son del backend (**F-056**);
+aquí está la página que los usa. Diseño: `specs/F-038-bandeja-revision/`.
+
+- **Sus rutas**, todas por `js/api.js`: `GET /api/revision` (el listado,
+  paginado, con el catálogo de Sigrid de la obra y el resumen),
+  `GET /api/revision/historial` y `POST /api/revision/acciones`, más
+  `/.auth/me` para saber quién es. Nada más: ni Sigrid, ni SharePoint, ni
+  `POST /api/revision/normalizar` (normalizar las ubicaciones corre solo tras
+  cada importación, F-060). Las dos lecturas reintentan lo transitorio; la
+  acción **no se reintenta sola**.
+- **La paginación.** «Cargar» (o cambiar un filtro: el estado, por defecto
+  «activas», o «solo las que tienen algo que corregir») pide la **primera
+  página** al servidor: los filtros no se aplican sobre lo cargado. «Cargar
+  más» pide la siguiente con el `cursor` que dio el servidor, tal cual, y los
+  mismos filtros, y **añade** sin repetir ninguna fila; debajo, «N de M». La
+  página no manda `tamano` (el servidor da 100). Con `?obra=` en la URL, la
+  primera página se pide al abrir, que solo lee.
+- **El resumen** es el de **toda** la obra, del servicio. Tras una acción se
+  ajusta aquí mismo con la diferencia entre la fila de antes y la de
+  después, sin pedir nada. Hay una **deriva conocida**, que se corrige al
+  volver a cargar: el motivo «duplicada» de **otra** fila cuando se descarta
+  o se recupera su original, y los motivos de una fila recién descartada o
+  recuperada (el servicio los devuelve sin valor, `null`) si se edita sin
+  recargar.
+- **Nada sale sin un clic.** Cargar solo lee; cada acción sale de su botón,
+  y solo están los de su estado (una aprobada no ofrece «Aprobar»; una
+  descartada, solo «Recuperar»). «Descartar» pide un segundo clic con el
+  motivo opcional. La confirmación del cuerpo la escribe un único sitio,
+  `cuerpoDeAccion`, con la `revision_previa` de la fila, para que dos
+  personas no se pisen: si otra la cambió, «otra persona la ha cambiado» y la
+  lista se recarga. Sin sesión completa (identificador y correo), la página
+  se lee pero no se revisa.
+- **La guarda de salida**: un `beforeunload` propio de la página, que solo
+  pregunta con un formulario con cambios sin guardar (no es la del circuito).
+- **Mientras la sección esté en construcción** (R16–R17 de F-038): la
+  sección `bandeja` del portal sigue «en construcción» —con su recuadro en
+  `#/bandeja` y el punto ámbar de su pestaña, también en esta página—
+  mientras F-038 no esté `done`, porque la sección tiene más fichas (F-039,
+  F-040, F-043). El paso a «En producción» va en **un solo commit**, el que
+  pone F-038 en `done`: la sección a `parcial`, fuera las marcas de la
+  pestaña y de los pasos 02 y 03, y fuera los restos de F-038 de la maqueta.
+  Si se parte, las guardias de la raíz se ponen en rojo.
+
+Lo que **todavía** no hace: enseñar el volcado a Sigrid de una incidencia
+(Bloque 1 ter de F-038), el panel de volcado (F-040), el industrial propuesto
+(F-039), aprobar o descartar varias a la vez (F-043) y abrir una incidencia
+por enlace (F-057).
 
 ## Lo que este front NO hace (a propósito)
 

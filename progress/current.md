@@ -18,6 +18,9 @@
 >   R54 de F-040, pasa a F-038: R21; sin acciones sobre `volcada`/`en_duda`), Q-7 a Q-10 como se recomendaban. `tasks.md`
 >   repartida en Bloques 1, 1 bis, 1 ter (volcado) y 1 quater (mutación). **Siguiente**: implementer, Bloque 1. Pendiente
 >   fuera de F-038: conciliar F-040 (soltar su R54) y la ficha nueva «editar o anular partes ya volcados» (el líder).
+> - **Bloque 1 hecho (implementer, 2026-10-20)**: T1 `7c4598f` (RED) y T2 `77122eb` (`js/revision.js`, tres funciones
+>   en `js/api.js`, `ErrorApi.detalle`). Suite JS 829/829, pytest del front 815 passed. Informe, decisiones y dudas
+>   (D-a, D-b) en `progress/impl_F-038.md`. **Siguiente**: review del Bloque 1 e `init.sh` del líder (P-4).
 
 > ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
 > Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y

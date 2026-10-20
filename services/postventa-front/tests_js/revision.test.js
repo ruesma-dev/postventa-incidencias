@@ -3431,7 +3431,38 @@ const VISIBILIDAD_DE_CADA_AVISO = [
       ["sin cargar", () => alcanceCon({ cargando: false }), false],
     ],
   },
+  // C-B1f-1 (review final del Bloque 1) · R8: los campos y el motivo de cada
+  // revisión del historial, solo en la revisión que los trae.
+  ...[
+    ["los campos cambiados de una revisión del historial", "'· ' + revision.campos.join(', ')"],
+    ["el motivo de una revisión del historial", "'· motivo: ' + revision.motivo"],
+  ].map(([que, expresion]) => ({
+    que,
+    buscar: porXText(expresion),
+    escenarios: [
+      ["una revisión con campos y motivo", () => alcanceCon(() => ({ historial: historialDeUnaRevision(["ubicacion"], "Motivo de ejemplo") })), true],
+      ["una revisión sin campos ni motivo", () => alcanceCon(() => ({ historial: historialDeUnaRevision([], null) })), false],
+    ],
+  })),
 ];
+
+/** C-B1f-1 · un historial ya presentado con una sola revisión, con esos campos y ese motivo. */
+function historialDeUnaRevision(campos, motivo) {
+  return Revision.presentarHistorial({
+    incidencia_id: ID_1,
+    importada: { creada_at_utc: "2026-10-20T08:00:00.000000+00:00" },
+    revisiones: [
+      {
+        revision_id: "00000000-0000-4000-8000-0000000000d1",
+        accion: "descartar",
+        revisado_at_utc: "2026-10-20T08:30:00.000000+00:00",
+        correo: CORREO,
+        campos_cambiados: campos,
+        motivo,
+      },
+    ],
+  });
+}
 
 /** Lo que incumple cada aviso de su tabla de visibilidad. Vacío = correcto. */
 async function problemasDeLaVisibilidad(html) {
@@ -3529,8 +3560,11 @@ async function problemasDeLosOtrosBotones(html) {
  * Dos filas, con el detalle abierto en la SEGUNDA y la vista pintándola la
  * primera (el recorrido pinta el primer elemento de cada x-for): `fila` es
  * ID_2 e `incidencias[0]`, ID_1. Así, un clic que no use su `fila` se nota.
+ *
+ * C-B1f-2: con `pintarPrimeroLaAbierta = false` la vista va en su orden y lo
+ * que se pinta es la PRIMERA fila (ID_1), cerrada mientras la 2 está abierta.
  */
-async function alcanceDeLaSegundaFila(estado) {
+async function alcanceDeLaSegundaFila(estado, pintarPrimeroLaAbierta = true) {
   const filas = [
     incidencia({ incidencia_id: ID_1, estado, revision_id: "00000000-0000-4000-8000-0000000000c1" }),
     incidencia({
@@ -3552,11 +3586,13 @@ async function alcanceDeLaSegundaFila(estado) {
   alcance.formulario = Revision.formularioDe(filas[1].vigentes, app.catalogo);
   alcance.confirmandoDescarte = ID_2;
   alcance.motivoDescarte = "";
-  alcance.vista = function () {
-    const vista = app.vista.call(this);
-    vista.filas.reverse();
-    return vista;
-  };
+  if (pintarPrimeroLaAbierta) {
+    alcance.vista = function () {
+      const vista = app.vista.call(this);
+      vista.filas.reverse();
+      return vista;
+    };
+  }
   LLAMADAS_DEL_ALCANCE.set(alcance, llamadas);
   return alcance;
 }
@@ -3677,5 +3713,286 @@ for (const [mutante, comprobar, viejo, nuevo] of MUTANTES_HTML_T5) {
   test(`f038 T5 (${mutante}): control: con el mutante ${mutante} en bandeja.html, su comprobación salta`, async () => {
     const problemas = await comprobar(cambiarUnaVez(leerBandeja(), viejo, nuevo));
     assert.notDeepEqual(problemas, [], `${mutante}: la comprobación no lo ve`);
+  });
+}
+
+// --- Correcciones de la review final del Bloque 1 (C-B1f-1 a C-B1f-9) ------------------------------
+//
+// Los 14 supervivientes de los mutantes propios del reviewer (RX01–RX24).
+// Misma forma que T5, pero cada control exige además una SEÑAL: un problema
+// que nombre lo que su mutante rompe, no uno cualquiera (O-B1f-1).
+
+/** Un doble de `api` con una promesa que se suelta a mano. */
+function pendienteASoltar() {
+  let soltar;
+  let fallar;
+  const promesa = new Promise((resolver, rechazar) => {
+    soltar = resolver;
+    fallar = rechazar;
+  });
+  return { promesa, soltar, fallar };
+}
+
+async function cargadoCon(M, guion) {
+  const hecho = componenteDe(M, guion);
+  await hecho.app.iniciar();
+  hecho.app.obra = "9901";
+  await hecho.app.cargar();
+  return hecho;
+}
+
+const pedidas = (llamadas, nombre) => llamadas.filter((l) => l.nombre === nombre);
+
+const CASOS_B1F = [
+  {
+    cambio: "C-B1f-3",
+    mutante: "RX14",
+    nombre: "R7: dos «Cargar más» seguidos y esperados piden cada uno su página; tras uno que falla, el siguiente vuelve a pedir",
+    ancla: "          this.cargandoMas = false;\n",
+    nuevo: "",
+    senal: "no pide",
+    async problemas(M) {
+      const problemas = [];
+      const seguidos = await cargadoCon(M, {
+        revision: [
+          respuesta({ total_filtrado: 3, siguiente: "cursor-inventado-1", incidencias: [incidencia({ incidencia_id: ID_1 })] }),
+          respuesta({ total_filtrado: 3, siguiente: "cursor-inventado-2", incidencias: [incidencia({ incidencia_id: ID_2 })] }),
+          respuesta({ total_filtrado: 3, siguiente: null, incidencias: [incidencia({ incidencia_id: ID_3 })] }),
+        ],
+      });
+      await seguidos.app.cargarMas();
+      await seguidos.app.cargarMas();
+      const cursores = pedidas(seguidos.llamadas, "revision").map((l) => l.args[2]);
+      if (cursores.join() !== [undefined, "cursor-inventado-1", "cursor-inventado-2"].join()) {
+        problemas.push(`el segundo «Cargar más» no pide su página (cursores: ${JSON.stringify(cursores)})`);
+      }
+      if (seguidos.app.cargandoMas !== false) problemas.push("cargandoMas sigue en true tras cargar");
+      const trasFallo = await cargadoCon(M, {
+        revision: [
+          respuesta({ total_filtrado: 2, siguiente: "cursor-inventado-1", incidencias: [incidencia({ incidencia_id: ID_1 })] }),
+          errorApi(503, null, null, "Sin servicio, texto inventado"),
+          respuesta({ total_filtrado: 2, siguiente: null, incidencias: [incidencia({ incidencia_id: ID_2 })] }),
+        ],
+      });
+      await trasFallo.app.cargarMas();
+      await trasFallo.app.cargarMas();
+      if (pedidas(trasFallo.llamadas, "revision").length !== 3) problemas.push("tras un «Cargar más» que falla, el siguiente no pide");
+      if (trasFallo.app.cargandoMas !== false) problemas.push("cargandoMas sigue en true tras un fallo");
+      return problemas;
+    },
+  },
+  {
+    cambio: "C-B1f-4",
+    mutante: "RX15",
+    nombre: "R3: mientras la primera página está pendiente, cargando es true (lo que pinta «Leyendo…» y deshabilita «Cargar»); al llegar, false",
+    ancla: "        this.cargando = true;\n",
+    nuevo: "",
+    senal: "mientras se pide",
+    async problemas(M) {
+      const pendiente = pendienteASoltar();
+      const { app } = componenteDe(M, { revision: () => pendiente.promesa });
+      await app.iniciar();
+      app.obra = "9901";
+      const carga = app.cargar();
+      const mientras = app.cargando;
+      pendiente.soltar(respuesta());
+      await carga;
+      const problemas = [];
+      if (mientras !== true) problemas.push(`mientras se pide la primera página, cargando = ${mientras}`);
+      if (app.cargando !== false) problemas.push(`al llegar, cargando = ${app.cargando}`);
+      return problemas;
+    },
+  },
+  {
+    cambio: "C-B1f-5",
+    mutante: "RX17",
+    nombre: "R9, R12: abrir el formulario vacía el mensaje de la acción anterior (el «No hay cambios que guardar» de guardar sin cambios)",
+    ancla: "        this.erroresPorCampo = null;\n        this.mensajeAccion = \"\";\n      },",
+    nuevo: "        this.erroresPorCampo = null;\n      },",
+    senal: "mensajeAccion",
+    async problemas(M) {
+      const { app } = await cargadoCon(M, {});
+      await app.abrirFormulario(ID_1);
+      await app.guardarEdicion();
+      const problemas = [];
+      if (app.mensajeAccion !== "No hay cambios que guardar.") problemas.push(`preparación: mensajeAccion = «${app.mensajeAccion}»`);
+      await app.abrirFormulario(ID_1);
+      if (app.mensajeAccion !== "") problemas.push(`al abrir el formulario, mensajeAccion sigue en «${app.mensajeAccion}»`);
+      return problemas;
+    },
+  },
+  {
+    cambio: "C-B1f-6",
+    mutante: "RX22",
+    nombre: "R12, R26: un «Cargar más» que falla enseña el texto del servicio en errorCarga y conserva lo cargado",
+    ancla: "          this.errorCarga = queHacerConElError(error, false).mensaje;\n        } finally {\n          this.cargandoMas = false;",
+    nuevo: "        } finally {\n          this.cargandoMas = false;",
+    senal: "errorCarga",
+    async problemas(M) {
+      const { app } = await cargadoCon(M, {
+        revision: [
+          respuesta({ total_filtrado: 2, siguiente: "cursor-inventado-1", incidencias: [incidencia({ incidencia_id: ID_1 })] }),
+          errorApi(503, null, null, "Sin Sigrid ahora mismo, texto inventado"),
+        ],
+      });
+      await app.cargarMas();
+      const problemas = [];
+      if (app.errorCarga !== "Sin Sigrid ahora mismo, texto inventado") problemas.push(`errorCarga = «${app.errorCarga}»`);
+      if (app.incidencias.map((i) => i.incidencia_id).join() !== ID_1) problemas.push("lo cargado no se conserva");
+      return problemas;
+    },
+  },
+  {
+    cambio: "C-B1f-7",
+    mutante: "RX23",
+    nombre: "R8: abrir el detalle de otra fila deja el historial en null mientras se pide, y en null junto a su error si falla",
+    ancla: "        this.historial = null;\n        this.errorHistorial = \"\";\n        try {",
+    nuevo: "        this.errorHistorial = \"\";\n        try {",
+    senal: "historial",
+    async problemas(M) {
+      const pendiente = pendienteASoltar();
+      const { app } = await cargadoCon(M, {
+        revision: () => respuesta({ incidencias: [incidencia({ incidencia_id: ID_1 }), incidencia({ incidencia_id: ID_2 })] }),
+        historialRevision: [{ incidencia_id: ID_1, importada: null, revisiones: [] }, () => pendiente.promesa],
+      });
+      await app.abrirDetalle(ID_1);
+      const problemas = [];
+      if (!app.historial || app.historial.incidencia_id !== ID_1) problemas.push("preparación: sin el historial de la fila 1");
+      const apertura = app.abrirDetalle(ID_2);
+      if (app.historial !== null) problemas.push("mientras se pide el de la fila 2, se ve el historial de la fila 1");
+      pendiente.fallar(errorApi(503, null, null, "Historial sin servicio, texto inventado"));
+      await apertura;
+      if (app.historial !== null) problemas.push("con el error de la fila 2, se ve el historial de la fila 1");
+      if (app.errorHistorial !== "Historial sin servicio, texto inventado") problemas.push(`errorHistorial = «${app.errorHistorial}»`);
+      return problemas;
+    },
+  },
+  {
+    cambio: "C-B1f-8",
+    mutante: "RX16",
+    nombre: "R12: tras un 400 valores_no_validos, una acción posterior que sale bien deja erroresPorCampo en null",
+    ancla: "        this.mensajeAccion = \"\";\n        this.erroresPorCampo = null;\n        let recargar",
+    nuevo: "        this.mensajeAccion = \"\";\n        let recargar",
+    senal: "erroresPorCampo",
+    async problemas(M) {
+      const { app } = await cargadoCon(M, {
+        accionRevision: [
+          errorApi(400, "valores_no_validos", { errores: [{ campo: "ubicacion", problema: "No está en la lista" }] }),
+          incidencia({ estado: "editada", revision_id: 1 }),
+        ],
+      });
+      await app.abrirFormulario(ID_1);
+      app.formulario.descripcion = "Otra descripción de ejemplo";
+      await app.guardarEdicion();
+      const problemas = [];
+      if (!app.erroresPorCampo || !app.erroresPorCampo.ubicacion) problemas.push("preparación: sin el error de la ubicación");
+      await app.guardarEdicion();
+      if (app.erroresPorCampo !== null) problemas.push(`tras guardar bien, erroresPorCampo = ${JSON.stringify(app.erroresPorCampo)}`);
+      return problemas;
+    },
+  },
+  {
+    cambio: "C-B1f-8",
+    mutante: "RX18",
+    nombre: "R9: «Cancelar» el formulario deja erroresPorCampo en null",
+    ancla: "      cancelarFormulario() {\n        this.formulario = null;\n        this.erroresPorCampo = null;",
+    nuevo: "      cancelarFormulario() {\n        this.formulario = null;",
+    senal: "erroresPorCampo",
+    async problemas(M) {
+      const { app } = await cargadoCon(M, {});
+      await app.abrirFormulario(ID_1);
+      app.erroresPorCampo = { ubicacion: "problema inventado" };
+      app.cancelarFormulario();
+      return app.erroresPorCampo === null ? [] : [`tras «Cancelar», erroresPorCampo = ${JSON.stringify(app.erroresPorCampo)}`];
+    },
+  },
+  {
+    cambio: "C-B1f-8",
+    mutante: "RX19",
+    nombre: "R11: «No, dejarla» vacía el motivo escrito",
+    ancla: "        this.confirmandoDescarte = null;\n        this.motivoDescarte = \"\";\n      },\n\n      /** R11 · el segundo",
+    nuevo: "        this.confirmandoDescarte = null;\n      },\n\n      /** R11 · el segundo",
+    senal: "motivoDescarte",
+    async problemas(M) {
+      const { app } = await cargadoCon(M, {});
+      app.pedirDescarte(ID_1);
+      app.motivoDescarte = "Un motivo de ejemplo";
+      app.cancelarDescarte();
+      return app.motivoDescarte === "" ? [] : [`tras «No, dejarla», motivoDescarte = «${app.motivoDescarte}»`];
+    },
+  },
+  {
+    cambio: "C-B1f-9",
+    mutante: "RX24",
+    nombre: "R8 (fuera de contrato, como PR8): abrir el detalle de un incidencia_id que no está en la lista no abre nada ni pide historial",
+    ancla: "        if (!this.filaDe(incidenciaId)) {\n          return;\n        }\n        if (this.abierta !== incidenciaId) {",
+    nuevo: "        if (this.abierta !== incidenciaId) {",
+    senal: "desconocido",
+    async problemas(M) {
+      const { app, llamadas } = await cargadoCon(M, {});
+      await app.abrirDetalle(ID_FUERA);
+      const problemas = [];
+      if (app.abierta !== null) problemas.push(`un id desconocido queda abierto: ${app.abierta}`);
+      if (pedidas(llamadas, "historialRevision").length) problemas.push("pide el historial de un id desconocido");
+      return problemas;
+    },
+  },
+];
+
+for (const caso of CASOS_B1F) {
+  test(`f038 ${caso.cambio} (${caso.mutante}): ${caso.nombre}`, async () => {
+    assert.deepEqual(await caso.problemas(Revision), []);
+  });
+  test(`f038 ${caso.cambio} (${caso.mutante}): control: con el mutante ${caso.mutante}, la comprobación lo señala`, async () => {
+    const problemas = await caso.problemas(revisionMutada(caso.ancla, caso.nuevo));
+    assert.ok(
+      problemas.some((p) => p.includes(caso.senal)),
+      `${caso.mutante}: la comprobación no lo señala («${caso.senal}»): ${problemas.join(" | ")}`,
+    );
+  });
+}
+
+/**
+ * C-B1f-2 · R8: la fila CERRADA mientras otra está abierta. Dos filas, el
+ * detalle abierto en la segunda y la vista en su orden: el recorrido pinta la
+ * primera. En ella se ve «Ver el detalle», no se ve «Cerrar el detalle» y el
+ * detalle no se pinta.
+ */
+async function problemasDeLaFilaCerrada(html) {
+  const problemas = [];
+  const alcance = await alcanceDeLaSegundaFila("nueva", false);
+  const { elementos, problemas: deEvaluar } = recorrerBandeja(bandejaMarcada(html), alcance);
+  problemas.push(...deEvaluar);
+  const deLaFila = elementos.filter((e) => "fila" in e.alcance);
+  if (!deLaFila.length || deLaFila[0].alcance.fila.incidencia_id !== ID_1) {
+    return [...problemas, "el recorrido no pinta la primera fila"];
+  }
+  const se = (marca) => {
+    const hallados = elementos.filter(porMarca(marca));
+    return hallados.length === 1 && hallados[0].visible;
+  };
+  if (!se("ver-detalle")) problemas.push("fila cerrada: «Ver el detalle» no se ve");
+  if (se("cerrar-detalle")) problemas.push("fila cerrada: «Cerrar el detalle» se ve");
+  const delDetalle = elementos.filter((e) => e.atributos["x-text"] === "campo.valor" || accionDelBoton(e));
+  if (delDetalle.length) problemas.push(`fila cerrada: el detalle se pinta (${delDetalle.length} elementos)`);
+  return problemas;
+}
+
+test("f038 C-B1f-2 · R8: con el detalle abierto en otra fila, la fila cerrada enseña «Ver el detalle» y nada del detalle", async () => {
+  assert.deepEqual(await problemasDeLaFilaCerrada(leerBandeja()), []);
+});
+
+// Los supervivientes de HTML del reviewer (y RX11, que ya caía en pytest), en
+// memoria: cada uno tiene que caer en SU comprobación, con su señal.
+for (const [mutante, comprobar, viejo, nuevo, senal] of [
+  ["RX01", problemasDeLaVisibilidad, '<span x-show="revision.campos.length"', '<span x-show="!revision.campos.length"', "los campos cambiados"],
+  ["RX02", problemasDeLaVisibilidad, '<span x-show="revision.motivo"', '<span x-show="!revision.motivo"', "el motivo de una revisión"],
+  ["RX10", problemasDeLaFilaCerrada, 'x-show="abierta !== fila.incidencia_id" @click', 'x-show="!abierta" @click', "«Ver el detalle» no se ve"],
+  ["RX11", problemasDeLaFilaCerrada, '<template x-if="abierta === fila.incidencia_id">', '<template x-if="abierta">', "el detalle se pinta"],
+  ["RX12", problemasDeLaFilaCerrada, 'x-show="abierta === fila.incidencia_id" @click="cerrarDetalle()"', 'x-show="abierta" @click="cerrarDetalle()"', "«Cerrar el detalle» se ve"],
+]) {
+  test(`f038 C-B1f (${mutante}): control: con el mutante ${mutante} en bandeja.html, su comprobación lo señala`, async () => {
+    const problemas = await comprobar(cambiarUnaVez(leerBandeja(), viejo, nuevo));
+    assert.ok(problemas.some((p) => p.includes(senal)), `${mutante}: no lo señala («${senal}»): ${problemas.join(" | ")}`);
   });
 }

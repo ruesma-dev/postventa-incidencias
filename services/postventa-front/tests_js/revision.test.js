@@ -2855,3 +2855,827 @@ for (const [nombre, intruso] of [
     );
   });
 }
+
+// --- Bloque 1 quater (T5) · los supervivientes de la campaña de mutación a mano ------------------
+//
+// Cada caso es una comprobación sobre un módulo (`problemas(M)` → lista de
+// problemas, vacía si todo va bien) y el mutante que la campaña de T5 dejó
+// vivo, que hace de CONTROL NO CIEGO: se carga en memoria un `js/revision.js`
+// con ese cambio (ancla que sale una sola vez) y la comprobación tiene que
+// señalarlo. Así, si alguien debilita la comprobación, su control cae.
+
+const FUENTE_REVISION = path.join(__dirname, "..", "js", "revision.js");
+
+/** `js/revision.js` cargado en memoria con `ancla` cambiada por `nuevo` (una sola vez). */
+function revisionMutada(ancla, nuevo) {
+  const fuente = fs.readFileSync(FUENTE_REVISION, "utf-8");
+  assert.equal(fuente.split(ancla).length, 2, `el control no encuentra una sola vez: ${ancla}`);
+  const modulo = { exports: {} };
+  // eslint-disable-next-line no-new-func
+  Function("module", fuente.replace(ancla, nuevo))(modulo);
+  return modulo.exports;
+}
+
+/** Como `componente`, con el módulo que se le pase. */
+function componenteDe(M, guion) {
+  const { api, llamadas } = apiDoble(
+    Object.assign(
+      {
+        identidad: IDENTIDAD,
+        revision: () => respuesta(),
+        historialRevision: { incidencia_id: ID_1, importada: null, revisiones: [] },
+      },
+      guion || {},
+    ),
+  );
+  return { app: M.crearAppRevision({ api: api, parametros: "" }), llamadas };
+}
+
+/** Lo que se manda de verdad: el cuerpo después de `JSON.stringify` (una clave `undefined` no viaja). */
+function loQueViaja(cuerpo) {
+  return JSON.parse(JSON.stringify(cuerpo));
+}
+
+const CASOS_T5 = [
+  {
+    nombre: "R10: una fila sin la clave revision_id manda revision_previa: null (la clave viaja)",
+    mutante: "RP2",
+    ancla: "revision_previa: fila.revision_id === undefined ? null : fila.revision_id,",
+    nuevo: "revision_previa: fila.revision_id,",
+    problemas(M) {
+      const fila = incidencia();
+      delete fila.revision_id;
+      const cuerpo = loQueViaja(M.cuerpoDeAccion(fila, "aprobar", {}, IDENTIDAD));
+      return "revision_previa" in cuerpo && cuerpo.revision_previa === null
+        ? []
+        : [`revision_previa: ${JSON.stringify(cuerpo.revision_previa)} (en el cuerpo: ${"revision_previa" in cuerpo})`];
+    },
+  },
+  {
+    nombre: "R9 (c), R10: editar con valores a los que les falta una clave manda las ocho, la que falta en null",
+    mutante: "UB6",
+    ancla: "valores[campo] = datos.valores[campo] === undefined ? null : datos.valores[campo];",
+    nuevo: "valores[campo] = datos.valores[campo];",
+    problemas(M) {
+      const pedidos = M.valoresDelFormulario(M.formularioDe(valores(), catalogo()));
+      delete pedidos.detalle;
+      delete pedidos.listado;
+      const cuerpo = loQueViaja(M.cuerpoDeAccion(incidencia(), "editar", { valores: pedidos }, IDENTIDAD));
+      const problemas = [];
+      if (Object.keys(cuerpo.valores).length !== 8) problemas.push(`viajan ${Object.keys(cuerpo.valores).length} claves de valores`);
+      for (const campo of ["detalle", "listado"]) {
+        if (cuerpo.valores[campo] !== null) problemas.push(`${campo}: ${JSON.stringify(cuerpo.valores[campo])}`);
+      }
+      return problemas;
+    },
+  },
+  {
+    nombre: "R9 (a): un par de catalogo.pares sin proveedor no sale como opción",
+    mutante: "PR4",
+    ancla: "return par && par.oficio_codigo === oficio && par.proveedor_codigo;",
+    nuevo: "return par && par.oficio_codigo === oficio;",
+    problemas(M) {
+      const cat = catalogo();
+      cat.pares.push({ oficio_codigo: "9003", proveedor_codigo: null, proveedor_nombre: "Proveedor Ejemplo Sin Codigo" });
+      cat.pares.push({ oficio_codigo: "9003", proveedor_codigo: "", proveedor_nombre: null });
+      const codigos = M.proveedoresDe(cat, "9003", valores()).map((p) => p.codigo);
+      return JSON.stringify(codigos) === JSON.stringify(["P-03"]) ? [] : [`proveedores de 9003: ${JSON.stringify(codigos)}`];
+    },
+  },
+  {
+    nombre: "R24: un proveedor ambiguo no se marca «fuera de la lista» (aunque la fila trajera un código)",
+    mutante: "PR8",
+    ancla: "      !v.proveedor_ambiguo &&\n",
+    nuevo: "",
+    problemas(M) {
+      // Fuera del contrato (R99 del backend: ambiguo ⇒ sin código), a propósito:
+      // la puerta `!v.proveedor_ambiguo` es la que dice que un ambiguo se elige,
+      // no se marca; sin código, `Boolean(v.proveedor_codigo)` ya la tapa.
+      const vigentes = valores({ proveedor_codigo: "P-09", proveedor_nombre: "Proveedor Ejemplo Nueve", proveedor_ambiguo: true });
+      const formulario = M.formularioDe(vigentes, catalogo());
+      return formulario.fueraDeLista.proveedor === false ? [] : ["el proveedor ambiguo sale marcado fuera de la lista"];
+    },
+  },
+  {
+    nombre: "R7: dos «Cargar más» seguidos, sin esperar al primero, piden UNA página",
+    mutante: "CU9",
+    ancla: "if (!this.siguiente || !this.consulta || this.cargandoMas) {",
+    nuevo: "if (!this.siguiente || !this.consulta) {",
+    async problemas(M) {
+      let soltar;
+      const pendiente = new Promise((resolver) => {
+        soltar = resolver;
+      });
+      const { app, llamadas } = componenteDe(M, {
+        revision: [
+          respuesta({ total_filtrado: 2, siguiente: "cursor-inventado-1", incidencias: [incidencia({ incidencia_id: ID_1 })] }),
+          () => pendiente.then(() => respuesta({ total_filtrado: 2, siguiente: null, incidencias: [incidencia({ incidencia_id: ID_2 })] })),
+          () => respuesta({ total_filtrado: 2, siguiente: null, incidencias: [incidencia({ incidencia_id: ID_3 })] }),
+        ],
+      });
+      await app.iniciar();
+      app.obra = "9901";
+      await app.cargar();
+      // Sin esperarlos (O-B1-6): si la guarda fallara, el segundo no se colgaría, saldría.
+      const primero = app.cargarMas();
+      const segundo = app.cargarMas();
+      const mientras = llamadas.filter((l) => l.nombre === "revision").length;
+      soltar();
+      await Promise.all([primero, segundo]);
+      return mientras === 2 ? [] : [`mientras se carga la página 2 se han pedido ${mientras - 1} páginas siguientes`];
+    },
+  },
+  {
+    nombre: "R9 (e): una clave que no viene en los vigentes cuenta como null, no como cambio",
+    mutante: "HC5",
+    ancla: "    return valor === undefined ? null : valor;",
+    nuevo: "    return valor;",
+    problemas(M) {
+      const vigentes = valores();
+      delete vigentes.urgencia;
+      delete vigentes.listado;
+      return M.hayCambios(M.formularioDe(vigentes, catalogo()), vigentes) === false
+        ? []
+        : ["sin tocar nada, hayCambios dice que sí (una clave ausente de los vigentes)"];
+    },
+  },
+  {
+    nombre: "R9 (e): una ubicación vigente con blancos alrededor, sin tocar, no es un cambio (el backend la recorta)",
+    mutante: "HC2",
+    ancla: "pedidos.ubicacion !== recortadoONull(v.ubicacion) ||",
+    nuevo: "pedidos.ubicacion !== normalizado(v.ubicacion) ||",
+    problemas(M) {
+      const vigentes = valores({ ubicacion: "  Cocina ejemplo " });
+      return M.hayCambios(M.formularioDe(vigentes, catalogo()), vigentes) === false
+        ? []
+        : ["sin tocar nada, hayCambios dice que sí (la ubicación vigente con blancos)"];
+    },
+  },
+  {
+    nombre: "R9 (e): un detalle vigente con blancos alrededor, sin tocar, no es un cambio (el backend lo recorta)",
+    mutante: "HC7",
+    ancla: "pedidos.detalle !== recortadoONull(v.detalle) ||",
+    nuevo: "pedidos.detalle !== normalizado(v.detalle) ||",
+    problemas(M) {
+      const vigentes = valores({ detalle: "  Detalle de ejemplo  " });
+      return M.hayCambios(M.formularioDe(vigentes, catalogo()), vigentes) === false
+        ? []
+        : ["sin tocar nada, hayCambios dice que sí (el detalle vigente con blancos)"];
+    },
+  },
+  {
+    nombre: "R11: «Descartar» pedido sobre una fila que no lo admite no abre la confirmación",
+    mutante: "AC12",
+    ancla: "if (!fila || accionesDe(fila.estado).indexOf(\"descartar\") === -1) {",
+    nuevo: "if (!fila) {",
+    async problemas(M) {
+      const problemas = [];
+      for (const estado of ["descartada", "volcada", "en_duda"]) {
+        const { app } = componenteDe(M, {
+          revision: () => respuesta({ incidencias: [incidencia({ estado, revision_id: 1 })] }),
+        });
+        await app.iniciar();
+        app.obra = "9901";
+        await app.cargar();
+        app.pedirDescarte(ID_1);
+        if (app.confirmandoDescarte !== null) problemas.push(`${estado}: confirmandoDescarte = ${app.confirmandoDescarte}`);
+      }
+      return problemas;
+    },
+  },
+  {
+    nombre: "R11: accionesDe de un nombre del prototipo (toString, constructor, __proto__) no ofrece nada ni lanza",
+    mutante: "AC14",
+    ancla: "Object.prototype.hasOwnProperty.call(ACCIONES_POR_ESTADO, estado)\n      ? ACCIONES_POR_ESTADO[estado]",
+    nuevo: "ACCIONES_POR_ESTADO[estado]\n      ? ACCIONES_POR_ESTADO[estado]",
+    problemas(M) {
+      const problemas = [];
+      for (const estado of ["toString", "constructor", "__proto__", "hasOwnProperty"]) {
+        try {
+          const acciones = M.accionesDe(estado);
+          if (!Array.isArray(acciones) || acciones.length) problemas.push(`${estado}: ${String(acciones)}`);
+        } catch (error) {
+          problemas.push(`${estado}: lanza ${error.message}`);
+        }
+      }
+      return problemas;
+    },
+  },
+  {
+    nombre: "R22: solo un texto que EMPIEZA por «sistema:» es el sistema; uno que lo lleva dentro sale tal cual",
+    mutante: "Q2",
+    ancla: "if (texto.indexOf(\"sistema:\") === 0) {",
+    nuevo: "if (texto.indexOf(\"sistema:\") !== -1) {",
+    problemas(M) {
+      const texto = "copia-sistema:ejemplo@ejemplo.invalid";
+      return M.quienLegible(texto) === texto ? [] : [`quienLegible(${texto}) = ${M.quienLegible(texto)}`];
+    },
+  },
+  {
+    nombre: "R22: quienLegible de algo que no es un texto da vacío",
+    mutante: "Q4",
+    ancla: "    if (typeof texto !== \"string\" || !texto) {\n      return \"\";",
+    nuevo: "    if (typeof texto !== \"string\" || !texto) {\n      return String(texto || \"\");",
+    problemas(M) {
+      const problemas = [];
+      for (const valor of [42, true, {}, ["x"]]) {
+        if (M.quienLegible(valor) !== "") problemas.push(`${JSON.stringify(valor)} → «${M.quienLegible(valor)}»`);
+      }
+      return problemas;
+    },
+  },
+  {
+    nombre: "R12, R26: un error de valores_no_validos sin campo de texto no se pinta junto a ningún campo",
+    mutante: "D10",
+    ancla: "if (cada && typeof cada.campo === \"string\") {",
+    nuevo: "if (cada) {",
+    problemas(M) {
+      const errores = [{ problema: "sin campo, inventado" }, { campo: 7, problema: "campo que no es texto" }, null, { campo: "ubicacion", problema: "No está en la lista" }];
+      const que = M.queHacerConElError(errorApi(400, "valores_no_validos", { errores }), true);
+      return JSON.stringify(que.erroresPorCampo) === JSON.stringify({ ubicacion: "No está en la lista" })
+        ? []
+        : [`erroresPorCampo: ${JSON.stringify(que.erroresPorCampo)}`];
+    },
+  },
+  {
+    nombre: "R13: un formulario sin sus vigentes es ilegible: la guarda no pregunta",
+    mutante: "GS7",
+    ancla: "if (!formulario || !formulario.vigentes) {",
+    nuevo: "if (!formulario) {",
+    problemas(M) {
+      const formulario = { unidad_codigo: "U-01", ubicacion: "Cocina ejemplo", descripcion: "Algo de ejemplo" };
+      return M.hayEdicionSinGuardar({ formulario }) === false ? [] : ["sin vigentes, pregunta"];
+    },
+  },
+  {
+    nombre: "R13: si leer el estado lanza, la guarda no pregunta",
+    mutante: "GS6",
+    ancla: "    } catch (error) {\n      return false;\n    }\n  }\n\n  /** R3",
+    nuevo: "    } catch (error) {\n      return true;\n    }\n  }\n\n  /** R3",
+    problemas(M) {
+      const estado = {
+        get formulario() {
+          throw new Error("estado ilegible, inventado");
+        },
+      };
+      return M.hayEdicionSinGuardar(estado) === false ? [] : ["con un estado que lanza, pregunta"];
+    },
+  },
+  {
+    nombre: "R8: abrir el detalle de OTRA fila cierra el formulario, el descarte pedido y los errores de la anterior",
+    mutante: "N10",
+    ancla: "        if (this.abierta !== incidenciaId) {\n          this.formulario = null;",
+    nuevo: "        if (false) {\n          this.formulario = null;",
+    async problemas(M) {
+      const { app } = componenteDe(M, {
+        revision: () => respuesta({ incidencias: [incidencia({ incidencia_id: ID_1 }), incidencia({ incidencia_id: ID_2 })] }),
+      });
+      await app.iniciar();
+      app.obra = "9901";
+      await app.cargar();
+      await app.abrirFormulario(ID_1);
+      app.pedirDescarte(ID_1);
+      app.erroresPorCampo = { ubicacion: "problema inventado" };
+      await app.abrirDetalle(ID_1);
+      const problemas = [];
+      if (!app.formulario) problemas.push("reabrir el MISMO detalle cierra el formulario");
+      await app.abrirDetalle(ID_2);
+      if (app.formulario !== null) problemas.push("el formulario de la fila 1 sigue abierto en el detalle de la 2");
+      if (app.confirmandoDescarte !== null) problemas.push(`el descarte pedido sigue: ${app.confirmandoDescarte}`);
+      if (app.erroresPorCampo !== null) problemas.push("los errores por campo de la fila 1 siguen");
+      return problemas;
+    },
+  },
+  {
+    nombre: "R9 (b): con el oficio vigente NO ambiguo no hay grupo que poner primero, aunque su nombre case con una etiqueta",
+    mutante: "TX11",
+    ancla: "        delGrupo: Boolean(v.oficio_ambiguo) && Boolean(oficio.grupo) && oficio.grupo.etiqueta === v.oficio_nombre,",
+    nuevo: "        delGrupo: Boolean(oficio.grupo) && oficio.grupo.etiqueta === v.oficio_nombre,",
+    problemas(M) {
+      const opciones = M.opcionesDeOficio(catalogo(), valores({ oficio_codigo: "9003", oficio_nombre: "Pintura ejemplo" }));
+      const delGrupo = opciones.filter((o) => o.delGrupo).map((o) => o.codigo);
+      return delGrupo.length ? [`marcadas del grupo sin ambigüedad: ${delGrupo.join(", ")}`] : [];
+    },
+  },
+  {
+    nombre: "R24: un oficio ambiguo no se conserva como «fuera de la lista» (aunque la fila trajera un código)",
+    mutante: "TX12",
+    ancla: "if (v.oficio_codigo && !v.oficio_ambiguo && !estaEn(ordenadas, v.oficio_codigo)) {",
+    nuevo: "if (v.oficio_codigo && !estaEn(ordenadas, v.oficio_codigo)) {",
+    problemas(M) {
+      // Fuera del contrato (R99: ambiguo ⇒ sin código), a propósito, como PR8:
+      // la puerta `!v.oficio_ambiguo` es la que dice que un ambiguo se elige.
+      const opciones = M.opcionesDeOficio(catalogo(), valoresAmbiguos({ oficio_codigo: "9999" }));
+      const marcadas = opciones.filter((o) => o.fueraDeLista).map((o) => o.codigo);
+      return marcadas.length ? [`oficio ambiguo conservado y marcado: ${marcadas.join(", ")}`] : [];
+    },
+  },
+  {
+    nombre: "R4: la descripción corta llega a 80 caracteres sin cortarse; a partir de 81, se corta con «…»",
+    mutante: "TX5",
+    ancla: "if (limpio.length <= LARGO_DESCRIPCION_CORTA) {",
+    nuevo: "if (limpio.length < LARGO_DESCRIPCION_CORTA) {",
+    problemas(M) {
+      const ochenta = "x".repeat(80);
+      const problemas = [];
+      const corta = (texto) =>
+        M.presentarRevision({ incidencias: [incidencia({ vigentes: valores({ descripcion: texto }) })] }).filas[0].descripcionCorta;
+      if (corta(ochenta) !== ochenta) problemas.push(`80 caracteres: «${corta(ochenta)}»`);
+      if (corta(ochenta + "y") !== ochenta + "…") problemas.push(`81 caracteres: «${corta(ochenta + "y")}»`);
+      return problemas;
+    },
+  },
+  {
+    nombre: "R9, R10: «Guardar cambios» edita la fila ABIERTA, también cuando no es la primera de la lista",
+    mutante: "FE10",
+    ancla: "await this.actuar(this.abierta, \"editar\",",
+    nuevo: "await this.actuar(this.incidencias[0].incidencia_id, \"editar\",",
+    async problemas(M) {
+      const { app, llamadas } = componenteDe(M, {
+        revision: () => respuesta({ incidencias: [incidencia({ incidencia_id: ID_1 }), incidencia({ incidencia_id: ID_2 })] }),
+        accionRevision: incidencia({ incidencia_id: ID_2, estado: "editada", revision_id: 1 }),
+      });
+      await app.iniciar();
+      app.obra = "9901";
+      await app.cargar();
+      await app.abrirFormulario(ID_2);
+      app.formulario.descripcion = "Otra descripción de ejemplo";
+      await app.guardarEdicion();
+      const editadas = llamadas.filter((l) => l.nombre === "accionRevision").map((l) => l.args[0].incidencia_id);
+      return editadas.join() === ID_2 ? [] : [`edita [${editadas.join(", ")}], no la abierta (${ID_2})`];
+    },
+  },
+  {
+    nombre: "R12: el mensaje de una acción que recarga sigue a la vista después de recargar, pase lo que pase durante la recarga",
+    mutante: "E7",
+    ancla: "          await this.cargar();\n          this.mensajeAccion = mensaje;",
+    nuevo: "          await this.cargar();",
+    async problemas(M) {
+      // Durante la recarga, la página puede tocar `mensajeAccion` (por
+      // ejemplo, abrir un formulario lo vacía): aquí se simula con el doble.
+      let app = null;
+      const hecho = componenteDe(M, {
+        revision: [
+          respuesta(),
+          () => {
+            app.mensajeAccion = "";
+            return respuesta();
+          },
+        ],
+        accionRevision: errorApi(409, "revision_desactualizada", { codigo: "revision_desactualizada" }),
+      });
+      app = hecho.app;
+      await app.iniciar();
+      app.obra = "9901";
+      await app.cargar();
+      await app.aprobar(ID_1);
+      const esperado = "Otra persona la ha cambiado. Se ha vuelto a cargar la lista.";
+      return app.mensajeAccion === esperado ? [] : [`tras recargar, mensajeAccion = «${app.mensajeAccion}»`];
+    },
+  },
+];
+
+for (const caso of CASOS_T5) {
+  test(`f038 T5 (${caso.mutante}): ${caso.nombre}`, async () => {
+    assert.deepEqual(await caso.problemas(Revision), []);
+  });
+  test(`f038 T5 (${caso.mutante}): control: con el mutante ${caso.mutante}, la comprobación salta`, async () => {
+    const problemas = await caso.problemas(revisionMutada(caso.ancla, caso.nuevo));
+    assert.notDeepEqual(problemas, [], `${caso.mutante}: la comprobación no lo ve`);
+  });
+}
+
+// --- Bloque 1 quater (T5) · bandeja.html: avisos, botones que no son de acción y la fila equivocada --
+//
+// Los supervivientes de HTML de la campaña de T5: un `x-show`/`x-if` invertido
+// o con el operador cambiado en un aviso, «Cargar» habilitado sin obra, «No,
+// dejarla» y «Cancelar» sin su clic, y el clic de cada botón de acción sobre
+// la fila equivocada (el recorrido solo pintaba UNA fila: `incidencias[0]` y
+// `fila` eran la misma). Cada comprobación lleva sus mutantes como controles.
+
+/** Marca con `data-t5` el elemento cuyo contenido es exactamente `texto` (para encontrarlo sin mirar su x-show). */
+function marcarPorTexto(html, texto, marca) {
+  const escapado = texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patron = new RegExp(`(<([a-zA-Z]+)\\b(?:[^>"']|"[^"]*"|'[^']*')*?)(>\\s*${escapado}\\s*</\\2>)`, "g");
+  const veces = [...html.matchAll(patron)].length;
+  if (veces !== 1) throw new Error(`«${texto}» sale ${veces} veces como contenido de un elemento`);
+  return html.replace(patron, `$1 data-t5="${marca}"$3`);
+}
+
+const TEXTOS_MARCADOS = [
+  ["Leyendo la bandeja y Sigrid…", "leyendo-bandeja"],
+  ["Ninguna incidencia de la obra con estos filtros.", "ninguna"],
+  ["Leyendo el historial…", "leyendo-historial"],
+  ["Guardando…", "guardando"],
+  ["Cargar", "cargar"],
+  ["Cargar más", "cargar-mas"],
+  ["Ver el detalle", "ver-detalle"],
+  ["Cerrar el detalle", "cerrar-detalle"],
+  ["No, dejarla", "no-dejarla"],
+  ["Cancelar", "cancelar"],
+];
+
+function bandejaMarcada(html) {
+  return TEXTOS_MARCADOS.reduce((h, [texto, marca]) => marcarPorTexto(h, texto, marca), html);
+}
+
+/** El alcance de `alcanceConTodoAbierto(estado, deLaFila)` con `cambios` encima. */
+async function alcanceCon(cambios, estado, deLaFila) {
+  const alcance = await alcanceConTodoAbierto(estado || "nueva", deLaFila);
+  return Object.assign(alcance, typeof cambios === "function" ? cambios() : cambios || {});
+}
+
+const dentroDeLaFila = (e) => "fila" in e.alcance;
+const porXText = (expresion, filtro) => (e) => e.atributos["x-text"] === expresion && (!filtro || filtro(e));
+const porMarca = (marca) => (e) => e.atributos["data-t5"] === marca;
+
+/** Cada aviso: cómo encontrarlo y, en cada escenario, si se tiene que ver. */
+const VISIBILIDAD_DE_CADA_AVISO = [
+  {
+    que: "el error de carga",
+    buscar: porXText("errorCarga"),
+    escenarios: [
+      ["sin error", () => alcanceCon({ errorCarga: "" }), false],
+      ["con error", () => alcanceCon({ errorCarga: "Error inventado" }), true],
+    ],
+  },
+  {
+    que: "el mensaje de una acción, fuera del detalle",
+    buscar: porXText("mensajeAccion", (e) => !dentroDeLaFila(e)),
+    escenarios: [
+      ["con mensaje y el detalle cerrado", () => alcanceCon({ mensajeAccion: "m", abierta: null }), true],
+      ["con mensaje y el detalle abierto", () => alcanceCon({ mensajeAccion: "m" }), false],
+      ["sin mensaje y el detalle cerrado", () => alcanceCon({ mensajeAccion: "", abierta: null }), false],
+    ],
+  },
+  {
+    que: "el mensaje de una acción, en el detalle",
+    buscar: porXText("mensajeAccion", dentroDeLaFila),
+    escenarios: [
+      ["con mensaje", () => alcanceCon({ mensajeAccion: "m" }), true],
+      ["sin mensaje", () => alcanceCon({ mensajeAccion: "" }), false],
+    ],
+  },
+  {
+    que: "«Recarga para ver si se puede aprobar»",
+    buscar: porXText("fila.avisoAprobar"),
+    escenarios: [
+      ["con los motivos leídos", () => alcanceCon({}), false],
+      ["con motivos_no_aprobable: null", () => alcanceCon({}, "nueva", { motivos_no_aprobable: null }), true],
+    ],
+  },
+  {
+    que: "el error del historial",
+    buscar: porXText("errorHistorial"),
+    escenarios: [
+      ["sin error", () => alcanceCon({ errorHistorial: "" }), false],
+      ["con error", () => alcanceCon({ errorHistorial: "e" }), true],
+    ],
+  },
+  {
+    que: "«Leyendo el historial…»",
+    buscar: porMarca("leyendo-historial"),
+    escenarios: [
+      ["pidiéndolo", () => alcanceCon({ historial: null, errorHistorial: "" }), true],
+      ["ya leído", () => alcanceCon({}), false],
+      ["con error", () => alcanceCon({ historial: null, errorHistorial: "e" }), false],
+    ],
+  },
+  {
+    que: "la línea de duplicada",
+    buscar: porXText("fila.duplicada"),
+    escenarios: [
+      ["sin duplicada_de", () => alcanceCon({}), false],
+      ["con duplicada_de", () => alcanceCon({}, "nueva", { duplicada_de: ID_FUERA }), true],
+    ],
+  },
+  {
+    que: "la línea de la última revisión",
+    buscar: porXText("fila.revisadoPor"),
+    escenarios: [
+      ["revisada", () => alcanceCon({}), true],
+      ["sin revisar", () => alcanceCon({}, "nueva", { revisado_at_utc: null, revisado_por: null }), false],
+    ],
+  },
+  {
+    que: "el aviso del formulario",
+    buscar: porXText("formulario.aviso"),
+    escenarios: [
+      ["sin aviso", () => alcanceCon({}), false],
+      [
+        "con aviso",
+        () => alcanceCon(() => ({ formulario: Object.assign(Revision.formularioDe(valores(), catalogo()), { aviso: "aviso inventado" }) })),
+        true,
+      ],
+    ],
+  },
+  ...["unidad_codigo", "ubicacion", "oficio_codigo", "proveedor_codigo", "urgencia", "listado", "descripcion", "detalle"].map((campo) => ({
+    que: `el problema de ${campo}, junto al campo`,
+    buscar: porXText(`erroresPorCampo && erroresPorCampo.${campo}`),
+    escenarios: [
+      ["sin errores", () => alcanceCon({ erroresPorCampo: null }), false],
+      ["con el suyo", () => alcanceCon({ erroresPorCampo: { [campo]: "problema inventado" } }), true],
+      ["con el de otro campo", () => alcanceCon({ erroresPorCampo: { otro_campo: "problema inventado" } }), false],
+    ],
+  })),
+  {
+    que: "el resumen",
+    buscar: porXText("obraCargada"),
+    escenarios: [
+      ["con resumen", () => alcanceCon({}), true],
+      ["sin resumen", () => alcanceCon({ resumen: null }), false],
+    ],
+  },
+  {
+    que: "«Ninguna incidencia de la obra con estos filtros»",
+    buscar: porMarca("ninguna"),
+    escenarios: [
+      ["con filas", () => alcanceCon({}), false],
+      ["cargada y vacía", () => alcanceCon({ incidencias: [] }), true],
+      ["sin cargar", () => alcanceCon({ incidencias: [], consulta: null }), false],
+    ],
+  },
+  {
+    que: "«Guardando…»",
+    buscar: porMarca("guardando"),
+    escenarios: [
+      ["sin guardar", () => alcanceCon({ guardando: false }), false],
+      ["guardando", () => alcanceCon({ guardando: true }), true],
+    ],
+  },
+  {
+    que: "los chips de motivos",
+    buscar: porXText("motivo"),
+    escenarios: [
+      ["con un motivo", () => alcanceCon({}, "nueva", { motivos_no_aprobable: ["sin_ubicacion"] }), true],
+      ["sin motivos", () => alcanceCon({}), false],
+    ],
+  },
+  {
+    que: "«llegó así» del primer campo (la unidad)",
+    buscar: porXText("campo.llegoAsi"),
+    escenarios: [
+      ["la unidad no cambió", () => alcanceCon({}), false],
+      [
+        "la unidad cambió",
+        () => alcanceCon({}, "nueva", { cambios: ["unidad"], importados: valores({ unidad_codigo: "U-02", unidad_nombre: "Unidad Ejemplo Dos" }) }),
+        true,
+      ],
+    ],
+  },
+  {
+    que: "«Leyendo la bandeja y Sigrid…»",
+    buscar: porMarca("leyendo-bandeja"),
+    escenarios: [
+      ["cargando", () => alcanceCon({ cargando: true }), true],
+      ["sin cargar", () => alcanceCon({ cargando: false }), false],
+    ],
+  },
+];
+
+/** Lo que incumple cada aviso de su tabla de visibilidad. Vacío = correcto. */
+async function problemasDeLaVisibilidad(html) {
+  const problemas = [];
+  const marcada = bandejaMarcada(html);
+  for (const caso of VISIBILIDAD_DE_CADA_AVISO) {
+    for (const [escenario, crear, esperado] of caso.escenarios) {
+      const { elementos, problemas: deEvaluar } = recorrerBandeja(marcada, await crear());
+      problemas.push(...deEvaluar.map((p) => `${caso.que} (${escenario}): ${p}`));
+      const hallados = elementos.filter(caso.buscar);
+      if (hallados.length > 1) problemas.push(`${caso.que} (${escenario}): ${hallados.length} elementos`);
+      const seVe = hallados.length === 1 && hallados[0].visible;
+      if (seVe !== esperado) {
+        problemas.push(`${caso.que} (${escenario}): ${seVe ? "se ve" : "no se ve"}, y ${esperado ? "tiene" : "no tiene"} que verse`);
+      }
+    }
+  }
+  return problemas;
+}
+
+/** «Cargar»: deshabilitado sin obra (o solo con blancos) y mientras carga. */
+async function problemasDeCargar(html) {
+  const problemas = [];
+  const botones = recorrerBandeja(bandejaMarcada(html), await alcanceCon({})).elementos.filter(porMarca("cargar"));
+  if (botones.length !== 1) return [`«Cargar»: ${botones.length} botones`];
+  const expresion = botones[0].atributos[":disabled"];
+  if (expresion === undefined) return ["«Cargar» sin :disabled"];
+  for (const obra of ["", "   ", "9901"]) {
+    for (const cargando of [false, true]) {
+      const alcance = Object.create(botones[0].alcance);
+      alcance.obra = obra;
+      alcance.cargando = cargando;
+      const esperado = !obra.trim() || cargando;
+      if (Boolean(evaluarEn(alcance, expresion)) !== esperado) {
+        problemas.push(`«Cargar» con obra «${obra}» y cargando=${cargando}: deshabilitado ≠ ${esperado}`);
+      }
+    }
+  }
+  return problemas;
+}
+
+/** Los botones que no son de acción: su clic, ejecutado, hace lo suyo. */
+const CLIC_DE_LOS_OTROS_BOTONES = [
+  { marca: "no-dejarla", comprobar: (a) => (a.confirmandoDescarte === null ? null : "el descarte sigue pedido") },
+  { marca: "cancelar", comprobar: (a) => (a.formulario === null ? null : "el formulario sigue abierto") },
+  { marca: "cerrar-detalle", comprobar: (a) => (a.abierta === null ? null : "el detalle sigue abierto") },
+  {
+    marca: "ver-detalle",
+    preparar: (a) => {
+      a.abierta = null;
+    },
+    comprobar: (a) => (a.abierta === ID_1 ? null : `abre «${a.abierta}»`),
+  },
+  {
+    marca: "cargar",
+    comprobar: (a, nuevas) => (nuevas.some((l) => l.nombre === "revision" && l.args[2] === undefined) ? null : "no pide la primera página"),
+  },
+  {
+    marca: "cargar-mas",
+    comprobar: (a, nuevas) =>
+      nuevas.some((l) => l.nombre === "revision" && l.args[2] === "cursor-inventado") ? null : "no pide la página siguiente",
+  },
+];
+
+async function problemasDeLosOtrosBotones(html) {
+  const problemas = [];
+  for (const caso of CLIC_DE_LOS_OTROS_BOTONES) {
+    const alcance = await alcanceCon({});
+    if (caso.preparar) caso.preparar(alcance);
+    const botones = recorrerBandeja(bandejaMarcada(html), alcance).elementos.filter(porMarca(caso.marca));
+    if (botones.length !== 1) {
+      problemas.push(`${caso.marca}: ${botones.length} botones`);
+      continue;
+    }
+    const clic = botones[0].atributos["@click"];
+    if (!clic) {
+      problemas.push(`${caso.marca}: sin @click`);
+      continue;
+    }
+    const llamadas = LLAMADAS_DEL_ALCANCE.get(alcance);
+    const antes = llamadas.length;
+    try {
+      await evaluarEn(botones[0].alcance, clic);
+    } catch (error) {
+      problemas.push(`${caso.marca}: el clic lanza (${error.message})`);
+      continue;
+    }
+    const fallo = caso.comprobar(botones[0].alcance, llamadas.slice(antes));
+    if (fallo) problemas.push(`${caso.marca}: ${fallo}`);
+  }
+  return problemas;
+}
+
+/**
+ * Dos filas, con el detalle abierto en la SEGUNDA y la vista pintándola la
+ * primera (el recorrido pinta el primer elemento de cada x-for): `fila` es
+ * ID_2 e `incidencias[0]`, ID_1. Así, un clic que no use su `fila` se nota.
+ */
+async function alcanceDeLaSegundaFila(estado) {
+  const filas = [
+    incidencia({ incidencia_id: ID_1, estado, revision_id: "00000000-0000-4000-8000-0000000000c1" }),
+    incidencia({
+      incidencia_id: ID_2,
+      estado,
+      revision_id: "00000000-0000-4000-8000-0000000000c2",
+      vigentes: valores({ descripcion: "La segunda fila de ejemplo" }),
+    }),
+  ];
+  const { app, llamadas } = componente({
+    revision: () => respuesta({ incidencias: filas }),
+    accionRevision: () => incidencia({ incidencia_id: ID_2, estado: "editada", revision_id: "00000000-0000-4000-8000-0000000000c3" }),
+  });
+  await app.iniciar();
+  app.obra = "9901";
+  await app.cargar();
+  await app.abrirDetalle(ID_2);
+  const alcance = Object.create(app);
+  alcance.formulario = Revision.formularioDe(filas[1].vigentes, app.catalogo);
+  alcance.confirmandoDescarte = ID_2;
+  alcance.motivoDescarte = "";
+  alcance.vista = function () {
+    const vista = app.vista.call(this);
+    vista.filas.reverse();
+    return vista;
+  };
+  LLAMADAS_DEL_ALCANCE.set(alcance, llamadas);
+  return alcance;
+}
+
+const CLIC_EN_LA_SEGUNDA_FILA = [
+  { metodo: "aprobar", estado: "nueva", accion: "aprobar" },
+  { metodo: "recuperar", estado: "descartada", accion: "recuperar" },
+  { metodo: "confirmarDescarte", estado: "nueva", accion: "descartar" },
+  {
+    metodo: "guardarEdicion",
+    estado: "nueva",
+    accion: "editar",
+    preparar: (a) => {
+      a.formulario.descripcion = "Otra descripción de ejemplo";
+    },
+  },
+  {
+    metodo: "abrirFormulario",
+    estado: "nueva",
+    preparar: (a) => {
+      a.formulario = null;
+    },
+    comprobar: (a) => (a.formulario && a.formulario.descripcion === "La segunda fila de ejemplo" ? null : "no abre el formulario de SU fila"),
+  },
+  {
+    metodo: "pedirDescarte",
+    estado: "nueva",
+    preparar: (a) => {
+      a.confirmandoDescarte = null;
+    },
+    comprobar: (a) => (a.confirmandoDescarte === ID_2 ? null : `pide el descarte de «${a.confirmandoDescarte}»`),
+  },
+];
+
+async function problemasDeLaFilaEquivocada(html) {
+  const problemas = [];
+  for (const caso of CLIC_EN_LA_SEGUNDA_FILA) {
+    const alcance = await alcanceDeLaSegundaFila(caso.estado);
+    if (caso.preparar) caso.preparar(alcance);
+    const botones = botonesDelClic(recorrerBandeja(html, alcance).elementos, caso.metodo);
+    if (botones.length !== 1) {
+      problemas.push(`${caso.metodo}: ${botones.length} botones pintados`);
+      continue;
+    }
+    if (botones[0].alcance.fila.incidencia_id !== ID_2) {
+      problemas.push(`${caso.metodo}: el recorrido no pinta la segunda fila`);
+      continue;
+    }
+    const llamadas = LLAMADAS_DEL_ALCANCE.get(alcance);
+    const antes = llamadas.length;
+    try {
+      await evaluarEn(botones[0].alcance, botones[0].atributos["@click"]);
+    } catch (error) {
+      problemas.push(`${caso.metodo}: el clic lanza (${error.message})`);
+      continue;
+    }
+    if (caso.accion) {
+      const cuerpos = llamadas
+        .slice(antes)
+        .filter((l) => l.nombre === "accionRevision")
+        .map((l) => `${l.args[0].accion} de ${l.args[0].incidencia_id}`);
+      if (cuerpos.join() !== `${caso.accion} de ${ID_2}`) {
+        problemas.push(`${caso.metodo}: manda [${cuerpos.join(", ")}], no «${caso.accion} de ${ID_2}»`);
+      }
+    } else {
+      const fallo = caso.comprobar(botones[0].alcance);
+      if (fallo) problemas.push(`${caso.metodo}: ${fallo}`);
+    }
+  }
+  return problemas;
+}
+
+const COMPROBACIONES_HTML_T5 = [
+  ["R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca", problemasDeLaVisibilidad],
+  ["R3 (T5): «Cargar» se deshabilita sin obra y mientras carga", problemasDeCargar],
+  ["R7, R8, R9, R11 (T5): «No, dejarla», «Cancelar», los del detalle, «Cargar» y «Cargar más», pulsados, hacen lo suyo", problemasDeLosOtrosBotones],
+  ["R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera", problemasDeLaFilaEquivocada],
+];
+
+for (const [nombre, comprobar] of COMPROBACIONES_HTML_T5) {
+  test(`f038 ${nombre}`, async () => {
+    assert.deepEqual(await comprobar(leerBandeja()), []);
+  });
+}
+
+// Los supervivientes de HTML de la campaña de T5 (y los cinco de la fila
+// equivocada, que solo caían por accidente en controles ajenos), en memoria:
+// cada uno tiene que caer en SU comprobación.
+const MUTANTES_HTML_T5 = [
+  ["XS1", problemasDeLaVisibilidad, '<p x-show="errorCarga"', '<p x-show="!errorCarga"'],
+  ["XS2", problemasDeLaVisibilidad, 'x-show="mensajeAccion && !abierta"', 'x-show="mensajeAccion && abierta"'],
+  ["XS3", problemasDeLaVisibilidad, 'x-show="mensajeAccion && !abierta"', 'x-show="mensajeAccion || !abierta"'],
+  ["XS10", problemasDeLaVisibilidad, '<p x-show="fila.avisoAprobar"', '<p x-show="!fila.avisoAprobar"'],
+  ["XS11", problemasDeLaVisibilidad, '<p x-show="mensajeAccion" x-text="mensajeAccion"', '<p x-show="!mensajeAccion" x-text="mensajeAccion"'],
+  ["XS12", problemasDeLaVisibilidad, '<p x-show="errorHistorial"', '<p x-show="!errorHistorial"'],
+  ["XS13", problemasDeLaVisibilidad, '<p x-show="fila.duplicada"', '<p x-show="!fila.duplicada"'],
+  ["XS14", problemasDeLaVisibilidad, '<p x-show="fila.revisadoPor"', '<p x-show="!fila.revisadoPor"'],
+  ["XS18", problemasDeLaVisibilidad, '<p x-show="formulario.aviso"', '<p x-show="!formulario.aviso"'],
+  ["XS19", problemasDeLaVisibilidad, 'x-show="erroresPorCampo && erroresPorCampo.ubicacion"', 'x-show="false"'],
+  ["XS20", problemasDeLaVisibilidad, '<template x-if="resumen">', '<template x-if="!resumen">'],
+  ["XS22", problemasDeLaVisibilidad, '<p x-show="!incidencias.length"', '<p x-show="incidencias.length"'],
+  ["XS23", problemasDeLaVisibilidad, '<span x-show="guardando"', '<span x-show="!guardando"'],
+  ["XS24", problemasDeLaVisibilidad, '<ul x-show="fila.motivos.length"', '<ul x-show="!fila.motivos.length"'],
+  ["XS32", problemasDeLaVisibilidad, 'x-show="!historial && !errorHistorial"', 'x-show="!historial || !errorHistorial"'],
+  ["XS33", problemasDeLaVisibilidad, '<dd x-show="campo.llegoAsi"', '<dd x-show="!campo.llegoAsi"'],
+  ["XS35", problemasDeLaVisibilidad, '<span x-show="cargando"', '<span x-show="!cargando"'],
+  ["DS13", problemasDeCargar, ':disabled="!obra.trim() || cargando"', ':disabled="cargando"'],
+  ["BN10", problemasDeLosOtrosBotones, '<button type="button" @click="cancelarDescarte()"', '<button type="button"'],
+  ["BN12", problemasDeLosOtrosBotones, '@click="cancelarFormulario()"\n', "\n"],
+  ["FE1", problemasDeLaFilaEquivocada, '@click="aprobar(fila.incidencia_id)"', '@click="aprobar(incidencias[0].incidencia_id)"'],
+  ["FE2", problemasDeLaFilaEquivocada, '@click="pedirDescarte(fila.incidencia_id)"', '@click="pedirDescarte(incidencias[0].incidencia_id)"'],
+  ["FE3", problemasDeLaFilaEquivocada, '@click="recuperar(fila.incidencia_id)"', '@click="recuperar(incidencias[0].incidencia_id)"'],
+  ["FE4", problemasDeLaFilaEquivocada, '@click="confirmarDescarte(fila.incidencia_id)"', '@click="confirmarDescarte(incidencias[0].incidencia_id)"'],
+  ["FE5", problemasDeLaFilaEquivocada, '@click="abrirFormulario(fila.incidencia_id)"', '@click="abrirFormulario(incidencias[0].incidencia_id)"'],
+];
+
+for (const [mutante, comprobar, viejo, nuevo] of MUTANTES_HTML_T5) {
+  test(`f038 T5 (${mutante}): control: con el mutante ${mutante} en bandeja.html, su comprobación salta`, async () => {
+    const problemas = await comprobar(cambiarUnaVez(leerBandeja(), viejo, nuevo));
+    assert.notDeepEqual(problemas, [], `${mutante}: la comprobación no lo ve`);
+  });
+}

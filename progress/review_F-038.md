@@ -1003,3 +1003,266 @@ filtros.
   pasa del ancho del resto del párrafo. Es solo formato, y se arregla la próxima vez que se toque el fichero.
 - O-B1t-1 queda **cerrada** con esta tarea. Siguen como estaban O-B1t-3 (se deja, por decisión del humano), O-B1b-3,
   O-B1b-4 y O-B1b-5, y también las propuestas de automejora pendientes.
+
+## Review final del Bloque 1 · 1, 1 bis, 1 ter, T4 quater y 1 quater (2026-10-20)
+
+- **Veredicto: CHANGES_REQUESTED** (C-B1f-1 a C-B1f-10). Todos los cambios son de tests, salvo C-B1f-10, que es de
+  `progress/current.md`. **El código de producción no tiene que cambiar**: ninguno de los supervivientes nuevos destapa
+  un defecto, todos son huecos de los tests.
+- **Alcance:** lo nuevo es el Bloque 1 quater (T5): `e800242` (71 tests) y `ec48271` (informe,
+  `progress/mutacion_F-038.md`, T5 `[x]`, `current.md`). Los bloques anteriores están APPROVED, y de ellos solo miro que
+  nada se haya roto. Base fija `dev` `87a03f3`. `git diff --stat 87a03f3..HEAD -- services/postventa-api` sale vacío.
+- **Nivel de rigor:** `critico` (declarado en `harness/features.json`). Exige RED con traza, «Evidencias», cobertura
+  (N/A por lenguaje, ver abajo) y mutación con **cero supervivientes** salvo equivalentes aceptados **por escrito por
+  el humano**. También exige las MANUAL listadas.
+- **P-4:** no he ejecutado `bash harness/init.sh` ni he tocado `.env`. No he lanzado pytest en `services/postventa-api`.
+
+### Ejecutado (resultado real)
+
+| Desde | Comando | Resultado |
+|---|---|---|
+| `services/postventa-front` | `node --test --test-timeout=60000 "tests_js/*.test.js"` | 973 tests, 973 pass, 0 fail (Node v24.14.1) |
+| `services/postventa-front` | `python -m pytest -q -p no:cacheprovider` | 882 passed, 7 skipped |
+| raíz | `python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py` | 19 passed |
+| raíz | `python -m harness.mutacion --feature F-038 --base 87a03f3 --timeout 900 --salida <scratchpad>/mutacion_rev.md` | 0 ficheros, 0 mutantes, 0,0 s, exit 0. Mismos totales que `progress/mutacion_F-038.md`; `git status` limpio |
+
+`e800242` solo **añade** líneas a `tests_js/revision.test.js`: el diff no quita ninguna, así que ningún test anterior
+cambia ni se debilita.
+
+### La herramienta: recálculo y prueba de control
+
+- **Recálculo puro.** `harness.alcance.alcance_de_feature("F-038", base="87a03f3")` da origen `rama` y
+  `lineas == {}`. El diff no tiene ningún `.py` de producción. Coincide con el informe.
+- **Prueba de control del cero.** He ejecutado `generar_mutantes` sobre los `.py` del diff **sin la exclusión de
+  alcance**. Son los cuatro ficheros de tests (`test_f035_paginas.py`, `test_f035_portal.py`, `test_f038_front.py`,
+  `tests/test_f035_placeholders_vivos.py`), y salen **218 mutantes**. El generador funciona, así que el cero es
+  **legítimo**: la exclusión es por diseño (F-038 es JS y HTML). **[x]**
+- **La campaña, reejecutada.** El «Tiempo total» es 0,0 s, menos de 5 minutos, así que la he relanzado con la salida
+  en mi scratchpad: mismos totales. El coste por mutante de C4 bis no se puede calcular, porque no hay mutantes. Lo doy
+  por N/A justificado.
+
+### La campaña a mano, reejecutada entera (independiente)
+
+He copiado el árbol de trabajo en cuatro copias desechables de mi scratchpad (`rev_b1f/c1`–`c4`). `filecmp`/`cmp` da los
+cinco ficheros mutados idénticos al árbol antes y después. Los guiones de aplicar y ejecutar son **míos**
+(`rev_b1f/correr.py`): aplican el cambio respetando el final de línea, lanzan las suites y restauran con `assert`. **De
+la campaña del implementer solo he tomado la lista de 281 mutantes**, que copié tal cual a `rev_b1f/lista_impl.py`.
+Cada mutante pasa la suite **entera** de Node (`node --test --test-timeout=60000 "tests_js/*.test.js"`). Si queda en
+verde, pasa también el pytest dirigido del front. Si sigue en verde, el pytest entero del front y el de la raíz. La
+línea base de la copia es la del informe: 973/973, 581 passed + 7 skipped en el dirigido, 882 + 7 en el entero y 19
+en la raíz.
+
+**Resultado: 281 evaluados, 280 muertos, 1 vivo (N11), 0 anclas que fallen, 0 muertos por tiempo y 0 muertos «solo
+por controles».** Coincide con la tabla del informe. Los 281 incluyen los de las reviews anteriores (34 + orden, M/X,
+J/H, K), así que **nada de lo aprobado se ha roto**.
+
+**Los 46 cerrados caen por su test, no por accidente.** Para cada uno de los 46 he mirado qué tests caen. En los 21 de
+`CASOS_T5` cae `f038 T5 (<id>): …`, el test de comportamiento, no solo su control. En los 25 de HTML cae la
+comprobación que les toca: «cada aviso…» para los XS, «Cargar» se deshabilita… para DS13, «…pulsados, hacen lo suyo»
+para BN10 y BN12, y «con dos filas…» para FE1–FE5. FE10 cae, además, en la comprobación de la fila equivocada. Así que
+la segunda pasada del informe es cierta. **[x]**
+
+**Familias.** Están todas las de T5 (la lista de `tasks.md`): `confirmado`, `revision_previa`, `usuario_correo`, el
+filtro por defecto, cursor y deduplicación, el ajuste del resumen, el proveedor y los pares, la ubicación vacía,
+`hayCambios`, las acciones por estado, R26, la recarga, `quienLegible`, la línea del volcado, los filtros
+`volcada`/`en_duda`, la guarda de salida, `target`, la marca de construcción y el paso 03. Están también las cuatro del
+líder: el botón que no hace nada (BN), `:disabled` con su tabla de verdad (DS), `x-show`/`x-if` invertido o con el
+operador cambiado (XS) y el clic sobre la fila equivocada (FE). **Las familias están, pero se han sembrado poco: ver
+la sección siguiente.**
+
+### Mutantes propios del reviewer (24, fuera de la lista del implementer): 10 muertos, 14 vivos
+
+Los he lanzado en las mismas copias y con el mismo guion (`rev_b1f/extras.py`). Están dentro de las familias de T5 y
+del líder, en sitios que la lista no tocaba. Uno de ellos, RX14, también lo he reproducido a mano: 319/319 en verde con
+`revision.test.js` y `api.test.js`. Las copias quedan idénticas al árbol, y `git status` del árbol sigue limpio.
+
+| # | Familia | Mutante | Resultado |
+|---|---|---|---|
+| RX01 | x-show/x-if | `bandeja.html:251`: `x-show="revision.campos.length"` → `!revision.campos.length` (historial) | **VIVE** → C-B1f-1 |
+| RX02 | x-show/x-if | `bandeja.html:252`: `x-show="revision.motivo"` → `!revision.motivo` (historial) | **VIVE** → C-B1f-1 |
+| RX03 | x-show/x-if | `bandeja.html:184`: la lista con `!consulta` | muere (node, 5) |
+| RX04 | x-show/x-if | el problema de la unidad mira `erroresPorCampo.ubicacion` | muere («cada aviso…») |
+| RX05 | x-show/x-if | el problema del detalle con `x-show="erroresPorCampo"` | muere («cada aviso…») |
+| RX06 | :disabled | «Cargar más» con `:disabled="!cargandoMas"` | muere (pytest `test_f038_r7_cargar_mas_con_n_de_m`) |
+| RX07 | botón que no hace nada | la casilla «con motivos» sin `@change` | muere (pytest `test_f038_r3_r6_…`) |
+| RX08 | x-show/x-if | «No se puede aprobar» con `includes('editar')` | muere (O-B1b-2) |
+| RX09 | fila equivocada | el panel de descarte con `confirmandoDescarte &&` (en cualquier fila) | muere (pytest `test_f038_r11_descartar_…`) |
+| RX10 | fila equivocada / operador | `bandeja.html:216`: «Ver el detalle» con `x-show="!abierta"` (se oculta en las demás filas) | **VIVE** → C-B1f-2 |
+| RX11 | fila equivocada | `bandeja.html:223`: el detalle con `x-if="abierta"` (en todas las filas) | muere (pytest `test_f038_r21_1_…`) |
+| RX12 | fila equivocada / operador | `bandeja.html:218`: «Cerrar el detalle» con `x-show="abierta"` (en todas las filas) | **VIVE** → C-B1f-2 |
+| RX13 | cursor | `cargarMas` no pone `cargandoMas = true` | muere (CU9 de T5) |
+| RX14 | cursor | `js/revision.js:1200`: `cargarMas` no suelta `cargandoMas`: tras el primer «Cargar más» no sale ninguno más | **VIVE** → C-B1f-3 |
+| RX15 | nada sin un clic / carga | `js/revision.js:1138`: `cargar` no pone `cargando = true`: no sale «Leyendo la bandeja…» y «Cargar» no se deshabilita mientras lee | **VIVE** → C-B1f-4 |
+| RX16 | R12 | `js/revision.js:1364`: `actuar` no vacía `erroresPorCampo` antes de llamar | **VIVE** → C-B1f-8 |
+| RX17 | nada sin un clic | `js/revision.js:1265`: `abrirFormulario` no vacía `mensajeAccion` | **VIVE** → C-B1f-5 |
+| RX18 | botón que no hace nada | `js/revision.js:1270`: «Cancelar» deja `erroresPorCampo` | **VIVE** → C-B1f-8 |
+| RX19 | botón que no hace nada | `js/revision.js:1341`: «No, dejarla» conserva `motivoDescarte` | **VIVE** → C-B1f-8 |
+| RX20 | nada sin un clic | `cargar` sin obra pide igual | muere («R3: sin obra, cargar no pide nada») |
+| RX21 | cursor | «Cargar más» no refresca el resumen | muere (R7) |
+| RX22 | R12/R26 | `js/revision.js:1198`: un error de «Cargar más» no se enseña (se traga) | **VIVE** → C-B1f-6 |
+| RX23 | R8 | `js/revision.js:1231`: `abrirDetalle` no vacía `historial`: al abrir otra fila se ve el historial de la anterior (sin «Leyendo el historial…»), y si la petición falla, junto al error | **VIVE** → C-B1f-7 |
+| RX24 | orden / fuera de contrato | `js/revision.js:1222`: `abrirDetalle` sin comprobar que la fila está en la lista (pide el historial de un id desconocido) | **VIVE** → C-B1f-9 |
+
+Hay tres huecos con el mismo origen:
+
+- **Las filas que no son la abierta.** El recorrido pinta solo el primer elemento de cada `x-for`, y
+  `alcanceDeLaSegundaFila` pinta justo la fila **abierta**. Ningún test pinta una fila **cerrada** mientras otra está
+  abierta. Por eso viven RX10 y RX12.
+- **Las banderas de carga, marcar y soltar.** CU9 mira que se marque, pero nada mira que se suelte.
+- **Lo que cada método deja limpio.**
+
+RX16, RX18, RX19 y RX24 no se ven en la página tal como está hoy. Los errores por campo y el motivo solo se pintan
+dentro de su `x-if`, y el método que los vuelve a abrir los limpia. A `abrirDetalle` solo se llega desde una fila
+pintada. Por eso, para ellos, C-B1f-8 y C-B1f-9 aceptan cualquiera de los dos caminos: un test de estado del
+componente, o proponerlos como equivalentes para que el humano los acepte por escrito.
+
+### N11: es equivalente de verdad
+
+Estoy de acuerdo con el implementer.
+
+- En `abrirDetalle` (`js/revision.js:1230-1234`), `this.abierta = incidenciaId` va antes de `this.historial = null` y
+  `this.errorHistorial = ""`, que no leen `abierta`.
+- El argumento de `api.historialRevision(...)` se evalúa de forma **síncrona**, antes del único `await`.
+- `abierta` no tiene *setter* propio. En Alpine, el proxy reactivo guarda y devuelve el mismo primitivo, y el
+  `incidencia_id` siempre es un texto (`fila.incidencia_id`).
+
+`this.abierta` e `incidenciaId` valen lo mismo para cualquier entrada del contrato, y ningún test puede distinguirlos.
+Mi campaña lo confirma: sigue vivo con la suite entera. **Necesita la aceptación escrita del humano (C4 bis,
+`critico`)** antes de cerrar el bloque. La pide el líder.
+
+### Las decisiones 1–3 del informe
+
+1. **PR8 y TX12, cerrados con una entrada fuera de contrato: de acuerdo.** He comprobado R99 en el backend:
+   `services/postventa-api/domain/models/importacion.py:592` levanta si hay `ambiguo` con código, y
+   `domain/models/revision.py:208/243` lo aplica a la bandeja. Con datos reales, la puerta `!v.*_ambiguo` está tapada
+   por el código. Aun así, dice algo de R24 (un ambiguo se elige), y el test lo comenta como fuera de contrato. Es
+   mejor que cargar al humano con dos equivalentes. **[x]**
+2. **E7, con el cambio de `mensajeAccion` simulado durante la recarga: de acuerdo, con un matiz.** El escenario es
+   real: tras `finally`, `guardando` vuelve a `false`, así que mientras la recarga espera a la red la persona puede
+   pulsar «Ver el detalle» y «Editar». Pero la justificación se apoya en que «`abrirFormulario` lo vacía», **y eso no
+   lo fija ningún test**: es RX17, que vive. C-B1f-5 lo cierra. **[x]** con C-B1f-5.
+3. **Los controles, permanentes en el fichero: de acuerdo.** Es la misma forma que T4 quater y C-B1b-1. Cada ancla
+   exige salir una sola vez, y un cambio de texto de producción hace caer el control con un mensaje explícito, no en
+   silencio. **[x]** (ver O-B1f-1 sobre lo genéricos que son).
+
+### Checkpoints (cierre del Bloque 1)
+
+**C1**
+- N/A · `init.sh` exit 0: por P-4 lo ejecuta el líder, y no tengo su resultado. **Es condición para dar el bloque por
+  cerrado**, también después de corregir.
+- [x] Existen los siete ficheros del arnés.
+
+**C2**
+- [x] Una sola `in_progress`, F-038. [x] Rama `feature/F-038-bandeja-revision`.
+- [x] `current.md` describe F-038. Los bloques ✅ de F-059 y F-056 que siguen debajo ya se aceptaron así antes (O-F-3).
+- N/A · `history.md`: el bloque no cierra la feature (T11).
+
+**C3**
+- [x] Ningún fichero de producción cambia en 1 quater. La arquitectura de 1 a 1 ter ya se revisó.
+- [x] Primera línea con la ruta en `tests_js/revision.test.js`. En las líneas nuevas no hay `console.*`, `debugger`,
+  TODO, secretos ni correos reales: el barrido de `console.|debugger|TODO|ruesma|@…\.(es|com)|password|secret` sobre
+  `git diff 085d885..HEAD -- services/` no da nada. Los datos son inventados (`@ejemplo.invalid`, UUID `00000000-…`).
+- N/A · parte/firma/manuscrito/reprocesar/`conest`: son del circuito de partes escaneados, y F-038 es la bandeja del
+  front.
+- [x] Nada se escribe en Sigrid. Ningún escaneado ni PDF en el historial de la rama
+  (`git log 87a03f3..HEAD --diff-filter=A`).
+
+**C3 bis** · N/A: no toca `docs/referencia/`.
+
+**C4**
+- [x] Cada R tiene sus tests trazables `f038 Rn` y pasan. Ninguno toca red ni BBDD: el `api` es doble.
+- **[ ]** MANUAL en `progress/current.md` con su comando exacto. T6 y T7 son el paso siguiente, el Bloque 2, y sus
+  comandos solo están en `tasks.md`. Hasta ahora era N/A porque eran de bloques futuros. Al cerrar el Bloque 1 ya toca:
+  C-B1f-10.
+
+**C4 bis**
+- [x] `rigor` declarado: `critico`.
+- [x] **RED**. T1, T1 bis y T4 bis ya se revisaron con traza. En T5, cada uno de los 46 tests nuevos trae la salida real
+  de su fallo contra su mutante, en una copia. Lo he reproducido con mi campaña: cada uno cae en su test propio.
+- N/A · **cobertura**, **justificado por el lenguaje**. La puerta de `init.sh` mide solo Python, y F-038 no tiene `.py`
+  de producción (JS y HTML). El informe lo dice. Falta ver que `init.sh` imprima su `N/A` con el motivo (P-4, el líder).
+- [x] **Mutación con la herramienta**: `progress/mutacion_F-038.md` es real. Lo he recalculado, he hecho la prueba de
+  control (218 sin exclusión) y he reejecutado la campaña (0,0 s). El coste por mutante no se puede calcular con 0
+  mutantes.
+- [x] **Los muertos están comprobados**: he reejecutado entera la campaña a mano, 281 mutantes, con resultado idéntico.
+- **[ ]** **Cero supervivientes**: viven 14 de mis 24 mutantes (C-B1f-1 a C-B1f-9). Además, N11 está pendiente de la
+  aceptación escrita del humano.
+- [x] «Evidencias» con los cuatro números y los workers: 1 efectivo en la herramienta y 4 copias en la campaña a mano.
+- N/A · la guarda «por definiciones»: ningún fichero sale de una lista de «no se toca».
+
+**C4 ter** · N/A: el repositorio no declara `harness/rutas_sensibles.json`, así que no hay nada que justificar.
+
+**C5**
+- [x] T1–T5 y T4 bis, ter y quater en `[x]`, cada una con su commit `F-038 Tn: …`. T5 tiene dos commits, tests e
+  informe. T6–T11 son de los Bloques 2–4.
+- [x] Árbol limpio, sin ficheros sin trackear. [x] `features.json`: F-038 `in_progress`.
+
+### Cambios requeridos
+
+Todos van en `services/postventa-front/tests_js/revision.test.js`, con la misma forma que T5. Cada test lleva su
+control permanente en memoria (`revisionMutada` o `cambiarUnaVez` con el mutante RX de arriba), y el informe pega la
+traza RED de cada uno contra su mutante, en una copia. Después hay que relanzar la campaña a mano con los 24 RX
+añadidos a la lista (305 en total) y dar los totales.
+
+1. **C-B1f-1 (RX01, RX02) · R8, el historial.** En `VISIBILIDAD_DE_CADA_AVISO`, un historial con una revisión **con**
+   `campos` y `motivo`, y otra **sin** ellos. El `<span>` de `· campos` (`bandeja.html:251`) y el de `· motivo:`
+   (`bandeja.html:252`) se ven solo en la revisión que los trae.
+2. **C-B1f-2 (RX10, RX12) · R8, las filas que no son la abierta.** Hace falta un alcance con dos filas y el detalle
+   abierto en la **segunda**, que pinte primero la **primera**: la variante de `alcanceDeLaSegundaFila` sin el
+   `reverse`. En esa fila cerrada, «Ver el detalle» se ve (`bandeja.html:216`), «Cerrar el detalle» no se ve
+   (`bandeja.html:218`) y el detalle no se pinta (`bandeja.html:223`). RX11 ya cae en pytest, pero no está de más que
+   caiga también aquí.
+3. **C-B1f-3 (RX14) · R7.** Dos «Cargar más» **seguidos y esperados**, con tres páginas: los dos piden su página. Y
+   tras un «Cargar más» que falla, el siguiente vuelve a pedir. Con eso, `cargandoMas` se suelta en el `finally`
+   (`js/revision.js:1200`).
+4. **C-B1f-4 (RX15) · R3.** Mientras la primera página está pendiente (el doble con una promesa sin resolver, como en
+   CU9), `app.cargando === true`. Al resolver, `false`. Es lo que pinta «Leyendo la bandeja y Sigrid…» y deshabilita
+   «Cargar» (`js/revision.js:1138`).
+5. **C-B1f-5 (RX17) · R9, R12.** Con un `mensajeAccion` a la vista (por ejemplo, el «No hay cambios que guardar» de
+   `guardarEdicion`), `abrirFormulario` lo vacía (`js/revision.js:1265`). Esto es también lo que da por supuesto la
+   decisión 2 (E7).
+6. **C-B1f-6 (RX22) · R12, R26.** Un «Cargar más» que falla, por ejemplo con un 503 con texto del servicio, deja ese
+   texto en `errorCarga`, y la lista cargada se conserva (`js/revision.js:1198`).
+7. **C-B1f-7 (RX23) · R8.** Con el historial de la fila 1 leído, abrir el detalle de la fila 2 deja `historial` en
+   `null` mientras su petición está pendiente («Leyendo el historial…»). Y si esa petición falla, se queda en `null`
+   con el error: no puede verse el historial de la fila 1 junto al error de la 2 (`js/revision.js:1231`).
+8. **C-B1f-8 (RX16, RX18, RX19) · lo que cada método deja limpio**, en el estado del componente:
+   - tras un 400 `valores_no_validos` y una acción posterior con éxito, `erroresPorCampo === null`
+     (`js/revision.js:1364`);
+   - tras «Cancelar» con errores por campo, `erroresPorCampo === null` (`js/revision.js:1270`);
+   - tras «No, dejarla» con un motivo escrito, `motivoDescarte === ""` (`js/revision.js:1341`).
+
+   O bien, si el implementer razona que no se ven en la página, se proponen como equivalentes con su porqué, para que
+   el humano los acepte por escrito. Recomiendo los tests: son tres aserciones y no cargan al humano.
+9. **C-B1f-9 (RX24) · R8, fuera de contrato, como PR8.** `abrirDetalle` con un `incidencia_id` que no está en la lista
+   no cambia `abierta` y no pide ningún historial (`js/revision.js:1222`). O equivalente propuesto, con el mismo
+   criterio de C-B1f-8.
+10. **C-B1f-10 · C4, las MANUAL.** El líder lista en `progress/current.md` T6 y T7 (Bloques 2 y 3), con sus comandos
+    exactos de `tasks.md`: el `git worktree add`, `desplegar_front.ps1 -SoloFront` y el `24_ubicacion_sigrid.ps1 …` de
+    T7, como pendientes del humano.
+
+Antes de cerrar el bloque hacen falta, además, `bash harness/init.sh` en verde (el líder, P-4) y la aceptación escrita
+de N11 por el humano.
+
+### Observaciones (no bloquean)
+
+- **O-B1f-1 · Los controles comprueban solo que haya algún problema** (`assert.notDeepEqual(problemas, [])`). Uno
+  puede pasar por un problema colateral: con XS20, la comprobación da también cinco errores de evaluación del resumen
+  nulo. El test principal sí es específico (`deepEqual([])`), así que no lo bloqueo. Sería más fuerte que cada control
+  exigiera un problema que nombre su aviso o su mutante.
+- **O-B1f-2 · N10 fija el comportamiento de O-B1b-3**: abrir otro detalle tira la edición sin preguntar. Si el humano
+  decide que hay que preguntar (T7, paso 7), ese test cambia a propósito. El informe ya lo dice.
+- **O-B1f-3 · La cabecera de `progress/mutacion_F-038.md` pone `--workers 1`** sin que el comando lo llevara: son los
+  workers efectivos. Coincido con la propuesta del implementer para `arnes-base`.
+
+### Automejora (propuesta, no aplicada)
+
+- **Familias que añadir a cualquier campaña a mano de un front Alpine** (vale para `arnes-base`, en `CHECKPOINTS.md`
+  C4 bis o en el protocolo del implementer). Las tres han dado supervivientes aquí con una lista de 281 mutantes:
+  - **banderas de carga**: que se marquen **y** que se suelten (también tras un error);
+  - **lo que cada método deja limpio** (`cancelar…`, `abrir…`, `actuar`);
+  - **la visibilidad en las filas que no son la abierta**, porque un recorrido que pinta un solo elemento por `x-for`
+    no las ve.
+- Apoyo el `harness/mutacion_a_mano.py` que propone el implementer. Yo he tenido que escribir otro guion para
+  reejecutar su campaña (`rev_b1f/correr.py`). Con una lista declarativa y un ejecutor común, el reviewer reejecuta sin
+  rehacer el guion, y la regla de «los muertos se comprueban» vale igual para lo que se muta a mano.

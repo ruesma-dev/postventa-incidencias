@@ -187,6 +187,21 @@ function cuerpoDeCambioDeEstadoInventado() {
   });
 }
 
+/** F-038 · un UUID con ceros: no es la incidencia de nadie. */
+const UUID_INVENTADO = "00000000-0000-4000-8000-000000000001";
+
+/** El cuerpo de `POST /api/revision/acciones`, con todo inventado. */
+function cuerpoDeAccionInventado() {
+  return {
+    incidencia_id: UUID_INVENTADO,
+    accion: "aprobar",
+    usuario_oid: "oid-inventado-para-el-test",
+    usuario_correo: "revisora@ejemplo.invalid",
+    confirmado: true,
+    revision_previa: null,
+  };
+}
+
 /** Todos, con su ruta y su metodo. La lista ES la asercion. */
 const LOS_ENDPOINTS = [
   { nombre: "salud", ruta: "/api/health", metodo: "GET", llamar: (api) => api.salud() },
@@ -208,6 +223,11 @@ const LOS_ENDPOINTS = [
   { nombre: "bandeja", ruta: "/api/bandeja?obra=9999", metodo: "GET", llamar: (api) => api.bandeja("9999") },
   { nombre: "propuestasCatalogos", ruta: "/api/catalogos/propuestas?obra=9999", metodo: "GET", llamar: (api) => api.propuestasCatalogos("9999") },
   { nombre: "decidirCatalogos", ruta: "/api/catalogos/decisiones", metodo: "POST", llamar: (api) => api.decidirCatalogos(cuerpoDeDecisionInventado()) },
+  // F-038 T1 · la bandeja de revisión (los tres de F-056). Obra, UUID y
+  // correo inventados.
+  { nombre: "revision", ruta: "/api/revision?obra=9901", metodo: "GET", llamar: (api) => api.revision("9901") },
+  { nombre: "historialRevision", ruta: `/api/revision/historial?incidencia_id=${UUID_INVENTADO}`, metodo: "GET", llamar: (api) => api.historialRevision(UUID_INVENTADO) },
+  { nombre: "accionRevision", ruta: "/api/revision/acciones", metodo: "POST", llamar: (api) => api.accionRevision(cuerpoDeAccionInventado()) },
 ];
 
 /** Un `.xlsx` de mentira: cuatro bytes que no son el libro de nadie. */
@@ -225,7 +245,7 @@ function cuerpoDeDecisionInventado() {
   };
 }
 
-test("f007 R27 / f019 / f009 / f012 / f028 / f036: los DIECISIETE endpoints llaman a su ruta, con su metodo", async () => {
+test("f007 R27 / f019 / f009 / f012 / f028 / f036 / f038: los VEINTE endpoints llaman a su ruta, con su metodo", async () => {
   for (const endpoint of LOS_ENDPOINTS) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
 
@@ -241,7 +261,11 @@ test("f007 R27 / f019 / f009 / f012 / f028 / f036: los DIECISIETE endpoints llam
   }
 });
 
-test("f007 R27 / f036: son diecisiete, y la lista se entera si aparece otro", () => {
+test("f007 R27 / f036 / f038: son veinte, y la lista se entera si aparece otro", () => {
+  // Enmienda del 2026-10-20 · F-038 T1: eran DIECISIETE y pasan a VEINTE con
+  // los tres de la bandeja de revisión (`revision`, `historialRevision` y
+  // `accionRevision`, `design.md` §2.1 de F-038). No se quita ninguno.
+  //
   // Enmienda del 2026-09-30 · F-036 T21: eran DOCE y pasan a DIECISIETE con
   // los cinco de la entrada de incidencias (`descargarPlantilla`,
   // `importarExcel`, `bandeja`, `propuestasCatalogos` y `decidirCatalogos`).
@@ -265,7 +289,7 @@ test("f007 R27 / f036: son diecisiete, y la lista se entera si aparece otro", ()
   const auxiliares = ["peticion", "cuerpoDeParte", "identidad"];
   const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
 
-  assert.equal(endpoints.length, 17);
+  assert.equal(endpoints.length, 20);
   assert.deepEqual(endpoints.sort(), LOS_ENDPOINTS.map((e) => e.nombre).sort());
 });
 
@@ -1258,4 +1282,209 @@ test("f036: clasificar deja el texto y el codigo del backend en el error", () =>
   assert.equal(sinCodigo.codigo, null);
   assert.equal(sinJson.mensajeServicio, null);
   assert.equal(sinJson.codigo, null);
+});
+
+// --- F-038 · la bandeja de revisión ------------------------------------------------
+//
+// Los tres endpoints de F-056 (`design.md` §2.1 de F-038, con el contrato del
+// handler `interface_adapters/api/revision.py`). Las reglas, las de F-036 R52
+// más una (R26):
+//
+// - **El texto es el del servicio**, también en un 503 (`mensajeDelServicio`).
+// - **Las dos lecturas reintentan lo transitorio**, como `bandeja`.
+// - **La acción no se reintenta nunca sola** (`sinReintentos`): es el acto de
+//   una persona, y la `revision_previa` hace que un segundo intento dé 409.
+// - **R26 · lo propio del cuerpo del error** (`errores`, `motivos`, `estado`,
+//   `acciones`, `total`) llega en `error.detalle`, el JSON tal cual. Aditivo:
+//   ni el `mensaje`, ni el `codigo`, ni la traza cambian.
+
+test("f038 R7: revision lleva la obra, el estado, con_motivos y el cursor, escapados y sin tamano", async () => {
+  const casos = [
+    { args: ["9901"], url: "/api/revision?obra=9901" },
+    { args: ["9901", { estado: "activas" }], url: "/api/revision?obra=9901&estado=activas" },
+    { args: ["9901", { estado: "editada", con_motivos: true }], url: "/api/revision?obra=9901&estado=editada&con_motivos=true" },
+    { args: ["9901", { con_motivos: false }], url: "/api/revision?obra=9901&con_motivos=false" },
+    { args: ["9901", { estado: "activas", con_motivos: undefined }, undefined], url: "/api/revision?obra=9901&estado=activas" },
+    { args: ["9901", {}, "eyJjIjoi_x-Y"], url: "/api/revision?obra=9901&cursor=eyJjIjoi_x-Y" },
+    { args: ["99&obra=1", { estado: "a&b" }, "c=d"], url: "/api/revision?obra=99%26obra%3D1&estado=a%26b&cursor=c%3Dd" },
+  ];
+
+  for (const caso of casos) {
+    const { api, llamadas } = apiDePrueba([respuesta(200, { obra: "9901" })]);
+
+    await api.revision(...caso.args);
+
+    assert.equal(llamadas[0].url, caso.url);
+    assert.equal(llamadas[0].opciones.method, "GET");
+    assert.equal(llamadas[0].opciones.body, undefined, "un GET no lleva cuerpo");
+    assert.doesNotMatch(llamadas[0].url, /tamano/, "R7: la pagina no manda tamano");
+  }
+});
+
+test("f038 R8: historialRevision pide GET /api/revision/historial con la incidencia escapada", async () => {
+  const { api, llamadas } = apiDePrueba([respuesta(200, { incidencia_id: UUID_INVENTADO, revisiones: [] })]);
+
+  const datos = await api.historialRevision(UUID_INVENTADO);
+
+  assert.equal(llamadas[0].url, `/api/revision/historial?incidencia_id=${UUID_INVENTADO}`);
+  assert.equal(llamadas[0].opciones.method, "GET");
+  assert.deepEqual(datos.revisiones, []);
+
+  const otra = apiDePrueba([respuesta(200, {})]);
+  await otra.api.historialRevision("x&incidencia_id=y");
+  assert.equal(otra.llamadas[0].url, "/api/revision/historial?incidencia_id=x%26incidencia_id%3Dy");
+});
+
+test("f038 R10: accionRevision manda el cuerpo JSON tal cual y devuelve la incidencia", async () => {
+  const fila = { incidencia_id: UUID_INVENTADO, estado: "aprobada", revision_id: 1 };
+  const { api, llamadas } = apiDePrueba([respuesta(200, fila)]);
+
+  const datos = await api.accionRevision(cuerpoDeAccionInventado());
+
+  assert.equal(llamadas[0].url, "/api/revision/acciones");
+  assert.equal(llamadas[0].opciones.method, "POST");
+  assert.equal(llamadas[0].opciones.headers["Content-Type"], "application/json");
+  assert.deepEqual(JSON.parse(llamadas[0].opciones.body), cuerpoDeAccionInventado());
+  assert.deepEqual(datos, fila);
+});
+
+test("f038 R10/R26: accionRevision NO se reintenta: ni un 502, ni la red", async () => {
+  for (const paso of [respuesta(502, { error: "proxy caido, inventado" }), new TypeError("Failed to fetch")]) {
+    const { api, llamadas, esperas, trazas } = apiDePrueba([paso, respuesta(200, {})]);
+
+    await assert.rejects(() => api.accionRevision(cuerpoDeAccionInventado()));
+
+    assert.equal(llamadas.length, 1, "la accion es el acto de una persona: no se repite sola");
+    assert.deepEqual(esperas, []);
+    assert.ok(trazas.every((t) => t.estado !== "reintentando"));
+  }
+});
+
+test("f038 R12: accionRevision sin respuesta sale con http null, para decir «no se sabe»", async () => {
+  const { api } = apiDePrueba([new TypeError("Failed to fetch")]);
+
+  await assert.rejects(() => api.accionRevision(cuerpoDeAccionInventado()), (error) => {
+    assert.equal(error.http, null);
+    assert.equal(error.tipo, "transitorio");
+    assert.doesNotMatch(error.mensaje, /reintentando/i);
+    return true;
+  });
+});
+
+test("f038 R26: las dos lecturas reintentan lo transitorio, como bandeja", async () => {
+  for (const llamar of [(api) => api.revision("9901"), (api) => api.historialRevision(UUID_INVENTADO)]) {
+    const { api, llamadas, esperas } = apiDePrueba([
+      respuesta(502, { error: "transitorio" }),
+      respuesta(200, { obra: "9901" }),
+    ]);
+
+    const datos = await llamar(api);
+
+    assert.equal(llamadas.length, 2);
+    assert.deepEqual(esperas, [1000]);
+    assert.equal(datos.obra, "9901");
+  }
+});
+
+test("f038 R26: un 503 de las tres ensena el texto del servicio, no la puerta de archivar", async () => {
+  const casos = [
+    (api) => api.revision("9901"),
+    (api) => api.historialRevision(UUID_INVENTADO),
+    (api) => api.accionRevision(cuerpoDeAccionInventado()),
+  ];
+
+  for (const llamar of casos) {
+    const { api } = apiDePrueba([respuesta(503, { error: "no se ha podido hablar con Sigrid: no se ha escrito nada, inventado" })]);
+
+    await assert.rejects(() => llamar(api), (error) => {
+      assert.equal(error.http, 503);
+      assert.equal(error.mensaje, "no se ha podido hablar con Sigrid: no se ha escrito nada, inventado");
+      assert.doesNotMatch(error.mensaje, /entorno no archiva/i);
+      return true;
+    });
+  }
+});
+
+test("f038 R26: el error de la accion trae su codigo y lo propio del cuerpo en `detalle`", async () => {
+  const cuerpos = [
+    { http: 400, cuerpo: { error: "2 campo(s) no valen, inventado", codigo: "valores_no_validos", errores: [{ campo: "ubicacion", problema: "problema inventado" }] } },
+    { http: 409, cuerpo: { error: "no se puede, inventado", codigo: "accion_no_permitida", estado: "volcada", acciones: [] } },
+    { http: 409, cuerpo: { error: "no aprobable, inventado", codigo: "incidencia_no_aprobable", motivos: ["sin_ubicacion"] } },
+    { http: 409, cuerpo: { error: "demasiado grande, inventado", codigo: "bandeja_demasiado_grande", total: 12345 } },
+    { http: 404, cuerpo: { error: "no esta, inventado", codigo: "incidencia_no_encontrada" } },
+  ];
+
+  for (const { http, cuerpo } of cuerpos) {
+    const { api, llamadas } = apiDePrueba([respuesta(http, cuerpo)]);
+
+    await assert.rejects(() => api.accionRevision(cuerpoDeAccionInventado()), (error) => {
+      assert.equal(error.http, http);
+      assert.equal(error.codigo, cuerpo.codigo);
+      assert.equal(error.mensaje, cuerpo.error, "el texto del servicio, tal cual");
+      assert.deepEqual(error.detalle, cuerpo, "R26: el cuerpo del error tal cual llego");
+      return true;
+    });
+    assert.equal(llamadas.length, 1);
+  }
+
+  const { api } = apiDePrueba([respuesta(409, { error: "x", codigo: "bandeja_demasiado_grande", total: 10001 })]);
+  await assert.rejects(() => api.revision("9901"), (error) => {
+    assert.equal(error.detalle.total, 10001);
+    return true;
+  });
+});
+
+test("f038 R26: clasificar deja el cuerpo en `detalle`; sin JSON, null", () => {
+  const { clasificar, ErrorApi: Clase } = require("../js/api.js");
+
+  const cuerpo = { error: "texto inventado", codigo: "incidencia_no_aprobable", motivos: ["duplicada"] };
+  const error = clasificar(409, cuerpo);
+  const sinJson = clasificar(502, undefined);
+
+  assert.deepEqual(error.detalle, cuerpo);
+  assert.equal(error.mensajeServicio, "texto inventado", "lo de F-036 no cambia");
+  assert.equal(error.codigo, "incidencia_no_aprobable");
+  assert.equal(sinJson.detalle, null);
+  assert.equal(clasificar(200, { ok: true }), null);
+  assert.equal(new Clase("peticion", 400, "x").detalle, null, "un ErrorApi nace sin detalle");
+});
+
+test("f038 R26: un error que no es JSON sale como desconocido, con detalle null", async () => {
+  const { api } = apiDePrueba([respuesta(500, "<html>error del proxy</html>")]);
+
+  await assert.rejects(() => api.accionRevision(cuerpoDeAccionInventado()), (error) => {
+    assert.equal(error.tipo, "desconocido");
+    assert.equal(error.http, 500);
+    assert.equal(error.detalle, null);
+    return true;
+  });
+});
+
+test("f038 R15/R26: las tres trazan su paso propio, y nada mas que hash, paso, estado y http", async () => {
+  const casos = [
+    { llamar: (api) => api.revision("9901"), paso: "revision" },
+    { llamar: (api) => api.historialRevision(UUID_INVENTADO), paso: "revision_historial" },
+    { llamar: (api) => api.accionRevision(cuerpoDeAccionInventado()), paso: "revision_accion" },
+  ];
+
+  for (const caso of casos) {
+    for (const guion of [[respuesta(200, {})], [respuesta(409, { error: "x", codigo: "revision_desactualizada" })]]) {
+      const { api, trazas } = apiDePrueba(guion);
+
+      try {
+        await caso.llamar(api);
+      } catch (error) {
+        // el 409: lo que importa aqui es la traza
+      }
+      const evento = trazas[trazas.length - 1];
+
+      assert.equal(evento.paso, caso.paso);
+      assert.deepEqual(
+        Object.keys(evento).filter((k) => ["hash", "paso", "estado", "http"].indexOf(k) === -1),
+        [],
+        "ni el cuerpo, ni el correo, ni el oid pasan por la traza",
+      );
+      assert.doesNotMatch(JSON.stringify(trazas), /ejemplo\.invalid|oid-inventado/);
+    }
+  }
 });

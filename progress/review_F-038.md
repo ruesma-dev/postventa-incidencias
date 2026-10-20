@@ -334,3 +334,256 @@ de trabajo, limpio antes y después.
   una lectura) y **O-B1-4** (`cuerpoDeAccion` lanza fuera del `try` de `actuar`): siguen como observaciones; que T5 las
   tenga delante al montar las familias, y el líder decide si alguna merece tarea.
 - **O-B1-1 (b)** (guarda de `puedeAprobar` en el propio `aprobar`): no aplicada; queda cubierta por la (a) en T1 bis.
+
+## Review del Bloque 1 bis · T1 bis, T3 y T4 (2026-10-20)
+
+- **Veredicto: CHANGES_REQUESTED.** Hay dos cambios, y los dos son solo de tests (C-B1b-1 y C-B1b-2). `bandeja.html`,
+  `importar.html`, `js/portal.js` y los documentos no tienen que cambiar. La página cumple lo que pide el bloque: lo he
+  leído entero y lo confirman los tests. Lo que falla es que la guardia del `:disabled` de cinco de los seis botones de
+  acción está ciega, aunque el test dice que la vigila: seis mutantes a mano sobreviven a toda la suite.
+- **Alcance:** `fa433f5` (T1 bis), `7d9b926` (T3), `7b44fed` (T4) y `cee7cf6` (el informe). Base fija `dev` `87a03f3`.
+  He revisado contra `tasks.md` (Bloque 1 bis), `requirements.md` (R1, R2, R3, R6, R7, R9–R15, R18, R19, R20, R21.6,
+  R23, R25), `design.md` §2.2, §2.3, §2.5 y §3.1, `progress/spec_F-038.md` §1.4 y §1.5, `docs/CONVENTIONS.md` y
+  `CHECKPOINTS.md`.
+- **Nivel de rigor:** `critico` (declarado). Pide fase RED con traza, cobertura de lo cambiado, mutación con cero
+  supervivientes sin justificación aceptada por el humano y las MANUAL listadas. En este bloque toca RED, «Evidencias» y
+  los controles no ciegos. La campaña de mutación es T5 (Bloque 1 quater), así que aquí he hecho **mutantes a mano de
+  muestra** sobre `bandeja.html`, para medir si los tests protegen lo que dicen proteger.
+- **`bash harness/init.sh` no lo he ejecutado** (P-4). Este veredicto no sustituye a su resultado.
+
+### Ejecutado (resultado real)
+
+| Desde | Comando | Resultado |
+|---|---|---|
+| `services/postventa-front` | `node --test --test-timeout=15000 "tests_js/*.test.js"` | 858 tests, 858 pass, 0 fail |
+| `services/postventa-front` | `python -m pytest -q -p no:cacheprovider` | 865 passed, 7 skipped |
+| raíz | `python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py` | 19 passed |
+
+`git diff 87a03f3..HEAD -- services/postventa-api`: vacío. `js/revision.js`, `js/api.js`, `js/importacion.js` y
+`tests/test_f036_front.py` no se tocan en este bloque. En las líneas añadidas, el barrido (correos y GUID) solo
+encuentra los UUID inventados `00000000-0000-4000-8000-0000000000aa/b1`. Ni correos reales, ni nombres, ni obras reales.
+
+### Mutantes a mano del reviewer (copia en el scratchpad, nunca en el árbol)
+
+Lo hice así: una copia de `services/postventa-front` con `docs/`, `harness/` y `tests/` en el scratchpad. Se aplica
+cada mutante a la copia de `bandeja.html` y se lanzan `node --test --test-timeout=60000 "tests_js/*.test.js"` y
+`python -m pytest -q -p no:cacheprovider tests/test_f038_front.py tests/test_f035_paginas.py tests/test_f035_portal.py`.
+El árbol de trabajo estaba limpio antes y después (`git status`).
+
+| # | Mutante en `bandeja.html` | node | pytest | Resultado |
+|---|---|---|---|---|
+| M1 | «Editar»: `puedeActuar() OR formulario !== null` (sin la negación: se habilita **sin sesión**) | verde | verde | **sobrevive** |
+| M2 | «Descartar»: `puedeActuar() OR confirmandoDescarte === …` (ídem) | verde | verde | **sobrevive** |
+| M3 | «Recuperar»: `!puedeActuar() OR true` (siempre deshabilitado) | verde | verde | **sobrevive** |
+| M4 | «Guardar cambios»: `!puedeActuar() OR true` | verde | verde | **sobrevive** |
+| M5 | «Editar»: `… OR formulario === null` (siempre deshabilitado con el formulario cerrado) | verde | verde | **sobrevive** |
+| M11 | «Sí, descartarla»: `!puedeActuar() OR true` | verde | verde | **sobrevive** |
+| M6 | «Aprobar» con AND en vez de OR | ROJO | verde | muere (test (c) de la decisión 1) |
+| M7 | puerta de «Aprobar» ampliada con `OR fila.estado === 'aprobada'` | ROJO | ROJO | muere |
+| M8 | panel de descarte sin `confirmandoDescarte === fila.incidencia_id` | verde | ROJO | muere |
+| M9 | formulario con `x-if="formulario"` (sin la puerta de editar) | ROJO | ROJO | muere |
+| M10 | `@click="aprobar(fila.incidencia_idd)"` (argumento con errata: un botón que no hace nada) | ROJO* | verde | *solo por accidente: caen dos **controles** porque ya no encuentran su ancla de texto; el test (a) sigue verde (C-B1b-2) |
+| M12 | «Cargar más» sin `:disabled="cargandoMas"` | verde | ROJO | muere |
+| M13 | aviso de sesión incompleta con AND en vez de OR | verde | verde | sobrevive (O-B1b-2) |
+| M14 | `beforeunload` sin `returnValue` | ROJO | verde | muere |
+| M15 | «No se puede aprobar: …» con `x-show="false"` | verde | verde | sobrevive (O-B1b-2) |
+| M16 | la guarda lee `[x-data]` en vez de `[x-data="appRevision()"]` | ROJO | verde | muere |
+
+(En la tabla, OR y AND son los operadores `||` y `&&` de JavaScript.)
+
+**Por qué sobreviven M1–M5 y M11.** La guardia de pytest (`botones_sin_su_puerta`, `tests/test_f038_front.py:339`) solo
+comprueba que el texto `puedeActuar()` aparece en el `:disabled`. Una negación quitada o un `|| true` no le cambian
+nada. El test de Node «f038 R10: sin puedeActuar() … ningún botón de acción está habilitado»
+(`tests_js/revision.test.js:1940`) evalúa el `:disabled` en el alcance de `alcanceConTodoAbierto`, que **fuerza**
+`formulario` y `confirmandoDescarte = ID_1` (`:1852-1853`). Así, en «Editar» y en «Descartar» el segundo término de la
+disyunción ya es `true` y tapa el de `puedeActuar()`. Además, ningún test comprueba lo contrario: que con sesión y sin
+otro bloqueo los botones **se pueden pulsar**. Solo «Aprobar» tiene su tabla de verdad. La consecuencia: una página que
+no deja revisar nada (M3, M4, M5, M11), o que habilita «Editar» y «Descartar» sin sesión (M1, M2; `actuar` los
+frenaría, pero R10 pide el botón deshabilitado), pasa toda la suite.
+
+### Checkpoints
+
+Esta es una review **de bloque**. Lo que solo se puede cumplir al cerrar la feature va como N/A con su motivo, y se
+exige en la review final (1 a 1 quater) o en el cierre (T8–T11).
+
+**C1**
+- N/A · `init.sh` exit 0: P-4. Lo ejecuta el líder y esta review no tiene su resultado. Hace falta antes de dar el
+  bloque por cerrado.
+- [x] Existen los siete ficheros del arnés.
+
+**C2**
+- [x] Una sola `in_progress` (F-038). Rama `feature/F-038-bandeja-revision`.
+- [x] `progress/current.md`: sesión de F-038.
+- N/A · resumen en `history.md`: el bloque no cierra ninguna feature.
+
+**C3**
+- [x] Arquitectura: la página solo habla por `js/api.js` (tres rutas de F-056 y `/.auth/me`). No hay ninguna ruta
+  propia en `bandeja.html` (`test_f038_r15_*`) ni `/revision/normalizar` (R23). Nada de `services/postventa-api`.
+- [x] Primera línea con la ruta en `bandeja.html` y `test_f038_front.py`. Los demás ficheros tocados la conservan.
+- [x] Sin `console.*`, `debugger`, TODOs, secretos ni dependencias nuevas. Alpine y Tailwind tienen la misma versión fija
+  que las otras páginas, y la `?v=` de la hoja no cambia.
+- N/A · parte, firma, manuscrito, reprocesar, `conest`: son del circuito de partes escaneados, que este bloque no toca.
+- [x] Nada se escribe sin clic: cada acción sale de un `@click` dentro de la puerta `fila.acciones.includes(…)`. La
+  confirmación no está en el HTML. Cargar (y `?obra=` al iniciar, R3 precisado) solo lee.
+- [x] Ningún escaneado ni PDF en git.
+
+**C3 bis** · N/A: no toca `docs/referencia/`.
+
+**C4**
+- [x] Cada R del bloque tiene un test trazable y todos pasan (tabla de abajo). Con el matiz de C-B1b-1: el de R10 no
+  prueba lo que dice en cinco botones.
+- [x] Ningún test toca red ni BBDD. Los de Node usan el `api` doble y un `vm` sin `window` real.
+- N/A · MANUAL en `current.md`: T6, T7 y T10 son de los Bloques 2–4 y ya están escritas en `tasks.md`.
+
+**C4 bis**
+- [x] `rigor: critico` declarado.
+- [x] Fase RED: traza real pegada (44 failed y 1 passed en pytest, con el motivo del único verde; 19 fail en portal y
+  f035_paginas; 10 fail en revision), más la de la guardia vieja de la tira sobre la `bandeja.html` de T3 y la de la
+  huella de `importar.html`.
+- N/A · Cobertura: la puerta de `init.sh` mide Python, y el bloque es HTML, JS y tests. `init.sh` es del líder (P-4).
+- N/A · Mutación con la herramienta: es T5 por plan, y `harness.mutacion` no muta `.js` ni `.html`. Para sustituirla aquí
+  van los 16 mutantes a mano de arriba.
+- [ ] **Cero supervivientes (mutantes a mano):** 6 supervivientes en una guardia que el bloque declara (M1–M5, M11).
+  Ver C-B1b-1. M13 y M15 están en observaciones: no son guardias que el bloque diga tener.
+- [x] «Evidencias» con los cuatro números. Cobertura y mutación figuran como «no disponible» y «pendiente por plan»,
+  con su motivo.
+- [x] Controles no ciegos en las guardias nuevas: R1 (migas y subnavegación, pie), R2, R10 (acción fuera de un clic,
+  cuatro formas), R11 (puerta), R14 (tres estropeos), la tira (cinco), R70 por página, y en Node (nombre inexistente,
+  botón sin puerta, `:disabled` de «Aprobar»). **Salvo** la del `:disabled` de los demás botones: C-B1b-1.
+- N/A · guarda por definiciones: ningún fichero sale de una lista de «no se toca».
+
+**C4 ter** · N/A: no existe `harness/rutas_sensibles.json`.
+
+**C5**
+- [x] T1 bis, T3 y T4 `[x]`, con un commit `F-038 Tn:` por tarea.
+- [x] Árbol limpio antes y después de la review (salvo este fichero).
+- [x] `features.json`: F-038 `in_progress`.
+
+### Los cambios en tests ajenos (F-035): uno por uno
+
+He comprobado el inventario de `design.md` §3.1 con `grep -rn "oficios.html" tests tests_js`. Todas las listas de
+páginas que debían crecer, crecen. Las de `entrada` (`PAGINAS_REMODELADAS`, `MIGAS_DE_ENTRADA`, `SUBNAV_DE_ENTRADA`,
+`PIE_PAGINAS_REALES`) siguen igual, y `bandeja.html` pasa por las mismas funciones desde `test_f038_front.py`
+(R70, R71, R72, R73, R77, R54/R60). **Ninguna aserción se debilita:**
+
+- `problemas_r71` y `problemas_r72`: con los valores por defecto, el código es el de antes línea a línea; solo cambian
+  las constantes por los parámetros. La rama `subnav_esperada=None` es más estricta: prohíbe cualquier `rs-subnav`.
+  Hay control en `test_f038_r1_control_las_guardias_de_entrada_siguen_pidiendo_lo_suyo`. **[x]**
+- `problemasDelRecorrido`, R85: la rama nueva solo se activa con `enlace === null` y un paso que no es el actual.
+  `actual` sale de la **fuente** (`pasoDeSeccion(PAGINAS[desde])`), no del HTML, así que una página mal marcada no se
+  cuela por ahí. En `index`, `partes`, `importar` y `oficios`, el único paso con `enlace === null` es el actual, y para
+  ellas la guardia no cambia. Lleva sus cinco controles sobre `bandeja.html`. **[x]**
+- Los tres controles mudados a `impresion` (F-044) son la única ficha de su sección y siguen en `construccion`. Con
+  F-044 `done`, `impresion` pasa a `real`. He comprobado que siguen exigiendo un solo problema con el nombre de la
+  sección. **[x]**
+- Los controles de R70 por página: los de `importar.html` y `oficios.html` son literalmente los de antes, con el mismo
+  nombre de test. **[x]**
+- `HUELLA_DE_IMPORTAR`: una entrada nueva, la del enlace, en el mismo commit (O11-5). **[x]**
+
+### `importar.html` (R14) y la documentación (R19, R20)
+
+- `importar.html`: el único cambio es un `<p>` con la frase de §2.5 y un `<a href="bandeja.html" :href="…">`, en
+  `section#bandeja`, fuera de la `<table>`, sin `target`, más un comentario. `js/importacion.js` y
+  `test_f036_front.py` no se tocan, y siguen en verde. **[x]**
+- README «La bandeja de revisión (F-038)»: página, sección, tres rutas, paginación con cursor, deriva conocida,
+  `beforeunload` y la regla de un solo commit de R16–R17. Cubre R19. `docs/ARCHITECTURE.md` «La página de revisión
+  (F-038)»: sección, rutas y `Portal.PAGINAS`. Cubre R20 en su parte de este repo; `azure-apps` es del líder (T6).
+  **[x]**
+
+### La decisión 1, con lupa
+
+`recorrerBandeja` prueba de verdad lo que hace Alpine en lo que importa aquí: un `x-if` falso no pinta lo de dentro; un
+`x-for` pinta su primer elemento con sus variables; `with` evalúa con `this` igual al alcance, que es la semántica de
+Alpine; y el formulario y el descarte se fuerzan en el alcance para medir la puerta **del HTML** y no la del
+componente. Eso es lo que hace que M7 y M9 mueran en Node: pytest, que solo busca el texto `includes('aprobar')`, no
+caza M7 en el estado `aprobada` por sí solo. Pegas, de menor a mayor:
+
+- No es frágil por accidente en lo que he probado. Ignora comentarios y `<script>`, y tiene un umbral de elementos (más
+  de 50; pinta 234) para que un HTML que la expresión regular dejara de leer no pase en blanco.
+- Con el fixture, la `fila.motivos` está vacía, así que el `x-for` de los chips de motivos no se recorre nunca y sus
+  expresiones no se evalúan (comprobado con una sonda en una copia). Menor: O-B1b-1.
+- Los manejadores solo se comprueban por el nombre del método, no por sus argumentos (M10). Y como `with` sobre una
+  propiedad inexistente da `undefined` sin lanzar, evaluar los argumentos no bastaría: hay que **ejecutar** el clic.
+  Lo pide C-B1b-2.
+- **El alcance forzado tapa los `:disabled` que combinan `puedeActuar()` con el propio estado del formulario o del
+  descarte.** Es C-B1b-1.
+
+### Cobertura: requisito → test (Bloque 1 bis)
+
+| R | Test |
+|---|---|
+| R1 | `test_f038_r1_*` (ruta, `Portal.PAGINAS`, R70, R71 con controles, R72 con pie y control, R73, R77, R54/R60, título y frase, scripts, sin datos reales); f035 R44 «desde bandeja.html»; R70 de la barra de `bandeja.html` y sus controles; R66 de la barra de `bandeja.html`; `PAGINAS_DEL_FRONT`, `PAGINAS_REALES_CON_VERSION`, `_paginas_del_front` |
+| R2 | `test_f038_r2_*` (con control); f035 R66 sobre `bandeja.html` |
+| R3, R6 | `test_f038_r3_r6_el_campo_de_obra_cargar_y_los_filtros_van_al_servidor` (opciones = `FILTROS_DE_ESTADO`, en orden) |
+| R7 | `test_f038_r7_cargar_mas_con_n_de_m` |
+| R9, R12 | `test_f038_r9_r12_el_formulario_y_el_problema_junto_a_cada_campo` |
+| R10 | `test_f038_r10_*` (fuera de un clic, cuatro controles; confirmación); Node «R10: sin puedeActuar()…» (**ciego en cinco botones: C-B1b-1**); Node «R10, R11 (O-B1-1 a)» y su control |
+| R11, R21.6 | `test_f038_r11_*` (puertas, campos, segundo clic, motivos); Node «en cada estado… ni uno más» y su control. «Ya no se revisa aquí» es del Bloque 1 ter |
+| R13 | `test_f038_r13_un_solo_beforeunload_que_solo_lee`; Node «R13» ×3 |
+| R14 | `test_f038_r14_*` (con tres controles); `test_f035_o11_5_importar_conserva_su_huella_funcional` |
+| R15, R23 | `test_f038_r15_*`, `test_f038_r23_*` |
+| R18 (controles mudados) | `test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done`, `test_f035_r62_control_el_lector_de_estados_lee_el_texto` (raíz); «f035 R66: control: quitar data-construccion de una pestaña de partes.html salta» |
+| R19, R20 | `test_f038_r19_r20_la_documentacion_cuenta_la_pagina[readme-r19, architecture-r20]` |
+| R25 | f035 R84–R87 y R88 sobre `bandeja.html`, con los cinco controles nuevos |
+
+### Cambios requeridos
+
+1. **C-B1b-1 · El `:disabled` de cada botón de acción, con su tabla de verdad y no solo el de «Aprobar»**
+   (`tests_js/revision.test.js:1940`; si se prefiere, un test nuevo junto a él). Para «Editar», «Descartar»,
+   «Recuperar», «Guardar cambios» y «Sí, descartarla», evaluar el `:disabled` en un alcance hijo del suyo
+   (`Object.create(boton.alcance)`), **sin** los bloqueos que fuerza `alcanceConTodoAbierto`:
+   `formulario = null` para «Editar» y `confirmandoDescarte = null` para «Descartar». En ese alcance:
+   (a) `puedeActuar = () => false` → deshabilitado;
+   (b) `puedeActuar = () => true` → **habilitado**.
+   Además, el bloqueo propio de cada uno con `puedeActuar` a `true`: «Editar» con el formulario abierto → deshabilitado;
+   «Descartar» con el segundo clic pedido → deshabilitado. «Recuperar» se prueba en una `descartada`. Hace falta un
+   control en memoria que ponga en rojo al menos M1 y M3. Criterio: M1, M2, M3, M4, M5 y M11 de la tabla, en rojo.
+2. **C-B1b-2 · Que cada botón de acción haga su acción sobre SU fila, ejecutando el clic**
+   (`tests_js/revision.test.js`, junto a «en cada estado… ni uno más»). En el alcance del componente (con el `api`
+   doble que cuenta), por cada botón de acción pintado, ejecutar su expresión `@click` con
+   `evaluarEn(alcance, expresion)` y comprobar:
+   - `aprobar`, `recuperar`, `confirmarDescarte` y `guardarEdicion` (este con un cambio en el formulario) llegan a
+     `accionRevision` con `incidencia_id === ID_1` y su `accion`;
+   - `abrirFormulario` y `pedirDescarte` dejan `formulario` o `confirmandoDescarte` en `ID_1`.
+
+   Hoy un argumento con errata (M10, `aprobar(fila.incidencia_idd)`) deja un botón que no hace nada, y la suite solo
+   cae porque dos controles pierden su ancla de texto. Criterio: M10 en rojo **en un test que no sea un control**.
+
+No hay que tocar `bandeja.html`, `importar.html`, `js/` ni los documentos. Si al escribir C-B1b-1 algún botón resulta
+mal, se para y se dice.
+
+### Observaciones (no bloquean)
+
+- **O-B1b-1 · El recorrido no pinta los chips de motivos.** En `alcanceConTodoAbierto` la fila no tiene motivos, así
+  que `x-for="(motivo, n) in fila.motivos"` sale vacío y sus `x-text`/`:key` no se evalúan nunca. Basta con darle un
+  motivo a la fila en el test (a), por ejemplo `motivos_no_aprobable: ["sin_ubicacion"]` y `aprobable: false`, o con una
+  segunda pasada así.
+- **O-B1b-2 · Dos `x-show` sin guardia.** M15 (el párrafo «No se puede aprobar: …» oculto) sobrevive. Los motivos siguen
+  a la vista como chips en la lista, así que R11 se cumple igual, pero ese párrafo es el que acompaña al botón. M13 (el
+  aviso de sesión incompleta, decisión 8) también sobrevive. Que T5 los meta en sus familias, o que un test los evalúe
+  como el `:disabled` de «Aprobar».
+- **O-B1b-3 · Recargar o abrir otro detalle tira una edición sin preguntar.** `cargar()`, `cambiarFiltro()` y
+  `abrirDetalle()` de otra fila llaman a `cerrarDetalle()` o vacían `formulario` sin confirmar. R13 solo cubre salir de
+  la página (D-12), así que no es un defecto. Lo anoto para T7 (paso 7) y por si el humano lo quiere en una ficha.
+- **O-B1b-4 · La frase «llegará con F-038» de `importar.html`.** Estoy de acuerdo con el implementer: R14 prohíbe
+  cualquier otro cambio en la página, así que se queda. Que la quite T8 (el cierre) o F-057.
+- **O-B1b-5 · `subnav_esperada=None` mira solo la clase.** Un `<nav aria-label="Entrada de incidencias">` sin
+  `rs-subnav` pasaría. Es un caso rebuscado; lo dejo dicho.
+
+### Respuesta a las decisiones y dudas del implementer (Bloque 1 bis)
+
+- Decisiones 2, 3, 5, 6, 7, 8 y 9: aceptadas. Casan con R10–R14, §2.2, §2.4 y §2.5. La 5 (`<script>` en línea antes de
+  los cuatro scripts propios) es la única forma de cumplir a la vez §2.4 y `problemas_de_carga` de F-036.
+- Decisión 4 (el selector en rojo cuando el Bloque 1 ter añada `volcada` y `en_duda`): de acuerdo, es lo que tiene que
+  pasar.
+- Decisión 1: aceptada como enfoque, con C-B1b-1 y C-B1b-2.
+- Lo de que T3 dejara cuatro rojos de R14 hasta T4 es el orden de las tareas y no una desviación. De acuerdo.
+
+### Automejora (propuesta, no aplicada)
+
+- En `CHECKPOINTS.md` C4 bis, o en la sección de rigor del reviewer: **«Una guardia que comprueba que un texto aparece
+  en una expresión (por ejemplo, `puedeActuar()` dentro de `:disabled`) no prueba la expresión. En `critico`, toda
+  expresión que decida si se puede pulsar un control que escribe se evalúa con su tabla de verdad, y la evaluación no
+  puede hacerse en un alcance que fije a verdadero otro término de la misma disyunción.»** Origen: los seis
+  supervivientes de este bloque. Vale para cualquier front con Alpine, así que, si el humano lo aprueba, iría también a
+  `arnes-base`.

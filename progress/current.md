@@ -2,6 +2,32 @@
 # Sesión activa
 
 > ## F-038 · `in_progress` · 2026-10-20 · paso 1: poner la spec al día con `dev`
+> **Pendientes MANUAL del humano (C-B1f-10, review final del Bloque 1)**, con su comando exacto; el detalle de cada
+> paso está en `specs/F-038-bandeja-revision/tasks.md`, Bloques 2 y 3. Precondición: review final del Bloque 1 APPROVED
+> y `bash harness/init.sh` en verde (el líder).
+> - **T6 · Publicar la página.** El líder hace el merge normal a `dev` desde un worktree aparte; el push, el humano.
+>   Después, el humano publica el front desde un worktree limpio de `dev`, en la raíz del repositorio principal y
+>   **siempre con `-SoloFront`** (el modo completo regenera el secreto de cliente):
+>   ```
+>   git worktree add --detach ..\postventa-publicar dev
+>   powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_front.ps1 -SoloFront
+>   git worktree remove ..\postventa-publicar
+>   ```
+>   Se anota el commit publicado en `progress/impl_F-038.md`. En el mismo trabajo, el líder pone al día
+>   `azure-apps/postventa_incidencias.md` con la página nueva (R20).
+> - **T7 · Verificar en producción**, en el front publicado, sin nombres ni correos en las notas. Foto de antes y de
+>   después de las reclamaciones de la 0677 (la raíz de la pasarela y la base, como en las fotos de F-059; pide la clave):
+>   ```
+>   powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677 -SigridBaseUrl <raíz de la pasarela> -SigridBaseDatos ruesma
+>   ```
+>   Entre las dos fotos, los pasos 2 a 9 de T7: carga en caliente de `bandeja.html?obra=0677` y su resumen contra
+>   `GET /api/revision`; la fila de prueba «PRUEBA F-038 - DESCARTAR», que **tiene que acabar `descartada`**; las
+>   revisiones del sistema y un valor fuera de catálogo; la volcada `RS26.10/0074` de la 0626 en solo lectura;
+>   concurrencia en dos pestañas; guarda de salida; el enlace de `importar.html`; sin correos ni `oid` en la consola ni
+>   en el almacenamiento. Los recuentos de la foto no cambian.
+> - **N11 aceptado como equivalente por el humano, por escrito, el 2026-10-20** («Sí, lo acepto»): en `abrirDetalle`,
+>   `historialRevision(this.abierta)` frente a `historialRevision(incidenciaId)`, que valen lo mismo sin `await` entre
+>   la asignación y la llamada.
 > Rama `feature/F-038-bandeja-revision` **nueva** desde `dev` **`87a03f3`** (base fija: F-056, F-060 y F-059 cerradas y
 > mergeadas). La rama anterior (spec del 2026-10-06 sobre `349ba06`) queda como `archivo/F-038-spec-2026-10-06`; su
 > spec se trae tal cual; worktree `postventa-f038` retirado. Orden aceptado por el humano (2026-10-20): rama → spec-author

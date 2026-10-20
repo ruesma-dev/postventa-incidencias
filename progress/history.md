@@ -2278,3 +2278,46 @@ Lo que enseñó:
   `arnes-base` como encargo (`5580565`).
 - **El despliegue pide teclado**: lanzado con `!` desde la sesión se aborta solo («No se ha tocado nada»); se lanza
   desde la ventana de PowerShell del humano.
+
+## F-059 · El volcado a Sigrid, backend — 2026-10-20
+
+**Cerrada.** Rama `feature/F-059-volcado-sigrid-backend` desde `dev` `2d2efd7`, rigor `critico`, 6 bloques. Spec
+aprobada por el humano el 2026-10-07 y conciliada con `dev` el 2026-10-15 (rutas anónimas desde 21). Bloques 1 a 5
+APPROVED por bloque; review final CHANGES_REQUESTED (C-F-1, la guarda de alcance no veía importaciones ni sentencias de
+módulo; C-F-2, los pasos manuales en `current.md`) y re-review APPROVED (`c7af521`). Desplegada el 2026-10-17 desde
+`dev` `81049bc` con la ventana cerrada; `azure-apps` `8f9a8a8` (`postventa_incidencias.md`) y `ab28e40`
+(`sigrid_api.md` §10).
+
+Qué queda: tres rutas (`GET /api/volcado`, `POST /api/volcado/ensayo`, `POST /api/volcado/volcar`) sobre
+`POST /api/sigrid/partes-reclamacion` de `sigrid-api`. Para volcar hacen falta un ensayo de la misma persona de menos
+de 30 minutos, `confirmado: true` y la ventana `VOLCADO_HABILITADO` abierta (`infra/27_ventana_volcado.ps1`; cada
+despliegue la cierra). Antes de cada commit se anota el evento `enviado`; la referencia `PVI-<incidencia_id>` hace
+idempotente el reintento. Tabla append-only `postventa.volcados_sigrid` (`16_volcados_sigrid.sql`); los estados
+`volcada` y `en_duda` bloquean la revisión de F-056. Tipo `0002`, causante `false`, sin urgencia ni clase; el parte
+queda en SAT y Posventa lo pasa a PTE a mano. Lectura de comprobación: `infra/28_volcado_lectura_sigrid.ps1`.
+
+En producción (obra 0626, 2026-10-19, una escritura autorizada): ventana cerrada → 503 `volcado_deshabilitado`;
+abierta → **`RS26.10/0074`, `creado` en 1,8 s**, y cerrada enseguida; en la bandeja, `volcada` con su código, `editar`
+409 y un ensayo nuevo la excluye `ya_volcada`. Application Insights: obra, llamada, recuentos, referencia, estado,
+código y duración; 0 de 579 trazas con `@`, `oid` o `login`. Foto de después (2026-10-20): 1 parte con la referencia, en SAT, tipo `0002`, oficio `0005`, 1 interviniente y 0 causantes. **T26**: el humano lo anuló desde la UI de Sigrid (Procesos → «Rechazar reclamación (NO enviar email)») y la foto lo da en **NPR** (NO PROCEDE). En la bandeja la fila sigue `volcada`.
+
+Evidencias: `init.sh` 9199 passed, 233 skipped; cobertura 100 % de 1122 líneas cambiadas; base efímera (T8) 104
+passed; mutación por bloques con los equivalentes aceptados por escrito (V05d, A09 y los 13 de E-1) y T22 cerrada por
+la opción B del humano (201/203 ya medidos en las campañas de bloque, los 2 de `_con_texto` muertos a mano).
+
+Lo que enseñó:
+
+- **Un equivalente solo se cierra por escrito.** Los mutantes 16 y 24 parecían equivalentes y no lo eran: un test
+  que fija la alarma de `zip(strict=True)` los mató.
+- **`init.sh` hace leer el `.env` a la suite** (la sección 7 bis hace `cd` al servicio). Un implementer lo lanzó antes
+  de leer el aviso; la guardia `sin_red` evitó conexiones, pero la regla se incumplió. Queda como encargo pendiente en
+  `arnes-base` (P-4); hasta entonces, los subagentes lanzan los tests desde una carpeta sin `.env` y `init.sh` lo
+  ejecuta el líder.
+- **La primera lectura a `sigrid-api` tras un rato parada puede pasar de 35 s**: el primer ensayo con la ventana
+  abierta dio 502 `ensayo_sin_respuesta` y el guion paró antes de volcar, que es lo correcto; 98 s después tardó
+  5,8 s. Antes de una escritura, un ensayo de calentamiento.
+- **Las trazas de Application Insights se leen en el workspace** (`log-postventa-dev`, `AppTraces`):
+  `az monitor app-insights query` devolvía vacío para el día de la prueba.
+- **Los guiones de consola se pueden ejecutar desde la sesión con Claude in Chrome**, con la sesión ya iniciada por
+  el humano; lo que pide teclado o clave (`27_ -Abrir`, `28_`) sigue siendo del humano. Las llamadas largas se lanzan
+  sin `await` y se leen después: la herramienta corta a los 45 s.

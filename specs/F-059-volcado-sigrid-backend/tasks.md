@@ -319,7 +319,7 @@
   commit publicado. El líder actualiza la fila de F-040/F-059 de
   `azure-apps/sigrid_api.md` §10 (Q-6) en un commit de ese repositorio. |
   Verificación: MANUAL (humano)
-- [ ] **T25 · MANUAL (humano)**, en producción, en la **obra 0626** (Q-4),
+- [x] **T25 · MANUAL (humano)**, en producción, en la **obra 0626** (Q-4),
   **con autorización expresa en el chat para UNA escritura**, desde la consola
   del navegador (F12) en el front publicado. Antes de empezar, elegir una UPV de
   la 0626 con tipología con ubicaciones y un oficio con proveedor en `obrofc`.
@@ -363,7 +363,7 @@
 
   Si algo no cuadra en cualquier paso: **T26** y parar; volver al spec-author. |
   Verificación: MANUAL (humano)
-- [ ] **T26 · MANUAL (humano) · Vuelta atrás y limpieza**, salga bien o mal:
+- [x] **T26 · MANUAL (humano) · Vuelta atrás y limpieza**, salga bien o mal:
   `infra\27_ventana_volcado.ps1 -Cerrar` (sin preguntar); el parte de prueba
   —y cualquier otro con `PVI-` que haya creado la prueba, listado con
   `28_volcado_lectura_sigrid.ps1`— se **anula desde la UI de Sigrid** (NO
@@ -372,6 +372,6 @@
   defecto es del código: redesplegar el commit anterior desde un worktree
   limpio con `-VentanasCerradas`. Anotar qué se anuló. |
   Verificación: MANUAL (humano) — `28_volcado_lectura_sigrid.ps1` enseña el parte anulado y la ventana `cerrada`
-- [ ] **T27**: resumen de F-059 en `progress/history.md` (el líder, al
+- [x] **T27**: resumen de F-059 en `progress/history.md` (el líder, al
   cerrar) y `bash harness/init.sh` en verde. |
   Verificación: `bash harness/init.sh`

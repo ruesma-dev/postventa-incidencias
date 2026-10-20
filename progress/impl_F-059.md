@@ -3439,9 +3439,6 @@ palabra tecleada). Una sola escritura en Sigrid, autorizada el 2026-10-18 («te 
 
 **Abierto (humano):**
 
-- Paso 5: la foto de después, `28_ -CodigoObra 0626 -Referencia PVI-1f01dbbc-…`,
-  y abrir `RS26.10/0074` en Sigrid: SAT, tipo 0002, sin pasar a PTE.
-- T26: anular `RS26.10/0074` desde la UI de Sigrid (NO PROCEDE, sin correo). Nunca con DELETE ni con sql/write.
 - `RS26.09/0439` (`PVI-PRUEBA-0001`) sigue en SAT y no es de F-059; preguntar a sigrid-api si debería estar anulado.
 - Observación para T27: el primer ensayo tras abrir la ventana dio 502 `ensayo_sin_respuesta`. **Corregido el
   2026-10-20 con las trazas**: no fue el arranque de nuestra Function, sino la lectura a `sigrid-api`, que tardó
@@ -3464,3 +3461,24 @@ tiene los datos.
   `volcado/volcar no procede`, sin datos.
 
 **Paso 7: PASA.**
+
+### T25 paso 5 y T26 · 2026-10-20 (humano; anotado por el líder)
+
+| Foto `28_ -CodigoObra 0626 -Referencia PVI-1f01dbbc-…` | Antes de anular | Después de anular |
+|---|---|---|
+| Partes tip 708 con la referencia / ficha `rcp` | 1 / 1 | 1 / 1 |
+| `cod` | `RS26.10/0074` | `RS26.10/0074` |
+| Estado | **SAT** | **NPR** (NO PROCEDE) |
+| Tipo / oficio | `0002` / `0005` | `0002` / `0005` |
+| Longitud de la ubicación / intervinientes / causantes | 12 / 1 / 0 | 12 / 1 / 0 |
+| UPV de la obra | sí | sí |
+| `MAX(cod)` de la serie | `RS26.10/0077` | `RS26.10/0077` |
+| Partes `PVI-` de la obra | 2 (la nuestra y `PVI-PRUEBA-0001`) | 2 |
+
+- **Paso 5: PASA.** El `MAX(cod)` era `/0073` en la foto de antes del volcado y el parte salió `/0074`; los
+  `/0075`–`/0077` son altas posteriores de otros (O-F-2). El humano abrió el parte en Sigrid para anularlo; no se
+  pasó a PTE.
+- **T26: hecha.** Anulado desde la UI de Sigrid con Procesos → «Rechazar reclamación (NO enviar email)»; la foto
+  lo da en NPR. Ni `DELETE` ni `sql/write`. La ventana sigue cerrada desde el 2026-10-19. En la bandeja la fila de
+  prueba sigue `volcada` y no se ha tocado la tabla.
+- **T27**: `history.md`, poda de `current.md` (O-F-3), O-F-1 en `docs/CONVENTIONS.md`, `done` y `init.sh` (el líder).

@@ -1,18 +1,16 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-059 · T25 hecha, T26 en manos del humano · 2026-10-20 · el cierre (T27) espera a la anulación
-> Lo cerrado de F-059 y de F-060 está resumido en `progress/history.md`; el detalle, en `progress/impl_F-059.md`,
-> `progress/review_F-059.md` y el historial de git (O-F-3, 2026-10-20: podadas de aquí sus entradas).
-> - **T25 (2026-10-19)**: una escritura en la 0626, parte **`RS26.10/0074`** (`PVI-1f01dbbc-…`),
->   creado en 1,8 s; ventana cerrada enseguida; pasos 3, 4, 6 y 7 conformes. Falta el paso 5 (foto de después y
->   revisión en Sigrid, humano).
-> - **T26 (humano)**: anular `RS26.10/0074` desde la UI de Sigrid (NO PROCEDE, sin correo) y comprobarlo con `28_`.
-> - **T27 (líder)**: `history.md` (borrador escrito), O-F-1 en `docs/CONVENTIONS.md` (hecho), `init.sh`, `done`, merge
->   a `dev` y `main` (locales) y comandos de push al humano.
+> ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
+> Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y
+> de F-060 se podó de aquí (O-F-3, 2026-10-20).
+> - **T25 (2026-10-19)**: una escritura en la 0626, **`RS26.10/0074`**, creado en 1,8 s; ventana cerrada enseguida.
+>   **T26 (2026-10-20)**: anulado desde la UI de Sigrid (Procesos → «Rechazar reclamación (NO enviar email)»), foto en NPR.
+> - Merge del cierre en `dev` y `main` (locales). **Push pendiente del humano**: `dev`, `main`, `azure-apps` y `arnes-base`.
 > - Ajeno a F-059: `RS26.09/0439` (`PVI-PRUEBA-0001`) sigue en SAT; preguntar a `sigrid-api`.
-> - **Siguiente** (prioridad del humano, 2026-10-15): **F-038** (`bandeja.html`; su spec es anterior a F-060 y hay que
->   ponerla al día) y después **F-040** (panel de volcado).
+> - Antes de un volcado real: un ensayo de calentamiento (la primera lectura a `sigrid-api` puede pasar de 35 s).
+> - **Siguiente** (prioridad del humano, 2026-10-15): **F-038** (`bandeja.html`; su spec, en el worktree `postventa-f038`,
+>   es anterior a F-060 y hay que ponerla al día) y después **F-040** (panel de volcado).
 
 > ## ✅ F-056 CERRADA · 2026-10-09 · desplegada y comprobada (T19) · siguiente: F-060 (spec)
 >

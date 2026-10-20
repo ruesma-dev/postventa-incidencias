@@ -106,8 +106,9 @@
    * (`azure-apps/sigrid_api.md` §8.9), en su orden, con su texto. El
    * `motivo` del objeto `volcado` es uno de ellos o, en un `no_procesado` de un
    * lote que Sigrid rechazó entero, uno de los siete códigos de lote de §8.9
-   * (`todos_no_procesados` del backend), que salen tal cual, como cualquier
-   * código que no está aquí (R21.4). Los motivos propios del panel de volcado
+   * (`todos_no_procesados` del backend), con su texto en `MOTIVOS_DE_LOTE`
+   * (R21.4 ampliada, O-B1t-1). Un código que no es de ninguna de las dos
+   * listas sale tal cual. Los motivos propios del panel de volcado
    * (exclusiones de un ensayo) no salen en el objeto y son de F-040.
    */
   const MOTIVOS_DE_VOLCADO = [
@@ -144,6 +145,33 @@
     filas_afectadas_inesperadas: "Sigrid no escribió las filas que se esperaban; el parte no se creó",
     error_de_escritura: "Sigrid dio un error al escribir el parte; no se creó",
     presupuesto_de_tiempo_agotado: "Se acabó el tiempo antes de llegar a este parte: se puede volver a mandar sin riesgo",
+  };
+
+  /**
+   * R21.4 ampliada (O-B1t-1, decidido por el humano el 2026-10-20) · los siete
+   * códigos de LOTE de §8.9 (los 400 de lote, «nada escrito»), en su orden, con
+   * el texto de la tabla de R21.4. Los dos primeros son configuración del
+   * dueño de `sigrid-api`; los otros cinco, rechazos de la obra, del usuario o
+   * del lote.
+   */
+  const MOTIVOS_DE_LOTE = [
+    "escritura_reclamaciones_deshabilitada",
+    "base_de_datos_no_permitida",
+    "lote_demasiado_grande",
+    "obra_no_encontrada",
+    "usuario_no_valido",
+    "serie_no_encontrada",
+    "estado_inicial_no_encontrado",
+  ];
+
+  const TEXTO_MOTIVO_LOTE = {
+    escritura_reclamaciones_deshabilitada: "Sigrid no admite ahora crear partes; no se creó nada. Avisa a sistemas",
+    base_de_datos_no_permitida: "Sigrid no admite ahora crear partes en esa base de datos; no se creó nada. Avisa a sistemas",
+    lote_demasiado_grande: "Se mandaron más partes de los que Sigrid admite de una vez; no se creó ninguno",
+    obra_no_encontrada: "Sigrid no encuentra la obra",
+    usuario_no_valido: "Sigrid no reconoce el usuario de quien volcó",
+    serie_no_encontrada: "Sigrid no encuentra la serie de partes de reclamación del mes",
+    estado_inicial_no_encontrado: "Sigrid no encuentra el estado con el que nace un parte",
   };
 
   /** Las ocho claves de `valores` de una edición (`CAMPOS_PEDIDOS`). */
@@ -354,14 +382,18 @@
     return accion + " por " + quienLegible(fila.revisado_por) + " el " + fechaDeMadrid(fila.revisado_at_utc);
   }
 
-  /** R21.4 · el texto de un código de parte de §8.9; uno desconocido, tal cual; sin código, nada. */
+  /** R21.4 · el texto de un código de parte o de lote de §8.9; uno desconocido, tal cual; sin código, nada. */
   function textoMotivoVolcado(codigo) {
     if (codigo === null || codigo === undefined || codigo === "") {
       return "";
     }
-    return Object.prototype.hasOwnProperty.call(TEXTO_MOTIVO_VOLCADO, codigo)
-      ? TEXTO_MOTIVO_VOLCADO[codigo]
-      : String(codigo);
+    if (Object.prototype.hasOwnProperty.call(TEXTO_MOTIVO_VOLCADO, codigo)) {
+      return TEXTO_MOTIVO_VOLCADO[codigo];
+    }
+    if (Object.prototype.hasOwnProperty.call(TEXTO_MOTIVO_LOTE, codigo)) {
+      return TEXTO_MOTIVO_LOTE[codigo];
+    }
+    return String(codigo);
   }
 
   /**
@@ -1371,6 +1403,7 @@
     MOTIVOS: MOTIVOS,
     TEXTO_MOTIVO: TEXTO_MOTIVO,
     MOTIVOS_DE_VOLCADO: MOTIVOS_DE_VOLCADO,
+    MOTIVOS_DE_LOTE: MOTIVOS_DE_LOTE,
     FILTROS_DE_ESTADO: FILTROS_DE_ESTADO,
     CAMPOS_PEDIDOS: CAMPOS_PEDIDOS,
     MAX_DESCRIPCION: MAX_DESCRIPCION,

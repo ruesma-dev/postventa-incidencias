@@ -525,6 +525,69 @@ test("f038 R21.4: textoMotivoVolcado da el texto de cada uno de los quince códi
   assert.equal(new Set(TEXTOS_DE_PARTE.map(([, texto]) => texto)).size, 15, "quince textos distintos");
 });
 
+/**
+ * R21.4 ampliada (O-B1t-1, decidido por el humano el 2026-10-20) · los siete
+ * códigos de LOTE de §8.9, en su orden, con el texto de la tabla de R21.4. Llegan
+ * como motivo de un `no_procesado` cuando la pasarela rechaza el lote entero.
+ */
+const TEXTOS_DE_LOTE = [
+  ["escritura_reclamaciones_deshabilitada", "Sigrid no admite ahora crear partes; no se creó nada. Avisa a sistemas"],
+  ["base_de_datos_no_permitida", "Sigrid no admite ahora crear partes en esa base de datos; no se creó nada. Avisa a sistemas"],
+  ["lote_demasiado_grande", "Se mandaron más partes de los que Sigrid admite de una vez; no se creó ninguno"],
+  ["obra_no_encontrada", "Sigrid no encuentra la obra"],
+  ["usuario_no_valido", "Sigrid no reconoce el usuario de quien volcó"],
+  ["serie_no_encontrada", "Sigrid no encuentra la serie de partes de reclamación del mes"],
+  ["estado_inicial_no_encontrado", "Sigrid no encuentra el estado con el que nace un parte"],
+];
+
+/** T4 quater · lo que un módulo no cumple de los textos de lote. Vacío = correcto. */
+function problemasDeLosTextosDeLote(Modulo) {
+  const problemas = [];
+  if (JSON.stringify(Modulo.MOTIVOS_DE_LOTE) !== JSON.stringify(TEXTOS_DE_LOTE.map(([codigo]) => codigo))) {
+    problemas.push(`MOTIVOS_DE_LOTE: ${JSON.stringify(Modulo.MOTIVOS_DE_LOTE)}`);
+  }
+  for (const [codigo, texto] of TEXTOS_DE_LOTE) {
+    const dado = typeof Modulo.textoMotivoVolcado === "function" ? Modulo.textoMotivoVolcado(codigo) : undefined;
+    if (dado !== texto) problemas.push(`${codigo}: «${dado}», no «${texto}»`);
+  }
+  return problemas;
+}
+
+test("f038 R21.4 (T4 quater): textoMotivoVolcado da el texto de cada uno de los siete códigos de lote de §8.9", () => {
+  assert.deepEqual(problemasDeLosTextosDeLote(Revision), []);
+  const deParte = new Set(TEXTOS_DE_PARTE.map(([, texto]) => texto));
+  const deLote = TEXTOS_DE_LOTE.map(([, texto]) => texto);
+  assert.equal(new Set(deLote).size, 7, "siete textos distintos");
+  assert.deepEqual(deLote.filter((texto) => deParte.has(texto)), [], "ninguno repite un texto de parte");
+  assert.deepEqual(Revision.MOTIVOS_DE_VOLCADO, TEXTOS_DE_PARTE.map(([codigo]) => codigo), "los de parte siguen siendo quince");
+});
+
+test("f038 R21.4 (T4 quater): control: un código de lote con errata en js/revision.js salta", () => {
+  const fuente = fs.readFileSync(path.join(__dirname, "..", "js", "revision.js"), "utf-8");
+  const ancla = "    obra_no_encontrada: ";
+  assert.equal(fuente.split(ancla).length, 2, `el control no encuentra una sola vez: ${ancla}`);
+  const modulo = { exports: {} };
+  // eslint-disable-next-line no-new-func
+  Function("module", fuente.replace(ancla, "    obra_no_encontradas: "))(modulo);
+  const problemas = problemasDeLosTextosDeLote(modulo.exports);
+  assert.ok(problemas.some((p) => p.startsWith("obra_no_encontrada: ")), `la guardia no lo ve: ${problemas.join(" | ")}`);
+});
+
+test("f038 R21.3, R21.4 (T4 quater): un no_procesado de un lote rechazado entero dice su motivo en castellano", () => {
+  for (const [codigo, texto] of TEXTOS_DE_LOTE) {
+    assert.equal(
+      Revision.lineaDeVolcado(objetoVolcado({ estado: "no_procesado", sigrid_cod: null, motivo: codigo }), "aprobada"),
+      "Último intento de volcado: no se llegó a procesar el " + FECHA_DEL_VOLCADO + " por " + CORREO + ": " + texto,
+      codigo,
+    );
+  }
+  assert.equal(
+    Revision.lineaDeVolcado(objetoVolcado({ estado: "no_procesado", sigrid_cod: null, motivo: "lote_inventado" }), "aprobada"),
+    "Último intento de volcado: no se llegó a procesar el " + FECHA_DEL_VOLCADO + " por " + CORREO + ": lote_inventado",
+    "ni de parte ni de lote: tal cual",
+  );
+});
+
 test("f038 R21.4: un código de parte que no está en la lista se enseña tal cual; sin código, nada", () => {
   assert.equal(Revision.textoMotivoVolcado("codigo_inventado"), "codigo_inventado");
   assert.equal(Revision.textoMotivoVolcado("sin_ubicacion"), "sin_ubicacion", "los motivos de la revisión no son de parte");
@@ -590,11 +653,12 @@ test("f038 R21.3: el último intento rechazado o no procesado de una aprobada, c
     "sin motivo, sin «: »",
   );
   // C-B1t-2 · un lote rechazado entero deja cada parte `no_procesado` con el
-  // CÓDIGO DE LOTE de §8.9 como motivo (`todos_no_procesados`): hoy sale tal
-  // cual, como cualquier código que no es de parte (R21.4; O-B1t-1, abierta).
+  // CÓDIGO DE LOTE de §8.9 como motivo (`todos_no_procesados`). Cambio a
+  // propósito de T4 quater (O-B1t-1, decidido por el humano el 2026-10-20):
+  // antes salía tal cual; ahora, con su texto de R21.4.
   assert.equal(
     Revision.lineaDeVolcado(objetoVolcado({ estado: "no_procesado", sigrid_cod: null, motivo: "obra_no_encontrada" }), "aprobada"),
-    "Último intento de volcado: no se llegó a procesar el " + FECHA_DEL_VOLCADO + " por " + CORREO + ": obra_no_encontrada",
+    "Último intento de volcado: no se llegó a procesar el " + FECHA_DEL_VOLCADO + " por " + CORREO + ": Sigrid no encuentra la obra",
   );
 });
 

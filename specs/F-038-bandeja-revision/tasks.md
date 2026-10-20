@@ -131,7 +131,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
 
 **Parar. Review del Bloque 1 ter.**
 
-- [ ] **T4 quater** · *Decidido por el humano el 2026-10-20 (O-B1t-1)*: los
+- [x] **T4 quater** · *Decidido por el humano el 2026-10-20 (O-B1t-1)*: los
   textos de los **siete códigos de lote** de §8.9 (tabla de R21.4) en
   `textoMotivoVolcado` de `js/revision.js`. Primero RED en
   `tests_js/revision.test.js` —cada uno de los siete con su texto exacto, un

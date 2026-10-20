@@ -1079,3 +1079,102 @@ python -m pytest -q -p no:cacheprovider                         (desde services/
 O-B1t-1 (¿un texto para los siete códigos de lote?) es una pregunta para el humano, a través del líder. Hasta que se
 decida, el test fija el comportamiento de hoy, que es enseñarlos tal cual. O-B1t-3, O-B1b-3, O-B1b-4 y O-B1b-5 siguen
 como estaban.
+
+
+## T4 quater · los textos de los siete códigos de lote (2026-10-20)
+
+El humano lo decidió el 2026-10-20 (O-B1t-1); la spec está en `f024bd3`, en R21.4 ampliada y T4 quater. Va en un solo
+commit, `F-038 T4 quater: …`, porque es una sola tarea; dentro, el RED se escribió y se lanzó antes que el código.
+`bash harness/init.sh` no lo he ejecutado (P-4). No he tocado `services/postventa-api` ni `.env`.
+
+### Ficheros tocados
+
+- `services/postventa-front/js/revision.js`: `MOTIVOS_DE_LOTE` (los siete, en el orden de §8.9) y
+  `TEXTO_MOTIVO_LOTE`, con el texto exacto de la tabla de R21.4. `textoMotivoVolcado` mira primero los de parte, luego
+  los de lote y, si no es de ninguna de las dos, devuelve el código tal cual. `MOTIVOS_DE_LOTE` se exporta. El
+  comentario de `MOTIVOS_DE_VOLCADO` deja de decir que los de lote salen tal cual. `MOTIVOS_DE_VOLCADO` sigue con los
+  quince de parte: el test que lo fija no cambia.
+- `services/postventa-front/README.md`: los motivos de lote salen también en castellano («Sigrid no encuentra la
+  obra»); un código desconocido, tal cual.
+- `services/postventa-front/tests_js/revision.test.js`: tres tests nuevos y el cambio a propósito de abajo.
+- `specs/F-038-bandeja-revision/tasks.md`: T4 quater `[x]`.
+
+### Cambio a propósito en un test que ya existía (declarado en T4 quater)
+
+En «f038 R21.3: el último intento rechazado o no procesado de una aprobada, con su motivo», la aserción que añadió
+C-B1t-2 esperaba «…: obra_no_encontrada». Ahora espera «…: Sigrid no encuentra la obra», y su comentario dice por qué.
+No cambia nada más del test.
+
+### Tests nuevos
+
+- «f038 R21.4 (T4 quater): textoMotivoVolcado da el texto de cada uno de los siete códigos de lote de §8.9». Comprueba
+  con `problemasDeLosTextosDeLote(Revision)` que `MOTIVOS_DE_LOTE` sale en su orden y que cada código da su texto
+  exacto (tabla `TEXTOS_DE_LOTE`, copiada de R21.4). Comprueba también que son siete textos distintos, que ninguno
+  repite uno de parte y que los de parte siguen siendo quince.
+- **Control no ciego**: «…control: un código de lote con errata en js/revision.js salta». Carga en memoria, con
+  `Function("module", …)`, un `js/revision.js` cuya clave `obra_no_encontrada` lleva una errata
+  (`obra_no_encontradas`). La guardia tiene que señalar ese código, y lo señala.
+- «f038 R21.3, R21.4 (T4 quater): un no_procesado de un lote rechazado entero dice su motivo en castellano». Pasa por
+  `lineaDeVolcado` con cada uno de los siete; un código que no es ni de parte ni de lote (`lote_inventado`) sigue tal
+  cual.
+
+### RED
+
+Con los tests escritos y `js/revision.js` sin tocar, desde `services/postventa-front`:
+
+```
+node --test --test-timeout=15000 tests_js/revision.test.js
+✖ f038 R21.4 (T4 quater): textoMotivoVolcado da el texto de cada uno de los siete códigos de lote de §8.9
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + [
+  +   'MOTIVOS_DE_LOTE: undefined',
+  +   'escritura_reclamaciones_deshabilitada: «escritura_reclamaciones_deshabilitada», no «Sigrid no admite ahora crear partes; no se creó nada. Avisa a sistemas»',
+  +   'base_de_datos_no_permitida: «base_de_datos_no_permitida», no «Sigrid no admite ahora crear partes en esa base de datos; no se creó nada. Avisa a sistemas»',
+  +   'lote_demasiado_grande: «lote_demasiado_grande», no «Se mandaron más partes de los que Sigrid admite de una vez; no se creó ninguno»',
+  +   'obra_no_encontrada: «obra_no_encontrada», no «Sigrid no encuentra la obra»',
+  +   'usuario_no_valido: «usuario_no_valido», no «Sigrid no reconoce el usuario de quien volcó»',
+  +   'serie_no_encontrada: «serie_no_encontrada», no «Sigrid no encuentra la serie de partes de reclamación del mes»',
+  +   'estado_inicial_no_encontrado: «estado_inicial_no_encontrado», no «Sigrid no encuentra el estado con el que nace un parte»'
+  + ]
+  - []
+✖ f038 R21.4 (T4 quater): control: un código de lote con errata en js/revision.js salta
+  AssertionError [ERR_ASSERTION]: el control no encuentra una sola vez:     obra_no_encontrada:
+  1 !== 2
+✖ f038 R21.3, R21.4 (T4 quater): un no_procesado de un lote rechazado entero dice su motivo en castellano
+  AssertionError [ERR_ASSERTION]: escritura_reclamaciones_deshabilitada
+  + 'Último intento de volcado: no se llegó a procesar el 20/10/2026 10:00 por revisora@ejemplo.invalid: escritura_reclamaciones_deshabilitada'
+  - 'Último intento de volcado: no se llegó a procesar el 20/10/2026 10:00 por revisora@ejemplo.invalid: Sigrid no admite ahora crear partes; no se creó nada. Avisa a sistemas'
+✖ f038 R21.3: el último intento rechazado o no procesado de una aprobada, con su motivo
+  + 'Último intento de volcado: no se llegó a procesar el 20/10/2026 10:00 por revisora@ejemplo.invalid: obra_no_encontrada'
+  - 'Último intento de volcado: no se llegó a procesar el 20/10/2026 10:00 por revisora@ejemplo.invalid: Sigrid no encuentra la obra'
+ℹ tests 168
+ℹ pass 164
+ℹ fail 4
+```
+
+Los 164 que pasan son los que ya había (165 antes de esta tarea, menos el de R21.3 que cambia a propósito).
+
+### Verde
+
+```
+node --test --test-timeout=15000 "tests_js/*.test.js"          (desde services/postventa-front)
+ℹ tests 902
+ℹ pass 902
+ℹ fail 0
+ℹ duration_ms 3226.6162
+
+python -m pytest -q -p no:cacheprovider                         (desde services/postventa-front; incluye test_f038_front.py)
+882 passed, 7 skipped in 21.12s
+```
+
+902 = 899 + los 3 nuevos. En pytest no hay ningún test nuevo, y sigue en verde: la guardia del README
+(«§8.9», «hora de Madrid»…) sigue cumpliéndose con el texto nuevo.
+
+### Evidencias (T4 quater)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Suite JS: **902, 902 pass**; pytest del front: **882 passed, 7 skipped** |
+| Cobertura de las líneas cambiadas | **No disponible**: JavaScript, Markdown y tests; la puerta de `init.sh` mide Python (y `init.sh` es del líder, P-4) |
+| Mutantes | Pendiente por plan (T5). Aquí, el control en memoria de la errata en una clave, cazado por la guardia |
+| Tiempo de la suite | JS: 3,23 s; pytest del front: 21,12 s |

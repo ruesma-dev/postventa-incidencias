@@ -213,11 +213,95 @@ python -m pytest -q -p no:cacheprovider        (desde services/postventa-front)
 - D-b · `tasks.md` escribe `node --test tests_js` en T2, T3, T4 ter y T8: en Node 24 no funciona. Propuesta: cambiarlo
   por `node --test "tests_js/*.test.js"` (lo del puente). No lo he tocado: es texto de la spec.
 
+## Correcciones de la review del Bloque 1 (2026-10-20)
+
+Review `progress/review_F-038.md` (`26d346d`): CHANGES_REQUESTED, solo tests. Corregido **solo**
+`tests_js/revision.test.js`; `js/revision.js` y `js/api.js` sin tocar. D-a (decisión 2) aceptada por el reviewer.
+
+| Punto | Qué cambia en el test |
+|---|---|
+| **C-B1-1** | La guardia de la confirmación busca la clave como propiedad (`confirmado:`, `"confirmado":`), como asignación (`x.confirmado =`) y por corchetes (`x["confirmado"]`), sin contar comentarios; exige **exactamente un** sitio y que caiga **dentro de `function cuerpoDeAccion`** (de su declaración a la siguiente `function` del módulo). Control no ciego en el mismo test, en memoria: cuatro formas de un segundo sitio en `actuar` hacen saltar «2 sitios», y el sitio movido fuera de `cuerpoDeAccion` hace saltar «fuera de cuerpoDeAccion»; un comentario que lo nombra no cuenta |
+| **C-B1-2** | «Un error al cargar…» parte de una página buena (2 filas, `siguiente`, resumen, «2 de 5») y, tras el error, exige `incidencias` vacía, `siguiente` y `resumen` a `null` y `nDeM` vacío |
+| **C-B1-3** | Dos tests nuevos: el verbo en los seis estados (`nueva` y `editada` → «Revisada», `aprobada`, `volcada`, `en_duda` → «Aprobada», `descartada` → «Descartada»), con `lineaDeRevision` y con `presentarRevision`; y sin `revisado_at_utc` no hay línea en ninguno de los seis |
+| **O-B1-6** | «Mientras una acción se guarda…» lanza los intentos de mientras **sin `await`**, cuenta las llamadas antes de soltar y espera los tres con `Promise.all`: si la puerta falla, es un rojo y no un cuelgue |
+
+### Verificación
+
+```
+node --test --test-timeout=15000 tests_js/revision.test.js tests_js/api.test.js
+ℹ tests 194
+ℹ pass 194
+ℹ fail 0
+ℹ duration_ms 3094.8574
+
+node --test --test-timeout=15000 "tests_js/*.test.js"
+ℹ tests 831
+ℹ pass 831
+ℹ fail 0
+ℹ duration_ms 7354.5203
+```
+
+### Los mutantes de la review, cazados ahora
+
+Cada mutante se aplicó a una **copia** de `js/revision.js` en el directorio temporal de la sesión (fuera del
+repositorio; `git status` tras la campaña: solo `M tests_js/revision.test.js`), junto a una copia de
+`tests_js/revision.test.js`, y se lanzó `node --test --test-timeout=15000 tests_js/revision.test.js` en la copia.
+Los cuatro: **114 tests, 113 pass, 1 fail, exit 1**, y el que cae es el test nuevo de su punto.
+
+**C-B1-1** · en `actuar`, tras `const cuerpo = cuerpoDeAccion(…)`, se añade `cuerpo["confirmado"] = true;`:
+
+```
+✖ f038 R10: confirmado: true se escribe en UN solo sitio de js/revision.js, dentro de cuerpoDeAccion (4.7975ms)
+  AssertionError [ERR_ASSERTION]: la confirmación se escribe en 2 sitios; tiene que ser uno
+
+  2 !== 1
+```
+
+**C-B1-2** · en el `catch` de `cargar` se quita `this.incidencias = [];`:
+
+```
+✖ f038 R3/R12: un error al cargar se enseña y vacía lo que había (filas, siguiente, resumen, «N de M») (3.7822ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + [
+  +   {
+  +     cambios: [],
+  +     creada_at_utc: '2026-10-20T08:00:00.000000+00:00',
+  +     duplicada_de: null,
+  +     estado: 'nueva',
+  ...
+```
+
+**C-B1-3** · en `lineaDeRevision`, la condición de «Aprobada» queda solo en `aprobada` (sin `volcada` ni `en_duda`):
+
+```
+✖ f038 R4 D-8: el verbo de la línea se deduce del estado, en los seis (decisión 2, aceptada) (3.5195ms)
+  AssertionError [ERR_ASSERTION]: volcada
+  + actual - expected
+
+  + 'Revisada por revisora@ejemplo.invalid el 20/10/2026 10:00'
+  - 'Aprobada por revisora@ejemplo.invalid el 20/10/2026 10:00'
+```
+
+**O-B1-6** · en `actuar`, la puerta deja de mirar `guardando` (`puedeActuar(this.usuario, false)`): antes colgaba el
+test; ahora es un rojo en 2 ms:
+
+```
+✖ f038 R10: mientras una acción se guarda, ninguna otra sale (2.1263ms)
+  AssertionError [ERR_ASSERTION]: mientras se guarda, ninguna otra sale
+
+  3 !== 1
+```
+
+Las observaciones O-B1-1 a O-B1-5 no piden cambio en este encargo (no bloquean; tocan `js/revision.js`, el HTML del
+Bloque 1 bis o la spec) y quedan para el líder.
+
 ## Evidencias
 
 | Evidencia | Valor |
 |---|---|
-| Tests ejecutados | `revision.test.js` + `api.test.js`: **192, 192 pass**; suite JS entera: **829, 829 pass**; pytest del front: **815 passed, 7 skipped** |
+| Tests ejecutados | `revision.test.js` + `api.test.js`: **194, 194 pass** (tras C-B1; 192 en T2); suite JS entera: **831, 831 pass** (829 en T2); pytest del front: **815 passed, 7 skipped** |
 | Cobertura de las líneas cambiadas | **No disponible** para JavaScript: la puerta `PUERTA COBERTURA` de `init.sh` mide Python, y aquí no hay `.py` de producción. Además `init.sh` no lo ejecuto yo (P-4): la línea la da el líder |
 | Mutantes generados / supervivientes | **Pendiente por plan**: la mutación de F-038 es el Bloque 1 quater (T5), con `--base 87a03f3`; `harness.mutacion` no muta `.js`, y las de `js/revision.js` van a mano por familias en T5 |
 | Tiempo de la suite | `revision.test.js` + `api.test.js`: 1,25 s; suite JS entera: 4,08 s; pytest del front: 28,06 s |

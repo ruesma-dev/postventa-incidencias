@@ -404,6 +404,41 @@ test("f038 R4/R8 D-8: quien revisó por última vez, «<acción> por <correo> el
   );
 });
 
+test("f038 R4 D-8: el verbo de la línea se deduce del estado, en los seis (decisión 2, aceptada)", () => {
+  // C-B1-3 (review del Bloque 1). Aprobada en `aprobada`, `volcada` y `en_duda`
+  // (su última revisión es un `aprobar`); Descartada en `descartada`; Revisada
+  // en `nueva` y `editada` (una `nueva` con revisión es la que se recuperó o se
+  // editó de vuelta a lo importado: el verbo exacto, en el historial).
+  const esperado = {
+    nueva: "Revisada",
+    editada: "Revisada",
+    aprobada: "Aprobada",
+    descartada: "Descartada",
+    volcada: "Aprobada",
+    en_duda: "Aprobada",
+  };
+  assert.deepEqual(Object.keys(esperado), Revision.ESTADOS, "los seis, ni uno menos");
+  for (const estado of Revision.ESTADOS) {
+    const fila = incidencia({
+      estado: estado,
+      revision_id: 9,
+      revisado_por: CORREO,
+      revisado_at_utc: "2026-10-20T08:00:00.000000+00:00",
+    });
+    assert.equal(Revision.lineaDeRevision(fila), `${esperado[estado]} por ${CORREO} el 20/10/2026 10:00`, estado);
+    const vista = Revision.presentarRevision(respuesta({ incidencias: [fila] })).filas[0];
+    assert.equal(vista.revisadoPor, `${esperado[estado]} por ${CORREO} el 20/10/2026 10:00`, estado);
+  }
+});
+
+test("f038 R4 D-8: sin revisado_at_utc no hay línea de quién, en ninguno de los seis estados", () => {
+  for (const estado of Revision.ESTADOS) {
+    const fila = incidencia({ estado: estado, revision_id: null, revisado_por: null, revisado_at_utc: null });
+    assert.equal(Revision.lineaDeRevision(fila), null, estado);
+    assert.equal(Revision.presentarRevision(respuesta({ incidencias: [fila] })).filas[0].revisadoPor, null, estado);
+  }
+});
+
 test("f038 R12: motivos null en la fila → «recarga para ver si se puede aprobar», no «Aprobar»", () => {
   const fila = Revision.presentarRevision(
     respuesta({ incidencias: [incidencia({ estado: "editada", motivos_no_aprobable: null, revision_id: 2 })] }),
@@ -996,10 +1031,67 @@ test("f038 R10: sin oid, sin correo, con una acción desconocida o editar sin va
   assert.throws(() => Revision.cuerpoDeAccion(incidencia(), "editar", {}, IDENTIDAD));
 });
 
-test("f038 R10: confirmado: true se escribe en UN solo sitio de js/revision.js", () => {
+/**
+ * C-B1-1 (review del Bloque 1) · los sitios donde la fuente escribe la clave
+ * `confirmado`: como propiedad de un literal (`confirmado:`, `"confirmado":`),
+ * como asignación (`x.confirmado =`) o por corchetes (`x["confirmado"]`).
+ * Devuelve el índice de cada uno. Los comentarios no cuentan.
+ */
+function sitiosDeConfirmado(fuente) {
+  const sinComentarios = fuente
+    .replace(/\/\*[\s\S]*?\*\//g, (bloque) => bloque.replace(/[^\n]/g, " "))
+    .replace(/\/\/[^\n]*/g, (linea) => " ".repeat(linea.length));
+  const patron = /["']?\bconfirmado\b["']?\s*[:=](?!=)|\[\s*["']confirmado["']\s*\]/g;
+  const sitios = [];
+  let encontrado;
+  while ((encontrado = patron.exec(sinComentarios)) !== null) {
+    sitios.push(encontrado.index);
+  }
+  return sitios;
+}
+
+/** `[inicio, fin)` del cuerpo de `function nombre`: hasta la siguiente `function` del módulo. */
+function tramoDeLaFuncion(fuente, nombre) {
+  const inicio = fuente.indexOf("function " + nombre + "(");
+  assert.notEqual(inicio, -1, `no está function ${nombre}`);
+  const siguiente = fuente.indexOf("\n  function ", inicio + 1);
+  return [inicio, siguiente === -1 ? fuente.length : siguiente];
+}
+
+/** La guardia: un solo sitio, y dentro de `cuerpoDeAccion`. Lanza si no. */
+function exigirUnSoloSitioDeConfirmado(fuente) {
+  const sitios = sitiosDeConfirmado(fuente);
+  assert.equal(sitios.length, 1, `la confirmación se escribe en ${sitios.length} sitios; tiene que ser uno`);
+  const [inicio, fin] = tramoDeLaFuncion(fuente, "cuerpoDeAccion");
+  assert.ok(sitios[0] > inicio && sitios[0] < fin, "la confirmación se escribe fuera de cuerpoDeAccion");
+}
+
+test("f038 R10: confirmado: true se escribe en UN solo sitio de js/revision.js, dentro de cuerpoDeAccion", () => {
   const fuente = fs.readFileSync(path.join(__dirname, "..", "js", "revision.js"), "utf-8");
-  const apariciones = fuente.match(/confirmado\s*:\s*true/g) || [];
-  assert.equal(apariciones.length, 1, "la única función que lo escribe es cuerpoDeAccion");
+
+  exigirUnSoloSitioDeConfirmado(fuente);
+
+  // Control no ciego, en memoria (nunca en el árbol): cada forma de escribir un
+  // segundo sitio hace saltar la guardia, y uno solo pero fuera de su función
+  // también.
+  const ancla = "const cuerpo = cuerpoDeAccion(antes, accion, extra, this.usuario);";
+  assert.ok(fuente.includes(ancla), "el ancla del control no está en la fuente");
+  for (const segundo of [
+    'cuerpo["confirmado"] = true;',
+    "cuerpo.confirmado = true;",
+    'const otro = { "confirmado": true };',
+    "const otro = { confirmado: true };",
+  ]) {
+    const estropeada = fuente.replace(ancla, ancla + "\n        " + segundo);
+    assert.throws(() => exigirUnSoloSitioDeConfirmado(estropeada), /2 sitios/, segundo);
+  }
+  const movida = fuente
+    .replace(/ {6}confirmado: true,\r?\n/, "")
+    .replace(ancla, ancla + "\n        cuerpo.confirmado = true;");
+  assert.equal(sitiosDeConfirmado(movida).length, 1, "el control de «fuera» no ha movido el sitio");
+  assert.throws(() => exigirUnSoloSitioDeConfirmado(movida), /fuera de cuerpoDeAccion/);
+  // Un comentario que lo nombra no es un sitio.
+  assert.equal(sitiosDeConfirmado(fuente + "\n// confirmado: true\n/* x.confirmado = true */").length, 1);
 });
 
 test("f038 R10: puedeActuar: sin oid, sin correo o guardando, no", () => {
@@ -1268,14 +1360,31 @@ test("f038 R6: cambiar un filtro vuelve a pedir la primera página", async () =>
   assert.deepEqual(app.incidencias.map((i) => i.incidencia_id), [ID_3], "la lista se vacía, no se añade");
 });
 
-test("f038 R3: un error al cargar se enseña y deja la lista vacía", async () => {
-  const { app } = componente({ revision: errorApi(409, "bandeja_demasiado_grande", { total: 12000 }) });
+test("f038 R3/R12: un error al cargar se enseña y vacía lo que había (filas, siguiente, resumen, «N de M»)", async () => {
+  // C-B1-2 (review del Bloque 1): se parte de una página BUENA ya cargada. Tras
+  // una acción, `actuar` recarga; si esa recarga falla, la página no puede
+  // seguir enseñando filas viejas con su `revision_id` viejo.
+  const { app } = componente({
+    revision: [
+      respuesta({ total_filtrado: 5, siguiente: "cursor-inventado-1", incidencias: [incidencia({ incidencia_id: ID_1 }), incidencia({ incidencia_id: ID_2 })] }),
+      errorApi(409, "bandeja_demasiado_grande", { total: 12000 }),
+    ],
+  });
   await app.iniciar();
   app.obra = "9901";
   await app.cargar();
+  assert.equal(app.incidencias.length, 2, "la primera carga es buena");
+  assert.equal(app.siguiente, "cursor-inventado-1");
+  assert.notEqual(app.resumen, null);
+  assert.equal(app.nDeM, "2 de 5");
+
+  await app.cargar();
+
   assert.match(app.errorCarga, /12000/);
   assert.deepEqual(app.incidencias, []);
+  assert.equal(app.siguiente, null);
   assert.equal(app.resumen, null);
+  assert.equal(app.nDeM, "");
   assert.equal(app.cargando, false);
 });
 
@@ -1388,11 +1497,16 @@ test("f038 R10: mientras una acción se guarda, ninguna otra sale", async () => 
   const primera = app.aprobar(ID_1);
   assert.equal(app.guardando, true);
   assert.equal(app.puedeActuar(), false);
-  await app.aprobar(ID_1);
-  await app.pedirDescarte(ID_1);
-  await app.confirmarDescarte(ID_1);
+  // O-B1-6 (review del Bloque 1): los intentos de mientras se lanzan SIN
+  // esperarlos antes de soltar la primera; si la puerta fallara, esperarlos
+  // aquí colgaría el test en vez de ponerlo en rojo.
+  const segunda = app.aprobar(ID_1);
+  app.pedirDescarte(ID_1);
+  const tercera = app.confirmarDescarte(ID_1);
+  const mientras = llamadas.filter((l) => l.nombre === "accionRevision").length;
   soltar();
-  await primera;
+  await Promise.all([primera, segunda, tercera]);
+  assert.equal(mientras, 1, "mientras se guarda, ninguna otra sale");
   assert.equal(llamadas.filter((l) => l.nombre === "accionRevision").length, 1, "un doble clic no produce dos");
 });
 

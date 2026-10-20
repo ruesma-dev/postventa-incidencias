@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **62 features**, 33 abiertas, 29 terminadas.
+Resumen: **63 features**, 34 abiertas, 29 terminadas.
 
 En curso: **F-038**.
 
@@ -12,38 +12,39 @@ En curso: **F-038**.
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | en curso | critico | `feature/F-038-bandeja-revision` |
-| F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | spec lista | critico | `feature/F-040-volcado-sigrid` |
-| F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 5 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
-| F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 5 | pendiente | critico | `feature/F-062-gestionar-volcadas` |
-| F-063 | Normalizar el código de obra: un cero delante cuando empieza por tres cifras | 5 | pendiente | critico | `feature/F-063-normalizar-codigo-obra` |
-| F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 6 | pendiente | critico | `feature/F-058-plantilla-ubicaciones-sigrid` |
-| F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 7 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
-| F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 8 | pendiente | critico | `feature/F-052-secretos-ajustes` |
-| F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 9 | pendiente | estandar | `feature/F-054-dev-server-127` |
-| F-061 | Optimizar el listado de la revisión: arranque de instancias y picos de Sigrid | 10 | pendiente | estandar | `feature/F-061-optimizar-listado-revision` |
-| F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 15 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
-| F-039 | Propuesta del industrial al crear la incidencia | 17 | pendiente | critico | `feature/F-039-propuesta-industrial` |
-| F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 19 | pendiente | critico | `feature/F-041-ficha-incidencia` |
-| F-042 | No procede: justificación obligatoria y email al cliente | 20 | pendiente | critico | `feature/F-042-no-procede-email` |
-| F-043 | Operaciones en bloque sobre incidencias | 21 | pendiente | critico | `feature/F-043-operaciones-bloque` |
-| F-044 | Imprimir partes en bloque a PDF o impresora con la plantilla de posventa | 22 | pendiente | estandar | `feature/F-044-impresion-bloque` |
-| F-045 | Registrar un parte sin firma: la incidencia pasa a TER, no a CER | 23 | pendiente | critico | `feature/F-045-parte-sin-firma` |
-| F-046 | Coste de la posventa desde la obra POSTV2 | 24 | pendiente | critico | `feature/F-046-coste-postv2` |
-| F-047 | Vincular incidencias con la proforma, el coste y la venta | 25 | pendiente | critico | `feature/F-047-incidencia-proforma` |
-| F-048 | Los datos de posventa al datamart | 26 | pendiente | estandar | `feature/F-048-datamart-posventa` |
-| F-050 | Agrupar los proveedores casi duplicados del maestro de Sigrid | 27 | pendiente | estandar | `feature/F-050-agrupar-proveedores` |
-| F-024 | Datos del parte enlazados a Sigrid, para el datamart | 119 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
-| F-011 | Fase 2: ingesta desde buzón de correo | 120 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 121 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
-| F-015 | Evaluación del prompt de extracción contra partes reales | 122 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
-| F-016 | Interpretación automática de las observaciones manuscritas | 123 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
-| F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 124 | pendiente | documental | `feature/F-017-checkpoints-manual` |
-| F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 125 | pendiente | documental | `feature/F-018-minimo-privilegio-graph` |
-| F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 127 | pendiente | documental | `feature/F-020-diseno-front` |
-| F-021 | Rehidratar la sesión del front al recargar el navegador | 128 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
-| F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 129 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
-| F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 130 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
-| F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 136 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
+| F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | 4 | pendiente | critico | `feature/F-064-bandeja-con-sigrid` |
+| F-040 | Volcar a Sigrid las incidencias aprobadas | 5 | spec lista | critico | `feature/F-040-volcado-sigrid` |
+| F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 6 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
+| F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 6 | pendiente | critico | `feature/F-062-gestionar-volcadas` |
+| F-063 | Normalizar el código de obra: un cero delante cuando empieza por tres cifras | 6 | pendiente | critico | `feature/F-063-normalizar-codigo-obra` |
+| F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 7 | pendiente | critico | `feature/F-058-plantilla-ubicaciones-sigrid` |
+| F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 8 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
+| F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 9 | pendiente | critico | `feature/F-052-secretos-ajustes` |
+| F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 10 | pendiente | estandar | `feature/F-054-dev-server-127` |
+| F-061 | Optimizar el listado de la revisión: arranque de instancias y picos de Sigrid | 11 | pendiente | estandar | `feature/F-061-optimizar-listado-revision` |
+| F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 16 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
+| F-039 | Propuesta del industrial al crear la incidencia | 18 | pendiente | critico | `feature/F-039-propuesta-industrial` |
+| F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 20 | pendiente | critico | `feature/F-041-ficha-incidencia` |
+| F-042 | No procede: justificación obligatoria y email al cliente | 21 | pendiente | critico | `feature/F-042-no-procede-email` |
+| F-043 | Operaciones en bloque sobre incidencias | 22 | pendiente | critico | `feature/F-043-operaciones-bloque` |
+| F-044 | Imprimir partes en bloque a PDF o impresora con la plantilla de posventa | 23 | pendiente | estandar | `feature/F-044-impresion-bloque` |
+| F-045 | Registrar un parte sin firma: la incidencia pasa a TER, no a CER | 24 | pendiente | critico | `feature/F-045-parte-sin-firma` |
+| F-046 | Coste de la posventa desde la obra POSTV2 | 25 | pendiente | critico | `feature/F-046-coste-postv2` |
+| F-047 | Vincular incidencias con la proforma, el coste y la venta | 26 | pendiente | critico | `feature/F-047-incidencia-proforma` |
+| F-048 | Los datos de posventa al datamart | 27 | pendiente | estandar | `feature/F-048-datamart-posventa` |
+| F-050 | Agrupar los proveedores casi duplicados del maestro de Sigrid | 28 | pendiente | estandar | `feature/F-050-agrupar-proveedores` |
+| F-024 | Datos del parte enlazados a Sigrid, para el datamart | 120 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
+| F-011 | Fase 2: ingesta desde buzón de correo | 121 | pendiente | estandar | `feature/F-011-buzon-correo` |
+| F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 122 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
+| F-015 | Evaluación del prompt de extracción contra partes reales | 123 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
+| F-016 | Interpretación automática de las observaciones manuscritas | 124 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
+| F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 125 | pendiente | documental | `feature/F-017-checkpoints-manual` |
+| F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 126 | pendiente | documental | `feature/F-018-minimo-privilegio-graph` |
+| F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 128 | pendiente | documental | `feature/F-020-diseno-front` |
+| F-021 | Rehidratar la sesión del front al recargar el navegador | 129 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
+| F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 130 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
+| F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 131 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
+| F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 137 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
 
 ## Terminadas
 
@@ -87,195 +88,201 @@ estado **en curso** · prioridad 3 · rigor `critico` · SDD sí · rama `featur
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano.
 
+### F-064 · La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado
+
+estado **pendiente** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-064-bandeja-con-sigrid`
+
+Alta del 2026-10-20 por petición del humano: «en la bandeja de revisión deberán poder verse tanto las incidencias que queremos importar que salen del Excel, como las que ya hay en Sigrid y si hay conflictos entre ellas». Hoy la bandeja (F-036, F-056) solo compara lo importado consigo mismo (duplicada dentro de la bandeja) y no lee las reclamaciones de la obra en Sigrid. Decisión del humano (2026-10-20): ficha nueva, justo detrás de F-038 y antes de F-040; F-038 sigue como está. Probablemente se parte por el límite de servicio: backend (leer de sigrid-api, solo lectura, las reclamaciones tip 708 de la obra con su UPV, oficio, ubicación, estado y referencia; cruzarlas con la bandeja) y su parte en bandeja.html. Criterios de conflicto que apunta el humano: misma unidad, oficio y ubicación; y la fila del Excel que ya se volcó desde el portal (referencia PVI-). El resto se decide en la spec, con propuestas del spec-author sobre ejemplos reales de una obra. A decidir también: si un conflicto impide aprobar (motivo nuevo de no aprobable) o solo avisa, y cómo se ven en la lista las incidencias de Sigrid (solo lectura). Coste de la lectura: el listado ya es lento (F-061); medir.
+
 ### F-040 · Volcar a Sigrid las incidencias aprobadas
 
-estado **spec lista** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
+estado **spec lista** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre. Añadido el 2026-09-24 por petición del humano: el volcado es MASIVO. Llega un Excel (F-036) y hay que replicar, fila a fila y escribiendo en lote, el alta manual que hoy hace Posventa en Sigrid, documentada en docs/referencia/04_alta_incidencia_sigrid.md: ficha de la unidad de posventa → Reclamaciones → Nueva; serie RS<año2>.<mes>/ (Reclamaciones postventa, el código lo pone Sigrid); descripción; tipo de reclamación (sale 3 por defecto, Posventa pone 0002 PRIMER LISTADO POSTVENTA en el primer listado); oficio del catálogo; ubicación, forma de comunicación, descripciones corta y larga, propietario y persona que reclama; y los intervinientes (oficio + proveedor de la obra, F-039). NO vale sql/write a mano (además tope de 20 sentencias por petición): sigue haciendo falta el endpoint de dominio en sigrid-api, y debe admitir lotes. Preguntas abiertas para la spec (sección final de docs/referencia/04_alta_incidencia_sigrid.md): qué es el tipo 3 y qué regla elige entre 2 y 3; qué tablas escribe el alta (se mide contra el ERP, no se supone); qué oficio lleva el parte cuando hay varios intervinientes y quién marca Causante; de dónde salen propietario y persona que reclama en un alta masiva. Actualizado por el líder el 2026-09-25: sigrid-api YA TIENE el endpoint de dominio, POST /api/sigrid/partes-reclamacion (su F-006; azure-apps/sigrid_api.md §8.9), pensado para este consumidor: alta EN LOTE de partes 708 de UNA obra, una transacción por parte, dry-run por defecto; la idempotencia la da referencia_externa con prefijo PVI- (guardada en conext RCPCLI); tipo por defecto 0002 PRIMER LISTADO POSTVENTA; oficio e intervinientes resueltos contra los oficios de la obra (obrofc); propietario y persona copiados de la UPV; forma de comunicación por defecto Escrita. Responde 200 con el estado de cada parte (previsto, creado, idempotente, rechazado, no_procesado) y su motivo. NO pasa a PTE, ni crea tareas, correos ni fotos. Responde a varias de las preguntas abiertas de docs/referencia/04_alta_incidencia_sigrid.md (tablas, tipo por defecto, propietario); queda abierta la regla para elegir entre tipo 0002 y 0003. Doble llave de escritura en sigrid-api: SIGRID_DOMAIN_WRITE_ENABLED y SIGRID_RECLAMACION_WRITE_ENABLED. ACTUALIZADO POR EL LÍDER EL 2026-10-06: el endpoint ya no bloquea. azure-apps/sigrid_api.md §8.9 y su tabla de consumidores: sigrid/partes-reclamacion está desplegado, verificado y ABIERTO desde el 2026-09-25 (SIGRID_RECLAMACION_WRITE_ENABLED=true; escritura real autorizada de un parte en la obra 0626 y repetición idempotente). Lo que falta para F-040 es de este repositorio: F-056 (aprobar, con las candidatas al volcado) y F-038 (la página). PARTIDA EL 2026-10-07 (D-1, decisión del humano): esta ficha es el panel de volcado en bandeja.html (ensayar, confirmar con el número de partes, volcar de trozo en trozo, parar al primer fallo, aviso de pasar a PTE a mano) y el cierre de sus placeholders del portal; el backend es F-059. Spec aprobada (2026-10-07; Q-1 siempre 0002, Q-2 causante false, Q-3 PTE a mano, Q-4 obra 0626, Q-5 fuera, Q-6 sí, Q-7 cualquiera de posventa-usuarios, Q-8 más adelante): specs/F-040-volcado-sigrid/. PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto.
 
 ### F-057 · Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua
 
-estado **pendiente** · prioridad 5 · rigor `estandar` · SDD sí · rama `feature/F-057-tabla-bandeja-paso1`
+estado **pendiente** · prioridad 6 · rigor `estandar` · SDD sí · rama `feature/F-057-tabla-bandeja-paso1`
 
 Alta del 2026-10-06 por petición del humano, tras la spec de F-038. La tabla «3 · Bandeja de la obra» de importar.html (paso 1 del recorrido) se ve estrecha y pobre. Pide: (1) que ocupe el ancho de la ventana; (2) cabecera de columnas con los colores corporativos de Ruesma (tokens rs-*); (3) ordenar por columna; (4) filtros, como en otros puntos del front (por ejemplo, el circuito de partes); (5) quitar la columna «Fila»; (6) una columna «Nueva» / «Antigua» que diga si la incidencia entró con la última importación o ya estaba antes en la bandeja; (7) poder editar las incidencias nuevas antes de aprobarlas. La edición y la aprobación son de F-056 (backend) y F-038 (bandeja.html): esta ficha no crea otro camino de edición, sino que enlaza o reutiliza el de F-038 (a decidir con el humano en la spec). Si la marca nueva/antigua necesita un dato que el backend no da, se parte (límite de servicio).
 
 ### F-062 · Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte
 
-estado **pendiente** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-062-gestionar-volcadas`
+estado **pendiente** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-062-gestionar-volcadas`
 
 Alta del 2026-10-20 por decisión del humano al conciliar F-038 (Q-6: «la idea es gestionar toda la postventa en el portal, editar o borrar incidencias»). Hoy una incidencia volcada o en duda no admite ninguna acción (F-059: 409 accion_no_permitida) y el parte solo se anula desde la UI de Sigrid (NO PROCEDE, sin correo). Esta ficha estudia cómo corregir o anular desde el portal una incidencia ya volcada: qué expone sigrid-api para modificar o anular un parte (azure-apps/sigrid_api.md), qué estados quedan en la bandeja y cómo se protege (ensayo, ventana propia, confirmación). Toca backend (postventa-api) y front; probablemente se parte. Escritura en el ERP de producción: dry-run previo, ventana cerrada al publicar y autorización expresa para la verificación. Va detrás de F-038 y F-040.
 
 ### F-063 · Normalizar el código de obra: un cero delante cuando empieza por tres cifras
 
-estado **pendiente** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-063-normalizar-codigo-obra`
+estado **pendiente** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-063-normalizar-codigo-obra`
 
 Alta del 2026-10-20 por petición del humano. Los códigos de obra de Sigrid llevan cuatro cifras (0626, 0677), pero la gente teclea 626. Regla pedida: si el código son tres cifras, se añade un 0 delante (626 → 0626); y si empieza por tres cifras seguidas de otra cosa, también (lectura del líder, pendiente de confirmar con el humano: 626A → 0626A). Hoy domain/models/plantilla_incidencias.py::normalizar_codigo_obra solo aplica nombrado.normalizar_codigo (guiones y blancos) y valida longitud y caracteres; la usan la plantilla, la importación, la bandeja, la revisión, las equivalencias, la normalización y el volcado. Al especificar: si se rellena en un único sitio (esa función) o también en el front (campo «Código de obra»); qué pasa con lo ya guardado con tres cifras en postventa.* (¿hay filas?); que no se confunda con el relleno a tres cifras de las villas (F-049) ni con los tramos de codigos_del_parte; y comprobar contra Sigrid que no existe ninguna obra cuyo código real empiece por tres cifras sin el 0.
 
 ### F-058 · La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad
 
-estado **pendiente** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-058-plantilla-ubicaciones-sigrid`
+estado **pendiente** · prioridad 7 · rigor `critico` · SDD sí · rama `feature/F-058-plantilla-ubicaciones-sigrid`
 
 Alta del 2026-10-06 al resolver la Q-5 de F-056 (propuesta del spec-author). Hoy la columna Ubicación de la plantilla de F-036 sale de una lista cerrada versionada (config/plantilla_incidencias.yaml), la misma para todas las filas, y la importación la valida contra ella; la revisión de F-056, en cambio, valida contra Sigrid en vivo: las ubicaciones de la tipología de la unidad (upv.obrtplide → prmtpl.ubica, separadas por ;, exactas tras recortar; medido en la 0677: 3 tipologías de 31 a 37 ubicaciones, que cubren las 1.261 reclamaciones). Una fila puede entrar con una ubicación de la plantilla que no es de su unidad y quedar luego ubicacion_fuera_de_lista. Esta ficha alinea las dos: la plantilla y la importación usan la misma lectura que F-056. Ojo: en el Excel la lista depende de la unidad de cada fila. Opciones para su spec: (a) desplegable dependiente de la columna Unidad (rangos con nombre por unidad o tipología y validación con INDIRECTO, probado en Excel, Excel web y LibreOffice); (b) pares Unidad · Ubicación en una sola columna, como los pares oficio · proveedor de F-036; (c) un desplegable con la unión de la obra y la validación por unidad solo al importar (con el Excel de errores). Retira la lista de ubicaciones del YAML. No cambia la bandeja ni la revisión. SPEC ESCRITA el 2026-10-09 en el worktree postventa-f058 (rama feature/F-058-plantilla-ubicaciones-sigrid), pendiente de aprobación. Respuestas del humano (2026-10-09): D-4 solo se aceptan plantillas de la versión nueva (una v1 se rechaza con motivo claro; cambia el criterio 4 de la ficha); Q-4 el Excel se rellena a mano en Excel; Q-6 autoriza la importación de prueba en producción; Q-7 el Bloque 0 se prueba en Excel de escritorio y Excel web (sin LibreOffice). Pendiente: D-6 (retirar o congelar scripts/migrar_excel_f036.py) y el resto de recomendaciones. F-060 done y desplegada (2026-10-14): sin bloqueo.
 
 ### F-055 · init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado
 
-estado **pendiente** · prioridad 7 · rigor `critico` · SDD sí · rama `feature/F-055-barridos-sin-cache`
+estado **pendiente** · prioridad 8 · rigor `critico` · SDD sí · rama `feature/F-055-barridos-sin-cache`
 
 La caché de suite de init.sh se salta la suite de un servicio si su carpeta no ha cambiado. Pero algunos tests de esa suite (el barrido de GUID de F-006, R26, y sus hermanos) leen todo el repositorio: progress/, docs/, specs/, infra/. Con la caché, un fichero nuevo fuera del servicio no se barre nunca. Así entró sin que nadie lo viera el client ID real de la maqueta en progress/review8_F-035.md (2026-09-26, llegó a origin/dev y origin/main); lo destapó F-053 el 2026-10-06 y se tapó en su rama, sin reescribir la historia (decisión del humano). Arreglo: los tests que barren el repositorio se identifican (marca o lista declarada) y init.sh los ejecuta siempre, también con la caché válida. Es una mejora del arnés genérico: se porta a arnes-base en el mismo trabajo. AÑADIDO EL 2026-10-06 (review de F-053, O-3 y O-4, también para arnes-base): (1) harness.mutacion mide la suite sin mutar al empezar y avisa o ajusta si --timeout < 1,5 × esa duración (en F-053 el timeout de 900 s quedó por debajo de los 897 s de la suite y 3 mutantes salieron en timeout por construcción); y su texto de «Timeouts» dice «sin otros workers de esta campaña», no «sin nadie compitiendo por la máquina». (2) La puerta de cobertura lleva cada línea cambiada a la de inicio de su sentencia (ast) antes de cruzarla con executed_lines, e informa «N líneas del diff → M sentencias»: hoy una clave nueva dentro de un dict de varias líneas no cuenta.
 
 ### F-052 · Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log
 
-estado **pendiente** · prioridad 8 · rigor `critico` · SDD no · rama `feature/F-052-secretos-ajustes`
+estado **pendiente** · prioridad 9 · rigor `critico` · SDD no · rama `feature/F-052-secretos-ajustes`
 
 Alta del 2026-10-02 por el líder, confirmada por el humano. Al ejecutar la verificación MANUAL T16 de F-036 (suite tests_bbdd contra la base efímera) falló un test antiguo y pytest imprimió el objeto Ajustes entero: gemini_api_key es un str normal en config/settings.py, así que la clave salió casi completa en la consola y de ahí a una conversación. El valor NO está en ningún fichero del repositorio. El humano rota la clave aparte. Alcance: que ningún campo secreto de Ajustes (claves de API, contraseñas, secretos de cliente, cadenas de conexión) aparezca en repr(), str() ni en un volcado del modelo: SecretStr o repr=False, con los puntos de uso leyendo el valor de forma explícita. Revisar TODOS los campos, no solo el de Gemini, y cualquier otro objeto que guarde un secreto (clientes, fábricas). No se hizo dentro de F-036 porque su test de alcance (R49) le prohíbe tocar config/settings.py. Va justo después del merge de F-036.
 
 ### F-054 · El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost
 
-estado **pendiente** · prioridad 9 · rigor `estandar` · SDD no · rama `feature/F-054-dev-server-127`
+estado **pendiente** · prioridad 10 · rigor `estandar` · SDD no · rama `feature/F-054-dev-server-127`
 
 Alta del 2026-10-06 por el líder, sacada de F-035 (sus guardias R32/R33 no dejan tocar dev_server.py ni dev_front.ps1). Defecto encontrado por el humano en V2 de F-035 y reproducido por el líder: services/postventa-front/dev_server.py y dev_front.ps1 reenvían /api/* a http://localhost:7073; en Windows, localhost intenta antes ::1 (IPv6) y la conexión se cuelga decenas de segundos (medido: sin respuesta en 40 s con localhost; 0,01 s con 127.0.0.1), así que el navegador da por fallidas health, split y el resto aunque func las acabe ejecutando. Mientras tanto, se arranca con .\dev_front.ps1 -Api http://127.0.0.1:7073. Arreglo: el valor por defecto pasa a http://127.0.0.1:7073 en los dos ficheros, con la documentación al día; cambian a propósito test_f007_dev_server.py (l. ~502) y test_f007_dev_front_ps1.py (l. ~47), que fijan localhost.
 
 ### F-061 · Optimizar el listado de la revisión: arranque de instancias y picos de Sigrid
 
-estado **pendiente** · prioridad 10 · rigor `estandar` · SDD sí · rama `feature/F-061-optimizar-listado-revision`
+estado **pendiente** · prioridad 11 · rigor `estandar` · SDD sí · rama `feature/F-061-optimizar-listado-revision`
 
 Alta del 2026-10-14 por decisión del humano en la T30 de F-060 («hagamos m3, lo dejamos así, y haz una feature para el futuro de optimización»). La medición M1 de F-060 en producción (progress/impl_F-060.md, T28) dio, en caliente, p50 4,92 s y máximo 14,73 s para GET /api/revision de la 0677 (objetivo de F-060 D-10: p50 < 3 s y máximo < 10 s), con las peticiones normales en 0,5–1,2 s. Descartadas en M1 las conexiones a PostgreSQL, la consulta, el cálculo y la red de la SWA. Quedan dos causas: (A) instancias o procesos nuevos de Flex Consumption: 10 peticiones seguidas cayeron en 6 instancias distintas (alwaysReady vacío, sin concurrencia HTTP configurada), con ≈ 2,5 s de plataforma más ≈ 3 s antes del handler (F-060 aplica M-3, la importación diferida, que ataca estos 3 s); (B) picos de 4–8 s en una sola de las lecturas a sigrid-api (catalogo.leer_unidades o ubicaciones; lo normal es 0,1–0,4 s), también en procesos calientes. Alcance a estudiar en la spec, empezando por medir de nuevo sobre M2: por qué Flex reparte peticiones seguidas entre instancias (concurrencia HTTP por instancia), instancia siempre lista (M-4, con coste: decisión del humano), el lado de sigrid-api de los picos (otro proyecto: solo lectura y propuesta, nada se toca allí desde aquí), caché corta por proceso de las lecturas de catálogo de Sigrid y las lecturas en paralelo (M-5). Se mide con la traza «F-060 tiempos del listado». PISTA DE M2 (2026-10-14, F-060 T35): tras M-3, el arranque de nuestro código en un proceso nuevo baja de ≈ 3,0 s a ≈ 1,6–2,0 s, y lo que domina son las lecturas de sigrid-api: 6 de 11 peticiones con una o dos lecturas de 3,8–8,1 s, casi siempre en procesos de ≈ 10 s de vida, y las duraciones se agrupan en ≈ 4 s y ≈ 8 s (también en M1): apunta a una espera fija (conexión, DNS, TLS o reintento del cliente HTTP) más que a una consulta lenta; empezar por ahí. El frío tras desplegar dio 23,8 s, ≈ 12 s de plataforma.
 
 ### F-037 · Entrada desde la web de clientes: el contrato con el proyecto independiente
 
-estado **pendiente** · prioridad 15 · rigor `critico` · SDD sí · rama `feature/F-037-entrada-web-clientes`
+estado **pendiente** · prioridad 16 · rigor `critico` · SDD sí · rama `feature/F-037-entrada-web-clientes`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). La WEB DE CLIENTES es un PROYECTO INDEPENDIENTE (recomendación del líder del 2026-09-23: usuarios externos, otro acceso y otra exposición); tendrá su repositorio y su documento en azure-apps. Esta ficha es solo nuestra mitad: el contrato por el que la web deja incidencias en la MISMA bandeja que el Excel de F-036.
 
 ### F-039 · Propuesta del industrial al crear la incidencia
 
-estado **pendiente** · prioridad 17 · rigor `critico` · SDD sí · rama `feature/F-039-propuesta-industrial`
+estado **pendiente** · prioridad 18 · rigor `critico` · SDD sí · rama `feature/F-039-propuesta-industrial`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Criterio del humano (2026-09-23): se proponen los industriales que HAN HECHO ESE TIPO DE TRABAJO EN ESA OBRA. El usuario puede cambiarlo. Lectura de Sigrid por sigrid-api. Añadido el 2026-09-24: la fuente natural de la propuesta es la lista que Sigrid enseña en la pestaña Intervinientes al pulsar Añadir, «Seleccione el oficio de la obra»: los oficios de ESA obra con su proveedor (39 en la 0677), selección múltiple. Ver docs/referencia/04_alta_incidencia_sigrid.md §5. Qué tabla la guarda está por medir. Añadido por el líder el 2026-09-29, desde la medición de F-036 (progress/explore_F-036.md) y por decisión del humano (opción A): las ACTIVIDADES del proveedor se quedan para esta feature, no para F-036. Dónde están: ficha del proveedor, pestaña Datos fiscales, caja «Naturaleza de productos, servicios y/o actividades» (correo del director de Compras del 2026-09-28); en BBDD, conact (conide, actide) → auxpronat (catálogo en árbol, padre por prefijo del código, 3 niveles, 514 actividades). confam/auxfam están vacías y homolo vale 0 en todo conact. En la 0677, 33 de 36 proveedores tienen actividades (81 filas, 58 distintas); global, 360 de 526 proveedores de obrofc. auxpronat y auxofc no comparten códigos; 21 actividades se llaman como un oficio. Hace falta una correspondencia actividad → oficio confirmada por el humano (por hoja y por rama). Dónde aporta: los oficios que están en la obra SIN proveedor (en la 0677: 0133, 0144 y 0166, justo los que usa Posventa en su Excel). OJO, dependencia: sigrid-api §8.9 solo acepta intervinientes que estén en obrofc de la obra con ese oficio; proponer un proveedor por sus actividades fuera de obrofc exige que sigrid-api dé de alta esa pareja en obrofc, cambio que se pide en su repositorio.
 
 ### F-041 · Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid
 
-estado **pendiente** · prioridad 19 · rigor `critico` · SDD sí · rama `feature/F-041-ficha-incidencia`
+estado **pendiente** · prioridad 20 · rigor `critico` · SDD sí · rama `feature/F-041-ficha-incidencia`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Desde el portal se gestiona la incidencia igual que en Sigrid. Escritura en el ERP; puede necesitar endpoints nuevos en sigrid-api.
 
 ### F-042 · No procede: justificación obligatoria y email al cliente
 
-estado **pendiente** · prioridad 20 · rigor `critico` · SDD sí · rama `feature/F-042-no-procede-email`
+estado **pendiente** · prioridad 21 · rigor `critico` · SDD sí · rama `feature/F-042-no-procede-email`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Si el usuario pasa una incidencia a NO PROCEDE, la app pide una justificación y envía un email al cliente. Buzón de envío por decidir; para pruebas, el de dev. Requiere permiso de envío de correo para la aplicación.
 
 ### F-043 · Operaciones en bloque sobre incidencias
 
-estado **pendiente** · prioridad 21 · rigor `critico` · SDD sí · rama `feature/F-043-operaciones-bloque`
+estado **pendiente** · prioridad 22 · rigor `critico` · SDD sí · rama `feature/F-043-operaciones-bloque`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Cambiar estado, asignar industrial y demás operaciones sobre varias incidencias a la vez.
 
 ### F-044 · Imprimir partes en bloque a PDF o impresora con la plantilla de posventa
 
-estado **pendiente** · prioridad 22 · rigor `estandar` · SDD sí · rama `feature/F-044-impresion-bloque`
+estado **pendiente** · prioridad 23 · rigor `estandar` · SDD sí · rama `feature/F-044-impresion-bloque`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Plantilla de referencia del humano: postventa_17-12-2025.pdf en su OneDrive (Documentos/postventa). Se convierte con markitdown a docs/referencia en la spec, preguntando antes si lleva datos personales; el PDF original no se versiona.
 
 ### F-045 · Registrar un parte sin firma: la incidencia pasa a TER, no a CER
 
-estado **pendiente** · prioridad 23 · rigor `critico` · SDD sí · rama `feature/F-045-parte-sin-firma`
+estado **pendiente** · prioridad 24 · rigor `critico` · SDD sí · rama `feature/F-045-parte-sin-firma`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Amplía el circuito de cierre ya hecho: forzar el registro de un parte sin firma deja la incidencia en TER en vez de CER. Escritura en el ERP.
 
 ### F-046 · Coste de la posventa desde la obra POSTV2
 
-estado **pendiente** · prioridad 24 · rigor `critico` · SDD sí · rama `feature/F-046-coste-postv2`
+estado **pendiente** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-046-coste-postv2`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). POSTV2 es la obra de Sigrid donde se gestiona el coste de posventa; CADA OBRA (promoción) ES UN CAPÍTULO de POSTV2. Lectura por sigrid-api.
 
 ### F-047 · Vincular incidencias con la proforma, el coste y la venta
 
-estado **pendiente** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-047-incidencia-proforma`
+estado **pendiente** · prioridad 26 · rigor `critico` · SDD sí · rama `feature/F-047-incidencia-proforma`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). En algún punto del proceso la incidencia se relaciona con la proforma; con eso se vinculan coste y venta a cada incidencia. El momento y el campo exactos los investiga la spec.
 
 ### F-048 · Los datos de posventa al datamart
 
-estado **pendiente** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-048-datamart-posventa`
+estado **pendiente** · prioridad 27 · rigor `estandar` · SDD sí · rama `feature/F-048-datamart-posventa`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Decisión del humano (2026-09-23): todos los datos del ciclo de posventa van al datamart para cruzarlos. Relación con F-024 (datos del parte enlazados a Sigrid). Cruza la frontera del proyecto: el datamart es de datamart-seg-anual; se coordina vía azure-apps.
 
 ### F-050 · Agrupar los proveedores casi duplicados del maestro de Sigrid
 
-estado **pendiente** · prioridad 27 · rigor `estandar` · SDD sí · rama `feature/F-050-agrupar-proveedores`
+estado **pendiente** · prioridad 28 · rigor `estandar` · SDD sí · rama `feature/F-050-agrupar-proveedores`
 
 Alta del 2026-09-29 por el líder, con el visto bueno del humano, al sacarla de F-036 (D-18). El humano pidió agrupar los proveedores de Sigrid con nombres casi iguales (tilde, plural, errata) para que un desplegable enseñe una sola entrada por empresa real. La medición de F-036 (progress/explore_F-036.md) dice que el problema está en el MAESTRO completo (9.585 proveedores: 793 grupos que comparten CIF con 1.980 códigos, 530 grupos por nombre sin mayúsculas ni tildes con 1.229 códigos, 151 sin CIF), pero NO entre los proveedores dados de alta en obras (0 grupos entre los 526 de obrofc, ni por CIF ni por nombre). Como la plantilla de F-036 solo ofrece proveedores de la obra, hoy no cambiaría nada; se hará cuando algún desplegable ofrezca proveedores de fuera de la obra (probablemente F-039). El diseño ya está hecho y se reutiliza: design.md §15 de F-036 (propuesta automática por CIF, nombre normalizado, forma jurídica, plural y errata; solo cliques; confirmación humana; decisiones sin nombres en postventa.decisiones_equivalencia con discriminador de catálogo; costura en §15.8). Hay autónomos con nombre de persona: nada de nombres en el repositorio.
 
 ### F-024 · Datos del parte enlazados a Sigrid, para el datamart
 
-estado **spec lista** · prioridad 119 · rigor `estandar` · SDD sí · rama `feature/F-024-datos-parte-sigrid`
+estado **spec lista** · prioridad 120 · rigor `estandar` · SDD sí · rama `feature/F-024-datos-parte-sigrid`
 
 Conservar en nuestra base (schema postventa de psql-albaranes-rs9k2) la informacion del parte que hoy no llega a Sigrid, siempre enlazada con las claves del ERP para que el datamart (sigrid_dm, mismo servidor, otra base) pueda enriquecer con ella los partes de posventa cuando los incorpore. Decidido por el humano el 2026-09-06 tras revisar la guia de cierre de Posventa: el cierre en Sigrid solo registra el grafico y el estado, y todo lo demas del parte se perderia. TRES PIEZAS. (1) Extraccion: anadir al prompt y al schema los campos impresos que hoy no se extraen -oficio, empresa (el industrial que reparo), estancia- y los manuscritos hora_inicio y hora_fin, con su confianza y sin exigirlos (regla de F-003: no se exige lo que la realidad deja vacio); columnas nuevas en postventa.partes con ADD COLUMN IF NOT EXISTS, idempotente como el resto del DDL. (2) Claves del ERP: columna reclamacion_ide (con.ide de la reclamacion, que el dry-run de F-009 ya lee) en postventa.cierres; en postventa.graficos nace ya con ella desde F-012. (3) Una vista de lectura postventa.v_partes_sigrid en nuestro schema que junta parte, validacion, archivo, cierre y grafico por hash_parte y expone las claves de Sigrid (obra, numero de incidencia, reclamacion_ide, gra_cod), los campos extraidos con sus confianzas, la clasificacion de la firma, la URL de SharePoint y las fechas; SIN dni_cliente. PREGUNTA ABIERTA (la decide el humano al aprobar la spec): si la vista expone las observaciones manuscritas, el dato mas valioso para el datamart pero que puede llevar nombres; por defecto NO. FUERA DE ALCANCE: el acceso desde el datamart (su ETL tendria que conectarse a nuestra base con un rol de solo lectura propio, como hace con mcp_sigrid_dm_ro); se deja como peticion escrita al proyecto datamart-seg-anual y el contrato de la vista se documenta en azure-apps/postventa_incidencias.md §8. Va despues de F-012 y antes de F-011.
 
 ### F-011 · Fase 2: ingesta desde buzón de correo
 
-estado **pendiente** · prioridad 120 · rigor `estandar` · SDD sí · rama `feature/F-011-buzon-correo`
+estado **pendiente** · prioridad 121 · rigor `estandar` · SDD sí · rama `feature/F-011-buzon-correo`
 
 Recoger automáticamente las remesas que lleguen a un buzón corporativo, reaprovechando el pipeline existente. Patrón de albaranes-email y partes-email.
 
 ### F-014 · Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción
 
-estado **pendiente** · prioridad 121 · rigor `critico` · SDD sí · rama `feature/F-014-reagrupar-pagina-2`
+estado **pendiente** · prioridad 122 · rigor `critico` · SDD sí · rama `feature/F-014-reagrupar-pagina-2`
 
 Las remesas reales llegan escaneadas sin capa de texto (Mirasierra: 22 páginas, 0 caracteres), así que el troceado de F-002 no puede leer el pie y degrada a 'una página, un parte': un parte de dos hojas sale partido en dos. F-003 ya pasa cada página por un modelo multimodal, que sí ve el pie impreso. Esta feature aprovecha esa lectura: si la extracción devuelve 'Página 2' (o N mayor que 1), esa página se reagrupa como continuación del parte anterior en vez de quedarse como parte suelto. Es la reagrupación posterior al troceado, no un segundo troceador.
 
 ### F-015 · Evaluación del prompt de extracción contra partes reales
 
-estado **pendiente** · prioridad 122 · rigor `critico` · SDD sí · rama `feature/F-015-evaluacion-prompt`
+estado **pendiente** · prioridad 123 · rigor `critico` · SDD sí · rama `feature/F-015-evaluacion-prompt`
 
 Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md. ENCARGO AÑADIDO EL 2026-08-19 desde el cierre de F-004: falta el CONTROL NEGATIVO de la clasificación de firma. T14 midió las cuatro etiquetas sobre los 22 partes reales de Mirasierra y salió 22/22 'humana' con confianza media 98,2, cero 'ilegible', cero 'marca_simple' y cero 'casilla_vacia'. Eso confirmó la decisión D1 (la regla estricta no manda a revisión ningún parte real) pero NO demuestra el criterio de aceptación de F-004 'la clasificación distingue firma de aspa': en la remesa no había ni un aspa, así que un clasificador que respondiera 'humana' a todo habría dado la misma salida. Lo que falta es pasar por el clasificador partes SINTÉTICOS con aspa y con casilla vacía (tests/utiles_pdf.py sabe componerlos) y comprobar que no los etiqueta 'humana'. El humano decidió el 2026-08-19 cerrar F-004 sin ello y traerlo aquí, que es el sitio natural de la evaluación de prompts.
 
 ### F-016 · Interpretación automática de las observaciones manuscritas
 
-estado **pendiente** · prioridad 123 · rigor `critico` · SDD sí · rama `feature/F-016-interpretacion-observaciones`
+estado **pendiente** · prioridad 124 · rigor `critico` · SDD sí · rama `feature/F-016-interpretacion-observaciones`
 
 Hoy F-004 rechaza en bloque cualquier parte con observaciones manuscritas y lo manda entero a la cola de validación humana, dé lo mismo que ponga 'falta rematar el rodapié' o 'firmado a satisfacción'. Esta feature interpreta el texto que ya transcribe F-003 para distinguir la observación inocua —una nota, una aclaración, un comentario que no discute la reparación— de la que de verdad impide dar la reparación por buena, y así reducir la cola humana a lo que la merece. Mejora posterior, no bloqueante: el circuito funciona sin ella, solo con más trabajo manual. En la remesa real de Mirasierra la cola serían 2 de 22 partes (~9 %), así que el ahorro se mide antes de complicar el modelo. Ante la duda, a la cola: la clasificación nunca da por buena una reparación por su cuenta si no está segura.
 
 ### F-017 · Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida
 
-estado **pendiente** · prioridad 124 · rigor `documental` · SDD no · rama `feature/F-017-checkpoints-manual`
+estado **pendiente** · prioridad 125 · rigor `documental` · SDD no · rama `feature/F-017-checkpoints-manual`
 
 Dos propuestas que dejó la review de F-003, aparcadas por el humano el 2026-08-19 como baja prioridad. (P2) C5 exige hoy todas las tareas de tasks.md en [x], pero el nivel de rigor critico OBLIGA a tener verificaciones MANUAL (humano) que ningún agente puede ejecutar: el reviewer queda entre rechazar un trabajo impecable, marcar como hecho algo que nadie ejecutó, o aprobar saltándose la letra de C5. Pasó con F-003 y lo único que impidió cerrarla con T18 sin ejecutar fue una nota escrita a mano en progress/current.md. Se propone que C5 distinga la tarea de agente pendiente (trabajo incompleto, CHANGES_REQUESTED) de la tarea MANUAL (humano) pendiente (estado propio: aprobado pero no cerrable hasta que el humano la ejecute). (P3) Que C4 bis nombre explícitamente la comprobación de ficheros «no medidos» en la puerta de cobertura, que hoy se hace pero no está escrita. Las dos son GENÉRICAS: se portan a arnes-base en el mismo trabajo, según la regla de propagación de CLAUDE.md. AÑADIDO EL 2026-08-19 desde F-005 (decisión D5): el DDL contra el PostgreSQL compartido es candidato reconocido a ruta sensible del arnés, pero declararlo cambiaría el arnés para todas las features, así que la decisión se trae aquí. Hoy no existe harness/rutas_sensibles.json y C4 ter es N/A. AÑADIDO desde F-006 (decisión D3): el humano eligió cerrar F-006 con su verificación de subida real declarada y pendiente hasta que F-010 despliegue; ese cierre necesita autorización expresa ante C5 y es el segundo caso real que justifica P2. AMPLIADA EL 2026-09-16 al cerrar F-009, y con dos casos nuevos: ya son CUATRO (F-003 el 2026-08-19, F-006, F-012 el 2026-09-11 y F-009 el 2026-09-16). Los dos ultimos demuestran que el riesgo de P2 no es teorico: F-012 cerro con 13 casillas en [ ] razonando la excepcion a mano y quedo in_progress hasta que el lider la paso a done; F-009 uso [~] y otro razonamiento y fue a done directo. Dos reviewers, dos criterios, dos estados finales. El reviewer de F-009 propuso la misma mejora por su cuenta sin saber que F-017 existia (progress/review_cierre_F-009.md seccion 9). El humano decidio el 2026-09-16 NO tocar CHECKPOINTS.md todavia y dejar esta ficha en el backlog. El insumo para ejecutarla, ya masticado, esta en progress/propuesta_C5_F-017.md: la redaccion literal propuesta para C5 y los tres agujeros que corrige del texto del reviewer (acotar la excepcion a tareas MANUAL (humano), precondiciones externas o bloqueos de terceros, porque una tarea de agente sin ejecutar sigue siendo CHANGES_REQUESTED; exigir ficha de deuda con id propio para todo hueco recuperable, como se hizo con F-029; y decir 'el humano' y no 'quien puede tomar la decision', que no esta definido en el arnes), la lista de ficheros a tocar en los dos repositorios, y el aviso de que C5 es HOY la unica seccion identica entre este repo y arnes-base, asi que el coste de portarla no volvera a ser tan bajo. DESCARTADO en ese mismo analisis un tercer apunte que proponia que C4 bis admitiera el numero de workers de la campana de mutacion en tasks.md o en el commit: el dato de partida era falso (la fila Workers existe en arnes-base desde la 1.7.2, no desde la 1.7.8), cubre una ventana historica de 18 minutos irrepetible, y tocar C4 bis es lo unico de todo esto que puede romper tests en arnes-base. El criterio 2 de esta ficha ya esta resuelto de hecho: la constancia va en description, que es lo unico que harness/backlog.py proyecta a BACKLOG.md.
 
 ### F-018 · Mínimo privilegio en Graph: la app solo Sites.Selected
 
-estado **pendiente** · prioridad 125 · rigor `documental` · SDD no · rama `feature/F-018-minimo-privilegio-graph`
+estado **pendiente** · prioridad 126 · rigor `documental` · SDD no · rama `feature/F-018-minimo-privilegio-graph`
 
 El app registration `postventa-incidencias` (verificado el 2026-08-20) tiene consentimiento de administrador para TRES permisos de aplicación de Microsoft Graph: Sites.Selected, Sites.ReadWrite.All y Sites.FullControl.All. Los dos últimos alcanzan a TODOS los sitios de SharePoint del tenant, no solo a la biblioteca de Posventa, y vuelven irrelevante al primero: con Sites.FullControl.All la aplicación puede escribir en el sitio de RRHH o de dirección igual que en el suyo. Es más amplio incluso que Files.ReadWrite.All, que la spec de F-006 ya descartó por excesivo. No es un fallo: es lo que pasa al configurar Sites.Selected, que exige el paso extra de asignar la biblioteca concreta por Graph, mientras que los amplios funcionan a la primera. EL HUMANO DECIDIÓ EL 2026-08-20 arrancar F-006 con los permisos actuales y recortar después, en esta feature, para no mezclar un cambio de configuración del tenant con una implementación. Mientras tanto el riesgo queda documentado en la spec de F-006. El recorte lo ejecuta el humano en Azure: un agente no toca permisos del tenant. Añadido por el líder el 2026-09-25 (T18 de F-013): Desde F-013 (2026-09-24), al recortar a `Sites.Selected` hay que conceder dos cosas distintas, y una de ellas ya no la pide F-013. (1) El sitio de Posventa, con escritura (`write`): desde el corte de F-013 el archivo va a su biblioteca «Documentos compartidos», donde el servicio lista carpetas y crea las que falten (un `POST` por nivel), además de subir el PDF. Hoy no hace falta concederlo porque el token trae permisos de aplicación amplios —medido el 2026-09-24 (T2 de F-013): `Sites.ReadWrite.All` (y `Mail.ReadWrite`)—, así que el servicio escribirá en Posventa sin que nadie le conceda nada; con `Sites.Selected` y sin esta concesión, cada archivado respondería `403`, no reintentable. (2) El sitio de IT, solo lectura (`read`), únicamente si se quiere seguir leyendo lo archivado allí: precisado el 2026-09-22, ese `read` ya no lo pide F-013 (`design.md` §8.3 y §9 bis de F-013: los 133 partes de IT se olvidan, no se localizan). No concederlo no borra nada: los ficheros siguen en su biblioteca y sus trazas en `postventa.archivos`. Ningún identificador de sitio en la ficha: se resuelven con `infra/23_destino_posventa.ps1 -MostrarIdentificadores` y van al Key Vault.
 
 ### F-020 · Ajustes de diseño del front: el PDF manda en la pantalla
 
-estado **pendiente** · prioridad 127 · rigor `documental` · SDD no · rama `feature/F-020-diseno-front`
+estado **pendiente** · prioridad 128 · rigor `documental` · SDD no · rama `feature/F-020-diseno-front`
 
 Tres observaciones del humano al probar el front por primera vez el 2026-08-20 (F-007, T14), con la remesa real delante. Ninguna es un fallo: el front funciona. Son de uso, y salen de mirar la pantalla de trabajo de quien va a revisar 22 partes seguidos. (1) **El campo de observaciones se queda pequeño**: es texto manuscrito transcrito, de longitud variable, y hay que poder leerlo y corregirlo entero sin pelearse con una caja de una línea. (2) **El PDF se ve pequeño**, que es el problema de fondo: el documento es lo que la persona está leyendo para decidir, y hoy es lo que menos sitio ocupa. (3) **La vista del PDF está partida en dos** —a la izquierda la previsualización de páginas, a la derecha la página— y el reparto está al revés: la tira de previsualización debe ser **muy estrecha**, lo justo para navegar, y cederle el espacio a la página. Criterio que ordena las tres: en una pantalla de revisión, el documento manda y todo lo demás le cede sitio.
 
 ### F-021 · Rehidratar la sesión del front al recargar el navegador
 
-estado **pendiente** · prioridad 128 · rigor `estandar` · SDD sí · rama `feature/F-021-rehidratar-sesion`
+estado **pendiente** · prioridad 129 · rigor `estandar` · SDD sí · rama `feature/F-021-rehidratar-sesion`
 
 Decisión **D4 de F-019**, tomada por el humano el 2026-08-26 y aplazada a propósito hasta ver el piloto. F-019 dejó la persistencia escribiendo: la remesa, los partes y el resultado de la validación quedan guardados en `postventa`, y la cola de validación humana sobrevive entre sesiones. Lo que NO sobrevive es el trabajo en curso: si quien está revisando una remesa de 22 partes recarga la pestaña, la pantalla vuelve a cero y hay que subir el PDF y volver a extraerlo entero, gastando otra vez cuota de IA. La pieza que falta es de LECTURA: volver a pintar una remesa con sus partes y sus veredictos exige un método nuevo en `RepositorioPartesPort` —hoy solo existe `cola_validacion_humana`—, y el encargo de F-019 prohibía expresamente tocar el puerto, por eso se sacó aparte. Alcance: el método de lectura, el endpoint que lo expone y el cableado del front que lo consume al arrancar. Sin DDL: las seis tablas de F-005 ya guardan todo lo necesario. OJO al dato personal: la lectura devuelve observaciones manuscritas de clientes, así que hereda de F-019 el tope duro de límite y la prohibición de escribir dato personal en el log.
 
 ### F-022 · Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página
 
-estado **pendiente** · prioridad 129 · rigor `estandar` · SDD sí · rama `feature/F-022-cache-prompts-gemini`
+estado **pendiente** · prioridad 130 · rigor `estandar` · SDD sí · rama `feature/F-022-cache-prompts-gemini`
 
 ORIGEN: un aviso de consumo que recibió el humano el 2026-08-26 estimando hasta un 67 % de ahorro cacheando contenido repetido. OJO, ese aviso es sobre la API de Anthropic y ESTE PROYECTO NO LA USA: `postventa-api` llama a Gemini (`google.genai`), así que el ahorro estimado no sale de aquí. Si el gasto directo de API de la organización viene de otro repositorio, la feature de caché va allí, no en este (límite de servicio). Lo que sí aplica aquí es la misma idea con el proveedor que sí usamos: hoy el `system_instruction` viaja ENTERO en cada llamada, y una remesa como la real de Mirasierra son 22 páginas por dos llamadas —extracción y clasificación de firma— es decir 44 envíos del mismo prompt. El SDK ya instalado trae soporte de caché de contexto. EL MATIZ QUE ORDENA LA FEATURE: `config/prompts.yaml` entero son 7.501 bytes, así que cada prompt suelto ronda el mínimo de tokens que Gemini exige para cachear y PUEDE QUE NO COMPENSE. Por eso la feature empieza midiendo y su primer entregable es un número, no un cambio de código: hoy nadie sabe lo que cuesta procesar una remesa. Cerrarla documentando que no compensa es un resultado válido. NO SE TOCA EL TEXTO DE LOS PROMPTS: eso es F-015, y cambiarlos sin su evaluador es justo lo que esa feature previene.
 
 ### F-027 · Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura
 
-estado **pendiente** · prioridad 130 · rigor `estandar` · SDD sí · rama `feature/F-027-suite-barrido-cacheado`
+estado **pendiente** · prioridad 131 · rigor `estandar` · SDD sí · rama `feature/F-027-suite-barrido-cacheado`
 
 El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco ficheros que recorren el árbol del repositorio fichero a fichero, y repiten el mismo barrido en cada test: test_f003_arquitectura.py cuesta 12,7 s él solo, un tercio de la suite entera. Leer el árbol UNA vez en una fixture de sesión y que cada test consulte el resultado dejaría la suite en torno a 20 s. Medido en progress/explore_F-009_timeouts.md (medición 10) el 2026-09-02, a propósito de los timeouts de la campaña de mutación de F-009: con la suite a 20 s la campaña paralela volvería a caber de sobra en el tope de 120 s por mutante. Beneficia además a cada init.sh de cada sesión. OJO: toca tests de F-003, F-005, F-006 y F-009, features ya cerradas, con el riesgo de aflojar sin querer una comprobación de arquitectura; por eso lleva spec propia y review, y no se mete dentro de otra feature. RENUMERADA el 2026-09-15: nacio como F-022 el 2026-09-02 en la rama de F-012, sin ver que dev ya tenia una F-022 distinta -la cache de contexto de Gemini, del 2026-08-26-. Al mergear la cadena a dev colisionaron los dos identificadores; conserva el numero la que se dio de alta antes.
 
 ### F-029 · Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1
 
-estado **pendiente** · prioridad 136 · rigor `estandar` · SDD no · rama `feature/F-029-scripts-infra-comillas`
+estado **pendiente** · prioridad 137 · rigor `estandar` · SDD no · rama `feature/F-029-scripts-infra-comillas`
 
 DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO ARRANCAN: se estrellan en la primera línea que ejecutan, y ninguno de los dos se ha ejecutado NUNCA. El defecto es el mismo que el 2026-09-15 tumbó a infra/12_traza_cierre_local.ps1: se invoca al intérprete con `& $python -c "<programa>"` y PowerShell 5.1 destroza el entrecomillado del programa antes de que llegue a Python. DÓNDE: infra/07_alta_usuario_sigrid.ps1, líneas 161 y 248; y infra/17_traza_grafico_local.ps1, línea 196. EL ARREGLO YA EXISTE EN EL REPOSITORIO, escrito y probado: la función `Invoke-PythonDelServicio` de infra/08_lectura_sigrid_comun.ps1, que es la que arregló al `12`. No hay que inventar nada: hay que aplicarla en los tres sitios y EJECUTAR los dos scripts, que es justo lo que no se hizo con el código anterior. POR QUÉ IMPORTA, aunque sea prioridad baja: bloquea dos verificaciones de F-009 que quedaron abiertas al cerrarla. (a) El `07_` es el que hace el COUNT(*) de `-VerificarAhora` sobre dbo.usu, o sea LA PRIMERA LÍNEA DE T23 (hueco 3 de progress/cierre_F-009.md §3: R31, R33 y R34). (b) El `17_` es el que se invoca en la PRECONDICIÓN AÑADIDA DE T24, la del gráfico adjuntado (R2 de F-012). Si algún día se recorren esos huecos, esto es lo primero que hay que arreglar. LECCIÓN QUE LO ACOMPAÑA, del §10.2 del guion del bloque 8: tres de los cuatro scripts de lectura no funcionaban porque estaban escritos y nunca ejecutados. Arreglar estos dos sin lanzarlos vuelve a crear el mismo problema con otro nombre. AVISO SOBRE LAS PUERTAS DEL ARNÉS: cobertura y mutación miden SOLO Python (carencia 1.7.13 del arnés, portada a arnes-base), así que aquí no aportan nada y la evidencia tiene que ser la ejecución real de los dos scripts contra lecturas, con su salida pegada. Origen: progress/guion_bloque8_F-009.md §10.6 y progress/cierre_F-009.md §5.
 

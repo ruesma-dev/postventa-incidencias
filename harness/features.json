@@ -202,7 +202,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 120,
+      "priority": 121,
       "branch": "feature/F-011-buzon-correo"
     },
     {
@@ -252,7 +252,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 121,
+      "priority": 122,
       "branch": "feature/F-014-reagrupar-pagina-2",
       "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
     },
@@ -272,7 +272,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 122,
+      "priority": 123,
       "branch": "feature/F-015-evaluacion-prompt",
       "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     },
@@ -291,7 +291,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 123,
+      "priority": 124,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
     },
@@ -309,7 +309,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 124,
+      "priority": 125,
       "branch": "feature/F-017-checkpoints-manual"
     },
     {
@@ -327,7 +327,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 125,
+      "priority": 126,
       "branch": "feature/F-018-minimo-privilegio-graph"
     },
     {
@@ -364,7 +364,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 127,
+      "priority": 128,
       "branch": "feature/F-020-diseno-front"
     },
     {
@@ -382,7 +382,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 128,
+      "priority": 129,
       "branch": "feature/F-021-rehidratar-sesion"
     },
     {
@@ -400,7 +400,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 129,
+      "priority": 130,
       "branch": "feature/F-022-cache-prompts-gemini"
     },
     {
@@ -418,7 +418,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 119,
+      "priority": 120,
       "branch": "feature/F-024-datos-parte-sigrid"
     },
     {
@@ -470,7 +470,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 130,
+      "priority": 131,
       "branch": "feature/F-027-suite-barrido-cacheado"
     },
     {
@@ -510,7 +510,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 136,
+      "priority": 137,
       "branch": "feature/F-029-scripts-infra-comillas"
     },
     {
@@ -647,7 +647,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 15,
+      "priority": 16,
       "branch": "feature/F-037-entrada-web-clientes",
       "blocked_by": "Depende de que exista el proyecto independiente de la web de clientes, y de F-036 (la bandeja)."
     },
@@ -680,7 +680,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 17,
+      "priority": 18,
       "branch": "feature/F-039-propuesta-industrial"
     },
     {
@@ -698,7 +698,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 4,
+      "priority": 5,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "F-059 (el backend del volcado), done, desplegada y verificada; y F-038 (bandeja.html), done."
     },
@@ -715,7 +715,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 19,
+      "priority": 20,
       "branch": "feature/F-041-ficha-incidencia"
     },
     {
@@ -731,7 +731,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 20,
+      "priority": 21,
       "branch": "feature/F-042-no-procede-email"
     },
     {
@@ -746,7 +746,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 21,
+      "priority": 22,
       "branch": "feature/F-043-operaciones-bloque"
     },
     {
@@ -761,7 +761,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 22,
+      "priority": 23,
       "branch": "feature/F-044-impresion-bloque"
     },
     {
@@ -777,7 +777,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 23,
+      "priority": 24,
       "branch": "feature/F-045-parte-sin-firma"
     },
     {
@@ -792,7 +792,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 24,
+      "priority": 25,
       "branch": "feature/F-046-coste-postv2"
     },
     {
@@ -807,7 +807,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 25,
+      "priority": 26,
       "branch": "feature/F-047-incidencia-proforma"
     },
     {
@@ -822,7 +822,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 26,
+      "priority": 27,
       "branch": "feature/F-048-datamart-posventa"
     },
     {
@@ -854,7 +854,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 27,
+      "priority": 28,
       "branch": "feature/F-050-agrupar-proveedores",
       "blocked_by": "Depende de F-036 (mecanismo de equivalencias) y de que algún desplegable ofrezca proveedores de fuera de la obra."
     },
@@ -891,7 +891,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 8,
+      "priority": 9,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -924,7 +924,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 9,
+      "priority": 10,
       "branch": "feature/F-054-dev-server-127"
     },
     {
@@ -941,7 +941,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 7,
+      "priority": 8,
       "branch": "feature/F-055-barridos-sin-cache"
     },
     {
@@ -958,7 +958,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 5,
+      "priority": 6,
       "branch": "feature/F-057-tabla-bandeja-paso1"
     },
     {
@@ -976,7 +976,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 6,
+      "priority": 7,
       "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
       "blocked_by": null
     },
@@ -1052,7 +1052,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 10,
+      "priority": 11,
       "branch": "feature/F-061-optimizar-listado-revision"
     },
     {
@@ -1068,7 +1068,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 5,
+      "priority": 6,
       "branch": "feature/F-062-gestionar-volcadas"
     },
     {
@@ -1086,8 +1086,25 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 5,
+      "priority": 6,
       "branch": "feature/F-063-normalizar-codigo-obra"
+    },
+    {
+      "id": "F-064",
+      "title": "La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado",
+      "description": "Alta del 2026-10-20 por petición del humano: «en la bandeja de revisión deberán poder verse tanto las incidencias que queremos importar que salen del Excel, como las que ya hay en Sigrid y si hay conflictos entre ellas». Hoy la bandeja (F-036, F-056) solo compara lo importado consigo mismo (duplicada dentro de la bandeja) y no lee las reclamaciones de la obra en Sigrid. Decisión del humano (2026-10-20): ficha nueva, justo detrás de F-038 y antes de F-040; F-038 sigue como está. Probablemente se parte por el límite de servicio: backend (leer de sigrid-api, solo lectura, las reclamaciones tip 708 de la obra con su UPV, oficio, ubicación, estado y referencia; cruzarlas con la bandeja) y su parte en bandeja.html. Criterios de conflicto que apunta el humano: misma unidad, oficio y ubicación; y la fila del Excel que ya se volcó desde el portal (referencia PVI-). El resto se decide en la spec, con propuestas del spec-author sobre ejemplos reales de una obra. A decidir también: si un conflicto impide aprobar (motivo nuevo de no aprobable) o solo avisa, y cómo se ven en la lista las incidencias de Sigrid (solo lectura). Coste de la lectura: el listado ya es lento (F-061); medir.",
+      "acceptance": [
+        "En la bandeja de una obra se ven, distinguidas, las incidencias importadas y las reclamaciones que ya hay en Sigrid para esa obra",
+        "Una importada que choca con una de Sigrid según los criterios aprobados sale marcada con el conflicto y la reclamación con la que choca",
+        "Las reclamaciones de Sigrid se leen a través de sigrid-api y no se escriben",
+        "No se escribe nada en Sigrid",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 4,
+      "branch": "feature/F-064-bandeja-con-sigrid"
     }
   ]
 }

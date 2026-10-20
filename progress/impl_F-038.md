@@ -1359,7 +1359,7 @@ equivalente. Los tests son de comportamiento: miran qué hace la página o qué 
 | BN10, BN12 | «R7, R8, R9, R11 (T5): «No, dejarla», «Cancelar», los del detalle, «Cargar» y «Cargar más», pulsados, hacen lo suyo»: el clic de cada uno, **ejecutado** |
 | FE1–FE5 (y FE10) | «R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera». Hay dos filas y el detalle está abierto en la **segunda**, que la vista pinta primero (el recorrido pinta el primer elemento de cada `x-for`). Así `fila` es ID_2 e `incidencias[0]` es ID_1, y la comprobación verifica que el recorrido pinta de verdad la segunda |
 
-**Equivalente propuesto (1). Necesita la aceptación escrita del humano (nivel `critico`).**
+**Equivalente (1). Aceptado como equivalente por el humano, por escrito, el 2026-10-20 («Sí, lo acepto»), a petición del líder tras la review final del Bloque 1.**
 
 - **N11**: en `abrirDetalle`, `api.historialRevision(this.abierta)` en lugar de `api.historialRevision(incidenciaId)`.
   Es **equivalente** porque la línea anterior acaba de hacer `this.abierta = incidenciaId`, y entre esa asignación y
@@ -1956,7 +1956,7 @@ superviviente, o un muerto por accidente, que ahora cae en el test nuevo que se 
 | N8 | nada sin un clic | `bandeja.html` | Intro en la obra aprueba | muere | pytest 2: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_f…` |
 | N9 | nada sin un clic | `js/revision.js` | el motivo del descarte se pierde | muere | node 1: «f038 R11: descartar pide un segundo clic y lleva el motivo» |
 | N10 | nada sin un clic | `js/revision.js` | abrir otro detalle conserva el formulario de la otra | muere con T5 | sobrevivía (902 node, pytest del front y de la raíz en verde); ahora «f038 T5 (N10): R8: abrir el detalle de OTRA fila cierra el formular…» |
-| N11 | nada sin un clic | `js/revision.js` | abrirDetalle pide el historial de this.abierta en vez de incidenciaId | **equivalente (propuesto)** | sobrevivía; sigue vivo con los tests de T5: ver «Equivalentes» |
+| N11 | nada sin un clic | `js/revision.js` | abrirDetalle pide el historial de this.abierta en vez de incidenciaId | **equivalente, aceptado por el humano por escrito el 2026-10-20** | sobrevivía; sigue vivo con los tests de T5: ver «Equivalentes» |
 | TX1 | presentación | `js/revision.js` | duplicada con su propia fila | muere | node 2: «f038 R4 (b): duplicada de la fila N con la original cargada» |
 | TX2 | presentación | `js/revision.js` | acciones del historial cruzadas | muere | node 1: «f038 R8/R22: el historial con fecha de Madrid, acción, quién, campo…» |
 | TX3 | presentación | `js/revision.js` | aprobadas lee nueva | muere | node 1: «f038 R5: el resumen sale del de la respuesta: seis estados y nueve …» |
@@ -1976,8 +1976,8 @@ superviviente, o un muerto por accidente, que ahora cae en el test nuevo que se 
 ### Fuera de este bloque, y lo que falta para cerrarlo
 
 - **`bash harness/init.sh` en verde**: lo ejecuta el líder (P-4). No lo he ejecutado.
-- **La aceptación escrita del humano para N11**, el único equivalente propuesto. Nivel `critico`: CHECKPOINTS C4 bis.
-  Sin ella, C4 bis queda con un mutante abierto.
+- ~~La aceptación escrita del humano para N11~~: **hecha**. El humano lo aceptó como equivalente, por escrito, el
+  2026-10-20 («Sí, lo acepto»).
 - **La review final del Bloque 1** (de 1 a 1 quater). Después vienen los Bloques 2 a 4 (MANUAL).
 - Siguen como estaban: O-B1b-3, O-B1b-4 y O-B1b-5, O-B1t-3 y O-T4q-1. El comportamiento que describe O-B1b-3 (abrir
   otro detalle tira la edición sin preguntar) queda ahora **fijado por un test** (N10). Si el humano decidiera que
@@ -2008,5 +2008,219 @@ Ninguna de este bloque. Las de F-038 son T6 y T7 (Bloques 2 y 3).
 | Tests ejecutados | Suite JS: **973, 973 pass** (antes 902; +71). Pytest del front: **882 passed, 7 skipped**. Raíz (`test_f035_placeholders_vivos.py`): **19 passed** |
 | Cobertura de las líneas cambiadas | **No aplica**: la puerta de cobertura de `init.sh` mide solo Python, y F-038 no tiene `.py` de producción (JS, HTML y tests). `init.sh` lo ejecuta el líder (P-4) y dirá su `N/A` con el motivo impreso |
 | Mutación con la herramienta | `python -m harness.mutacion --feature F-038 --base 87a03f3 --timeout 900` → **0 generados, 0 supervivientes**, 0,0 s, 1 worker efectivo (`progress/mutacion_F-038.md`). Justificado en la sección 1: no hay líneas `.py` de producción en el alcance. El coste por mutante no se puede calcular (0 mutantes) |
-| Mutación a mano | **281 generados**: 234 muertos de entrada, 42 supervivientes y 5 muertos solo por accidente. Con los tests de T5, **46 muertos** más y **1 equivalente propuesto (N11)**, pendiente de aceptación del humano. **0 supervivientes sin cerrar**. 0 muertos por tiempo. 4 copias en paralelo: unos 40 min de reloj la primera pasada (9.552 s sumando cada ejecución) y unos 7 min la segunda (47 mutantes) |
+| Mutación a mano | **281 generados**: 234 muertos de entrada, 42 supervivientes y 5 muertos solo por accidente. Con los tests de T5, **46 muertos** más y **1 equivalente (N11)**, aceptado por el humano por escrito el 2026-10-20. **0 supervivientes sin cerrar**. 0 muertos por tiempo. 4 copias en paralelo: unos 40 min de reloj la primera pasada (9.552 s sumando cada ejecución) y unos 7 min la segunda (47 mutantes) |
 | Tiempo de la suite | JS: 6,26 s (973 tests). Pytest del front: 23,79 s. Raíz: 0,34 s |
+
+## Correcciones de la review final del Bloque 1 (2026-10-20)
+
+La review final del Bloque 1 salió CHANGES_REQUESTED (`progress/review_F-038.md`, `7aab8c9`): de los 24 mutantes
+propios del reviewer (RX01–RX24), sobrevivían 14. He corregido C-B1f-1 a C-B1f-9 tal como están escritos, y los
+nueve se cierran con un test. **Ninguno era un defecto del código**, así que no he tocado nada de producción. C-B1f-10
+(las MANUAL en `current.md`) es del líder y ya está hecho (`bc8cfb9`). No he ejecutado `bash harness/init.sh` (P-4),
+ni pytest en `services/postventa-api`, ni he tocado `.env`.
+
+**N11: el humano lo aceptó como equivalente, por escrito, el 2026-10-20** («Sí, lo acepto»). Lo he anotado así en la
+sección 3 de «Bloque 1 quater», en su fila de la tabla de la campaña y en «Evidencias».
+
+### Commits
+
+- `84645c3` · `F-038 C-B1f: tests para los 14 supervivientes de la review final del Bloque 1`: solo
+  `services/postventa-front/tests_js/revision.test.js`.
+- El de este informe: `progress/impl_F-038.md`.
+
+### Qué cambia en `tests_js/revision.test.js`
+
+- **C-B1f-1 (RX01, RX02).** Dos entradas nuevas en `VISIBILIDAD_DE_CADA_AVISO`: `· campos` y `· motivo:` del
+  historial. Cada una se prueba con una revisión que **trae** campos y motivo y con otra que **no** los trae
+  (`historialDeUnaRevision`). Sale `«cada aviso de bandeja.html se ve justo cuando toca»`.
+- **C-B1f-2 (RX10, RX12, y también RX11).** `alcanceDeLaSegundaFila(estado, pintarPrimeroLaAbierta = true)`: con
+  `false`, la vista va en su orden y se pinta la **primera** fila, que está cerrada mientras la segunda está abierta.
+  No cambia el comportamiento por defecto, así que los tests que ya la usaban siguen igual. La comprobación nueva es
+  `problemasDeLaFilaCerrada`: en la fila cerrada «Ver el detalle» se ve, «Cerrar el detalle» no se ve y no se pinta
+  nada del detalle (ni `campo.valor` ni un botón de acción).
+- **C-B1f-3 a C-B1f-9.** Están en `CASOS_B1F`, con la forma de `CASOS_T5`:
+
+  | Cambio | Mutante | Test |
+  |---|---|---|
+  | C-B1f-3 | RX14 | Dos «Cargar más» seguidos y esperados, con tres páginas, piden cada uno su cursor. Tras un «Cargar más» que falla (503), el siguiente vuelve a pedir. En los dos casos, `cargandoMas` acaba en `false` |
+  | C-B1f-4 | RX15 | Con la primera página pendiente, `cargando === true`. Al llegar, `false` |
+  | C-B1f-5 | RX17 | El «No hay cambios que guardar.» de `guardarEdicion` sin cambios desaparece al abrir el formulario. Es lo que da por supuesto la decisión 2 (E7) |
+  | C-B1f-6 | RX22 | Un «Cargar más» que falla con un 503 con texto deja ese texto en `errorCarga` y conserva lo cargado |
+  | C-B1f-7 | RX23 | Con el historial de la fila 1 leído, abrir la 2 deja `historial === null` mientras se pide. Si falla, sigue en `null` y con su `errorHistorial` |
+  | C-B1f-8 | RX16 | Tras un 400 `valores_no_validos`, un «Guardar» que sale bien deja `erroresPorCampo === null` |
+  | C-B1f-8 | RX18 | «Cancelar» con errores por campo deja `erroresPorCampo === null` |
+  | C-B1f-8 | RX19 | «No, dejarla» con un motivo escrito deja `motivoDescarte === ""` |
+  | C-B1f-9 | RX24 | Fuera de contrato, como PR8: `abrirDetalle(ID_FUERA)` no cambia `abierta` y no pide historial |
+
+  En C-B1f-8 y C-B1f-9 he elegido **tests** y no equivalentes, como recomendaba el reviewer. Son tres aserciones de
+  estado más una, y así el humano no tiene que aceptar nada más.
+- **Controles con señal (O-B1f-1).** Cada test nuevo tiene su control permanente en memoria: `revisionMutada` con el
+  RX para el JS y `cambiarUnaVez` para el HTML. Con RX11 son cinco controles de HTML. Ahora el control ya no pide
+  «algún problema», sino **uno que nombre lo que su mutante rompe**. Por ejemplo, `«Cerrar el detalle» se ve`,
+  `motivoDescarte`, `mientras se pide` o `los campos cambiados`. Así un problema colateral no basta para que el control
+  pase. Los controles de T5 no los he tocado: no me lo pedían, y O-B1f-1 no bloquea.
+
+Son 24 tests nuevos (997 en total, antes 973):
+
+- 9 casos de `CASOS_B1F` × 2 (el test y su control): 18;
+- `problemasDeLaFilaCerrada`: 1;
+- los 5 controles de HTML: 5.
+
+Las dos entradas de historial no suman tests: van dentro de la comprobación de avisos, que ya existía.
+
+### RED: cada test nuevo, contra su mutante (en una copia; el árbol, nunca)
+
+Lo he hecho igual que en T5. En una copia limpia (`copia_red`) con el `revision.test.js` nuevo, se aplica cada RX al
+fichero de producción de la copia y se lanza **solo** su test (`--test-name-pattern`). Todos dan `fail 1`, y la
+restauración se comprueba con `assert`. Esta es la salida real, sin las líneas de pila:
+
+```
+### RX01 · historial: campos invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (186.0243ms)
+  +   'los campos cambiados de una revisión del historial (una revisión con campos y motivo): no se ve, y tiene que verse',
+  +   'los campos cambiados de una revisión del historial (una revisión sin campos ni motivo): se ve, y no tiene que verse'
+ℹ fail 1
+### RX02 · historial: motivo invertido
+$ node --test --test-timeout=60000 "--test-name-pattern=cada aviso de bandeja.html" tests_js/revision.test.js
+✖ f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuando toca (184.7214ms)
+  +   'el motivo de una revisión del historial (una revisión con campos y motivo): no se ve, y tiene que verse',
+  +   'el motivo de una revisión del historial (una revisión sin campos ni motivo): se ve, y no tiene que verse'
+ℹ fail 1
+### RX10 · Ver el detalle oculto en las demás filas
+$ node --test --test-timeout=60000 "--test-name-pattern=la fila cerrada enseña" tests_js/revision.test.js
+✖ f038 C-B1f-2 · R8: con el detalle abierto en otra fila, la fila cerrada enseña «Ver el detalle» y nada del detalle (28.2747ms)
+  +   'fila cerrada: «Ver el detalle» no se ve'
+ℹ fail 1
+### RX11 · el detalle en todas las filas
+$ node --test --test-timeout=60000 "--test-name-pattern=la fila cerrada enseña" tests_js/revision.test.js
+✖ f038 C-B1f-2 · R8: con el detalle abierto en otra fila, la fila cerrada enseña «Ver el detalle» y nada del detalle (31.0542ms)
+  +   'fila cerrada: el detalle se pinta (5 elementos)'
+ℹ fail 1
+### RX12 · Cerrar el detalle en todas las filas
+$ node --test --test-timeout=60000 "--test-name-pattern=la fila cerrada enseña" tests_js/revision.test.js
+✖ f038 C-B1f-2 · R8: con el detalle abierto en otra fila, la fila cerrada enseña «Ver el detalle» y nada del detalle (52.6121ms)
+  +   'fila cerrada: «Cerrar el detalle» se ve'
+ℹ fail 1
+### RX14 · cargarMas no suelta cargandoMas
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX14\): R" tests_js/revision.test.js
+✖ f038 C-B1f-3 (RX14): R7: dos «Cargar más» seguidos y esperados piden cada uno su página; tras uno que falla, el siguiente vuelve a pedir (9.0213ms)
+  +   'el segundo «Cargar más» no pide su página (cursores: [null,"cursor-inventado-1"])',
+  +   'cargandoMas sigue en true tras cargar',
+  +   'tras un «Cargar más» que falla, el siguiente no pide',
+  +   'cargandoMas sigue en true tras un fallo'
+ℹ fail 1
+### RX15 · cargar no marca cargando
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX15\): R" tests_js/revision.test.js
+✖ f038 C-B1f-4 (RX15): R3: mientras la primera página está pendiente, cargando es true (lo que pinta «Leyendo…» y deshabilita «Cargar»); al llegar, false (20.0673ms)
+  +   'mientras se pide la primera página, cargando = false'
+ℹ fail 1
+### RX16 · actuar no limpia los errores por campo
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX16\): R" tests_js/revision.test.js
+✖ f038 C-B1f-8 (RX16): R12: tras un 400 valores_no_validos, una acción posterior que sale bien deja erroresPorCampo en null (15.2533ms)
+  +   'tras guardar bien, erroresPorCampo = {"ubicacion":"No está en la lista"}'
+ℹ fail 1
+### RX17 · abrirFormulario no limpia el mensaje
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX17\): R" tests_js/revision.test.js
+✖ f038 C-B1f-5 (RX17): R9, R12: abrir el formulario vacía el mensaje de la acción anterior (el «No hay cambios que guardar» de guardar sin cambios) (10.2632ms)
+  +   'al abrir el formulario, mensajeAccion sigue en «No hay cambios que guardar.»'
+ℹ fail 1
+### RX18 · Cancelar deja los errores por campo
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX18\): R" tests_js/revision.test.js
+✖ f038 C-B1f-8 (RX18): R9: «Cancelar» el formulario deja erroresPorCampo en null (14.9552ms)
+  +   'tras «Cancelar», erroresPorCampo = {"ubicacion":"problema inventado"}'
+ℹ fail 1
+### RX19 · No, dejarla conserva el motivo
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX19\): R" tests_js/revision.test.js
+✖ f038 C-B1f-8 (RX19): R11: «No, dejarla» vacía el motivo escrito (16.6914ms)
+  +   'tras «No, dejarla», motivoDescarte = «Un motivo de ejemplo»'
+ℹ fail 1
+### RX22 · Cargar más se traga el error
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX22\): R" tests_js/revision.test.js
+✖ f038 C-B1f-6 (RX22): R12, R26: un «Cargar más» que falla enseña el texto del servicio en errorCarga y conserva lo cargado (8.818ms)
+  +   'errorCarga = «»'
+ℹ fail 1
+### RX23 · abrirDetalle conserva el historial de la anterior mientras pide
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX23\): R" tests_js/revision.test.js
+✖ f038 C-B1f-7 (RX23): R8: abrir el detalle de otra fila deja el historial en null mientras se pide, y en null junto a su error si falla (11.7362ms)
+  +   'mientras se pide el de la fila 2, se ve el historial de la fila 1',
+  +   'con el error de la fila 2, se ve el historial de la fila 1'
+ℹ fail 1
+### RX24 · abrirDetalle sin comprobar la fila
+$ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX24\): R" tests_js/revision.test.js
+✖ f038 C-B1f-9 (RX24): R8 (fuera de contrato, como PR8): abrir el detalle de un incidencia_id que no está en la lista no abre nada ni pide historial (12.7366ms)
+  +   'un id desconocido queda abierto: 00000000-0000-4000-8000-0000000000ff',
+  +   'pide el historial de un id desconocido'
+ℹ fail 1
+```
+
+### La campaña a mano, otra vez entera: 305 mutantes
+
+La lista de T5 (281) más los 24 RX del reviewer, copiados tal cual de su `extras.py`. Se lanzó con el mismo guion y
+las mismas suites que en T5, en cuatro copias del árbol con el `revision.test.js` de `84645c3`. Antes de lanzarla
+comprobé con `cmp` que los seis ficheros (los cinco de producción y el de tests) eran idénticos al árbol.
+
+**Resultado: 305 evaluados, 304 muertos y 1 vivo, N11, el equivalente aceptado por el humano.** No falló ninguna ancla,
+no hubo ningún muerto por tiempo y ninguno murió solo por controles. Cada uno de los 14 RX que vivían cae ahora en
+**su** test nuevo, no solo en su control. Tiempo: de 23:42 a 00:21 de reloj, con 4 copias. Sumando cada ejecución
+salen 9.340 s, unos 31 s por mutante.
+
+Los 24 RX, uno por uno («Lo mata» nombra el primer test que no es un control):
+
+| # | Familia | Mutante | Veredicto | Lo mata (node / pytest) |
+|---|---|---|---|---|
+| RX01 | x-show/x-if | historial: campos invertido | muere | node 2: «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuand…» |
+| RX02 | x-show/x-if | historial: motivo invertido | muere | node 2: «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuand…» |
+| RX03 | x-show/x-if | lista sin consulta | muere | node 7: «f038 R11, R21.6: en cada estado, bandeja.html pinta justo los botones de acci…» |
+| RX04 | x-show/x-if | problema de unidad mira otro campo | muere | node 2: «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuand…» |
+| RX05 | x-show/x-if | problema de detalle con cualquier error | muere | node 1: «f038 R4, R8, R11, R12, R13 (T5): cada aviso de bandeja.html se ve justo cuand…» |
+| RX06 | :disabled | Cargar más invertido | muere | pytest 1: `test_f038_front.py::test_f038_r7_cargar_mas_con_n_de_m` |
+| RX07 | botón que no hace nada | el check de motivos no recarga | muere | pytest 1: `test_f038_front.py::test_f038_r3_r6_el_campo_de_obra_cargar_y_los_filtros_van…` |
+| RX08 | x-show/x-if | No se puede aprobar mira editar | muere | node 2: «f038 R10, R11 (O-B1b-2): el aviso de sesión incompleta y «No se puede aprobar…» |
+| RX09 | fila equivocada | panel de descarte en cualquier fila | muere | pytest 1: `test_f038_front.py::test_f038_r11_descartar_pide_un_segundo_clic_con_el_motiv…` |
+| RX10 | fila equivocada | Ver el detalle oculto en las demás filas | muere | node 2: «f038 C-B1f-2 · R8: con el detalle abierto en otra fila, la fila cerrada enseñ…» |
+| RX11 | fila equivocada | el detalle en todas las filas | muere | node 2: «f038 C-B1f-2 · R8: con el detalle abierto en otra fila, la fila cerrada enseñ…»; pytest 3: `test_f038_front.py::test_f038_r21_1_la_linea_del_volcado_en_la_lista_y_en_el_…` |
+| RX12 | fila equivocada | Cerrar el detalle en todas las filas | muere | node 2: «f038 C-B1f-2 · R8: con el detalle abierto en otra fila, la fila cerrada enseñ…» |
+| RX13 | cursor y deduplicación | cargarMas no marca cargandoMas | muere | node 2: «f038 T5 (CU9): R7: dos «Cargar más» seguidos, sin esperar al primero, piden U…» |
+| RX14 | cursor y deduplicación | cargarMas no suelta cargandoMas | muere | node 3: «f038 C-B1f-3 (RX14): R7: dos «Cargar más» seguidos y esperados piden cada uno…» |
+| RX15 | nada sin un clic | cargar no marca cargando | muere | node 2: «f038 C-B1f-4 (RX15): R3: mientras la primera página está pendiente, cargando …» |
+| RX16 | R12 recarga | actuar no limpia los errores por campo | muere | node 2: «f038 C-B1f-8 (RX16): R12: tras un 400 valores_no_validos, una acción posterio…» |
+| RX17 | nada sin un clic | abrirFormulario no limpia el mensaje | muere | node 2: «f038 C-B1f-5 (RX17): R9, R12: abrir el formulario vacía el mensaje de la acci…» |
+| RX18 | botón que no hace nada | Cancelar deja los errores por campo | muere | node 2: «f038 C-B1f-8 (RX18): R9: «Cancelar» el formulario deja erroresPorCampo en null» |
+| RX19 | botón que no hace nada | No, dejarla conserva el motivo | muere | node 2: «f038 C-B1f-8 (RX19): R11: «No, dejarla» vacía el motivo escrito» |
+| RX20 | nada sin un clic | cargar sin obra pide igual | muere | node 1: «f038 R3: sin obra, cargar no pide nada» |
+| RX21 | cursor y deduplicación | Cargar más no refresca el resumen | muere | node 1: «f038 R7: «Cargar más» pide con el cursor y los MISMOS filtros, y añade sin re…» |
+| RX22 | R26 detalle | Cargar más se traga el error | muere | node 2: «f038 C-B1f-6 (RX22): R12, R26: un «Cargar más» que falla enseña el texto del …» |
+| RX23 | nada sin un clic | abrirDetalle conserva el historial de la anterior mientras pide | muere | node 2: «f038 C-B1f-7 (RX23): R8: abrir el detalle de otra fila deja el historial en n…» |
+| RX24 | orden | abrirDetalle sin comprobar la fila | muere | node 2: «f038 C-B1f-9 (RX24): R8 (fuera de contrato, como PR8): abrir el detalle de un…» |
+
+### Verde, en el árbol de trabajo (tras `84645c3`)
+
+```
+node --test --test-timeout=60000 "tests_js/*.test.js"          (desde services/postventa-front)
+ℹ tests 997
+ℹ pass 997
+ℹ fail 0
+ℹ duration_ms 7807.023
+
+python -m pytest -q -p no:cacheprovider                         (desde services/postventa-front)
+882 passed, 7 skipped in 26.95s
+
+python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py      (desde la raíz)
+19 passed in 0.23s
+```
+
+### Lo que falta para cerrar el Bloque 1
+
+- `bash harness/init.sh` en verde: lo ejecuta el líder (P-4).
+- La re-review de estas correcciones.
+
+## Evidencias (correcciones de la review final del Bloque 1)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Suite JS: **997, 997 pass** (antes 973; +24). Pytest del front: **882 passed, 7 skipped**. Raíz: **19 passed** |
+| Cobertura de las líneas cambiadas | **No aplica**: solo cambian tests JS. La puerta de `init.sh` mide Python, y F-038 no tiene `.py` de producción |
+| Mutación con la herramienta | Sin cambios: **0 mutantes** (`progress/mutacion_F-038.md`). No hay `.py` de producción en el alcance |
+| Mutación a mano | **305 generados** (281 de T5 y 24 RX), **304 muertos, 0 supervivientes** y 1 equivalente (N11), **aceptado por el humano por escrito el 2026-10-20**. 0 muertos por tiempo, 0 solo por controles. 4 copias, unos 39 min de reloj (9.340 s sumando cada ejecución) |
+| Tiempo de la suite | JS: 7,81 s (997 tests). Pytest del front: 26,95 s. Raíz: 0,23 s |

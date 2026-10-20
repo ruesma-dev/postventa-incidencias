@@ -882,3 +882,53 @@ Review **de bloque**: lo que solo se puede cumplir al cerrar la feature va como 
     convierten LF en CRLF, y la copia deja de ser la del original».
 
   Lo segundo ya pasó en la review del Bloque 1 bis y ha vuelto a pasar en esta.
+
+## Re-review del Bloque 1 ter (2026-10-20)
+
+- **Veredicto: APPROVED** (Bloque 1 ter, T4 bis y T4 ter, con sus correcciones). Queda sujeto a P-4: el líder informa
+  de que `bash harness/init.sh` da verde sobre `689b2eb` (front: 882 passed). La corrección posterior solo toca tests,
+  un comentario y el README, y la he verificado con los comandos de abajo. No he ejecutado `init.sh` ni he tocado `.env`.
+- **Qué se revisa:** solo `3256aa2` (implementer). `git diff --stat 58a148c..HEAD` da `tests_js/revision.test.js`,
+  `js/revision.js` (solo el comentario de `MOTIVOS_DE_VOLCADO`), `README.md` y `progress/impl_F-038.md`. No toca
+  `bandeja.html` ni ninguna línea de código que se ejecute. `git diff --stat 87a03f3..HEAD -- services/postventa-api`
+  sale vacío.
+- **Decisiones del humano (2026-10-20), según el líder:** O-B1t-1, **sí**. El spec-author añade a R21.4 un texto para
+  cada uno de los siete códigos de lote, y se implementa como tarea aparte antes de T5. Por eso la aserción literal de
+  `obra_no_encontrada` cambiará entonces, y será a propósito. O-B1t-3 **se deja** como está.
+
+### Ejecutado (resultado real)
+
+| Desde | Comando | Resultado |
+|---|---|---|
+| `services/postventa-front` | `node --test --test-timeout=15000 "tests_js/*.test.js"` | 899 tests, 899 pass, 0 fail (896 + 3 controles) |
+| `services/postventa-front` | `python -m pytest -q -p no:cacheprovider` | 882 passed, 7 skipped |
+| raíz | `python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py` | 19 passed |
+
+### Los cambios pedidos
+
+| Punto | Qué hay en `3256aa2` | Comprobación del reviewer |
+|---|---|---|
+| **C-B1t-1** | En `problemasDelVolcadoEnLaPagina`, para `volcada` y `en_duda`, una **lista blanca**. Los `<button>` y `<a>` visibles dentro de la fila (alcance con `fila`) tienen que ser exactamente `<button @click="cerrarDetalle()">` con el detalle abierto y `<button @click="abrirDetalle(fila.incidencia_id)">` con el detalle cerrado. La comprobación anterior, de botones de acción y campos, se queda. Lleva tres controles (H08b, H08d, H08e), que se insertan ante un ancla que el mutante no duplica y exigen el mensaje «lista blanca de R21.6» | Repetí **mis** mutantes en una copia del scratchpad, en su posición original: la zona de acciones del detalle, no la de los controles. Usé `newline=""` y la copia queda idéntica con `cmp`. Los cinco (H08, H08b, H08c, H08d y H08e) caen ahora en la guardia `f038 R21.1-R21.3, R21.6: bandeja.html enseña…`, no por accidente. También caen en la guardia tres extra míos: X1 («Ver el detalle» siempre visible), X2 (un `<a :href>` junto a la etiqueta de la fila) y X3 (un botón sin clic dentro del historial). **[x]** |
+| **C-B1t-2** | El comentario de `js/revision.js:104-112` y el README (`README.md:602-606`) dicen ahora que el `motivo` es un código de parte o, en un `no_procesado` de un lote rechazado entero, uno de los siete de lote, y que estos salen tal cual. El test «f038 R21.3: el último intento…» gana la aserción `no_procesado` + `obra_no_encontrada` → «…: obra_no_encontrada» | Leído contra `todos_no_procesados` y `volcado_de`: es correcto. La aserción fija el comportamiento de hoy, que cambiará a propósito con la tarea de O-B1t-1. **[x]** |
+
+Nada se debilita. Lo único que se quita en `revision.test.js` es la frase vieja del comentario; ninguna aserción. El
+`"fila" in e.alcance` del filtro deja fuera, como debe, los botones de fuera de la fila: «Cargar», «Cargar más» y los
+filtros.
+
+### Checkpoints que cambian respecto a la review del Bloque 1 ter
+
+- C4 bis · cero supervivientes (mutantes a mano del bloque): **[x]**. Los 49 de la review dan 48 muertos y 1
+  equivalente (J21). H08 y H08c mueren ahora en la guardia, no por accidente. Los tres extra, X1–X3, también mueren.
+- C4 bis · controles no ciegos: **[x]**. La lista blanca de R21.6 tiene sus tres controles, y cada uno exige el mensaje
+  de la propia guardia.
+- C5 · `3256aa2` lleva `F-038 C-B1t:`, no `F-038 Tn:`. Es la corrección de una review, como en los bloques anteriores,
+  y la acepto.
+- El resto queda como en la review del Bloque 1 ter. Los N/A mantienen su motivo: `init.sh` por P-4; cobertura y
+  mutación con la herramienta en la puerta de `init.sh` y en T5; las MANUAL en T7, paso 5.
+
+### Lo que queda abierto (no bloquea este bloque)
+
+- **O-B1t-1**, decidida: sí. Falta la ampliación de R21.4 (spec-author) y su tarea, antes de T5. Cuando se implemente,
+  la aserción de `obra_no_encontrada` y los comentarios de C-B1t-2 cambian con ella.
+- **O-B1t-3**, decidida: se deja. Siguen como estaban O-B1b-3, O-B1b-4 y O-B1b-5, y también las dos propuestas de
+  automejora (la de la lista blanca y la de `newline=""`), que esperan al humano.

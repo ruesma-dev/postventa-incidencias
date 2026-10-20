@@ -13,6 +13,13 @@
 > **cada unidad**, así que `catalogo.ubicaciones` es
 > `{unidad_codigo: [ubicaciones]}` y el formulario ofrece las de la unidad
 > elegida.
+>
+> **Conciliado con `dev` el 2026-10-20, base fija `87a03f3`** (F-056, F-060 y
+> F-059 cerradas y desplegadas). Las decisiones aprobadas de §9 **no
+> cambian**. Lo conciliado está en su sitio con la marca *«Conciliado
+> 2026-10-20»* y resumido en **§10**; las decisiones nuevas (Q-6 a Q-10) están
+> en §10.4 con recomendación y **PENDIENTES DE APROBACIÓN DEL HUMANO**. La
+> conciliación no encuentra nada que obligue a tocar `services/postventa-api`.
 
 ## 0 · Dónde está el riesgo
 
@@ -25,6 +32,8 @@ página puede romper:
 | La página enseña «se puede aprobar» cuando no | La persona cree que algo está listo y no lo está (el backend lo frena, pero confunde) |
 | La paginación repite o se salta filas | Se revisa dos veces o nunca una incidencia |
 | El cierre de la sección queda a medias | Las guardias de F-035 en rojo, o el portal diciendo «en construcción» de algo que funciona |
+| *(Conciliado 2026-10-20)* La página ofrece acciones sobre una `volcada` o una `en_duda` | El backend responde 409 `accion_no_permitida` (F-059 R2), pero la persona cree que puede cambiar algo que ya está, o puede estar, en Sigrid |
+| *(Conciliado 2026-10-20)* Una acción sin respuesta se da por fallida | La persona la repite creyendo que no se guardó; la `revision_previa` lo frena (409), pero hay que decir «no se sabe» y recargar |
 
 **Rigor `critico`**, como la ficha. RED con traza pegada; cobertura de lo
 cambiado (la puerta de `init.sh` dice lo que mide en el front); mutación:
@@ -40,6 +49,11 @@ F-038 no empieza hasta que F-056 esté `done`, mergeada en `dev` y desplegada
 tener el contrato real; ese merge es la **base fija** de esta ficha (se anota
 en `progress/impl_F-038.md`).
 
+> *Conciliado 2026-10-20.* **Cumplida.** F-056 está `done` y desplegada desde
+> el 2026-10-09, y detrás F-060 y F-059. La rama `feature/F-038-bandeja-revision`
+> **nace de `dev` `87a03f3`** (2026-10-20): ya no hay merge previo, y la
+> **base fija** de las guardias y de la mutación es **`87a03f3`**.
+
 El contrato consumido, sin reinterpretarlo (F-056 design §8):
 
 - `GET /api/revision?obra=&estado=&con_motivos=&tamano=&cursor=` →
@@ -54,6 +68,57 @@ El contrato consumido, sin reinterpretarlo (F-056 design §8):
 - Los códigos de error de F-056 design §4 y los de motivo de su §3.5 (con
   `sin_ubicacion`).
 
+> *Conciliado 2026-10-20 · el contrato tal como está implementado*
+> (`interface_adapters/api/revision.py`, `function_app.py` —`revision`,
+> `revision_historial`, `revision_acciones`, `CODIGOS_DE_REVISION`,
+> `_error_de_revision`, `_rechazo_de_obra`—, `domain/models/revision.py` y
+> F-059 design §11–§12):
+>
+> - **`catalogo`**: `unidades [{codigo, nombre}]`; `ubicaciones
+>   {unidad_codigo: [texto]}` (una entrada por unidad, vacía si no tiene);
+>   `oficios [{codigo, nombre, grupo: {etiqueta, codigos}}]` (solo los de
+>   `obrofc`; `grupo.codigos`, los del grupo que están en la obra);
+>   **`pares [{oficio_codigo, proveedor_codigo, proveedor_nombre}]`** (cada
+>   par una vez, con su primer nombre: «lo que se ofrece es lo que se
+>   guarda»); `urgencias` y `listados [{codigo, etiqueta}]`.
+> - **`resumen`**: `total`, `por_estado` con **seis** claves (`nueva`,
+>   `editada`, `aprobada`, `descartada`, `volcada`, `en_duda`), `con_motivos`
+>   y `por_motivo` con los **nueve** motivos. De toda la obra, sin filtros.
+> - **`filtros`**: `{estado, con_motivos}` tal como los entendió el servidor.
+> - **Cada incidencia**: `incidencia_id`, `origen`, `importacion_id`,
+>   `fila_origen`, `creada_at_utc`, `duplicada_de` (el `incidencia_id` de la
+>   original, o `null`), `importados` y `vigentes` (trece claves:
+>   `unidad_codigo`, `unidad_nombre`, `ubicacion`, `descripcion`, `detalle`,
+>   `oficio_codigo`, `oficio_nombre`, **`oficio_ambiguo`**,
+>   `proveedor_codigo`, `proveedor_nombre`, **`proveedor_ambiguo`**,
+>   `urgencia`, `listado`), `cambios` (los campos lógicos: `unidad`,
+>   `ubicacion`, `descripcion`, `detalle`, `oficio`, `proveedor`, `urgencia`,
+>   `listado`), `estado` (uno de los seis), `revision_id`, `revisado_at_utc`,
+>   `revisado_por` (correo, o el literal del sistema de F-060),
+>   `motivos_no_aprobable` (lista, o `null` tras descartar o recuperar) y
+>   **`volcado`** (F-059 R4: `null` o `{estado, sigrid_cod, volcado_at_utc,
+>   volcado_por, motivo}`, con `estado` `volcada`, `en_duda`, `rechazado` o
+>   `no_procesado`). La respuesta 200 de una acción tiene **la misma forma**
+>   (F-2 (a) de F-059).
+> - **Filtro `estado`**: ausente o `activas` (todo menos `descartada` y
+>   `volcada`), `todas`, o uno de los seis. **`tamano`**: 1–200 (100 por
+>   defecto). **`cursor`**: base64url sin relleno, opaco; uno que no sea
+>   «emitido por el sistema» es 400.
+> - **Historial**: `{incidencia_id, importada: {origen, importacion_id,
+>   creada_at_utc}, revisiones: [{revision_id, accion, revisado_at_utc,
+>   correo, campos_cambiados, motivo}]}`, de la más antigua a la más reciente.
+> - **Cuerpo de una acción**: exactamente las seis claves comunes
+>   (`incidencia_id`, `accion`, `usuario_oid`, `usuario_correo`,
+>   `confirmado`, `revision_previa`), más `valores` en `editar` (exactamente
+>   `unidad_codigo`, `ubicacion`, `descripcion`, `detalle`, `oficio_codigo`,
+>   `proveedor_codigo`, `urgencia`, `listado`) y `motivo` opcional en
+>   `descartar`.
+> - **Errores**: la tabla de R12 (requirements), con su HTTP, su `codigo` y
+>   lo propio de cada uno. Los 503 y el 500 de configuración **no** llevan
+>   `codigo`; los de obra (`obra_sin_unidades` 404, `obra_ambigua` y
+>   `catalogo_sin_verificar` 409) llevan el suyo.
+> - Los instantes, en UTC con microsegundos y `+00:00`.
+
 ## 2 · La página `bandeja.html`
 
 ### 2.1 · Dónde vive (D-2)
@@ -66,6 +131,19 @@ Alpine `appRevision` en **`js/revision.js`** y tres funciones nuevas en
 (regla 6 de los placeholders). No dentro del portal: los ficheros de la
 maqueta no pueden hablar con el backend (regla 2) y R63 cierra las directivas
 fuera de los envoltorios.
+
+> *Conciliado 2026-10-20 (R26; `js/api.js` de hoy).* Las tres funciones van
+> con `mensajeDelServicio: true` —sin él, un 503 enseñaría
+> `TEXTO_ENTORNO_NO_ARCHIVA`, el texto de la puerta de archivar—; las dos
+> lecturas reintentan lo transitorio como `bandeja` de F-036, y
+> `accionRevision` va con `sinReintentos: true`, como `decidirCatalogos`.
+> Además, **`clasificar`** gana, **aditivo**, el cuerpo del error en el
+> `ErrorApi` (p. ej. `error.detalle`, el JSON del error tal cual llegó; `null`
+> si no era JSON): hoy solo conserva `error` y `codigo`, y R12 necesita
+> `errores`, `motivos`, `estado`, `acciones` y `total`. Ningún error de F-056
+> lleva el correo ni el `oid` (F-056 R11), y la traza (`registrar`) sigue sin
+> el cuerpo. `api.test.js` cuenta los endpoints (`endpoints.length` 17 → 20)
+> y su lista `LOS_ENDPOINTS`: se amplían.
 
 ### 2.2 · Cómo se ve
 
@@ -82,6 +160,8 @@ R72 de F-035), en el orden en que se usa:
    motivo (así se ven los 47 ambiguos y los que tienen el oficio o el
    proveedor fuera de la obra). **Filtros** (estado, por defecto «activas»; y
    «solo las que tienen algo que corregir»): van al servidor.
+   *Conciliado 2026-10-20:* «por estado» son los seis (R5, R21) y «por
+   motivo» los nueve (R4 (a)); el selector de estado, el de R6.
 4. **Lista**: una fila por incidencia (R4), con «<acción> por <correo> el
    <fecha>» si la tocó alguien. Debajo, «N de M» y **«Cargar más»** mientras
    haya `siguiente` (R7).
@@ -89,6 +169,10 @@ R72 de F-035), en el orden en que se usa:
    motivos, historial con el **correo** de cada acción (R8), y las acciones:
    «Editar» (formulario, R9) con «Guardar cambios» y «Cancelar»; «Aprobar»
    (R11); «Descartar» con motivo y segundo clic; «Recuperar».
+   *Conciliado 2026-10-20:* solo las acciones de su estado (R11); en una
+   `volcada` o `en_duda`, ninguna (R21).
+6. *(Conciliado 2026-10-20.)* **Pie** «Construcciones Ruesma · Posventa ·
+   bandeja de revisión.» con la estructura común; sin subnavegación (R1).
 
 ### 2.3 · La paginación en pantalla (Q-2)
 
@@ -101,12 +185,22 @@ R72 de F-035), en el orden en que se usa:
 - **El resumen** es siempre el de la última respuesta del servidor (de toda
   la obra); tras una acción se ajusta localmente con la diferencia entre la
   fila de antes y la de después (`ajustarResumen`), sin pedir nada.
+  *Conciliado 2026-10-20 (`resumen` de `domain/models/revision.py`):* el
+  resumen cuenta los motivos de **todas** las filas, también las
+  descartadas. Con `motivos_no_aprobable: null` (descartar, recuperar: los
+  valores no cambian) `ajustarResumen` mueve solo `por_estado` y deja los
+  motivos como estaban. Lo que no puede ajustar —el `duplicada` de **otra**
+  fila cuando se descarta o se recupera su original— se corrige al pedir otra
+  vez la primera página; es una deriva conocida y se dice en el README.
 - **Tras una acción**, la fila se sustituye en su sitio aunque ya no cumpla
   el filtro (desaparecería bajo el dedo); el filtro se vuelve a aplicar al
   pedir otra vez la primera página.
 - **409 `revision_desactualizada`** → «otra persona la ha cambiado» y primera
   página otra vez. **409 `bandeja_demasiado_grande`** → mensaje con el
   recuento.
+  *Conciliado 2026-10-20:* también vuelven a la primera página 409
+  `accion_no_permitida`, 404 `incidencia_no_encontrada` y una acción sin
+  respuesta (tabla de R12).
 
 ### 2.4 · `js/revision.js`
 
@@ -128,6 +222,24 @@ Lógica pura, con `node --test` (`tests_js/revision.test.js`):
 | `hayEdicionSinGuardar(estado)` | El `beforeunload` | R13 |
 | `fechaDeMadrid(iso)` | `dd/mm/aaaa hh:mm`, hora de Madrid (la de `js/importacion.js` si está exportada; si no, la suya, sin tocar ese módulo) | R4, R8 |
 
+> *Conciliado 2026-10-20 · lo que cambia en la tabla:*
+>
+> | Función | Qué cambia o se añade | R |
+> |---|---|---|
+> | `textoMotivo(codigo)` | Los **nueve** motivos de `MotivoNoAprobable`, en su orden; un código desconocido, tal cual | R4 (a) |
+> | `etiquetaEstado(estado)` | Los **seis** estados (con `volcada` y `en_duda`, R21); uno desconocido, tal cual | R4 (c), R21 |
+> | `accionesDe(estado)` (nueva) | Las acciones que ofrece cada estado: la tabla de `_PERMITIDAS` (F-056 §3.3, F-059 §4.2); vacía para `volcada`, `en_duda` y un estado desconocido | R11, R21 |
+> | `quienLegible(texto)` (nueva) | El correo tal cual; `sistema:normalizar_ubicacion` y cualquier `sistema:…`, el texto de R22; `null`, nada | R4 (d), R8, R22 |
+> | `duplicadaDe(fila, cargadas)` (nueva) | «duplicada de la fila N» con el `fila_origen` de la original si está cargada; si no, «duplicada de otra fila del mismo fichero» | R4 (b) |
+> | `presentarRevision(respuesta)` | Ignora `volcado` (es F-040); usa `quienLegible`, `duplicadaDe` y `accionesDe` | R4, R21 |
+> | `opcionesDeOficio(catalogo, vigentes)` | «El grupo de la fila»: las entradas de `catalogo.oficios` cuyo `grupo.etiqueta` es el `oficio_nombre` vigente, primero | R9 (b) |
+> | `proveedoresDe(catalogo, oficio, vigentes)` | De **`catalogo.pares`** (los de ese `oficio_codigo`); con el oficio ambiguo sin elegir, solo el vigente o ninguno (F-056 R15) | R9 (a), (c) |
+> | `formularioDe(vigentes, catalogo)` | Un valor vigente fuera del catálogo de hoy se conserva como opción marcada (Q-9) | R24 |
+> | `valoresDelFormulario(formulario)` | Ubicación y detalle vacíos → `null` (nunca `""`) | R9 (d) |
+> | `hayCambios(formulario, vigentes)` | Con la normalización del backend (descripción con blancos colapsados; detalle, ubicación y motivo recortados) | R9 (e) |
+> | `queHacerConElError(error)` | La tabla completa de R12, leyendo `error.codigo`, `error.http` y `error.detalle` (R26); una acción sin respuesta (`http: null`) → «no se sabe si se ha guardado» y primera página | R12 |
+> | `fechaDeMadrid(iso)` | `js/importacion.js` **no** exporta su fecha (y la suya es solo día): `js/revision.js` lleva la suya, con hora, sin tocar ese módulo | R4, R8 |
+
 La identidad es la de `identidadDe` de `js/api.js`, que ya devuelve
 `{usuarioOid, correo}` (claim de correo o `userDetails`): no se escribe otra.
 
@@ -139,6 +251,14 @@ no pregunta; **no** reutiliza `js/guarda_salida.js` (cerrado, R81 de F-035).
 Ni el correo ni el `oid` se escriben en `console` ni en el almacenamiento del
 navegador (R15).
 
+> *Conciliado 2026-10-20 (para F-057 y F-040, que vienen detrás):* F-057 (su
+> R23–R25) cargará páginas con `consultaDe`/`anadirPagina` hasta encontrar
+> una incidencia y abrirá su detalle y su formulario; F-040 (su R54) añadirá
+> en `js/revision.js` la línea del parte volcado y los filtros de R21. Que
+> abrir el detalle y el formulario de una fila sean funciones del componente
+> a las que se pueda llamar con un `incidencia_id` facilita las dos, sin
+> añadir nada que F-038 no use.
+
 ### 2.5 · `importar.html` (R14)
 
 Una frase y un enlace en el bloque de la bandeja: «Para corregir, elegir el
@@ -146,6 +266,9 @@ oficio, poner la ubicación o aprobar: [Revisar esta obra en la bandeja de
 revisión]» (`bandeja.html?obra=<obra>`, misma pestaña). Sin tocar
 `js/importacion.js`: el `href` se liga con el estado que el componente ya
 expone.
+
+> *Conciliado 2026-10-20:* fuera de la `<table>` y como `<a>` (R14). F-057
+> rehará esa tabla después y conserva el enlace (su R27).
 
 ## 3 · El portal: mientras se construye y al cerrar
 
@@ -162,6 +285,38 @@ el `PAGINAS` esperado, el conjunto de `test_f035_portal.py`, las copias de la
 tira…) pasan a cinco; y el control de R62 de
 `tests/test_f035_placeholders_vivos.py` deja F-038 y usa **F-044**
 (`impresion` pasa a `real` con ella), para seguir demostrando que mira (R18).
+
+> *Conciliado 2026-10-20 · inventario sobre `87a03f3`* (el implementer lo
+> confirma con `grep` y lo lista entero en su informe, con el porqué):
+>
+> - **Listas de páginas** que pasan a incluir `bandeja.html`:
+>   `PAGINAS_DEL_FRONT` y `PAGINAS_ESPERADAS` (`tests/test_f035_paginas.py`),
+>   `PAGINAS_REALES_CON_VERSION` (ídem), el conjunto de `_paginas_del_front`
+>   (`tests/test_f035_portal.py`), `PAGINAS_CON_BARRA` y
+>   `PAGINAS_REALES_CON_BARRA` (`tests_js/f035_paginas.test.js`),
+>   `PAGINAS_CON_RECORRIDO` y `PAGINAS_CON_RECORRIDO_ESTATICO`
+>   (`tests_js/portal.test.js`) y el test de R44 de `enlaceSeccion` desde las
+>   páginas reales («f035 R44: enlaceSeccion desde importar.html y
+>   oficios.html…», `tests_js/f035_paginas.test.js`).
+> - **Listas que son de `entrada` y no se amplían**: `PAGINAS_REMODELADAS`,
+>   `MIGAS_DE_ENTRADA`, `SUBNAV_DE_ENTRADA`, `PIE_PAGINAS_REALES` (texto de
+>   `entrada`). `bandeja.html` lleva sus propias constantes en
+>   `tests/test_f038_front.py` (sus migas y su pie) y pasa por las mismas
+>   funciones de guardia (`problemas_r70`, `_r72`, `problemas_r77`…).
+> - **Controles que miran la sección `bandeja`** y que el cierre rompería; se
+>   mudan **en el Bloque 1** a `impresion` (F-044), que sigue en
+>   `construccion`: `test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done`
+>   (raíz; ya lo decía la spec), `test_f035_r62_control_el_lector_de_estados_lee_el_texto`
+>   (raíz; nuevo) y «f035 R66: control: quitar data-construccion de una
+>   pestaña de partes.html salta» (`tests_js/f035_paginas.test.js`; nuevo).
+> - **La guardia de la tira** (`problemasDelRecorrido`, R85): para el paso de
+>   la propia sección que **no** es el actual (el 03 en `bandeja.html`) pide
+>   hoy `<span aria-current="step">`, y R86 prohíbe ese `aria-current`: con
+>   ninguna página se pueden cumplir las dos. Se ajusta según Q-10 (R25).
+> - **`api.test.js`**: `LOS_ENDPOINTS` y la cuenta de 17 (§2.1).
+> - **`test_f036_front.py`**: no cambia. Sus guardias (`botones_prohibidos`,
+>   la tabla de la bandeja sin controles, `DATOS_REALES`, el README que nombra
+>   «F-038») siguen valiendo con el enlace de R14.
 
 ### 3.2 · El commit de cierre (R17, D-11)
 
@@ -190,6 +345,30 @@ verde. Por eso va **un solo commit** que **también** pone F-038 en `done`:
    su test de R12 se ajusta.
 6. `harness/features.json`: F-038 → `done`.
 
+> *Conciliado 2026-10-20 (recontado sobre `87a03f3`):*
+>
+> - Los restos de F-038 son **siete** (tres placeholders en `index.html`, tres
+>   entradas de `PLACEHOLDERS`, el bloque `bandeja` de `MaquetaDatos`), más su
+>   título de `TITULOS_FICHAS`.
+> - En el punto 5, **dos** placeholders `enBloque: true` cuentan la selección
+>   de la bandeja (`seleccionadasPara` por el prefijo `bandeja.`):
+>   `bandeja.aprobarSeleccionadas` (F-043) y **`bandeja.reintentarVolcado`**
+>   (F-040). Los dos pasan a `enBloque: false` si se quedan sin selección.
+> - **`MaquetaDatos.propuestas.porFila`** (F-039) está indexado por los `id`
+>   de las filas de ejemplo de la bandeja (`BJ-…`). Si el ejemplo del
+>   industrial propuesto necesita filas, las que use se mudan a su bloque
+>   (`ficha: "F-039"`); ninguna fila se queda en un bloque sin ficha ni con
+>   la de F-038.
+> - Los controles de la sección `bandeja` ya se mudaron en el Bloque 1 (§3.1):
+>   el cierre no los toca.
+> - Otros tests que fijan la sección en construcción y que el cierre ajusta,
+>   como candidatos a confirmar con `grep`: en `tests_js/portal.test.js`, los
+>   de `SECCIONES` y `PLACEHOLDERS` de F-038 y los de `filtrarBandeja`; en
+>   `tests/test_f035_paginas.py` y `tests/test_f035_portal.py`, los que
+>   cuentan los enlaces del portal a páginas reales y los de R64, R67 y R69;
+>   en `tests_js/maqueta_datos.test.js`, el bloque `bandeja`. **Cada uno**,
+>   en el informe con el porqué.
+
 Lo prepara el implementer **por encargo del líder**, tras la verificación en
 producción (Bloque 3) y el APROBADO de todos los bloques; review corta solo de
 ese commit; `bash harness/init.sh` **sobre él**; si falla, se revierte entero.
@@ -206,7 +385,7 @@ R15).
 
 | Fichero | Qué |
 |---|---|
-| `js/api.js` | Tres funciones (§2.1) |
+| `js/api.js` | Tres funciones (§2.1) *y, conciliado 2026-10-20, el cuerpo del error en `clasificar`, aditivo (R26)* |
 | `js/portal.js` | `PAGINAS` (Bloque 1); en el cierre, `SECCIONES`, `PLACEHOLDERS`, `TITULOS_FICHAS`, `filtrarBandeja` |
 | `importar.html` | El enlace de R14 (Bloque 1); la pestaña en el cierre |
 | `index.html`, `partes.html`, `oficios.html` | Solo en el cierre |
@@ -216,11 +395,19 @@ R15).
 | Tests de F-035 y F-036 del front | Listas a cinco páginas (Bloque 1); los que fijan la sección en construcción, en el cierre. **Cada uno, en el informe con el porqué** |
 | `tests/test_f035_placeholders_vivos.py` (raíz) | Control de R62: F-038 → F-044 (Bloque 1) |
 | `harness/features.json` | Solo en el commit de cierre |
+| *(Conciliado 2026-10-20)* `tests_js/api.test.js` | `LOS_ENDPOINTS` y la cuenta (17 → 20); los casos del cuerpo del error (R26) |
+| *(Conciliado 2026-10-20)* `tests_js/portal.test.js` | `PAGINAS_CON_RECORRIDO*`; la guardia de la tira para el paso 03 (R25, Q-10) |
+| *(Conciliado 2026-10-20)* `tests_js/f035_paginas.test.js` | Las listas de barras; el control de R66 de `bandeja` → `impresion` (Bloque 1) |
+| *(Conciliado 2026-10-20)* `tests/test_f035_placeholders_vivos.py` (raíz) | Además, el control del lector de R62: `bandeja` → `impresion` (Bloque 1) |
+| *(Conciliado 2026-10-20)* `docs/ARCHITECTURE.md` | R20: la página, su sección, sus rutas y `PAGINAS` con `bandeja.html` |
+| *(Conciliado 2026-10-20)* `azure-apps/postventa_incidencias.md` (otro repositorio) | R20: la página nueva; **el líder**, en su repositorio, en T6 y en T10 |
 
 **No se toca**: `services/postventa-api/` (es F-056); `js/importacion.js`,
 `js/oficios.js`, `js/guarda_salida.js`, `js/app.js`, `js/pipeline.js` y el
 resto del circuito; `oficios.html` fuera del cierre; `dev_server.py`;
 `staticwebapp.config.json` (`/*` ya exige sesión); `infra/*`.
+*Conciliado 2026-10-20:* tampoco `docs/INTEGRACION.md` (F-038 no añade
+rutas) ni nada de F-059 o F-060.
 
 ## 5 · Tests
 
@@ -236,6 +423,27 @@ resto del circuito; `oficios.html` fuera del cierre; `dev_server.py`;
 | R14, R15 | pytest | El enlace sin `target`; ninguna ruta fuera de las tres y `/.auth/me`; ningún `console.*` ni `localStorage`/`sessionStorage` con el correo o el `oid` |
 | R16–R18 | raíz | Las guardias de siempre; el control con F-044 |
 
+> *Conciliado 2026-10-20 · lo que se añade:*
+>
+> | R | Dónde | Lo que fija |
+> |---|---|---|
+> | R4 (a)–(e) | node | Los nueve motivos en su orden y un código desconocido tal cual; «fila N» con la original cargada y el texto genérico sin ella; `volcado` ignorado |
+> | R5, R6 | node | Seis estados en el resumen; `consultaDe` con `activas` por defecto y sin `tamano`; el cursor tal cual |
+> | R9 (a)–(e) | node | Proveedores de `catalogo.pares`, con `proveedor_nombre` `null` → código; grupo por `grupo.etiqueta`; ambiguo sin elegir → solo el vigente o ninguno; ubicación y detalle vacíos → `null`; `hayCambios` falso con solo blancos de diferencia |
+> | R10 | node, pytest | El cuerpo con exactamente las claves de cada acción (seis, más `valores` u opcional `motivo`); la acción sin reintentos (`api.test.js`) |
+> | R11, R21 | node, pytest | `accionesDe` estado a estado (seis, y uno desconocido → ninguna); el HTML no pinta botones sin `accionesDe` |
+> | R12, R26 | node | Cada fila de la tabla de R12 a su salida; sin respuesta → «no se sabe» y primera página; el `detalle` del error en `api.js`; un 503 con el texto del servicio |
+> | R18 | raíz, node | Los tres controles mudados a `impresion` siguen cazando (una copia estropeada en memoria) |
+> | R20 | pytest (raíz o front) | `docs/ARCHITECTURE.md` nombra `bandeja.html` y su sección |
+> | R22 | node | `quienLegible` con correo, con el literal del sistema, con otro `sistema:…` y con `null` |
+> | R23 | pytest | Ningún fichero de la página nombra `/revision/normalizar` |
+> | R24 | node | Un vigente fuera del catálogo se conserva como opción marcada; cambiar la unidad sigue vaciando |
+> | R25 | node | La tira de `bandeja.html`: 02 actual con su marca, 03 `<span>` sin `aria-current`; la guardia ajustada caza un 03 con `aria-current` |
+>
+> Datos de los tests, ficticios: obras `99NN`, textos «Ejemplo», correos
+> `@ejemplo.invalid`, UUID inventados (el barrido de `test_f007_sin_datos_reales.py`
+> y `DATOS_REALES` de F-036 siguen valiendo).
+
 ## 6 · Riesgos y alternativas descartadas
 
 1. **La pantalla dentro del portal** (`#/bandeja`): descartado (D-2, §2.1).
@@ -249,6 +457,17 @@ resto del circuito; `oficios.html` fuera del cierre; `dev_server.py`;
    todos con el porqué.
 6. **Riesgo: el correo a la vista** de todos los del grupo: es lo decidido
    (D-8); no sale de la página (ni consola ni almacenamiento).
+7. *(Conciliado 2026-10-20.)* **Riesgo: la primera carga tras un rato parado**
+   puede tardar o dar 502/503: `GET /api/revision` lee Sigrid, y la primera
+   lectura a `sigrid-api` tras un rato parada puede pasar de 35 s (aprendido
+   en F-059). La lectura reintenta lo transitorio y T7 lo mide en caliente
+   (objetivo de F-060 V3: máximo < 10 s).
+8. *(Conciliado 2026-10-20.)* **Riesgo: el resumen ajustado en local deriva**
+   en el motivo `duplicada` de otra fila (§2.3); se corrige al recargar.
+9. *(Conciliado 2026-10-20.)* **Riesgo: tres fichas tocan `bandeja.html`**
+   (F-038, F-040, F-057) y dos `importar.html` (F-038, F-057): cada una
+   va detrás de la anterior, con su conciliación; F-038 no adelanta nada de
+   las otras salvo lo mínimo de R21.
 
 ## 7 · Lo que se publica
 
@@ -256,10 +475,20 @@ El front se publica **dos veces**: tras el Bloque 1 (la página, con la sección
 aún «en construcción») y tras el cierre (la sección «En producción»). Siempre
 desde un worktree limpio de `dev` (`tasks.md`, Bloques 2 y 4).
 
+> *Conciliado 2026-10-20 (`infra/desplegar_front.ps1` y `docs/DESPLIEGUE.md`
+> de hoy):* `desplegar_front.ps1 -SoloFront` (el modo completo regenera el
+> secreto de cliente y pisa las redirect URI; no se usa), lanzado **desde
+> `infra\` del worktree limpio** (deduce la raíz con `$PSScriptRoot`). El
+> merge a `dev`, desde un worktree aparte. En cada publicación, el líder pone
+> al día `azure-apps/postventa_incidencias.md` (R20).
+
 ## 8 · Lo que queda para otras fichas
 
 Industrial propuesto (F-039), volcado (F-040), aprobar en bloque (F-043): sus
 restos siguen en la sección `#/bandeja` del portal, en envoltorios de bloque.
+
+*Conciliado 2026-10-20:* y en `bandeja.html`, F-040 añade el panel de volcado
+y lo de su R54 (§2.4), y F-057 el enlace profundo `?incidencia=`.
 
 ## 9 · Decisiones (aprobadas por el humano el 2026-10-06)
 
@@ -277,3 +506,63 @@ restos siguen en la sección `#/bandeja` del portal, en envoltorios de bloque.
 | Q-4 | Merge normal a `dev` |
 
 D-3, D-5, D-6, D-7, D-9, D-10 y D-14 son de F-056 (su design §15).
+
+*Conciliado 2026-10-20:* ninguna cambia. D-1 está cumplida (F-056 `done`).
+Las preguntas nuevas, en §10.4.
+
+## 10 · Conciliación con `dev` `87a03f3` (2026-10-20)
+
+### 10.1 · Qué hay en `dev` que la spec del 2026-10-06 no veía
+
+| Qué | De dónde | Dónde se recoge |
+|---|---|---|
+| Estados `volcada` y `en_duda`, sin acciones; 409 `accion_no_permitida` con `estado` y `acciones: []` | F-059 R1–R2, design §4; `EstadoRevision`, `_PERMITIDAS` | R4 (c), R11, R12, R21 |
+| `activas` sin descartadas **ni volcadas**; filtros `volcada` y `en_duda` | F-059 R4 (c)–(d), D-7 de F-059; `FiltroEstado`, `_FUERA_DE_ACTIVAS` | R6, R21 |
+| Seis estados en `resumen.por_estado` | F-059 R4 (b) | R5 |
+| Objeto `volcado` en cada incidencia y en la respuesta de la acción | F-059 R4 (a), F-2 (a); `volcado_de` | R4 (e), R21 (es F-040) |
+| Revisiones del sistema `sistema:normalizar_ubicacion` | F-060 R22, Q-2 de F-060, design §10.1 | R4 (d), R8, R22 |
+| Normalización tras cada importación y `POST /api/revision/normalizar` | F-060 R26–R31 | R15, R23 |
+| `catalogo.pares`, `oficio_ambiguo`/`proveedor_ambiguo` en `importados` y `vigentes` | F-056 R28, R29; `_pares`, `_valores_de` | R9 (a)–(c) |
+| Los nueve motivos, en el orden de R21 de F-056 | `MotivoNoAprobable` | R4 (a) |
+| 400 `sin_cambios`, 404 `incidencia_no_encontrada`, 404/409 de obra, 500, 503 sin `codigo` | `CODIGOS_DE_REVISION`, rutas de `function_app.py` | R12 |
+| Ubicación `""` es 400, se quita con `null` | F-056 design §8 y §3.5 (precisión del 2026-10-07) | R9 (d) |
+| `duplicada_de` es un UUID, no una fila | `_fila` | R4 (b) |
+| `clasificar` de `js/api.js` no conserva lo propio del cuerpo de un error | `js/api.js` de hoy | R26, §2.1 |
+| Tamaño de página 100/200, cursor base64url sin relleno | `TAMANO_POR_DEFECTO`, `TAMANO_MAXIMO`, `cursor_de` | R7 |
+| El pie de las páginas reales es de su sección | `importar.html`, `oficios.html`, `PIE_PAGINAS_REALES` | R1 |
+| La guardia de la tira no admite un paso de la propia sección que no sea el actual | `problemasDelRecorrido` (R85 frente a R86) | R25 |
+| Dos controles más que miran `bandeja` | `test_f035_r62_control_el_lector_…`, «f035 R66: control …» | R18, §3.1 |
+| `enBloque` de `bandeja.reintentarVolcado`; `propuestas.porFila` por fila de la bandeja | `js/portal.js`, `js/maqueta_datos.js` | R17, §3.2 |
+| F-057 y F-040 también tocan `bandeja.html` / `importar.html` | Specs en sus ramas | R14, §2.4, §6.9 |
+| La regla del repositorio sobre `azure-apps` y la arquitectura | `CLAUDE.md` | R20 |
+
+### 10.2 · Lo que se comprobó y sigue como decía la spec
+
+- `identidadDe` devuelve `{usuarioOid, correo}`; `/.auth/me` lo sirve el
+  proxy (D-13, R10).
+- `Portal.PAGINAS` tiene hoy dos páginas (`importar.html`, `oficios.html`);
+  `bandeja` está en `construccion` con fichas F-038, F-039, F-040 y F-043; los
+  pasos 02 y 03 son de `bandeja` y `pasoDeSeccion("bandeja")` es `"02"`.
+- R28, R29 y R62 son los que describe la spec; el control de R28 ya usa F-044;
+  el de R62 usa F-038 y se muda a F-044, como decía.
+- `staticwebapp.config.json` exige sesión en `/*`; `test_f036_front.py` no se
+  toca.
+- `infra/desplegar_front.ps1 -SoloFront` e `infra/24_ubicacion_sigrid.ps1
+  -CodigoObra` existen con esos parámetros.
+
+### 10.3 · Lo que la conciliación no toca
+
+- `services/postventa-api`: nada de lo encontrado lo necesita. Si al
+  implementar apareciera algo que sí, **bloqueo** (límite de servicio).
+- Las specs de F-040 y F-057: sus encajes con F-038 se dejan anotados para
+  sus propias conciliaciones (`progress/spec_F-038.md`).
+
+### 10.4 · Decisiones nuevas — **PENDIENTES DE APROBACIÓN DEL HUMANO**
+
+| Id | Pregunta | Recomendación | Alternativas |
+|---|---|---|---|
+| **Q-6** | ¿Qué hace F-038 con `volcada` y `en_duda`? | **(a)** Lo mínimo para no engañar: su etiqueta en la lista, el resumen y el detalle, «Ya no se revisa aquí» y **ningún** botón ni formulario; el historial se lee. Lo demás (línea con `sigrid_cod`, motivos de rechazo del objeto `volcado`, filtros `volcada`/`en_duda`) se queda en **F-040 R54**, como se aprobó (R21). Motivo: con `activas` por defecto, una `en_duda` sale en la lista, y ofrecerle botones que dan 409 confunde. | (a') Como (a), y además los filtros `volcada` y `en_duda` en el selector ya en F-038 (trivial; F-040 R54 los da por suyos). (b) Todo R54 de F-040 aquí (adelanta trabajo de otra ficha aprobada). (c) Nada: el código tal cual (riesgo 10 de F-059); descartada, porque ofrecería acciones que el backend rechaza |
+| **Q-7** | ¿Cómo se enseña una revisión del sistema (`sistema:normalizar_ubicacion`, que no es un correo)? | «el sistema (ubicación puesta en el texto exacto de Sigrid)»; cualquier otro `sistema:…`, «el sistema» (R22). Es la «mejora opcional» que F-060 §10.1 dejó para F-038 | Enseñar el literal tal cual (funciona, pero no se entiende) |
+| **Q-8** | ¿Ofrece la página normalizar las ubicaciones (`POST /api/revision/normalizar`)? | **No** (R23): corre sola tras cada importación (F-060 R31), lo ya importado de la 0677 se normalizó en su T26, y R15 se queda en tres rutas | Un botón con ensayo previo y confirmación (cuarta ruta: cambia R15, más tests y un acto más que confirmar) |
+| **Q-9** | ¿Qué hace el formulario con un valor vigente que no está en el catálogo de hoy (las 38 ubicaciones fuera de lista, un oficio o un proveedor que ya no están)? | **Conservarlo** como opción propia marcada «no está en la lista de Sigrid de hoy» (R24): no se pierde en silencio, y si se guarda así el backend lo rechaza junto a ese campo | Vaciarlo con aviso al abrir el formulario, como al cambiar la unidad (riesgo: quien solo corrige la descripción quita la ubicación sin darse cuenta) |
+| **Q-10** | En la tira de `bandeja.html`, el paso 03 es de la misma sección que el actual (02): `enlaceSeccion` da `null` y la guardia pide `aria-current`, que R86 prohíbe | **03 como `<span>` sin `href` ni `aria-current`**, y ajustar la guardia de R85 para ese caso (R25). El 02, actual, lleva `data-construccion` y su `aria-label` mientras la sección esté en construcción, como la pestaña (R2) y como ya exige la guardia; eso contradice la última frase de R87 de F-035 («un paso actual sin enlace no lleva `aria-label`»), que hasta hoy no se había dado | (b) 03 como enlace a `./#/bandeja` (lleva al recuadro «En construcción» del portal: confunde). (c) Seguir la letra de R87 en el 02 (sin `aria-label`) y ajustar también esa parte de la guardia |

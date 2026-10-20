@@ -11,6 +11,12 @@
 >   sistema `sistema:normalizar_ubicacion` y la ruta `POST /api/revision/normalizar` (F-060); `catalogo.pares`, marcas
 >   `oficio_ambiguo`/`proveedor_ambiguo`, motivos `par_fuera_de_la_obra` y `proveedor_ambiguo`, 400 `sin_cambios`
 >   (F-056); la dependencia de F-056 ya cumplida; F-057 también toca `importar.html`.
+> - **Conciliación hecha (spec-author, 2026-10-20)**: `specs/F-038-bandeja-revision/` puesta al día con `87a03f3`
+>   (marcas «Conciliado 2026-10-20», R20–R26 nuevos, `design.md` §10); informe en `progress/spec_F-038.md`. Ninguna
+>   decisión aprobada cambia y no hace falta tocar `services/postventa-api`. **Pendiente del humano**: Q-6 (`volcada` y
+>   `en_duda`: lo mínimo aquí, el resto en F-040), Q-7 (texto de la revisión del sistema), Q-8 (no ofrecer normalizar),
+>   Q-9 (conservar en el formulario lo que ya no está en el catálogo) y Q-10 (paso 03 de la tira y la guardia de R85),
+>   con recomendación. T1 no empieza hasta que las resuelva.
 
 > ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
 > Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y

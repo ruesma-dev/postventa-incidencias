@@ -1054,6 +1054,22 @@
       "rigor": "estandar",
       "priority": 10,
       "branch": "feature/F-061-optimizar-listado-revision"
+    },
+    {
+      "id": "F-062",
+      "title": "Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte",
+      "description": "Alta del 2026-10-20 por decisión del humano al conciliar F-038 (Q-6: «la idea es gestionar toda la postventa en el portal, editar o borrar incidencias»). Hoy una incidencia volcada o en duda no admite ninguna acción (F-059: 409 accion_no_permitida) y el parte solo se anula desde la UI de Sigrid (NO PROCEDE, sin correo). Esta ficha estudia cómo corregir o anular desde el portal una incidencia ya volcada: qué expone sigrid-api para modificar o anular un parte (azure-apps/sigrid_api.md), qué estados quedan en la bandeja y cómo se protege (ensayo, ventana propia, confirmación). Toca backend (postventa-api) y front; probablemente se parte. Escritura en el ERP de producción: dry-run previo, ventana cerrada al publicar y autorización expresa para la verificación. Va detrás de F-038 y F-040.",
+      "acceptance": [
+        "Una incidencia volcada se puede corregir o anular desde el portal, con constancia de quién y cuándo, y el parte de Sigrid queda igual que si se hubiera hecho en su UI",
+        "Nada se escribe en Sigrid sin ensayo, confirmación y ventana abierta; nunca DELETE ni sql/write",
+        "Verificado en producción con una escritura autorizada",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 5,
+      "branch": "feature/F-062-gestionar-volcadas"
     }
   ]
 }

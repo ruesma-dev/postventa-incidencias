@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **60 features**, 31 abiertas, 29 terminadas.
+Resumen: **61 features**, 32 abiertas, 29 terminadas.
 
 En curso: **F-038**.
 
@@ -14,6 +14,7 @@ En curso: **F-038**.
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | en curso | critico | `feature/F-038-bandeja-revision` |
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | spec lista | critico | `feature/F-040-volcado-sigrid` |
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 5 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
+| F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 5 | pendiente | critico | `feature/F-062-gestionar-volcadas` |
 | F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 6 | pendiente | critico | `feature/F-058-plantilla-ubicaciones-sigrid` |
 | F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 7 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
 | F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 8 | pendiente | critico | `feature/F-052-secretos-ajustes` |
@@ -96,6 +97,12 @@ Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el cicl
 estado **pendiente** · prioridad 5 · rigor `estandar` · SDD sí · rama `feature/F-057-tabla-bandeja-paso1`
 
 Alta del 2026-10-06 por petición del humano, tras la spec de F-038. La tabla «3 · Bandeja de la obra» de importar.html (paso 1 del recorrido) se ve estrecha y pobre. Pide: (1) que ocupe el ancho de la ventana; (2) cabecera de columnas con los colores corporativos de Ruesma (tokens rs-*); (3) ordenar por columna; (4) filtros, como en otros puntos del front (por ejemplo, el circuito de partes); (5) quitar la columna «Fila»; (6) una columna «Nueva» / «Antigua» que diga si la incidencia entró con la última importación o ya estaba antes en la bandeja; (7) poder editar las incidencias nuevas antes de aprobarlas. La edición y la aprobación son de F-056 (backend) y F-038 (bandeja.html): esta ficha no crea otro camino de edición, sino que enlaza o reutiliza el de F-038 (a decidir con el humano en la spec). Si la marca nueva/antigua necesita un dato que el backend no da, se parte (límite de servicio).
+
+### F-062 · Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte
+
+estado **pendiente** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-062-gestionar-volcadas`
+
+Alta del 2026-10-20 por decisión del humano al conciliar F-038 (Q-6: «la idea es gestionar toda la postventa en el portal, editar o borrar incidencias»). Hoy una incidencia volcada o en duda no admite ninguna acción (F-059: 409 accion_no_permitida) y el parte solo se anula desde la UI de Sigrid (NO PROCEDE, sin correo). Esta ficha estudia cómo corregir o anular desde el portal una incidencia ya volcada: qué expone sigrid-api para modificar o anular un parte (azure-apps/sigrid_api.md), qué estados quedan en la bandeja y cómo se protege (ensayo, ventana propia, confirmación). Toca backend (postventa-api) y front; probablemente se parte. Escritura en el ERP de producción: dry-run previo, ventana cerrada al publicar y autorización expresa para la verificación. Va detrás de F-038 y F-040.
 
 ### F-058 · La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad
 

@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **61 features**, 32 abiertas, 29 terminadas.
+Resumen: **62 features**, 33 abiertas, 29 terminadas.
 
 En curso: **F-038**.
 
@@ -15,6 +15,7 @@ En curso: **F-038**.
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | spec lista | critico | `feature/F-040-volcado-sigrid` |
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 5 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
 | F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 5 | pendiente | critico | `feature/F-062-gestionar-volcadas` |
+| F-063 | Normalizar el código de obra: un cero delante cuando empieza por tres cifras | 5 | pendiente | critico | `feature/F-063-normalizar-codigo-obra` |
 | F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 6 | pendiente | critico | `feature/F-058-plantilla-ubicaciones-sigrid` |
 | F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 7 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
 | F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 8 | pendiente | critico | `feature/F-052-secretos-ajustes` |
@@ -103,6 +104,12 @@ Alta del 2026-10-06 por petición del humano, tras la spec de F-038. La tabla «
 estado **pendiente** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-062-gestionar-volcadas`
 
 Alta del 2026-10-20 por decisión del humano al conciliar F-038 (Q-6: «la idea es gestionar toda la postventa en el portal, editar o borrar incidencias»). Hoy una incidencia volcada o en duda no admite ninguna acción (F-059: 409 accion_no_permitida) y el parte solo se anula desde la UI de Sigrid (NO PROCEDE, sin correo). Esta ficha estudia cómo corregir o anular desde el portal una incidencia ya volcada: qué expone sigrid-api para modificar o anular un parte (azure-apps/sigrid_api.md), qué estados quedan en la bandeja y cómo se protege (ensayo, ventana propia, confirmación). Toca backend (postventa-api) y front; probablemente se parte. Escritura en el ERP de producción: dry-run previo, ventana cerrada al publicar y autorización expresa para la verificación. Va detrás de F-038 y F-040.
+
+### F-063 · Normalizar el código de obra: un cero delante cuando empieza por tres cifras
+
+estado **pendiente** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-063-normalizar-codigo-obra`
+
+Alta del 2026-10-20 por petición del humano. Los códigos de obra de Sigrid llevan cuatro cifras (0626, 0677), pero la gente teclea 626. Regla pedida: si el código son tres cifras, se añade un 0 delante (626 → 0626); y si empieza por tres cifras seguidas de otra cosa, también (lectura del líder, pendiente de confirmar con el humano: 626A → 0626A). Hoy domain/models/plantilla_incidencias.py::normalizar_codigo_obra solo aplica nombrado.normalizar_codigo (guiones y blancos) y valida longitud y caracteres; la usan la plantilla, la importación, la bandeja, la revisión, las equivalencias, la normalización y el volcado. Al especificar: si se rellena en un único sitio (esa función) o también en el front (campo «Código de obra»); qué pasa con lo ya guardado con tres cifras en postventa.* (¿hay filas?); que no se confunda con el relleno a tres cifras de las villas (F-049) ni con los tramos de codigos_del_parte; y comprobar contra Sigrid que no existe ninguna obra cuyo código real empiece por tres cifras sin el 0.
 
 ### F-058 · La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad
 

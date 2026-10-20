@@ -1070,6 +1070,24 @@
       "rigor": "critico",
       "priority": 5,
       "branch": "feature/F-062-gestionar-volcadas"
+    },
+    {
+      "id": "F-063",
+      "title": "Normalizar el código de obra: un cero delante cuando empieza por tres cifras",
+      "description": "Alta del 2026-10-20 por petición del humano. Los códigos de obra de Sigrid llevan cuatro cifras (0626, 0677), pero la gente teclea 626. Regla pedida: si el código son tres cifras, se añade un 0 delante (626 → 0626); y si empieza por tres cifras seguidas de otra cosa, también (lectura del líder, pendiente de confirmar con el humano: 626A → 0626A). Hoy domain/models/plantilla_incidencias.py::normalizar_codigo_obra solo aplica nombrado.normalizar_codigo (guiones y blancos) y valida longitud y caracteres; la usan la plantilla, la importación, la bandeja, la revisión, las equivalencias, la normalización y el volcado. Al especificar: si se rellena en un único sitio (esa función) o también en el front (campo «Código de obra»); qué pasa con lo ya guardado con tres cifras en postventa.* (¿hay filas?); que no se confunda con el relleno a tres cifras de las villas (F-049) ni con los tramos de codigos_del_parte; y comprobar contra Sigrid que no existe ninguna obra cuyo código real empiece por tres cifras sin el 0.",
+      "acceptance": [
+        "Un código de obra de tres cifras (626) se trata en todas las rutas como el de cuatro (0626)",
+        "Un código que empieza por tres cifras seguidas de otros caracteres recibe el mismo 0 delante, según la regla confirmada por el humano",
+        "Los códigos de cuatro cifras o más, y los que no empiezan por tres cifras, no cambian",
+        "Lo ya guardado sigue encontrándose",
+        "No se escribe nada en Sigrid",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 5,
+      "branch": "feature/F-063-normalizar-codigo-obra"
     }
   ]
 }

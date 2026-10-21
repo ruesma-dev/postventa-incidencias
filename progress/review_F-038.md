@@ -361,7 +361,7 @@ de trabajo, limpio antes y después.
 
 `git diff 87a03f3..HEAD -- services/postventa-api`: vacío. `js/revision.js`, `js/api.js`, `js/importacion.js` y
 `tests/test_f036_front.py` no se tocan en este bloque. En las líneas añadidas, el barrido (correos y GUID) solo
-encuentra los UUID inventados `00000000-0000-4000-8000-0000000000aa/b1`. Ni correos reales, ni nombres, ni obras reales.
+encuentra los UUID inventados `«UUID de prueba aa»/b1`. Ni correos reales, ni nombres, ni obras reales.
 
 ### Mutantes a mano del reviewer (copia en el scratchpad, nunca en el árbol)
 
@@ -1338,3 +1338,123 @@ nuevo. **[x]**
   anclas comparten `this.cargandoMas = false;`. Es inocuo: RX22 cae en su propio test.
 - Siguen como estaban: O-B1f-2 (N10 fija O-B1b-3, T7 paso 7), O-B1f-3 (la cabecera `--workers 1`), O-B1b-3/4/5,
   O-T4q-1 y las propuestas de automejora, incluida la de las tres familias para `arnes-base`.
+
+## Review de R20 (2026-10-21)
+
+- **Veredicto: APPROVED.** `c3a2460` (`docs/INTEGRACION.md` y los tres tests ampliados) está bien: ningún test queda
+  más débil, los tres controles cazan todo lo que deben y lo que dice el documento es verdad.
+- **Nivel de rigor:** `critico` (`harness/features.json`). Para una review corta de documentación las puertas son: RED
+  (consta en el informe, «R20 · desbloqueo», con la salida real: 2 failed y 1 passed antes de tocar el documento, y
+  explica por qué el de F-056 ya pasaba), los tests vigilantes en verde y mis mutantes del documento, en copia. Cobertura
+  y `harness.mutacion` son N/A: el cambio es Markdown más aserciones de texto sobre Markdown, no hay código de producción
+  que medir ni que mutar.
+- **Alcance:** `git show --stat c3a2460` trae `docs/INTEGRACION.md`, `progress/impl_F-038.md`,
+  `test_f056_documentacion.py` y `test_f059_documentacion.py`. Ningún fichero de producción cambia.
+- **P-4:** no he ejecutado `init.sh` ni he tocado `.env`. Tampoco he lanzado pytest desde `services/postventa-api`.
+
+### Ningún test se debilita (comparado con F-060 T36, `76c7139`)
+
+| Test | Lo que se quita | Lo que lo sustituye | Juicio |
+|---|---|---|---|
+| `test_f059_r40_la_cabecera_dice_que_f059_lo_toco` | `features == ["059"]` | `len(features) == 1`, que esa feature **exista** en `harness/features.json` y que la cabecera diga «F-059» | El «059 es la última» tenía que caer, porque F-038 toca el documento después. Es el mismo paso que dio F-059 con el test de F-060, que se quedó en «una sola feature» **sin** comprobar que exista. Este queda más fuerte que su precedente |
+| el mismo | fecha `>= 2026-10-17` | fecha `>= 2026-10-20` (el cierre de F-059) | Más exigente |
+| el mismo | «no está desplegada» exigida | «desplegada el 2026-10-17» y «verificada en producción el 2026-10-19» exigidas, y «no está desplegada» **prohibida**; sigue prohibido «sin desplegar» | El patrón de T36: la frase vieja pasa a prohibida y la nueva a exigida. Se conservan «partes de reclamación», «§3 bis» y «F-060» |
+| `test_f056_r44_la_cabecera_dice_que_f056_lo_toco` | `int(features[0]) >= 56` | la feature existe en `harness/features.json` | Las dos aserciones no se contienen una a otra. El `>= 56` aceptaba un F-999 que no existe y rechazaba un F-038 legítimo. «No retroceder» ya lo medía la fecha (`>= 2026-10-09`), que sigue, igual que en los tests de F-036 y de F-060. Lo demás no cambia |
+| `test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta` | «no está desplegada» exigida en la fila | en la fila, exigidas «Desplegada el 2026-10-17», «verificada en producción el 2026-10-19», «VOLCADO_HABILITADO» y «27_ventana_volcado.ps1»; prohibidas «no está desplegada» y «sin desplegar». En §8, exigida la frase nueva de «Desde F-059» y prohibida la vieja | Copia exacta del cambio que hizo T36 en `test_f060_r43_la_seccion_ocho_…`. Se conservan «F-059», «cerrada», «F-040» y el resto de las frases de §8 |
+
+### Los controles no son ciegos (mutantes del documento, en copia)
+
+El árbol lo he copiado con `git archive HEAD` a una carpeta desechable de mi scratchpad, que no tiene `.env`. Cada
+mutante cambia una sola cosa en `docs/INTEGRACION.md` de la copia, y después restauro el original. Los tests los lanzo
+uno a uno con el python del venv, `-q -p no:cacheprovider -x`.
+
+| Mutante | Debe caer | Resultado |
+|---|---|---|
+| Cabecera con la fecha retrocedida a 2026-10-19 | cabecera de F-059 | cae |
+| Cabecera con la fecha retrocedida a 2026-10-08 | cabeceras de F-059 y de F-056 | caen las dos |
+| Cabecera que dice «no está desplegada» | cabecera de F-059 | cae (por la prohibición: las frases exigidas siguen ahí) |
+| Dos «Última feature que lo tocó» (F-038 y F-059) | cabeceras de F-059, F-056 y F-060 | caen las tres |
+| Una feature que no existe (F-999) | cabeceras de F-059 y de F-056 | caen las dos |
+| Sin «verificada en producción el 2026-10-19» | cabecera de F-059 | cae |
+| Sin «desplegada el 2026-10-17» | cabecera de F-059 | cae |
+| En la fila de §8, se añade «no está desplegada» | §8 de F-059 | cae (por la prohibición) |
+| En la fila de §8, se añade «sin desplegar» | §8 de F-059 | cae |
+| La fila de §8 sin `27_ventana_volcado.ps1` | §8 de F-059 | cae |
+| La fila de §8 con la ventana «abierta» en vez de «cerrada» | §8 de F-059 | cae |
+| La fila de §8 sin «verificada en producción el 2026-10-19» | §8 de F-059 | cae |
+| Vuelve el «Desde F-059» viejo («implementada en su rama y no está desplegada») | §8 de F-059 | cae |
+| El «Desde F-059» nuevo **y** el viejo a la vez | §8 de F-059 | cae (por la prohibición) |
+| *Informativo:* una última feature que existe pero es vieja (F-001) | — | las dos cabeceras **pasan** (ver O-R20-2) |
+
+Resultado: **20 caídas esperadas de 20, ningún control ciego.** Con el documento original, los cuatro tests de cabecera
+y de §8 están en verde.
+
+### Lo que dice el documento es verdad
+
+- **F-059**, según el cierre de `progress/history.md` («F-059 · El volcado a Sigrid, backend — 2026-10-20»): se
+  desplegó el 2026-10-17 desde `dev` `81049bc` con la ventana cerrada. `81049bc` es el merge «F-059 volcado a Sigrid
+  (backend), apta para desplegar» y está en `dev`. La verificación en producción fue el 2026-10-19 en la obra 0626, con
+  un parte creado con la ventana abierta y cerrada enseguida. En T26 el humano lo anuló desde la UI de Sigrid y quedó
+  en NPR (NO PROCEDE). La cabecera, el párrafo de §8 y la fila dicen eso mismo. El código del parte no sale en el
+  documento.
+- **F-060:** la cabecera la sigue dando desplegada el 2026-10-13 y verificada el 2026-10-14, que coincide con su fila.
+- **F-038:** está `in_progress` en `features.json`. El documento la cuenta como «implementada en su rama; se publica
+  con su T6», lo cual es verdad: T6 sigue pendiente en `current.md`.
+- **Sin identificadores:** en las líneas añadidas no aparecen hosts, GUID, correos ni nombres (lo he comprobado con
+  grep). Lo que sí aparece son hashes de commit y el código de obra, que ya figuran en `history.md`.
+  `test_f006_repo_sin_identificadores.py` está en verde.
+
+### Los demás vigilantes de `docs/INTEGRACION.md`, en verde
+
+Lanzados desde `%TEMP%\f038_r20_review`, que no tiene `.env`, con el python del venv y `-q -p no:cacheprovider`. Son
+los 17 ficheros de `services/postventa-api/tests` que leen el documento (f005, f006 ×2, f009, f010, f012, f013, f019,
+f036, f049, f051, f053, f056 ×2, f059 ×2 y f060), más `services/postventa-front/tests/test_f038_front.py`:
+
+```
+732 passed, 141 skipped in 213.01s (0:03:33)
+```
+
+Los 141 omitidos son todos de `test_f056_alcance_cerrado.py` y `test_f059_alcance_cerrado.py`, que dan dos motivos:
+«este control vive en feature/F-0xx-… mientras no esté mergeada». No tienen que ver con este cambio. Sin
+`test_f038_front.py` salen los 670 del informe del implementer. `git status`: el árbol queda limpio.
+
+### Checkpoints (solo lo que toca R20)
+
+- C1 · N/A por P-4: `init.sh` lo ejecuta el líder.
+- C2 · [x] Tests: los vigilantes están en verde, los tres ampliados no se debilitan y sus controles cazan.
+- C3 · [x] Convenciones: el documento conserva su primera línea con la ruta, todo está en español y no hay secretos ni
+  identificadores.
+- C3 bis · [x] Los tests de otras features se cambian por **decisión del humano del 2026-10-21**, que consta en el
+  informe, y cada docstring lo dice con su fecha («Ampliado 2026-10-21 (F-038, decisión del humano)»).
+- C4 bis · [x] RED con su salida real. Cobertura y mutación de herramienta son N/A por lo que se explica arriba (solo
+  Markdown y aserciones de texto); la verificación real han sido los 20 mutantes del documento. [x] Evidencias: la
+  salida en verde de los 17 ficheros.
+- C5 · [x] El commit va como `F-038 R20: …` y lleva sus líneas de atribución.
+
+### Observaciones (no bloquean R20, pero hay que resolverlas antes del cierre)
+
+- **O-R20-1 · `design.md` §4 dice lo contrario de lo que se ha hecho.** La línea 436 de
+  `specs/F-038-bandeja-revision/design.md` dice: «*Conciliado 2026-10-20:* tampoco `docs/INTEGRACION.md` (F-038 no
+  añade rutas) ni nada de F-059 o F-060». También dice «No se toca: `services/postventa-api/`». R20 toca
+  `docs/INTEGRACION.md` y dos tests de `services/postventa-api/tests/`, uno de ellos de F-059. Lo autoriza la decisión
+  del humano del 2026-10-21, pero esa decisión solo consta en `progress/impl_F-038.md` y en el mensaje del commit: ni
+  la spec ni `current.md` la recogen. **Para el líder o el spec-author, antes de T10:** conciliar §4 (las tres filas
+  nuevas y quitar el «tampoco») y anotar la decisión en `current.md`. Si no se hace, la review final tendrá que marcar
+  «solo los ficheros previstos» como `[ ]`.
+- **O-R20-2 · Lo que F-038 escribe en el documento no lo vigila ningún test suyo.** Ningún test exige que la cabecera
+  diga F-038 ni el párrafo «Desde F-038» con `bandeja.html`. Los tests genéricos aceptan cualquier feature que exista,
+  por vieja que sea: F-001 pasa (comprobado). Tampoco hay tests de F-038 para «no añade rutas, ni variables, ni tablas».
+  La spec no lo exige, porque R20 solo pide `ARCHITECTURE.md` y `azure-apps/`, así que no es un requisito sin cubrir.
+  Pero rompe con el precedente: F-056, F-059 y F-060 tienen cada una su test de cabecera y de §8. Propuesta: que T10
+  (o T6, al actualizar la fila de F-056) añada un `test_f038_…_integracion` con el mismo patrón ampliable: una fecha y
+  una feature, que exista, sin retroceder de 2026-10-21, que diga «F-038» y «bandeja.html», y que la fila de F-056 deje
+  de decir que falta la página de F-038 una vez publicada.
+- **O-R20-3 · La fila de F-056 en «Qué NO está desplegado».** Sigue diciendo que falta la página de F-038. Es verdad
+  hasta T6, como ya anota el implementer; hay que cambiarla al publicar.
+
+### Automejora (propuesta, no aplicada)
+
+- Para `reviewer.md` (y `arnes-base`): cuando una feature amplíe los tests de cabecera de otra, exigir en la misma
+  review que la feature que pasa a ser «la última» deje **su propio** test de cabecera con el patrón ampliable. Si no
+  lo hace, la cabecera queda vigilada solo por los genéricos, que aceptan cualquier feature existente. El caso es
+  O-R20-2.

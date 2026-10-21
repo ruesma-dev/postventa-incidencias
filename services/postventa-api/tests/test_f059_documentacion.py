@@ -35,6 +35,7 @@ IA: solo se leen el Markdown y el código.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -51,6 +52,7 @@ SERVICIO = RAIZ / "services" / "postventa-api"
 INTEGRACION = RAIZ / "docs" / "INTEGRACION.md"
 ARQUITECTURA = RAIZ / "docs" / "ARCHITECTURE.md"
 DESPLIEGUE = RAIZ / "docs" / "DESPLIEGUE.md"
+FEATURES = RAIZ / "harness" / "features.json"
 FUNCTION_APP = SERVICIO / "function_app.py"
 EJEMPLO_ENV = SERVICIO / ".env.example"
 DDL_DE_F059 = (
@@ -142,6 +144,11 @@ def _volcado() -> str:
     """La sección de F-059 en la arquitectura. Se lee en el cuerpo de cada test:
     si falta, el test **falla** por aserción en vez de dar un error de preparación."""
     return _seccion(_leer(ARQUITECTURA), TITULO_DEL_VOLCADO)
+
+
+def _features_declaradas() -> set[str]:
+    """Los identificadores de `harness/features.json` (la cabecera nombra uno)."""
+    return {f["id"] for f in json.loads(_leer(FEATURES))["features"]}
 
 
 def _variables_del_ejemplo() -> set[str]:
@@ -314,19 +321,40 @@ def test_f059_r40_la_tabla_de_sistemas_lo_dice_en_sigrid_api_y_en_postgresql():
 
 def test_f059_r40_la_cabecera_dice_que_f059_lo_toco():
     """Bien formada, que no retroceda y con F-059; sin la frase «sin desplegar»,
-    que `test_f060_r43_la_cabecera_…` no deja estar en la cabecera."""
+    que `test_f060_r43_la_cabecera_…` no deja estar en la cabecera.
+
+    **Ampliado 2026-10-21 (F-038, decisión del humano)**, como F-060 y F-059
+    hicieron con los de F-056 y F-060: exigir que F-059 sea la **última**
+    feature caducaba con la siguiente (F-038, R20, toca el documento
+    después). Exige una cabecera bien formada —**una** fecha y **una** última
+    feature, y que esa feature exista en `harness/features.json`—, que no
+    retroceda **por fecha** de lo que dejó el cierre de F-059 (2026-10-20), y
+    que F-059 siga constando en ella. «No está desplegada» pasa a su
+    despliegue: **desplegada el 2026-10-17** y **verificada en producción el
+    2026-10-19** (`progress/history.md`, cierre de F-059), y «no está
+    desplegada» pasa a no poder estar, como «sin desplegar».
+    """
     from datetime import date
 
     cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
     fechas = re.findall(r"Fecha: (\d{4}-\d{2}-\d{2})\. ", cabecera)
     features = re.findall(r"Última feature que lo tocó: F-(\d{3})\b", cabecera)
 
-    assert features == ["059"]
-    assert len(fechas) == 1
-    assert date.fromisoformat(fechas[0]) >= date(2026, 10, 17)
-    for texto in ("partes de reclamación", "§3 bis", "no está desplegada", "F-060"):
+    assert len(fechas) == 1, f"se esperaba una «Fecha: AAAA-MM-DD.»: {fechas}"
+    assert len(features) == 1, f"se esperaba una «Última feature»: {features}"
+    assert f"F-{features[0]}" in _features_declaradas()
+    assert date.fromisoformat(fechas[0]) >= date(2026, 10, 20)
+    for texto in (
+        "F-059",
+        "partes de reclamación",
+        "§3 bis",
+        "desplegada el 2026-10-17",
+        "verificada en producción el 2026-10-19",
+        "F-060",
+    ):
         assert texto in cabecera, f"la cabecera no dice «{texto}»"
     assert "sin desplegar" not in cabecera
+    assert "no está desplegada" not in cabecera
 
 
 def test_f059_r40_la_seccion_dos_tiene_la_tabla_en_el_arbol_y_su_subapartado():
@@ -465,6 +493,16 @@ def test_f059_r40_la_seccion_ocho_declara_cada_endpoint(metodo, ruta):
 
 
 def test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta():
+    """§8 · la cuenta, las ventanas y la fila de «Qué NO está desplegado».
+
+    **Ampliado 2026-10-21 (F-038, decisión del humano)**, como hizo F-060 en
+    su cierre (T36): la fila «El volcado a Sigrid» deja de decir «no está
+    desplegada» y pasa a decir que F-059 está **desplegada el 2026-10-17**,
+    **verificada en producción el 2026-10-19**, con la ventana
+    `VOLCADO_HABILITADO` **cerrada** y abierta para cada volcado con
+    `27_ventana_volcado.ps1`; y el párrafo «Desde F-059» de §8 deja de decir
+    «implementada en su rama y no está desplegada». Las demás frases siguen.
+    """
     ocho = _normal(_integracion("## 8 · Qué exponemos nosotros"))
 
     for texto in (
@@ -480,8 +518,23 @@ def test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta():
     fila = _normal(
         _fila(_integracion("### Qué NO está desplegado"), "| El volcado a Sigrid |")
     )
-    for texto in ("F-059", "no está desplegada", "cerrada", "F-040"):
+    for texto in (
+        "F-059",
+        "Desplegada el 2026-10-17",
+        "verificada en producción el 2026-10-19",
+        "VOLCADO_HABILITADO",
+        "cerrada",
+        "27_ventana_volcado.ps1",
+        "F-040",
+    ):
         assert texto in fila, f"la fila de F-059 no dice «{texto}»"
+    assert "no está desplegada" not in fila
+    assert "sin desplegar" not in fila
+    assert (
+        "Desde F-059 (2026-10-17; desplegada el 2026-10-17 con la ventana "
+        "VOLCADO_HABILITADO cerrada)" in ocho
+    )
+    assert "Desde F-059 (2026-10-17; implementada en su rama" not in ocho
 
 
 @pytest.mark.parametrize(

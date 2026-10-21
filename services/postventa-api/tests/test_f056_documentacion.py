@@ -46,6 +46,7 @@ sin base, sin IA: solo se leen el Markdown y el código.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -62,6 +63,7 @@ RAIZ = Path(__file__).resolve().parent.parent.parent.parent
 SERVICIO = RAIZ / "services" / "postventa-api"
 
 INTEGRACION = RAIZ / "docs" / "INTEGRACION.md"
+FEATURES = RAIZ / "harness" / "features.json"
 ARQUITECTURA = RAIZ / "docs" / "ARCHITECTURE.md"
 FUNCTION_APP = SERVICIO / "function_app.py"
 DDL_DE_F056 = (
@@ -517,6 +519,12 @@ def test_f056_r44_la_cabecera_dice_que_f056_lo_toco():
     cabecera bien formada —**una** fecha y **una** última feature—, que no
     retroceda de lo que dejó F-056 (2026-10-09, F-056), y que F-056 y su
     despliegue sigan constando en ella.
+
+    **Ampliado 2026-10-21 (F-038, decisión del humano)**, al criterio de los
+    de F-036 y F-060: «no retroceder» lo dice la **fecha**, no el número de la
+    feature —F-038 toca el documento después de F-059 y tiene un número
+    menor—. El `>= 56` se sustituye por que la última feature **exista** en
+    `harness/features.json`; lo demás, igual.
     """
     from datetime import date
 
@@ -527,7 +535,9 @@ def test_f056_r44_la_cabecera_dice_que_f056_lo_toco():
     assert len(fechas) == 1, f"se esperaba una «Fecha: AAAA-MM-DD.»: {fechas}"
     assert len(features) == 1, f"se esperaba una «Última feature»: {features}"
     assert date.fromisoformat(fechas[0]) >= date(2026, 10, 9)
-    assert int(features[0]) >= 56
+    assert f"F-{features[0]}" in {
+        f["id"] for f in json.loads(_leer(FEATURES))["features"]
+    }
     assert "F-056" in cabecera
     assert "desplegada el 2026-10-09" in cabecera
 

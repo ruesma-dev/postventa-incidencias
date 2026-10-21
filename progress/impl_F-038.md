@@ -687,7 +687,7 @@ verde en todos (564 passed, 7 skipped): estas guardias son de Node, como pedía 
 === M10: @click="aprobar(fila.incidencia_id)"  ->  @click="aprobar(fila.incidencia_idd)"
   node exit 1 ℹ tests 874 ℹ pass 870 ℹ fail 4
     ✖ f038 R10, R11 (C-B1b-2): cada botón de acción, pulsado, actúa sobre SU fila
-        +   'aprobar: manda [], no «aprobar de 00000000-0000-4000-8000-000000000001»'
+        +   'aprobar: manda [], no «aprobar de «UUID de prueba 1»»'
     (y, como antes, los dos controles que pierden su ancla de texto)
 === M13: x-show="consulta && (!usuario.usuarioOid || !usuario.correo)"  ->  x-show="consulta && (!usuario.usuarioOid && !usuario.correo)"
   node exit 1 ℹ tests 874 ℹ pass 872 ℹ fail 2
@@ -1440,9 +1440,9 @@ $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(HC7\): R" tests_js/
 ### AC12 · pedirDescarte sin la puerta de descartar
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(AC12\): R" tests_js/revision.test.js
 ✖ f038 T5 (AC12): R11: «Descartar» pedido sobre una fila que no lo admite no abre la confirmación (17.4373ms)
-  +   'descartada: confirmandoDescarte = 00000000-0000-4000-8000-000000000001',
-  +   'volcada: confirmandoDescarte = 00000000-0000-4000-8000-000000000001',
-  +   'en_duda: confirmandoDescarte = 00000000-0000-4000-8000-000000000001'
+  +   'descartada: confirmandoDescarte = «UUID de prueba 1»',
+  +   'volcada: confirmandoDescarte = «UUID de prueba 1»',
+  +   'en_duda: confirmandoDescarte = «UUID de prueba 1»'
 ℹ fail 1
 ### AC14 · accionesDe con el prototipo (toString, constructor)
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(AC14\): R" tests_js/revision.test.js
@@ -1484,7 +1484,7 @@ $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(GS6\): R" tests_js/
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(N10\): R" tests_js/revision.test.js
 ✖ f038 T5 (N10): R8: abrir el detalle de OTRA fila cierra el formulario, el descarte pedido y los errores de la anterior (17.2747ms)
   +   'el formulario de la fila 1 sigue abierto en el detalle de la 2',
-  +   'el descarte pedido sigue: 00000000-0000-4000-8000-000000000001',
+  +   'el descarte pedido sigue: «UUID de prueba 1»',
   +   'los errores por campo de la fila 1 siguen'
 ℹ fail 1
 ### TX11 · grupo sin mirar ambiguo
@@ -1505,7 +1505,7 @@ $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(TX5\): R" tests_js/
 ### FE10 · guardar edita la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(FE10\): R" tests_js/revision.test.js
 ✖ f038 T5 (FE10): R9, R10: «Guardar cambios» edita la fila ABIERTA, también cuando no es la primera de la lista (17.1016ms)
-  +   'edita [00000000-0000-4000-8000-000000000001], no la abierta (00000000-0000-4000-8000-000000000002)'
+  +   'edita [«UUID de prueba 1»], no la abierta («UUID de prueba 2»)'
 ℹ fail 1
 ### E7 · tras recargar se pierde el mensaje
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(E7\): R" tests_js/revision.test.js
@@ -1636,22 +1636,22 @@ $ node --test --test-timeout=60000 "--test-name-pattern=pulsados, hacen lo suyo"
 ### FE1 · Aprobar sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
 ✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (80.4891ms)
-  +   'aprobar: manda [aprobar de 00000000-0000-4000-8000-000000000001], no «aprobar de 00000000-0000-4000-8000-000000000002»'
+  +   'aprobar: manda [aprobar de «UUID de prueba 1»], no «aprobar de «UUID de prueba 2»»'
 ℹ fail 1
 ### FE2 · Descartar sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
 ✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (80.3678ms)
-  +   'pedirDescarte: pide el descarte de «00000000-0000-4000-8000-000000000001»'
+  +   'pedirDescarte: pide el descarte de ««UUID de prueba 1»»'
 ℹ fail 1
 ### FE3 · Recuperar sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
 ✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (73.0497ms)
-  +   'recuperar: manda [recuperar de 00000000-0000-4000-8000-000000000001], no «recuperar de 00000000-0000-4000-8000-000000000002»'
+  +   'recuperar: manda [recuperar de «UUID de prueba 1»], no «recuperar de «UUID de prueba 2»»'
 ℹ fail 1
 ### FE4 · Sí, descartarla sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
 ✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (81.597ms)
-  +   'confirmarDescarte: manda [], no «descartar de 00000000-0000-4000-8000-000000000002»'
+  +   'confirmarDescarte: manda [], no «descartar de «UUID de prueba 2»»'
 ℹ fail 1
 ### FE5 · Editar sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
@@ -2149,7 +2149,7 @@ $ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX23\): R" te
 ### RX24 · abrirDetalle sin comprobar la fila
 $ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX24\): R" tests_js/revision.test.js
 ✖ f038 C-B1f-9 (RX24): R8 (fuera de contrato, como PR8): abrir el detalle de un incidencia_id que no está en la lista no abre nada ni pide historial (12.7366ms)
-  +   'un id desconocido queda abierto: 00000000-0000-4000-8000-0000000000ff',
+  +   'un id desconocido queda abierto: «UUID de prueba ff»',
   +   'pide el historial de un id desconocido'
 ℹ fail 1
 ```
@@ -2224,3 +2224,132 @@ python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py   
 | Mutación con la herramienta | Sin cambios: **0 mutantes** (`progress/mutacion_F-038.md`). No hay `.py` de producción en el alcance |
 | Mutación a mano | **305 generados** (281 de T5 y 24 RX), **304 muertos, 0 supervivientes** y 1 equivalente (N11), **aceptado por el humano por escrito el 2026-10-20**. 0 muertos por tiempo, 0 solo por controles. 4 copias, unos 39 min de reloj (9.340 s sumando cada ejecución) |
 | Tiempo de la suite | JS: 7,81 s (997 tests). Pytest del front: 26,95 s. Raíz: 0,23 s |
+
+## R20 · INTEGRACION.md (2026-10-21) · BLOQUEADO
+
+Encargo del líder: contar `bandeja.html` en `docs/INTEGRACION.md` y poner la
+cabecera al día (fecha 2026-10-21, «Última feature que lo tocó: F-038», F-059
+desplegada el 2026-10-17 y verificada en producción el 2026-10-19). **No se ha
+escrito nada en `docs/INTEGRACION.md`**: tres tests que vigilan el documento
+exigen lo contrario, y el encargo dice parar si pasa.
+
+Las incompatibilidades, leídas del código de los tests (no se han tocado):
+
+| Test | Lo que exige | Choca con |
+|---|---|---|
+| `test_f059_documentacion.py::test_f059_r40_la_cabecera_dice_que_f059_lo_toco` | `features == ["059"]`: la última feature **tiene que ser** F-059, valor fijo | «Última feature que lo tocó: F-038» |
+| el mismo | `"no está desplegada" in cabecera` | «F-059 está desplegada» (la frase solo podría quedar hablando de otra cosa, lo que sería un apaño) |
+| `test_f056_documentacion.py::test_f056_r44_la_cabecera_dice_que_f056_lo_toco` | `int(features[0]) >= 56` | F-038 (38 < 56). El de F-060 mide «no retroceder» por fecha y el de F-036 exige `>= 36`: esos dos sí pasarían |
+| `test_f059_documentacion.py::test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta` | La fila «El volcado a Sigrid» de «Qué NO está desplegado» (§8) dice «no está desplegada» y «cerrada» | No es de la cabecera, pero si F-059 está desplegada, §8 (y la frase de la línea 1647, «implementada en su rama y no está desplegada») quedan viejas igual |
+
+Además, `specs/F-038-bandeja-revision/design.md` §4 dice expresamente
+«*Conciliado 2026-10-20:* tampoco `docs/INTEGRACION.md` (F-038 no añade
+rutas)», y R20 solo pide `docs/ARCHITECTURE.md` y la copia de `azure-apps/`.
+
+Estado de partida comprobado: los tests de cabecera están en verde con el
+documento como está (desde `%TEMP%\f038_integracion`, sin `.env`):
+
+```
+python -m pytest test_f036_documentacion.py test_f056_documentacion.py test_f059_documentacion.py test_f060_documentacion.py -q -p no:cacheprovider -k cabecera
+10 passed, 223 deselected in 1.59s
+```
+
+Lo que hace falta decidir (líder / humano) para desbloquear, sin que lo decida
+el implementer:
+
+1. **Ampliar los dos tests de cabecera** al criterio que ya usan los de F-036
+   y F-060 (cabecera bien formada, una fecha y una feature, que no retroceda
+   **por fecha**, y que F-059 / F-056 sigan constando), cambiando en el de
+   F-059 «no está desplegada» por su despliegue («desplegada el 2026-10-17»),
+   como hizo F-060 al cerrar (su T36). Y, en el mismo trabajo, el test de §8
+   de F-059 y la fila de «Qué NO está desplegado», que pasarían a decir que
+   está desplegada con la ventana cerrada. Es cambiar tests de otra feature
+   (F-059, F-056): necesita la decisión explícita, como la tuvo F-060
+   («decisión del líder 2026-10-13») y F-059 («decisión del humano del
+   2026-10-15»).
+2. O **dejar la cabecera como está** y añadir solo el párrafo de
+   `bandeja.html` (§8, «Y dos páginas más en el front»), sin tocar la
+   cabecera, aceptando que diga F-059 sin desplegar hasta que alguien amplíe
+   los tests.
+
+## R20 · INTEGRACION.md · desbloqueo (2026-10-21)
+
+**Decisión del humano del 2026-10-21: opción 1, ampliar los tests.** Hecho en
+la misma rama. La sección anterior («BLOQUEADO») queda como histórico.
+
+### Tests cambiados, y por qué
+
+Los dos de cabecera se ampliaron al criterio que ya usaban los de F-036 y
+F-060 (cabecera bien formada, «no retroceder» medido **por fecha**). Los dos
+llevan en su docstring «Ampliado 2026-10-21 (F-038, decisión del humano)».
+
+| Test | Antes | Ahora | Por qué no es más débil |
+|---|---|---|---|
+| `test_f059_documentacion.py::test_f059_r40_la_cabecera_dice_que_f059_lo_toco` | `features == ["059"]`; `len(fechas) == 1`; fecha `>= 2026-10-17`; dice «partes de reclamación», «§3 bis», «no está desplegada», «F-060»; no dice «sin desplegar» | una fecha y una última feature, y esa feature **existe en `harness/features.json`**; fecha `>= 2026-10-20` (cierre de F-059, más exigente que el 2026-10-17); dice «F-059», «partes de reclamación», «§3 bis», «desplegada el 2026-10-17», «verificada en producción el 2026-10-19», «F-060»; no dice «sin desplegar» **ni «no está desplegada»** | El valor fijo `059` caducaba con la siguiente feature; se sustituye por «una sola, y real» más «F-059 consta». «No está desplegada» pasa a su despliegue (dos frases exigidas) y a frase prohibida |
+| `test_f056_documentacion.py::test_f056_r44_la_cabecera_dice_que_f056_lo_toco` | `int(features[0]) >= 56` | la última feature **existe en `harness/features.json`**; lo demás igual (una fecha `>= 2026-10-09`, una feature, «F-056», «desplegada el 2026-10-09») | F-038 toca el documento después que F-059 con un número menor: el `>= 56` medía el orden por número, que no es el orden real. El orden lo mide ya la fecha |
+| `test_f059_documentacion.py::test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta` | la fila «El volcado a Sigrid» dice «F-059», «no está desplegada», «cerrada», «F-040» | la fila dice «F-059», «Desplegada el 2026-10-17», «verificada en producción el 2026-10-19», «VOLCADO_HABILITADO», «cerrada», «27_ventana_volcado.ps1», «F-040», y **no** dice «no está desplegada» ni «sin desplegar»; §8 dice «Desde F-059 (2026-10-17; desplegada el 2026-10-17 con la ventana VOLCADO_HABILITADO cerrada)» y ya no «Desde F-059 (2026-10-17; implementada en su rama» | Copia lo que hizo F-060 en su T36 (`test_f060_r43_la_seccion_ocho_…`): la frase vieja pasa a prohibida y la nueva, a exigida. Las demás aserciones del test siguen |
+
+Ninguna aserción se ha quitado sin otra igual de fuerte en su lugar.
+
+### Qué cambia en `docs/INTEGRACION.md`
+
+- **Cabecera**: `Fecha: 2026-10-21`, «Última feature que lo tocó: F-038» (la
+  página de revisión, implementada en su rama, se publica con su T6). F-059
+  pasa a «Antes»: **desplegada** el 2026-10-17 (desde `dev` `81049bc`, ventana
+  cerrada) y **verificada** en producción el 2026-10-19 en la obra 0626 (un
+  parte creado y anulado). Lo de F-060, F-056, F-053, F-036, F-013 y F-005,
+  intacto.
+- **§8, páginas del front**: un párrafo «Desde F-038» tras el de
+  `importar.html` y `oficios.html`: `bandeja.html` (editar, descartar,
+  recuperar, aprobar; volcadas y en duda solo se ven), detrás de la misma
+  sesión del grupo, el enlace desde el bloque de la bandeja de
+  `importar.html` (`bandeja.html?obra=<obra>`), y que solo consume las tres
+  rutas de F-056 y `/.auth/me`: ni rutas, ni variables, ni tablas, ni
+  lecturas de Sigrid, ni `POST /api/revision/normalizar`.
+- **§8, «Desde F-059»**: desplegada el 2026-10-17 con la ventana
+  `VOLCADO_HABILITADO` cerrada, que se abre para cada volcado con
+  `infra/27_ventana_volcado.ps1`.
+- **§8, «Qué NO está desplegado»**: la fila de F-059 pasa a desplegada y
+  verificada (T25 y T26), con la ventana cerrada; lo que falta es la página
+  de F-040.
+- No había ninguna nota «LO QUE CAMBIÓ EN LA REVISIÓN DEL …» en el documento:
+  no se añade.
+- No se ha tocado `azure-apps/` (la copia la refresca el líder).
+
+Fuera de alcance, para el líder: la fila de F-056 en «Qué NO está desplegado»
+sigue diciendo que falta la página de F-038, lo que es cierto hasta su T6;
+habrá que actualizarla al publicar.
+
+### Fase RED
+
+Tests ampliados antes de tocar el documento, desde `%TEMP%\f038_integracion`
+(sin `.env`):
+
+```
+python -m pytest test_f056_documentacion.py test_f059_documentacion.py -q -p no:cacheprovider -k "cabecera or seccion_ocho_dice_la_cuenta_las_ventanas" -rf
+E       AssertionError: assert datetime.date(2026, 10, 17) >= datetime.date(2026, 10, 20)
+E           AssertionError: la fila de F-059 no dice «Desplegada el 2026-10-17»
+FAILED ...test_f059_documentacion.py::test_f059_r40_la_cabecera_dice_que_f059_lo_toco
+FAILED ...test_f059_documentacion.py::test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta
+2 failed, 1 passed, 110 deselected in 2.72s
+```
+
+(El de F-056 pasaba ya en RED: con el documento viejo la última feature era
+F-059, que existe; su cambio solo deja de prohibir un número menor.)
+
+### Verde
+
+Los 17 ficheros que vigilan el documento (los de la lista del encargo, con
+`test_f006_repo_sin_identificadores.py`), desde `%TEMP%\f038_integracion`
+con el python del venv, `-q -p no:cacheprovider`:
+
+```
+670 passed, 141 skipped in 253.79s (0:04:13)
+```
+
+Ni `init.sh` (P-4) ni `.env`.
+
+Los 141 omitidos son todos de `test_f056_alcance_cerrado.py` y
+`test_f059_alcance_cerrado.py`: sus controles de `git` solo corren en la rama
+de su feature («este control vive en feature/F-0xx-… mientras no esté
+mergeada»). Es su comportamiento de siempre, no de este cambio.

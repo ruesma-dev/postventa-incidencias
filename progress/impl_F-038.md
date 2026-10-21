@@ -2271,3 +2271,85 @@ el implementer:
    `bandeja.html` (§8, «Y dos páginas más en el front»), sin tocar la
    cabecera, aceptando que diga F-059 sin desplegar hasta que alguien amplíe
    los tests.
+
+## R20 · INTEGRACION.md · desbloqueo (2026-10-21)
+
+**Decisión del humano del 2026-10-21: opción 1, ampliar los tests.** Hecho en
+la misma rama. La sección anterior («BLOQUEADO») queda como histórico.
+
+### Tests cambiados, y por qué
+
+Los dos de cabecera se ampliaron al criterio que ya usaban los de F-036 y
+F-060 (cabecera bien formada, «no retroceder» medido **por fecha**). Los dos
+llevan en su docstring «Ampliado 2026-10-21 (F-038, decisión del humano)».
+
+| Test | Antes | Ahora | Por qué no es más débil |
+|---|---|---|---|
+| `test_f059_documentacion.py::test_f059_r40_la_cabecera_dice_que_f059_lo_toco` | `features == ["059"]`; `len(fechas) == 1`; fecha `>= 2026-10-17`; dice «partes de reclamación», «§3 bis», «no está desplegada», «F-060»; no dice «sin desplegar» | una fecha y una última feature, y esa feature **existe en `harness/features.json`**; fecha `>= 2026-10-20` (cierre de F-059, más exigente que el 2026-10-17); dice «F-059», «partes de reclamación», «§3 bis», «desplegada el 2026-10-17», «verificada en producción el 2026-10-19», «F-060»; no dice «sin desplegar» **ni «no está desplegada»** | El valor fijo `059` caducaba con la siguiente feature; se sustituye por «una sola, y real» más «F-059 consta». «No está desplegada» pasa a su despliegue (dos frases exigidas) y a frase prohibida |
+| `test_f056_documentacion.py::test_f056_r44_la_cabecera_dice_que_f056_lo_toco` | `int(features[0]) >= 56` | la última feature **existe en `harness/features.json`**; lo demás igual (una fecha `>= 2026-10-09`, una feature, «F-056», «desplegada el 2026-10-09») | F-038 toca el documento después que F-059 con un número menor: el `>= 56` medía el orden por número, que no es el orden real. El orden lo mide ya la fecha |
+| `test_f059_documentacion.py::test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta` | la fila «El volcado a Sigrid» dice «F-059», «no está desplegada», «cerrada», «F-040» | la fila dice «F-059», «Desplegada el 2026-10-17», «verificada en producción el 2026-10-19», «VOLCADO_HABILITADO», «cerrada», «27_ventana_volcado.ps1», «F-040», y **no** dice «no está desplegada» ni «sin desplegar»; §8 dice «Desde F-059 (2026-10-17; desplegada el 2026-10-17 con la ventana VOLCADO_HABILITADO cerrada)» y ya no «Desde F-059 (2026-10-17; implementada en su rama» | Copia lo que hizo F-060 en su T36 (`test_f060_r43_la_seccion_ocho_…`): la frase vieja pasa a prohibida y la nueva, a exigida. Las demás aserciones del test siguen |
+
+Ninguna aserción se ha quitado sin otra igual de fuerte en su lugar.
+
+### Qué cambia en `docs/INTEGRACION.md`
+
+- **Cabecera**: `Fecha: 2026-10-21`, «Última feature que lo tocó: F-038» (la
+  página de revisión, implementada en su rama, se publica con su T6). F-059
+  pasa a «Antes»: **desplegada** el 2026-10-17 (desde `dev` `81049bc`, ventana
+  cerrada) y **verificada** en producción el 2026-10-19 en la obra 0626 (un
+  parte creado y anulado). Lo de F-060, F-056, F-053, F-036, F-013 y F-005,
+  intacto.
+- **§8, páginas del front**: un párrafo «Desde F-038» tras el de
+  `importar.html` y `oficios.html`: `bandeja.html` (editar, descartar,
+  recuperar, aprobar; volcadas y en duda solo se ven), detrás de la misma
+  sesión del grupo, el enlace desde el bloque de la bandeja de
+  `importar.html` (`bandeja.html?obra=<obra>`), y que solo consume las tres
+  rutas de F-056 y `/.auth/me`: ni rutas, ni variables, ni tablas, ni
+  lecturas de Sigrid, ni `POST /api/revision/normalizar`.
+- **§8, «Desde F-059»**: desplegada el 2026-10-17 con la ventana
+  `VOLCADO_HABILITADO` cerrada, que se abre para cada volcado con
+  `infra/27_ventana_volcado.ps1`.
+- **§8, «Qué NO está desplegado»**: la fila de F-059 pasa a desplegada y
+  verificada (T25 y T26), con la ventana cerrada; lo que falta es la página
+  de F-040.
+- No había ninguna nota «LO QUE CAMBIÓ EN LA REVISIÓN DEL …» en el documento:
+  no se añade.
+- No se ha tocado `azure-apps/` (la copia la refresca el líder).
+
+Fuera de alcance, para el líder: la fila de F-056 en «Qué NO está desplegado»
+sigue diciendo que falta la página de F-038, lo que es cierto hasta su T6;
+habrá que actualizarla al publicar.
+
+### Fase RED
+
+Tests ampliados antes de tocar el documento, desde `%TEMP%\f038_integracion`
+(sin `.env`):
+
+```
+python -m pytest test_f056_documentacion.py test_f059_documentacion.py -q -p no:cacheprovider -k "cabecera or seccion_ocho_dice_la_cuenta_las_ventanas" -rf
+E       AssertionError: assert datetime.date(2026, 10, 17) >= datetime.date(2026, 10, 20)
+E           AssertionError: la fila de F-059 no dice «Desplegada el 2026-10-17»
+FAILED ...test_f059_documentacion.py::test_f059_r40_la_cabecera_dice_que_f059_lo_toco
+FAILED ...test_f059_documentacion.py::test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta
+2 failed, 1 passed, 110 deselected in 2.72s
+```
+
+(El de F-056 pasaba ya en RED: con el documento viejo la última feature era
+F-059, que existe; su cambio solo deja de prohibir un número menor.)
+
+### Verde
+
+Los 17 ficheros que vigilan el documento (los de la lista del encargo, con
+`test_f006_repo_sin_identificadores.py`), desde `%TEMP%\f038_integracion`
+con el python del venv, `-q -p no:cacheprovider`:
+
+```
+670 passed, 141 skipped in 253.79s (0:04:13)
+```
+
+Ni `init.sh` (P-4) ni `.env`.
+
+Los 141 omitidos son todos de `test_f056_alcance_cerrado.py` y
+`test_f059_alcance_cerrado.py`: sus controles de `git` solo corren en la rama
+de su feature («este control vive en feature/F-0xx-… mientras no esté
+mergeada»). Es su comportamiento de siempre, no de este cambio.

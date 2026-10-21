@@ -1,12 +1,18 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-10-17. **Última feature que
-> lo tocó**: F-059, el volcado a Sigrid en el backend —crear como **partes de
+> **Origen**: este repositorio. **Fecha**: 2026-10-21. **Última feature que
+> lo tocó**: F-038, la página de revisión de la bandeja en el front
+> —`bandeja.html`, que consume las tres rutas de F-056 ya documentadas y no
+> añade rutas, ni variables, ni tablas, ni lecturas de Sigrid (§8)—,
+> implementada en su rama; se publica con su T6.
+> Antes, F-059, el volcado a Sigrid en el backend —crear como **partes de
 > reclamación** del ERP de producción las incidencias aprobadas de la bandeja,
 > con un ensayo previo, una tabla append-only de eventos, tres endpoints y una
 > ventana propia que se publica cerrada (§1, §2, §3 bis, §4, §7, §8 y §9)—,
-> implementada en su rama; **no está desplegada** todavía (su T24).
+> **desplegada** el 2026-10-17 (desde `dev` `81049bc`, con la ventana
+> cerrada) y **verificada** en producción el 2026-10-19 en la obra 0626 (un
+> parte creado y anulado después desde la UI de Sigrid).
 > Antes, F-060, normalizar las ubicaciones de la bandeja al texto exacto
 > de Sigrid —una ruta nueva, revisiones del **sistema** en la tabla de F-056,
 > también tras cada importación, y una línea de tiempos por listado (§1, §2,
@@ -1572,6 +1578,25 @@ comunes; el circuito de partes vive en **`/partes.html`**, e importar y oficios
 son páginas del portal. Toda la navegación es en la misma pestaña; el circuito
 pide confirmación antes de salir con una remesa a medias.
 
+**Desde F-038** (2026-10-21; implementada en su rama, se publica con su T6),
+una tercera página, **`bandeja.html`**, detrás de la misma sesión del grupo:
+la **revisión de la bandeja** de una obra —**editar**, **descartar**,
+**recuperar** y **aprobar** cada incidencia, con constancia de quién (su
+correo) y cuándo—; las **volcadas** a Sigrid y las que están **en duda** solo
+se ven, con su línea de volcado y sin ningún botón. Es la página real de la
+sección «Bandeja de revisión» del portal, y la enlaza el bloque de la bandeja
+de `importar.html` («Revisar esta obra en la bandeja de revisión», a
+`bandeja.html?obra=<obra>`, en la misma pestaña; esa bandeja sigue siendo de
+solo lectura). **No añade nada a lo que exponemos ni a lo que consumimos**:
+solo llama a las tres rutas de F-056 ya documentadas abajo
+(`GET /api/revision`, `GET /api/revision/historial` y
+`POST /api/revision/acciones`) y a `/.auth/me`; ni rutas nuevas, ni variables
+de entorno, ni tablas, ni lecturas de Sigrid, ni SharePoint, y no ofrece
+`POST /api/revision/normalizar` (F-060). El correo y el `oid` no se escriben
+en la consola ni en el almacenamiento del navegador. Diseño:
+`specs/F-038-bandeja-revision/`; el detalle, en
+`services/postventa-front/README.md`.
+
 **Desde F-053** (2026-10-06), dos campos más en dos respuestas, los dos
 **aditivos**: el portal (F-035) los consume de forma tolerante y no se quita
 ni se cambia nada de lo que ya había. `POST /api/importaciones` devuelve
@@ -1644,10 +1669,11 @@ y de la importación siguen con **las mismas claves**:
 (`ARCHIVO_HABILITADO`, `CIERRE_HABILITADO`): lee Sigrid por `sql/read` y
 escribe solo en el esquema propio.
 
-**Desde F-059** (2026-10-17; implementada en su rama y no está desplegada
-todavía) lo aprobado en la revisión **se vuelca a Sigrid** como partes de
-reclamación —el backend; la página que trocea, confirma y para al primer fallo
-es **F-040**—, con tres rutas más (§3 bis):
+**Desde F-059** (2026-10-17; desplegada el 2026-10-17 con la ventana
+`VOLCADO_HABILITADO` cerrada) lo aprobado en la revisión **se vuelca a Sigrid**
+como partes de reclamación —el backend; la página que trocea, confirma y para
+al primer fallo es **F-040**—, con tres rutas más (§3 bis). La ventana se abre
+para cada volcado con `infra/27_ventana_volcado.ps1` y se cierra al terminar.
 
 - **El orden de uso.** `GET /api/volcado?obra=` para ver las candidatas;
   `POST /api/volcado/ensayo` con `{obra, usuario_oid, usuario_correo,
@@ -1720,7 +1746,7 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | La entrada de incidencias por Excel | F-036 | **Desplegada** desde el 2026-10-02 (verificada en el entorno el 2026-10-05, T29): las rutas de la plantilla, la importación, la bandeja y los catálogos existen en el entorno desplegado. Lo importado **se queda en la bandeja**: no crea ninguna incidencia en Sigrid hasta **F-040**, ni se revisa ni se edita hasta **F-038** |
 | Normalizar las ubicaciones | F-060 | **Desplegada** el 2026-10-13 y verificada en el entorno el 2026-10-14 (T26 y T27): la ruta `POST /api/revision/normalizar` existe, la importación normaliza tras registrar filas y el listado deja la línea de tiempos. Lo que aún no está es la velocidad del listado: tras la importación diferida del Bloque 7, la medición M2 (T35) da en caliente p50 5,00 s y máximo 13,21 s, por encima del objetivo (máximo < 10 s, p50 < 3 s); lo que falta, sobre todo las lecturas lentas de `sigrid-api`, va a **F-061** |
 | La revisión de la bandeja | F-056 | **Desplegada** el 2026-10-09 y verificada en el entorno (T19): las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` y la tabla `postventa.revisiones_bandeja` (la crea el DDL al arrancar) ya existen. Lo que aún no está: sin la página de **F-038** solo se puede usar llamando a las rutas; nada de lo aprobado llega a Sigrid hasta **F-040** |
-| El volcado a Sigrid | F-059 | Implementada en su rama y **no está desplegada**: las rutas `/api/volcado`, `/api/volcado/ensayo` y `/api/volcado/volcar` y la tabla `postventa.volcados_sigrid` no existen todavía en el entorno desplegado. Cuando se publique, su ventana quedará **cerrada** (D-3) y la verificación en producción crea **un** parte de prueba, autorizado, que se anula al terminar (`specs/F-059-volcado-sigrid-backend/tasks.md`, Bloque 6). Sin la página de **F-040**, solo se podrá usar llamando a las rutas |
+| El volcado a Sigrid | F-059 | **Desplegada el 2026-10-17** (desde `dev` `81049bc`) y **verificada en producción el 2026-10-19** en la obra 0626 (T25 y T26): **un** parte de prueba, autorizado, creado con la ventana abierta y anulado después desde la UI de Sigrid (NO PROCEDE). Las rutas `/api/volcado`, `/api/volcado/ensayo` y `/api/volcado/volcar` y la tabla `postventa.volcados_sigrid` existen en el entorno desplegado. La ventana `VOLCADO_HABILITADO` queda **cerrada** (D-3; cada despliegue la cierra) y se abre para cada volcado con `infra/27_ventana_volcado.ps1`. Lo que aún no está: sin la página de **F-040**, solo se puede volcar llamando a las rutas |
 
 > **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo
 > cierta: F-013 está implementada en su rama y **no desplegada**. Deja de

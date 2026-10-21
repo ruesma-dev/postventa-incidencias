@@ -172,7 +172,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
 
 ## Bloque 2 · Publicar la página (MANUAL, humano)
 
-- [ ] **T6 · MANUAL (humano)**: con la review APROBADA, merge normal a `dev`
+- [x] **T6 · MANUAL (humano)**: con la review APROBADA, merge normal a `dev`
   (Q-4; el líder, a petición del humano, **desde un worktree aparte**; el push,
   el humano), y publicar el front desde un worktree limpio de `dev`, desde la
   raíz del repositorio principal y siempre con **`-SoloFront`** (el modo

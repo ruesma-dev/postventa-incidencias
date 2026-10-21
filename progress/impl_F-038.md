@@ -2353,3 +2353,18 @@ Los 141 omitidos son todos de `test_f056_alcance_cerrado.py` y
 `test_f059_alcance_cerrado.py`: sus controles de `git` solo corren en la rama
 de su feature («este control vive en feature/F-0xx-… mientras no esté
 mergeada»). Es su comportamiento de siempre, no de este cambio.
+
+## T6 · Publicada (humano, 2026-10-21)
+
+- Merge del Bloque 1 en `dev` desde un worktree aparte (`383bfd5`) y, tras R20 y la corrección de los UUID de prueba en
+  los informes, otra vez (`f7f63da`). `init.sh` completo en verde sobre la rama antes del segundo merge: api **9102
+  passed, 365 skipped**; raíz 115 passed. Push de `dev` hecho por el humano.
+- El humano publicó el front desde un worktree limpio de `dev` (`f7f63da`) con `infra/desplegar_front.ps1 -SoloFront`:
+  «Project deployed», sin tocar Entra, la asignación ni el secreto. Nota: la CLI de la Static Web App leyó
+  `staticwebapp.config.json` de la carpeta de trabajo principal (rama de F-038), no de la copia; es idéntico al de
+  `f7f63da`, así que no cambia nada, pero conviene que el script le pase la ruta de la copia (para F-054 o una ficha
+  de infra).
+- `azure-apps/postventa_incidencias.md` puesto al día a mano (`ebda2b3`, local): F-059 desplegada y verificada, y
+  `bandeja.html`. La copia y `docs/INTEGRACION.md` divergen desde antes en ~200 líneas (notas propias de la copia y
+  adaptaciones); igualarlas es trabajo aparte.
+- Siguiente: **T7**, la verificación en producción.

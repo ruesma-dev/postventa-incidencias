@@ -361,7 +361,7 @@ de trabajo, limpio antes y después.
 
 `git diff 87a03f3..HEAD -- services/postventa-api`: vacío. `js/revision.js`, `js/api.js`, `js/importacion.js` y
 `tests/test_f036_front.py` no se tocan en este bloque. En las líneas añadidas, el barrido (correos y GUID) solo
-encuentra los UUID inventados `00000000-0000-4000-8000-0000000000aa/b1`. Ni correos reales, ni nombres, ni obras reales.
+encuentra los UUID inventados `«UUID de prueba aa»/b1`. Ni correos reales, ni nombres, ni obras reales.
 
 ### Mutantes a mano del reviewer (copia en el scratchpad, nunca en el árbol)
 

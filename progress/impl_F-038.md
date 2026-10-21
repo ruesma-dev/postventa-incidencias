@@ -687,7 +687,7 @@ verde en todos (564 passed, 7 skipped): estas guardias son de Node, como pedía 
 === M10: @click="aprobar(fila.incidencia_id)"  ->  @click="aprobar(fila.incidencia_idd)"
   node exit 1 ℹ tests 874 ℹ pass 870 ℹ fail 4
     ✖ f038 R10, R11 (C-B1b-2): cada botón de acción, pulsado, actúa sobre SU fila
-        +   'aprobar: manda [], no «aprobar de 00000000-0000-4000-8000-000000000001»'
+        +   'aprobar: manda [], no «aprobar de «UUID de prueba 1»»'
     (y, como antes, los dos controles que pierden su ancla de texto)
 === M13: x-show="consulta && (!usuario.usuarioOid || !usuario.correo)"  ->  x-show="consulta && (!usuario.usuarioOid && !usuario.correo)"
   node exit 1 ℹ tests 874 ℹ pass 872 ℹ fail 2
@@ -1440,9 +1440,9 @@ $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(HC7\): R" tests_js/
 ### AC12 · pedirDescarte sin la puerta de descartar
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(AC12\): R" tests_js/revision.test.js
 ✖ f038 T5 (AC12): R11: «Descartar» pedido sobre una fila que no lo admite no abre la confirmación (17.4373ms)
-  +   'descartada: confirmandoDescarte = 00000000-0000-4000-8000-000000000001',
-  +   'volcada: confirmandoDescarte = 00000000-0000-4000-8000-000000000001',
-  +   'en_duda: confirmandoDescarte = 00000000-0000-4000-8000-000000000001'
+  +   'descartada: confirmandoDescarte = «UUID de prueba 1»',
+  +   'volcada: confirmandoDescarte = «UUID de prueba 1»',
+  +   'en_duda: confirmandoDescarte = «UUID de prueba 1»'
 ℹ fail 1
 ### AC14 · accionesDe con el prototipo (toString, constructor)
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(AC14\): R" tests_js/revision.test.js
@@ -1484,7 +1484,7 @@ $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(GS6\): R" tests_js/
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(N10\): R" tests_js/revision.test.js
 ✖ f038 T5 (N10): R8: abrir el detalle de OTRA fila cierra el formulario, el descarte pedido y los errores de la anterior (17.2747ms)
   +   'el formulario de la fila 1 sigue abierto en el detalle de la 2',
-  +   'el descarte pedido sigue: 00000000-0000-4000-8000-000000000001',
+  +   'el descarte pedido sigue: «UUID de prueba 1»',
   +   'los errores por campo de la fila 1 siguen'
 ℹ fail 1
 ### TX11 · grupo sin mirar ambiguo
@@ -1505,7 +1505,7 @@ $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(TX5\): R" tests_js/
 ### FE10 · guardar edita la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(FE10\): R" tests_js/revision.test.js
 ✖ f038 T5 (FE10): R9, R10: «Guardar cambios» edita la fila ABIERTA, también cuando no es la primera de la lista (17.1016ms)
-  +   'edita [00000000-0000-4000-8000-000000000001], no la abierta (00000000-0000-4000-8000-000000000002)'
+  +   'edita [«UUID de prueba 1»], no la abierta («UUID de prueba 2»)'
 ℹ fail 1
 ### E7 · tras recargar se pierde el mensaje
 $ node --test --test-timeout=60000 "--test-name-pattern=T5 \(E7\): R" tests_js/revision.test.js
@@ -1636,22 +1636,22 @@ $ node --test --test-timeout=60000 "--test-name-pattern=pulsados, hacen lo suyo"
 ### FE1 · Aprobar sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
 ✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (80.4891ms)
-  +   'aprobar: manda [aprobar de 00000000-0000-4000-8000-000000000001], no «aprobar de 00000000-0000-4000-8000-000000000002»'
+  +   'aprobar: manda [aprobar de «UUID de prueba 1»], no «aprobar de «UUID de prueba 2»»'
 ℹ fail 1
 ### FE2 · Descartar sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
 ✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (80.3678ms)
-  +   'pedirDescarte: pide el descarte de «00000000-0000-4000-8000-000000000001»'
+  +   'pedirDescarte: pide el descarte de ««UUID de prueba 1»»'
 ℹ fail 1
 ### FE3 · Recuperar sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
 ✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (73.0497ms)
-  +   'recuperar: manda [recuperar de 00000000-0000-4000-8000-000000000001], no «recuperar de 00000000-0000-4000-8000-000000000002»'
+  +   'recuperar: manda [recuperar de «UUID de prueba 1»], no «recuperar de «UUID de prueba 2»»'
 ℹ fail 1
 ### FE4 · Sí, descartarla sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
 ✖ f038 R10, R11 (T5): con dos filas, cada botón de acción del detalle actúa sobre SU fila, no sobre la primera (81.597ms)
-  +   'confirmarDescarte: manda [], no «descartar de 00000000-0000-4000-8000-000000000002»'
+  +   'confirmarDescarte: manda [], no «descartar de «UUID de prueba 2»»'
 ℹ fail 1
 ### FE5 · Editar sobre la primera fila
 $ node --test --test-timeout=60000 "--test-name-pattern=con dos filas" tests_js/revision.test.js
@@ -2149,7 +2149,7 @@ $ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX23\): R" te
 ### RX24 · abrirDetalle sin comprobar la fila
 $ node --test --test-timeout=60000 "--test-name-pattern=C-B1f-\d \(RX24\): R" tests_js/revision.test.js
 ✖ f038 C-B1f-9 (RX24): R8 (fuera de contrato, como PR8): abrir el detalle de un incidencia_id que no está en la lista no abre nada ni pide historial (12.7366ms)
-  +   'un id desconocido queda abierto: 00000000-0000-4000-8000-0000000000ff',
+  +   'un id desconocido queda abierto: «UUID de prueba ff»',
   +   'pide el historial de un id desconocido'
 ℹ fail 1
 ```

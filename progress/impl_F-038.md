@@ -2224,3 +2224,50 @@ python -m pytest -q -p no:cacheprovider tests/test_f035_placeholders_vivos.py   
 | Mutación con la herramienta | Sin cambios: **0 mutantes** (`progress/mutacion_F-038.md`). No hay `.py` de producción en el alcance |
 | Mutación a mano | **305 generados** (281 de T5 y 24 RX), **304 muertos, 0 supervivientes** y 1 equivalente (N11), **aceptado por el humano por escrito el 2026-10-20**. 0 muertos por tiempo, 0 solo por controles. 4 copias, unos 39 min de reloj (9.340 s sumando cada ejecución) |
 | Tiempo de la suite | JS: 7,81 s (997 tests). Pytest del front: 26,95 s. Raíz: 0,23 s |
+
+## R20 · INTEGRACION.md (2026-10-21) · BLOQUEADO
+
+Encargo del líder: contar `bandeja.html` en `docs/INTEGRACION.md` y poner la
+cabecera al día (fecha 2026-10-21, «Última feature que lo tocó: F-038», F-059
+desplegada el 2026-10-17 y verificada en producción el 2026-10-19). **No se ha
+escrito nada en `docs/INTEGRACION.md`**: tres tests que vigilan el documento
+exigen lo contrario, y el encargo dice parar si pasa.
+
+Las incompatibilidades, leídas del código de los tests (no se han tocado):
+
+| Test | Lo que exige | Choca con |
+|---|---|---|
+| `test_f059_documentacion.py::test_f059_r40_la_cabecera_dice_que_f059_lo_toco` | `features == ["059"]`: la última feature **tiene que ser** F-059, valor fijo | «Última feature que lo tocó: F-038» |
+| el mismo | `"no está desplegada" in cabecera` | «F-059 está desplegada» (la frase solo podría quedar hablando de otra cosa, lo que sería un apaño) |
+| `test_f056_documentacion.py::test_f056_r44_la_cabecera_dice_que_f056_lo_toco` | `int(features[0]) >= 56` | F-038 (38 < 56). El de F-060 mide «no retroceder» por fecha y el de F-036 exige `>= 36`: esos dos sí pasarían |
+| `test_f059_documentacion.py::test_f059_r40_la_seccion_ocho_dice_la_cuenta_las_ventanas_y_lo_que_falta` | La fila «El volcado a Sigrid» de «Qué NO está desplegado» (§8) dice «no está desplegada» y «cerrada» | No es de la cabecera, pero si F-059 está desplegada, §8 (y la frase de la línea 1647, «implementada en su rama y no está desplegada») quedan viejas igual |
+
+Además, `specs/F-038-bandeja-revision/design.md` §4 dice expresamente
+«*Conciliado 2026-10-20:* tampoco `docs/INTEGRACION.md` (F-038 no añade
+rutas)», y R20 solo pide `docs/ARCHITECTURE.md` y la copia de `azure-apps/`.
+
+Estado de partida comprobado: los tests de cabecera están en verde con el
+documento como está (desde `%TEMP%\f038_integracion`, sin `.env`):
+
+```
+python -m pytest test_f036_documentacion.py test_f056_documentacion.py test_f059_documentacion.py test_f060_documentacion.py -q -p no:cacheprovider -k cabecera
+10 passed, 223 deselected in 1.59s
+```
+
+Lo que hace falta decidir (líder / humano) para desbloquear, sin que lo decida
+el implementer:
+
+1. **Ampliar los dos tests de cabecera** al criterio que ya usan los de F-036
+   y F-060 (cabecera bien formada, una fecha y una feature, que no retroceda
+   **por fecha**, y que F-059 / F-056 sigan constando), cambiando en el de
+   F-059 «no está desplegada» por su despliegue («desplegada el 2026-10-17»),
+   como hizo F-060 al cerrar (su T36). Y, en el mismo trabajo, el test de §8
+   de F-059 y la fila de «Qué NO está desplegado», que pasarían a decir que
+   está desplegada con la ventana cerrada. Es cambiar tests de otra feature
+   (F-059, F-056): necesita la decisión explícita, como la tuvo F-060
+   («decisión del líder 2026-10-13») y F-059 («decisión del humano del
+   2026-10-15»).
+2. O **dejar la cabecera como está** y añadir solo el párrafo de
+   `bandeja.html` (§8, «Y dos páginas más en el front»), sin tocar la
+   cabecera, aceptando que diga F-059 sin desplegar hasta que alguien amplíe
+   los tests.

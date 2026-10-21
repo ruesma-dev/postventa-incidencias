@@ -1,13 +1,75 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-038 · `in_progress` · 2026-10-20 · paso 1: poner la spec al día con `dev`
+> **Pendientes MANUAL del humano (C-B1f-10, review final del Bloque 1)**, con su comando exacto; el detalle de cada
+> paso está en `specs/F-038-bandeja-revision/tasks.md`, Bloques 2 y 3. Precondición: review final del Bloque 1 APPROVED
+> y `bash harness/init.sh` en verde (el líder).
+> - **T6 · Publicar la página.** El líder hace el merge normal a `dev` desde un worktree aparte; el push, el humano.
+>   Después, el humano publica el front desde un worktree limpio de `dev`, en la raíz del repositorio principal y
+>   **siempre con `-SoloFront`** (el modo completo regenera el secreto de cliente):
+>   ```
+>   git worktree add --detach ..\postventa-publicar dev
+>   powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_front.ps1 -SoloFront
+>   git worktree remove ..\postventa-publicar
+>   ```
+>   Se anota el commit publicado en `progress/impl_F-038.md`. En el mismo trabajo, el líder pone al día
+>   `azure-apps/postventa_incidencias.md` con la página nueva (R20).
+> - **T7 · Verificar en producción**, en el front publicado, sin nombres ni correos en las notas. Foto de antes y de
+>   después de las reclamaciones de la 0677 (la raíz de la pasarela y la base, como en las fotos de F-059; pide la clave):
+>   ```
+>   powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677 -SigridBaseUrl <raíz de la pasarela> -SigridBaseDatos ruesma
+>   ```
+>   Entre las dos fotos, los pasos 2 a 9 de T7: carga en caliente de `bandeja.html?obra=0677` y su resumen contra
+>   `GET /api/revision`; la fila de prueba «PRUEBA F-038 - DESCARTAR», que **tiene que acabar `descartada`**; las
+>   revisiones del sistema y un valor fuera de catálogo; la volcada `RS26.10/0074` de la 0626 en solo lectura;
+>   concurrencia en dos pestañas; guarda de salida; el enlace de `importar.html`; sin correos ni `oid` en la consola ni
+>   en el almacenamiento. Los recuentos de la foto no cambian.
+> - **N11 aceptado como equivalente por el humano, por escrito, el 2026-10-20** («Sí, lo acepto»): en `abrirDetalle`,
+>   `historialRevision(this.abierta)` frente a `historialRevision(incidenciaId)`, que valen lo mismo sin `await` entre
+>   la asignación y la llamada.
+> Rama `feature/F-038-bandeja-revision` **nueva** desde `dev` **`87a03f3`** (base fija: F-056, F-060 y F-059 cerradas y
+> mergeadas). La rama anterior (spec del 2026-10-06 sobre `349ba06`) queda como `archivo/F-038-spec-2026-10-06`; su
+> spec se trae tal cual; worktree `postventa-f038` retirado. Orden aceptado por el humano (2026-10-20): rama → spec-author
+> concilia → el humano da el OK → implementer por bloques con review en cada uno.
+> - Repaso del líder (2026-10-20), lo que la spec no recoge: estados `volcada` y `en_duda`, objeto `volcado` y 409
+>   `accion_no_permitida` (F-059; `activas` excluye ya las volcadas); motivo `ubicacion_fuera_de_lista`, revisiones del
+>   sistema `sistema:normalizar_ubicacion` y la ruta `POST /api/revision/normalizar` (F-060); `catalogo.pares`, marcas
+>   `oficio_ambiguo`/`proveedor_ambiguo`, motivos `par_fuera_de_la_obra` y `proveedor_ambiguo`, 400 `sin_cambios`
+>   (F-056); la dependencia de F-056 ya cumplida; F-057 también toca `importar.html`.
+> - **Conciliación hecha (spec-author, 2026-10-20)**: `specs/F-038-bandeja-revision/` puesta al día con `87a03f3`
+>   (marcas «Conciliado 2026-10-20», R20–R26 nuevos, `design.md` §10); informe en `progress/spec_F-038.md`. Ninguna
+>   decisión aprobada cambia y no hace falta tocar `services/postventa-api`.
+> - **Decisiones del humano (2026-10-20) aplicadas; conciliación cerrada**: Q-6 (b) ampliada (la presentación del volcado,
+>   R54 de F-040, pasa a F-038: R21; sin acciones sobre `volcada`/`en_duda`), Q-7 a Q-10 como se recomendaban. `tasks.md`
+>   repartida en Bloques 1, 1 bis, 1 ter (volcado) y 1 quater (mutación). **Siguiente**: implementer, Bloque 1. Pendiente
+>   fuera de F-038: conciliar F-040 (soltar su R54) y la ficha nueva «editar o anular partes ya volcados» (el líder).
+> - **Bloque 1 hecho (implementer, 2026-10-20)**: T1 `7c4598f` (RED) y T2 `77122eb` (`js/revision.js`, tres funciones
+>   en `js/api.js`, `ErrorApi.detalle`). Suite JS 829/829, pytest del front 815 passed. Informe, decisiones y dudas
+>   (D-a, D-b) en `progress/impl_F-038.md`. **Siguiente**: review del Bloque 1 e `init.sh` del líder (P-4).
+> - **Bloque 1 bis hecho (implementer, 2026-10-20)**: T1 bis `fa433f5` (RED), T3 `7d9b926` (`bandeja.html`,
+>   `Portal.PAGINAS`, README, ARCHITECTURE) y T4 `7b44fed` (enlace de `importar.html`). Front 865 passed, JS 858/858,
+>   raíz 19 passed. Cambios a propósito en tests de F-035 (listas a cinco páginas, tres controles a `impresion`, guardia
+>   de la tira por Q-10, huella de `importar.html`), cada uno con su porqué en `progress/impl_F-038.md`. **Siguiente**:
+>   review del Bloque 1 bis e `init.sh` del líder (P-4).
+> - **Bloque 1 ter hecho (implementer, 2026-10-20)**: T4 bis `12042ff` (RED) y T4 ter `453aa7e` (la presentación del
+>   volcado, R21: `lineaDeVolcado`, `textoMotivoVolcado`, filtros `volcada`/`en_duda`, «Ya no se revisa aquí», README).
+>   JS 896/896, front 882 passed, raíz 19 passed. Decisiones (formato del motivo de una en duda, dónde sale cada línea)
+>   en `progress/impl_F-038.md`, «Bloque 1 ter». **Siguiente**: review del Bloque 1 ter e `init.sh` del líder (P-4);
+>   después, Bloque 1 quater (T5, mutación).
+> - **Bloque 1 quater hecho (implementer, 2026-10-20)**: T5 `e800242` (71 tests para los supervivientes) e informe.
+>   La herramienta da 0 mutantes (sin `.py` de producción; no lanza ninguna suite). A mano, 281 mutantes por familias:
+>   234 muertos, 42 supervivientes y 5 muertos solo por accidente; con los tests de T5 mueren 46 y queda **1 equivalente
+>   propuesto (N11)**, que necesita la aceptación escrita del humano. JS 973/973, front 882 passed, raíz 19 passed. Sin
+>   cambios de producción. Detalle en `progress/impl_F-038.md`, «Bloque 1 quater». **Siguiente**: `init.sh` del líder
+>   (P-4), aceptación de N11 y review final del Bloque 1 (1 a 1 quater).
+
 > ## ✅ F-059 CERRADA · 2026-10-20 · desplegada y verificada en producción · siguiente: F-038
 > Resumen en `progress/history.md`; detalle en `progress/impl_F-059.md` y `progress/review_F-059.md`. Lo cerrado de F-059 y
 > de F-060 se podó de aquí (O-F-3, 2026-10-20).
 > - **T25 (2026-10-19)**: una escritura en la 0626, **`RS26.10/0074`**, creado en 1,8 s; ventana cerrada enseguida.
 >   **T26 (2026-10-20)**: anulado desde la UI de Sigrid (Procesos → «Rechazar reclamación (NO enviar email)»), foto en NPR.
 > - Merge del cierre en `dev` y `main` (locales). **Push pendiente del humano**: `dev`, `main`, `azure-apps` y `arnes-base`.
-> - Ajeno a F-059: `RS26.09/0439` (`PVI-PRUEBA-0001`) sigue en SAT; preguntar a `sigrid-api`.
 > - Antes de un volcado real: un ensayo de calentamiento (la primera lectura a `sigrid-api` puede pasar de 35 s).
 > - **Siguiente** (prioridad del humano, 2026-10-15): **F-038** (`bandeja.html`; su spec, en el worktree `postventa-f038`,
 >   es anterior a F-060 y hay que ponerla al día) y después **F-040** (panel de volcado).

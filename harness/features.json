@@ -202,7 +202,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 120,
+      "priority": 121,
       "branch": "feature/F-011-buzon-correo"
     },
     {
@@ -252,7 +252,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 121,
+      "priority": 122,
       "branch": "feature/F-014-reagrupar-pagina-2",
       "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
     },
@@ -272,7 +272,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 122,
+      "priority": 123,
       "branch": "feature/F-015-evaluacion-prompt",
       "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     },
@@ -291,7 +291,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 123,
+      "priority": 124,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
     },
@@ -309,7 +309,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 124,
+      "priority": 125,
       "branch": "feature/F-017-checkpoints-manual"
     },
     {
@@ -327,7 +327,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 125,
+      "priority": 126,
       "branch": "feature/F-018-minimo-privilegio-graph"
     },
     {
@@ -364,7 +364,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 127,
+      "priority": 128,
       "branch": "feature/F-020-diseno-front"
     },
     {
@@ -382,7 +382,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 128,
+      "priority": 129,
       "branch": "feature/F-021-rehidratar-sesion"
     },
     {
@@ -400,7 +400,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 129,
+      "priority": 130,
       "branch": "feature/F-022-cache-prompts-gemini"
     },
     {
@@ -418,7 +418,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 119,
+      "priority": 120,
       "branch": "feature/F-024-datos-parte-sigrid"
     },
     {
@@ -470,7 +470,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 130,
+      "priority": 131,
       "branch": "feature/F-027-suite-barrido-cacheado"
     },
     {
@@ -510,7 +510,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 136,
+      "priority": 137,
       "branch": "feature/F-029-scripts-infra-comillas"
     },
     {
@@ -647,20 +647,20 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 15,
+      "priority": 16,
       "branch": "feature/F-037-entrada-web-clientes",
       "blocked_by": "Depende de que exista el proyecto independiente de la web de clientes, y de F-036 (la bandeja)."
     },
     {
       "id": "F-038",
       "title": "Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado",
-      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar.",
+      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano.",
       "acceptance": [
         "Una incidencia se puede editar, descartar o aprobar, y queda constancia de quién y cuándo",
         "Solo lo aprobado es candidato al volcado",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 3,
@@ -680,7 +680,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 17,
+      "priority": 18,
       "branch": "feature/F-039-propuesta-industrial"
     },
     {
@@ -698,7 +698,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 4,
+      "priority": 5,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "F-059 (el backend del volcado), done, desplegada y verificada; y F-038 (bandeja.html), done."
     },
@@ -715,7 +715,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 19,
+      "priority": 20,
       "branch": "feature/F-041-ficha-incidencia"
     },
     {
@@ -731,7 +731,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 20,
+      "priority": 21,
       "branch": "feature/F-042-no-procede-email"
     },
     {
@@ -746,7 +746,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 21,
+      "priority": 22,
       "branch": "feature/F-043-operaciones-bloque"
     },
     {
@@ -761,7 +761,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 22,
+      "priority": 23,
       "branch": "feature/F-044-impresion-bloque"
     },
     {
@@ -777,7 +777,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 23,
+      "priority": 24,
       "branch": "feature/F-045-parte-sin-firma"
     },
     {
@@ -792,7 +792,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 24,
+      "priority": 25,
       "branch": "feature/F-046-coste-postv2"
     },
     {
@@ -807,7 +807,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 25,
+      "priority": 26,
       "branch": "feature/F-047-incidencia-proforma"
     },
     {
@@ -822,7 +822,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 26,
+      "priority": 27,
       "branch": "feature/F-048-datamart-posventa"
     },
     {
@@ -854,7 +854,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 27,
+      "priority": 28,
       "branch": "feature/F-050-agrupar-proveedores",
       "blocked_by": "Depende de F-036 (mecanismo de equivalencias) y de que algún desplegable ofrezca proveedores de fuera de la obra."
     },
@@ -891,7 +891,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 8,
+      "priority": 9,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -924,7 +924,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 9,
+      "priority": 10,
       "branch": "feature/F-054-dev-server-127"
     },
     {
@@ -941,7 +941,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 7,
+      "priority": 8,
       "branch": "feature/F-055-barridos-sin-cache"
     },
     {
@@ -958,7 +958,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 5,
+      "priority": 6,
       "branch": "feature/F-057-tabla-bandeja-paso1"
     },
     {
@@ -976,7 +976,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 6,
+      "priority": 7,
       "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
       "blocked_by": null
     },
@@ -1052,8 +1052,59 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 10,
+      "priority": 11,
       "branch": "feature/F-061-optimizar-listado-revision"
+    },
+    {
+      "id": "F-062",
+      "title": "Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte",
+      "description": "Alta del 2026-10-20 por decisión del humano al conciliar F-038 (Q-6: «la idea es gestionar toda la postventa en el portal, editar o borrar incidencias»). Hoy una incidencia volcada o en duda no admite ninguna acción (F-059: 409 accion_no_permitida) y el parte solo se anula desde la UI de Sigrid (NO PROCEDE, sin correo). Esta ficha estudia cómo corregir o anular desde el portal una incidencia ya volcada: qué expone sigrid-api para modificar o anular un parte (azure-apps/sigrid_api.md), qué estados quedan en la bandeja y cómo se protege (ensayo, ventana propia, confirmación). Toca backend (postventa-api) y front; probablemente se parte. Escritura en el ERP de producción: dry-run previo, ventana cerrada al publicar y autorización expresa para la verificación. Va detrás de F-038 y F-040.",
+      "acceptance": [
+        "Una incidencia volcada se puede corregir o anular desde el portal, con constancia de quién y cuándo, y el parte de Sigrid queda igual que si se hubiera hecho en su UI",
+        "Nada se escribe en Sigrid sin ensayo, confirmación y ventana abierta; nunca DELETE ni sql/write",
+        "Verificado en producción con una escritura autorizada",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 6,
+      "branch": "feature/F-062-gestionar-volcadas"
+    },
+    {
+      "id": "F-063",
+      "title": "Normalizar el código de obra: un cero delante cuando empieza por tres cifras",
+      "description": "Alta del 2026-10-20 por petición del humano. Los códigos de obra de Sigrid llevan cuatro cifras (0626, 0677), pero la gente teclea 626. Regla pedida: si el código son tres cifras, se añade un 0 delante (626 → 0626); y si empieza por tres cifras seguidas de otra cosa, también (lectura del líder, pendiente de confirmar con el humano: 626A → 0626A). Hoy domain/models/plantilla_incidencias.py::normalizar_codigo_obra solo aplica nombrado.normalizar_codigo (guiones y blancos) y valida longitud y caracteres; la usan la plantilla, la importación, la bandeja, la revisión, las equivalencias, la normalización y el volcado. Al especificar: si se rellena en un único sitio (esa función) o también en el front (campo «Código de obra»); qué pasa con lo ya guardado con tres cifras en postventa.* (¿hay filas?); que no se confunda con el relleno a tres cifras de las villas (F-049) ni con los tramos de codigos_del_parte; y comprobar contra Sigrid que no existe ninguna obra cuyo código real empiece por tres cifras sin el 0.",
+      "acceptance": [
+        "Un código de obra de tres cifras (626) se trata en todas las rutas como el de cuatro (0626)",
+        "Un código que empieza por tres cifras seguidas de otros caracteres recibe el mismo 0 delante, según la regla confirmada por el humano",
+        "Los códigos de cuatro cifras o más, y los que no empiezan por tres cifras, no cambian",
+        "Lo ya guardado sigue encontrándose",
+        "No se escribe nada en Sigrid",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 6,
+      "branch": "feature/F-063-normalizar-codigo-obra"
+    },
+    {
+      "id": "F-064",
+      "title": "La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado",
+      "description": "Alta del 2026-10-20 por petición del humano: «en la bandeja de revisión deberán poder verse tanto las incidencias que queremos importar que salen del Excel, como las que ya hay en Sigrid y si hay conflictos entre ellas». Hoy la bandeja (F-036, F-056) solo compara lo importado consigo mismo (duplicada dentro de la bandeja) y no lee las reclamaciones de la obra en Sigrid. Decisión del humano (2026-10-20): ficha nueva, justo detrás de F-038 y antes de F-040; F-038 sigue como está. Probablemente se parte por el límite de servicio: backend (leer de sigrid-api, solo lectura, las reclamaciones tip 708 de la obra con su UPV, oficio, ubicación, estado y referencia; cruzarlas con la bandeja) y su parte en bandeja.html. Criterios de conflicto que apunta el humano: misma unidad, oficio y ubicación; y la fila del Excel que ya se volcó desde el portal (referencia PVI-). El resto se decide en la spec, con propuestas del spec-author sobre ejemplos reales de una obra. A decidir también: si un conflicto impide aprobar (motivo nuevo de no aprobable) o solo avisa, y cómo se ven en la lista las incidencias de Sigrid (solo lectura). Coste de la lectura: el listado ya es lento (F-061); medir.",
+      "acceptance": [
+        "En la bandeja de una obra se ven, distinguidas, las incidencias importadas y las reclamaciones que ya hay en Sigrid para esa obra",
+        "Una importada que choca con una de Sigrid según los criterios aprobados sale marcada con el conflicto y la reclamación con la que choca",
+        "Las reclamaciones de Sigrid se leen a través de sigrid-api y no se escriben",
+        "No se escribe nada en Sigrid",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 4,
+      "branch": "feature/F-064-bandeja-con-sigrid"
     }
   ]
 }

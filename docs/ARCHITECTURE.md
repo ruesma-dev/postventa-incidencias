@@ -1131,6 +1131,42 @@ en la sección «Volcado a Sigrid (F-059)».
   de `config/plantilla_incidencias.yaml`: ofrecer la de cada unidad es una ficha
   aparte.
 
+## La página de revisión (F-038)
+
+**Añadida el 2026-10-20 por F-038 (Bloque 1 bis), en su rama y sin
+desplegar.** La pantalla de la revisión de F-056 es una **página real propia**
+del front, **`bandeja.html`**, con su componente de Alpine `appRevision` en
+**`js/revision.js`** (lógica pura, probada con `node --test`) y tres funciones
+en `js/api.js`. Es la primera página real de la sección **«Bandeja de
+revisión»** del portal: `Portal.PAGINAS` gana `"bandeja.html": "bandeja"`, y
+la página lleva la barra común, la tira del recorrido (con 02 Revisión como
+paso actual), sus migas, su pie y la identidad Ruesma, como `importar.html` y
+`oficios.html`; no vive dentro del portal (`index.html`) porque los ficheros de
+la maqueta no pueden hablar con el backend. Diseño:
+`specs/F-038-bandeja-revision/`.
+
+- **Sus rutas**, las tres de F-056 y ninguna más: `GET /api/revision` (el
+  listado paginado por `cursor`, con el catálogo de Sigrid y el resumen de
+  toda la obra), `GET /api/revision/historial` y `POST /api/revision/acciones`;
+  y `/.auth/me` para el `oid` y el correo de quien revisa. No llama a Sigrid
+  ni a SharePoint ni a `POST /api/revision/normalizar` (F-060 normaliza sola
+  tras cada importación). Las lecturas reintentan lo transitorio; la acción,
+  no.
+- **Lo que se puede romper desde aquí es la confianza, no el dato**: la
+  puerta de verdad de qué se puede aprobar es el backend. La página no manda
+  nada sin un clic, la confirmación del cuerpo la compone una única función
+  (`cuerpoDeAccion`), cada estado ofrece solo sus acciones (`accionesDe`, la
+  tabla de `_PERMITIDAS` del backend) y la `revision_previa` impide pisar a
+  otra persona.
+- **Mientras la sección siga en construcción** (tiene también F-039, F-040 y
+  F-043), su pestaña y sus pasos llevan la marca de construcción en las cinco
+  páginas, también en `bandeja.html`, y `#/bandeja` sigue con su recuadro
+  «En construcción». El paso a «En producción» es un único commit, el que
+  pone F-038 en `done` (D-11 de F-038).
+- **`importar.html`** enlaza a la página de su obra («Revisar esta obra en la
+  bandeja de revisión», `bandeja.html?obra=<obra>`, misma pestaña); su
+  bandeja sigue siendo de solo lectura.
+
 ## Normalizar las ubicaciones (F-060)
 
 **Añadida el 2026-10-13 por F-060; desplegada el 2026-10-13 y verificada en el entorno el 2026-10-14.**

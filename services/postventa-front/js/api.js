@@ -1,5 +1,5 @@
 // services/postventa-front/js/api.js
-// R12, R23-R27 · El cliente de los endpoints del backend (diecisiete desde F-036).
+// R12, R23-R27 · El cliente de los endpoints del backend (veinte desde F-038).
 //
 // Una sola forma de hablar con el backend y una sola forma de error hacia
 // arriba: `ErrorApi {tipo, http, mensaje, avisos}` con
@@ -20,6 +20,11 @@
 // backend** también en un 503 (aquí un 503 es «sin Sigrid o sin base», no la
 // puerta de entorno de archivar), e `importarExcel` y `decidirCatalogos` no se
 // reintentan nunca solos. Los doce de antes no cambian.
+//
+// F-038 añade tres para la bandeja de revisión de F-056 —`revision`,
+// `historialRevision` y `accionRevision`— con las mismas reglas (el texto del
+// servicio también en un 503; la acción no se reintenta sola) y, aditivo, el
+// cuerpo del error en `ErrorApi.detalle` (R26). Los diecisiete no cambian.
 
 (function () {
   "use strict";
@@ -40,6 +45,8 @@
       // F-036 · el texto y el código del backend, si los trajo (`clasificar`).
       this.mensajeServicio = null;
       this.codigo = null;
+      // F-038 R26 · el cuerpo del error tal cual llegó (`clasificar`).
+      this.detalle = null;
     }
   }
 
@@ -79,6 +86,11 @@
       error.mensajeServicio =
         (datos && typeof datos.error === "string" && datos.error) || null;
       error.codigo = (datos && typeof datos.codigo === "string" && datos.codigo) || null;
+      // F-038 R26 · aditivo: lo propio de cada error de la revisión
+      // (`errores`, `motivos`, `estado`, `acciones`, `total`) viaja en el
+      // cuerpo, y la página lo necesita. El JSON tal cual; `null` si no lo era.
+      // No pasa por la traza (`registrar` sigue con hash, paso, estado, http).
+      error.detalle = datos === undefined ? null : datos;
     }
     return error;
   }
@@ -691,6 +703,53 @@
           cuerpo: JSON.stringify(cuerpo),
           cabeceras: { "Content-Type": "application/json" },
           paso: "decisiones",
+          sinReintentos: true,
+          mensajeDelServicio: true,
+        });
+      },
+
+      /**
+       * F-038 R3, R6, R7 · una página de la bandeja de revisión de una obra
+       * (`GET /api/revision`, F-056). `filtros` es `{estado, con_motivos}`
+       * (lo compone `js/revision.js::consultaDe`); `cursor`, el `siguiente`
+       * de la página anterior, opaco y tal cual. **Sin `tamano`**: el
+       * servidor da 100. Es una lectura: lo transitorio se reintenta.
+       */
+      revision: function (obra, filtros, cursor) {
+        const elegidos = filtros || {};
+        let ruta = conObra("/revision", obra);
+        if (typeof elegidos.estado === "string" && elegidos.estado) {
+          ruta += "&estado=" + encodeURIComponent(elegidos.estado);
+        }
+        if (elegidos.con_motivos === true || elegidos.con_motivos === false) {
+          ruta += "&con_motivos=" + String(elegidos.con_motivos);
+        }
+        if (typeof cursor === "string" && cursor) {
+          ruta += "&cursor=" + encodeURIComponent(cursor);
+        }
+        return peticion(ruta, { metodo: "GET", paso: "revision", mensajeDelServicio: true });
+      },
+
+      /** F-038 R8 · las revisiones de una incidencia, de la más antigua a la más reciente. */
+      historialRevision: function (incidenciaId) {
+        return peticion(
+          "/revision/historial?incidencia_id=" + encodeURIComponent(incidenciaId),
+          { metodo: "GET", paso: "revision_historial", mensajeDelServicio: true },
+        );
+      },
+
+      /**
+       * F-038 R10 · edita, descarta, aprueba o recupera una incidencia. El
+       * cuerpo lo compone `js/revision.js::cuerpoDeAccion` y viaja tal cual.
+       * **No se reintenta sola**: es el acto de una persona, y sin respuesta
+       * la página dice «no se sabe si se ha guardado» y recarga.
+       */
+      accionRevision: function (cuerpo) {
+        return peticion("/revision/acciones", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "revision_accion",
           sinReintentos: true,
           mensajeDelServicio: true,
         });

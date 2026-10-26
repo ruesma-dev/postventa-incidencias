@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **64 features**, 35 abiertas, 29 terminadas.
+Resumen: **65 features**, 36 abiertas, 29 terminadas.
 
 En curso: **F-038**.
 
@@ -13,6 +13,7 @@ En curso: **F-038**.
 |---|---|---|---|---|---|
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | en curso | critico | `feature/F-038-bandeja-revision` |
 | F-065 | Revisión con Sigrid en el backend: leer las reclamaciones de la obra y cruzarlas con la bandeja | 4 | spec lista | critico | `feature/F-065-revision-sigrid-backend` |
+| F-066 | Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar | 4 | pendiente | critico | `feature/F-066-mudanza-posventa` |
 | F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | 5 | spec lista | critico | `feature/F-064-bandeja-con-sigrid` |
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 6 | spec lista | critico | `feature/F-040-volcado-sigrid` |
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 7 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
@@ -94,6 +95,12 @@ Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el cicl
 estado **spec lista** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-065-revision-sigrid-backend`
 
 Alta del 2026-10-21: tramo A (backend) de F-064, partido por el límite de servicio (Q-1 de F-064, aprobada por el humano). Una ruta nueva de solo lectura, aparte del listado de la revisión, que lee de sigrid-api (sql/read) TODAS las reclamaciones 708 de la obra, las empareja con la bandeja por la referencia PVI- y cruza el resto con los criterios aprobados (misma unidad+oficio+ubicación; misma unidad+descripción parecida); devuelve las reclamaciones y los hallazgos. Si Sigrid falla, la bandeja sigue. Datos personales de la reclamación en la respuesta (decisión del humano), nunca en logs ni en la base. Spec en el worktree postventa-f064 (specs/F-065-revision-sigrid-backend/). Va antes que F-064. SPEC APROBADA por el humano el 2026-10-21 (con N-1 a N-3: una lectura con techo 500.000 y truncated → 409; descripción parecida por Jaccard 50 y 2 palabras; datos personales en una sola ruta, sin DNI ni credenciales de i-Sigrid), en la rama feature/F-064-bandeja-con-sigrid (worktree postventa-f064, e38f01b): specs/F-064-bandeja-con-sigrid/ y specs/F-065-revision-sigrid-backend/. Se trae a la rama de F-065 al empezar.
+
+### F-066 · Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar
+
+estado **pendiente** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-066-mudanza-posventa`
+
+Alta del 2026-10-26 por petición del humano. Las 16 remesas de su carpeta local «mover» (370 partes de una hoja, obra 0677) se archivaron con la ruta vieja: biblioteca del sitio de IT, carpeta plana Postventa/0677. Clasificación en solo lectura en progress/explore_mudanza_IT.md. Decisiones del humano (2026-10-26): (1) los 358 partes con traza archivado en IT se MUEVEN a la estructura de Posventa con la lógica completa del archivado de F-013 (obra / PARTES INCIDENCIAS / unidad / PARTES FIRMADOS), lista cerrada de huellas, no «todo IT»: los 42 de pruebas (2026-08-26 a 2026-09-18) se quedan; esto CAMBIA la decisión del 2026-09-22 de F-013 (requirements.md §8, «olvidar, pero no borrar»); (2) los 6 aptos sin archivar se archivan SIN cerrar en Sigrid; (3) los 4 no aptos (firma: casilla vacía) también, una vez aprobados por una persona en el front (F-026: el archivado exige parte aprobado). Cero escrituras en Sigrid en toda la feature; resolver el destino solo la lee. Reprocesar por el front no sirve: paso_archivo corta por la traza archivado (F-033). Graph no mueve entre bibliotecas: copiar, comprobar, y solo entonces borrar el origen. La traza se actualiza y conserva de dónde venía. Fuera: los 42 de pruebas, el escaneo doc0291… sin procesar (queda para el front) y cualquier cierre en Sigrid. Implementación después de cerrar F-038 (máximo una in_progress).
 
 ### F-064 · La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado
 

@@ -1,6 +1,15 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-066 · `pending` · 2026-10-26 · alta y spec-author lanzado
+> Mudanza a Posventa de los 358 partes de la 0677 archivados en IT, y archivado sin cierre de los 10 que quedaron sin
+> archivar (6 aptos; 4 no aptos, tras aprobarlos una persona). Clasificación en solo lectura y decisiones del humano en
+> `progress/explore_mudanza_IT.md` y en la ficha. Rama `feature/F-066-mudanza-posventa` desde `dev` `f7f63da`, en el
+> worktree `postventa-f066`. Spec ahí; la implementación, después de cerrar F-038.
+>
+> **Corrección a la cabecera de F-038 de abajo (2026-10-26)**: T6 está **hecha** (2026-10-21, `4dc8c54`); lo pendiente
+> es T7 (MANUAL del humano) y después T8–T11.
+
 > ## F-038 · `in_progress` · 2026-10-20 · paso 1: poner la spec al día con `dev`
 > **Pendientes MANUAL del humano (C-B1f-10, review final del Bloque 1)**, con su comando exacto; el detalle de cada
 > paso está en `specs/F-038-bandeja-revision/tasks.md`, Bloques 2 y 3. Precondición: review final del Bloque 1 APPROVED

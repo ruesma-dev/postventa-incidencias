@@ -1,7 +1,7 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-066 · `spec_ready` · 2026-10-26 · spec APROBADA por el humano (Q-0 a Q-14); el spec-author aplica las decisiones. Implementación tras F-038
+> ## F-066 · `spec_ready` · 2026-10-26 · spec APROBADA y cerrada (`f3a3627`, recuadros en F-013 y F-033). Implementación tras F-038; grupo A (T30) cuando el humano quiera
 > Mudanza a Posventa de los 358 partes de la 0677 archivados en IT, y archivado sin cierre de los 10 que quedaron sin
 > archivar (6 aptos; 4 no aptos, tras aprobarlos una persona). Clasificación en solo lectura y decisiones del humano en
 > `progress/explore_mudanza_IT.md` y en la ficha. Rama `feature/F-066-mudanza-posventa` desde `dev` `f7f63da`, en el

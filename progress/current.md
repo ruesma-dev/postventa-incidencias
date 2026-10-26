@@ -1,7 +1,7 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-066 · `pending` · 2026-10-26 · alta y spec-author lanzado
+> ## F-066 · `spec_ready` · 2026-10-26 · spec escrita (`bf5405c`), pendiente de aprobación del humano (Q-0 a Q-14 en `progress/spec_F-066.md`)
 > Mudanza a Posventa de los 358 partes de la 0677 archivados en IT, y archivado sin cierre de los 10 que quedaron sin
 > archivar (6 aptos; 4 no aptos, tras aprobarlos una persona). Clasificación en solo lectura y decisiones del humano en
 > `progress/explore_mudanza_IT.md` y en la ficha. Rama `feature/F-066-mudanza-posventa` desde `dev` `f7f63da`, en el

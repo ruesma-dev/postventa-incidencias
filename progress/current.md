@@ -1,16 +1,19 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-066 · `spec_ready` · 2026-10-26 · spec APROBADA y cerrada (`f3a3627`, recuadros en F-013 y F-033). Implementación tras F-038; grupo A (T30) cuando el humano quiera
+> ## F-066 · `in_progress` · 2026-10-26 · spec APROBADA y cerrada (`f3a3627`) · implementer, Bloque 1
 > Mudanza a Posventa de los 358 partes de la 0677 archivados en IT, y archivado sin cierre de los 10 que quedaron sin
 > archivar (6 aptos; 4 no aptos, tras aprobarlos una persona). Clasificación en solo lectura y decisiones del humano en
 > `progress/explore_mudanza_IT.md` y en la ficha. Rama `feature/F-066-mudanza-posventa` desde `dev` `f7f63da`, en el
-> worktree `postventa-f066`. Spec ahí; la implementación, después de cerrar F-038.
->
-> **Corrección a la cabecera de F-038 de abajo (2026-10-26)**: T6 está **hecha** (2026-10-21, `4dc8c54`); lo pendiente
-> es T7 (MANUAL del humano) y después T8–T11.
+> worktree `postventa-f066`: **el líder trabaja desde ese worktree mientras F-066 esté en curso** (el estado del backlog
+> se lleva en esa rama). Grupo A (T30) cuando el humano quiera.
 
-> ## F-038 · `in_progress` · 2026-10-20 · paso 1: poner la spec al día con `dev`
+> ## F-038 · `blocked` (aparcada, sin fallo) · 2026-10-26 · espera T7 del humano
+> **Aparcada por decisión del humano el 2026-10-26** para empezar F-066 (máximo una `in_progress`). No hay ningún
+> fallo: solo espera **T7** (MANUAL del humano, comandos abajo). T6 está **hecha** (2026-10-21, `4dc8c54`). Con T7
+> hecha, se retoma con T8–T11 y F-066 pasa a `blocked` o ya está cerrada.
+
+> ### F-038 · histórico · 2026-10-20 · paso 1: poner la spec al día con `dev`
 > **Pendientes MANUAL del humano (C-B1f-10, review final del Bloque 1)**, con su comando exacto; el detalle de cada
 > paso está en `specs/F-038-bandeja-revision/tasks.md`, Bloques 2 y 3. Precondición: review final del Bloque 1 APPROVED
 > y `bash harness/init.sh` en verde (el líder).

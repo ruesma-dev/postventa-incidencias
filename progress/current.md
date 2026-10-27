@@ -1,7 +1,36 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-038 · `in_progress` · 2026-10-20 · paso 1: poner la spec al día con `dev`
+> ## F-040 · `in_progress` · 2026-10-27 · paso 1: el spec-author concilia la spec con `dev`
+> Decisión del humano (2026-10-27, «vamos a parar la actual y empezar ya con f40»): Posventa importó por Excel las
+> incidencias de la VILLA 15 de la 0677 (sacadas de los PDF de repasos) y quiere volcarlas a Sigrid con el panel.
+> Rama nueva `feature/F-040-volcado-sigrid` desde `dev` `f7f63da` en el worktree `postventa-f040` (venv por unión a los
+> de la carpeta principal); la rama antigua queda como `archivo/F-040-spec-2026-10-07` y su spec se trae tal cual.
+> **El estado del backlog se lleva en esta rama mientras F-040 esté en curso.** Paso 1: conciliar la spec (aprobada el
+> 2026-10-07) con `dev`: F-059 tal como se cerró, `bandeja.html` de F-038, F-060. Si cambia una decisión aprobada,
+> vuelve al humano. Después, Bloque 1 (implementer) y review; Bloque 2 es del humano (publicar con `-SoloFront` y T5
+> en la 0626). El volcado real de la VILLA 15 va después de T5, con autorización expresa.
+
+> ## F-066 · `blocked` (aparcada, sin fallo) · 2026-10-27 · espera a que termine F-040
+> **Aparcada por el humano el 2026-10-27** para hacer F-040. Bloque 1 y T3 hechos y APROBADOS (lote versionado
+> `config/mudanza_f066.yaml`, 358 + 10). **Bloque 2 (T4–T6)** implementado en la rama F-066 (`57a3eb0`..`38d1c73`),
+> mutación 27/27 muertos (`progress/mutacion_F-066_bloque2.md`), **sin review**: al retomar, el implementer cierra su
+> informe si no lo dejó, review del Bloque 2 y después Bloque 3. La rama F-066 está en la carpeta principal.
+>
+> Mudanza a Posventa de los 358 partes de la 0677 archivados en IT, y archivado sin cierre de los 10 que quedaron sin
+> archivar (6 aptos; 4 no aptos, tras aprobarlos una persona). Clasificación en solo lectura y decisiones del humano en
+> `progress/explore_mudanza_IT.md` y en la ficha. Rama `feature/F-066-mudanza-posventa` desde `dev` `f7f63da`, en la
+> carpeta principal (el worktree `postventa-f066` se retiró el 2026-10-27: no tenía los venv). El estado del backlog
+> se llevó en esa rama hasta el 2026-10-27. Grupo A (T30) cuando el humano quiera. T0: el «F-038 `done`»
+> queda dispensado por el humano (2026-10-26: «Aparcar F-038 y empezar F-066»).
+
+
+> ## F-038 · `blocked` (aparcada, sin fallo) · 2026-10-26 · espera T7 del humano
+> **Aparcada por decisión del humano el 2026-10-26** para empezar F-066 (máximo una `in_progress`). No hay ningún
+> fallo: solo espera **T7** (MANUAL del humano, comandos abajo). T6 está **hecha** (2026-10-21, `4dc8c54`). Con T7
+> hecha, se retoma con T8–T11 y F-066 pasa a `blocked` o ya está cerrada.
+
+> ### F-038 · histórico · 2026-10-20 · paso 1: poner la spec al día con `dev`
 > **Pendientes MANUAL del humano (C-B1f-10, review final del Bloque 1)**, con su comando exacto; el detalle de cada
 > paso está en `specs/F-038-bandeja-revision/tasks.md`, Bloques 2 y 3. Precondición: review final del Bloque 1 APPROVED
 > y `bash harness/init.sh` en verde (el líder).

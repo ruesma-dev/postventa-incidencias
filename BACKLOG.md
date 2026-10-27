@@ -18,7 +18,7 @@ Bloqueadas: **F-038, F-066**.
 | F-066 | Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar | 4 | bloqueada | critico | `feature/F-066-mudanza-posventa` |
 | F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | 5 | spec lista | critico | `feature/F-064-bandeja-con-sigrid` |
 | F-067 | Registrar incidencias desde el PDF de repasos del cliente (backend): un PDF por unidad, casado de ubicaciones, prioridades y oficios, y fotos a SharePoint | 5 | pendiente | critico | `feature/F-067-pdf-repasos-cliente` |
-| F-068 | Página de carga del PDF de repasos en el portal: elegir la unidad y casar a mano ubicaciones, prioridades y oficios | 5 | pendiente | alto | `feature/F-068-pagina-pdf-repasos` |
+| F-068 | Página de carga del PDF de repasos en el portal: elegir la unidad y casar a mano ubicaciones, prioridades y oficios | 5 | pendiente | estandar | `feature/F-068-pagina-pdf-repasos` |
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 6 | en curso | critico | `feature/F-040-volcado-sigrid` |
 | F-069 | Fotos de las incidencias del PDF de repasos a Sigrid como gráfico | 6 | pendiente | critico | `feature/F-069-fotos-repasos-sigrid` |
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 7 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
@@ -121,7 +121,7 @@ Alta del 2026-10-27 por petición del humano. Segunda vía de entrada, junto al 
 
 ### F-068 · Página de carga del PDF de repasos en el portal: elegir la unidad y casar a mano ubicaciones, prioridades y oficios
 
-estado **pendiente** · prioridad 5 · rigor `alto` · SDD sí · rama `feature/F-068-pagina-pdf-repasos`
+estado **pendiente** · prioridad 5 · rigor `estandar` · SDD sí · rama `feature/F-068-pagina-pdf-repasos`
 
 Alta del 2026-10-27 por decisión del humano, partida de F-067 por el límite de servicio (postventa-front). Antes de cargar se elige la obra y la unidad. Al leer el PDF se enseñan los valores agregados (si hay 7 «Baños» en BAJA, una línea) con lo que ha casado cada uno; lo que no casa se elige con un desplegable de las ubicaciones válidas de la unidad. Lo mismo para prioridades y oficios. Después se confirma la carga a la bandeja. Contrato con el backend en la spec de F-067. Depende de F-067.
 

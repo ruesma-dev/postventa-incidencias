@@ -1179,7 +1179,7 @@
       ],
       "status": "pending",
       "sdd": true,
-      "rigor": "alto",
+      "rigor": "estandar",
       "priority": 5,
       "branch": "feature/F-068-pagina-pdf-repasos"
     },

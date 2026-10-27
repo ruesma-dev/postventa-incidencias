@@ -116,3 +116,12 @@ del arnés que cita `tasks.md`). La spec está escrita con la recomendación.
   humano), en cuanto esté T2 bis.
 - La spec de F-040 (otro worktree) tiene que usar este contrato (§15.3 de
   `design.md`): no se ha tocado desde aquí.
+- **`bash harness/init.sh` al final (2026-10-28), en ROJO** por un test de
+  tiempo ajeno a este trabajo: `1 failed, 5310 passed, 49 skipped in 667.53s`;
+  el que falla es
+  `tests/test_f036_excel_lector.py::test_f036_r115_celda_con_estilo_en_xfd1_es_barata_y_no_cambia_la_cabecera`
+  (`assert 1.0106… < 1.0`, el tope de un segundo). Este trabajo solo cambia
+  Markdown de `specs/` y `progress/`. La ejecución coincidió con la del líder
+  en el mismo worktree (dos suites a la vez en el mismo equipo), que es lo
+  más probable detrás de 0,01 s de más. No se ha reintentado ni tocado el
+  test: lo decide el líder.

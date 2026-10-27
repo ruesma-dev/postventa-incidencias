@@ -224,3 +224,37 @@ tras los ensayos se relee el panel.
   prueba ni anulación. **Recomendación:** mantener la 0626 tal como se aprobó:
   es la primera vez que este código escribe y lo barato es equivocarse con un
   parte que se anula; el primer trozo real va después (C-2).
+
+### Respuestas del humano (2026-10-28), ya aplicadas
+
+> spec-author, 2026-10-28, mismo worktree y rama. F-040 queda `blocked`
+> hasta que se cierre F-065; el backlog lo lleva el líder en la rama de F-065
+> (aquí no se han tocado `features.json`, `BACKLOG.md` ni `current.md`).
+
+| Pregunta | Respuesta | Qué se cambió |
+|---|---|---|
+| C-1 | Como se recomendó | Bloques 1 y 2 sin esperar a F-038; Bloque 3 (T6) solo con F-038 `done` (requirements cabecera y R57, design §1 y §4, tasks Bloque 3) |
+| C-2 | El volcado de la VILLA 15 **no es tarea** de la ficha: lo hará el humano con el panel operativo | Quitado el T5 bis esbozado; requirements §0 y §3; design §6 (Q-8 confirmada) |
+| C-3 | Como se recomendó: sin filtro, recuento por unidad en el ensayo y en la confirmación | R51, R52, R61; design §2 y §3.1 (`recuentoPorUnidad`); tests |
+| C-4 | **Sincronizar antes de registrar.** Botón «Registrar» (filosofía de `dedicacion`): (1) trae las reclamaciones de la obra desde Sigrid y las cruza con las aprobadas (backend de F-065, que va antes); (2) enseña qué va, qué ya existe y qué choca, con el recuento por unidad; (3) solo entonces ensaya y vuelca de 5 en 5. Lo que ya existe se excluye; lo que choca pide un segundo clic; la guarda la aplica también el ensayo en el backend (F-065) | Requisitos nuevos **R60–R62**; glosario (sincronización, va / ya existe / choca); R50 («Registrar» como único botón de entrada), R51, R53.6 («Volver a registrar» desde la sincronización), R56; design §1.1 (lo que el panel espera de F-065), §2, §3.1–§3.3, §7, §8 (riesgos 9–11); tasks: nuevo **Bloque 0 / T0** (merge del `dev` con F-065 como base fija y reconciliación de R60–R62 con su contrato), T1–T3 y T5.2 |
+| C-5 | Como se recomendó: aprobar en bloque, fuera (F-043) | requirements §3 |
+| C-6 | Como se recomendó: T5 en la 0626 | tasks T5; design §6 (Q-4 confirmada) |
+
+**Lo que queda «a fijar por F-065»** (no inventado aquí; lo fija la spec que
+se está conciliando en `postventa-f065`): la ruta y la forma de la respuesta
+de la sincronización y sus errores; qué hallazgos son «ya existe» y cuáles
+«choca»; de dónde sale la unidad de cada candidata para el recuento previo al
+ensayo (hoy `GET /api/volcado` no la trae); cómo viaja al ensayo la inclusión
+de lo que choca y si el segundo clic es por incidencia o en bloque; cómo dice
+el ensayo lo que excluye por la guarda y qué responde si la sincronización ya
+no vale; y si la lectura de una obra como la 0677 cabe en los 40 s del front.
+Está todo en `design.md` §1.1. T0 lo concilia con el contrato implementado
+antes del Bloque 1.
+
+**Para el spec-author de F-065**, por si no lo tiene ya: el panel necesita,
+por cada candidata de `GET /api/volcado`, su grupo (va / ya existe / choca),
+el código de Sigrid de lo que ya existe, lo que choca y por qué, y su unidad;
+y que el ensayo excluya, con un motivo que se pueda traducir, lo que ya existe
+y lo que choca sin incluir.
+
+Sin preguntas abiertas nuevas.

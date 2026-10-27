@@ -6,7 +6,14 @@
 > **Spec aprobada por el humano el 2026-10-21**: Q-1 a Q-10 y N-1 a N-3
 > (§14).
 >
-> Base: `dev` `383bfd5`. Documentos contra los que se diseña:
+> **Conciliado el 2026-10-28 con `dev` `f7f63da`** (rama
+> `feature/F-065-revision-sigrid-backend`, commit `6eb23fa`): ajustes a la
+> realidad del código en §2, §5.1, §9.3, §10.4 y §13, marcados en su sitio; y
+> **lo nuevo**, la sincronización antes de registrar y la guarda del ensayo de
+> F-059, en **§15**, con sus preguntas **S-1 a S-9** en **§16**, **pendientes
+> de OK del humano**. Nada de §14 ha cambiado.
+>
+> Base original: `dev` `383bfd5`. Documentos contra los que se diseña:
 > `docs/ARCHITECTURE.md` (F-036, F-056, F-038, F-060, F-059 y «Acceso a datos
 > y sistemas externos»), `docs/CONVENTIONS.md`, `CHECKPOINTS.md`,
 > `docs/referencia/03_modelo_posventa_sigrid.md`, `azure-apps/sigrid_api.md`
@@ -61,6 +68,18 @@ GET /api/revision/sigrid?obra=
   política de `tenacity`, `_cabeceras`, `_cliente_http`) **sin tocar
   `catalogo_obra.py`** (D-9), y devuelve la lectura con `llego_al_techo`
   (filas ≥ tope **o** `truncated`).
+- *Conciliado el 2026-10-28 con `catalogo_obra.py`:* `_un_intento`, `_mapear`,
+  `_cabeceras` y `_cliente_http` son métodos y se heredan; **la política de
+  `tenacity` no es una pieza**: está escrita dentro de `_leer` (`Retrying` con
+  `retry_if_exception(es_transitorio)`, `wait_exponential` y
+  `stop_after_attempt(self._reintentos)`), así que el `_leer` propio la
+  compone igual, importando `es_transitorio` de `cliente.py` como hace el
+  catálogo. Y `_fallo` es una función **privada del módulo** del catálogo: el
+  adaptador de F-065 tiene la suya, que da el mismo `CatalogoNoDisponible`
+  (503) con la operación y el motivo acotado. `MAX_FILAS_CATALOGO` (1.000)
+  sigue con su comentario «el máximo que sirve `sigrid-api` en `pro`», que ya
+  no es cierto (§4.1 de la pasarela: 500.000); no se toca aquí (D-9), queda
+  anotado en `progress/spec_F-065.md`.
 - **Sin DDL, sin variables nuevas, sin caché.**
 
 ## 3 · La consulta (`SQL_RECLAMACIONES_DE_LA_OBRA`)
@@ -156,7 +175,12 @@ aquí también (`incidencia_de_referencia`).
 
 `ya_en_sigrid` es típicamente una `en_duda` cuyo volcado sí llegó: **ensayar y
 volcar de nuevo la deja `volcada` sin crear otro parte** (la pasarela devuelve
-`idempotente`). Una incidencia emparejada no choca consigo misma (R13); su
+`idempotente`). *Conciliado el 2026-10-28 con F-059:* basta **ensayar**: un
+`idempotente` del ensayo ya deja la incidencia `volcada` (R13 de F-059;
+`estado_de_volcado` mira `creado` o `idempotente` de cualquier modo), y la
+idempotencia de la pasarela exige la **misma UPV** —con otra UPV, o con más de
+un parte con esa referencia, el parte vuelve `rechazado`
+`referencia_en_conflicto` (`azure-apps/sigrid_api.md` §8.9)—. Una incidencia emparejada no choca consigo misma (R13); su
 reclamación sí con las demás: es el criterio del humano «la fila del Excel que
 ya se volcó desde el portal», en sus dos sentidos (Q-3).
 
@@ -310,8 +334,18 @@ Lo que sigue en pie por las reglas del proyecto:
 `interface_adapters/api/revision.py`; `catalogo_obra.py`,
 `consultas_catalogo.py`, `ubicaciones_validas.py`; todo el volcado;
 `normalizacion.py`, `plantilla_incidencias.py` (se usan sus funciones);
-`interface_adapters/api/tiempos.py`; `config/settings.py`; `sql/`;
+`interface_adapters/api/tiempos.py`; `config/settings.py`;
+`infrastructure/persistencia/sql/` (*conciliado el 2026-10-28*: el DDL vive
+ahí, no en `sql/`; el último es `16_volcados_sigrid.sql`);
 `requirements.txt`; `services/postventa-front/` (es F-064).
+
+> *Nota del 2026-10-28.* «Todo el volcado» deja de estar entero en esta lista
+> si el humano aprueba la guarda (§15, S-1): pasan a «a modificar»
+> `domain/models/volcado.py`, `application/pipelines/volcado.py`,
+> `interface_adapters/api/volcado.py`, el tramo del volcado de
+> `function_app.py` y dos ficheros de tests de F-059 (§15.6). Siguen sin
+> tocarse `infrastructure/sigrid/volcado.py`, la persistencia del volcado y su
+> DDL.
 
 ## 10 · Clases y funciones
 
@@ -413,6 +447,16 @@ con `Cronometro`, serializa (R20, R21) y deja su línea en un `finally` (R24,
 R38), con los bytes del cuerpo serializado. Las fábricas de módulo son la
 costura de test.
 
+*Conciliado el 2026-10-28 con `tiempos.py`* (R24): la línea **no** es
+`Cronometro.linea()` —que escribe `F-060 tiempos del listado`—, sino una
+`_linea_de_tiempos` propia del borde sobre `tramos()`, `total()` y
+`calculo()`; la llamada a `mirar_sigrid` va dentro de
+`cronometro.tramo("aplicacion")` y los puertos, con `cronometro.medir(…,
+"bandeja")` y `cronometro.medir(…, "sigrid")` (de ahí `bandeja.listar` y
+`sigrid.leer`); y `proceso_nuevo` sale de un indicador propio
+(`_es_primera_de_sigrid()`), **nunca** de `es_primera_peticion()`, que es el
+del listado y que esta ruta consumiría.
+
 ## 11 · Medición previa (T-A0)
 
 El script 29 se escribe en el Bloque A1 y lo lanza el humano para la 0677 y la
@@ -469,6 +513,10 @@ Todas **aprobadas por el humano el 2026-10-21**.
 
 ## 13 · Lo que no hace
 
+*(Nota del 2026-10-28: la frase «ni cambia el volcado (el ensayo de F-059 no
+mira los conflictos)» es la que la guarda de §15 contradice; no se ha
+cambiado: S-1.)*
+
 No escribe nada (ni Sigrid, ni la base, ni SharePoint); no bloquea la
 aprobación ni cambia el volcado (el ensayo de F-059 no mira los conflictos);
 no corrige Sigrid (un duplicado se anula en la UI de Sigrid; desde el portal,
@@ -516,3 +564,304 @@ personales.
   sirva al trabajo de Posventa. La ventaja que pesa: buscar y filtrar por
   propietario o teléfono en la página (F-064). *Aprobado por el humano el
   2026-10-21* (sustituye a la propuesta de ficha bajo demanda).
+
+## 15 · Sincronizar antes de registrar: la guarda del ensayo (nuevo, 2026-10-28, PENDIENTE DE OK)
+
+> Decisión del humano del 2026-10-28 (C-4 de F-040): el botón **«Registrar»**
+> del panel de volcado (F-040) primero trae las reclamaciones de la obra y las
+> cruza con las aprobadas, enseña qué va, qué ya existe y qué choca, con el
+> recuento por unidad, y solo después ensaya y vuelca. Es la filosofía de
+> `dedicacion` (`azure-apps/dedicacion.md`): leer lo que ya hay en Sigrid antes
+> de escribir, no duplicar nunca, `truncated` = error y nada escrito. Lo que
+> sigue es la propuesta del spec-author; **todo** depende de S-1 a S-9 (§16).
+> Requisitos: R41–R49, R70–R71.
+
+### 15.1 · El límite de servicio
+
+Sigue siendo de `services/postventa-api`: leer Sigrid, cruzar y decidir qué se
+manda en un ensayo son del backend, que ya es el dueño de las dos cosas (F-059
+y esta ficha). El botón, el recuento y el segundo clic son de F-040 (el
+front). Nada de otro proyecto: `sigrid-api` no cambia (`sql/read` y
+`partes-reclamacion` tal cual), y su idempotencia por `PVI-` sigue siendo la
+última defensa.
+
+### 15.2 · El veredicto (R41), en el dominio
+
+Una función pura nueva en `domain/models/sigrid_bandeja.py`, usada por la ruta
+y por el ensayo:
+
+```python
+class Veredicto(StrEnum):  VA = "va"; SE_ENLAZA = "se_enlaza"; YA_EXISTE = "ya_existe"; CHOCA = "choca"
+
+@dataclass(frozen=True)
+class VeredictoDeVolcado:
+    incidencia_id: UUID
+    veredicto: Veredicto
+    sigrid_cods: tuple[str, ...]     # los que lo deciden, en el orden de R18
+
+def veredictos(situaciones: Sequence[SituacionDeRevision], cruce: Cruce) -> tuple[VeredictoDeVolcado, ...]
+```
+
+`Cruce` (§10.1) gana un campo, `pares: Mapping[UUID, tuple[ParDeCoincidencia,
+...]]`, con **todos** los pares de cada incidencia evaluable (sin el tope de
+10 de R18, que es de la vista): `ParDeCoincidencia(sigrid_cod, estado,
+criterios, parecido, fecha)`. `veredictos` mira solo las **candidatas**
+(`es_candidata`) y aplica la precedencia de R41:
+
+| Orden | Veredicto | Cuándo | En el ensayo |
+|---|---|---|---|
+| 1 | `se_enlaza` | emparejada por `PVI-` (`ya_en_sigrid` o `varias_en_sigrid`) | **se manda**: la pasarela no puede crear otro parte (S-3) |
+| 2 | `ya_existe` | un par con **los dos** criterios y la reclamación en `SAT`/`PTE` | **excluida** `duplicada_en_sigrid` |
+| 3 | `choca` | algún otro par de severidad conflicto | **excluida** `conflicto_sin_confirmar` salvo que **todos** sus códigos estén confirmados |
+| 4 | `va` | lo demás (también con avisos `TER`/`CER`) | se manda |
+
+Ejemplos (ficticios, sobre los de §5.4): E1 (un criterio, `PTE`) → `choca`;
+E2 (descripción 100, oficio y ubicación distintos) → `choca`; **E1 con la
+descripción de E2b** (los dos criterios, `PTE`) → `ya_existe`; E3 y E4 (`CER`)
+→ `va` con aviso; E6, B → si B tiene los dos criterios con la `SAT` emparejada
+con A, `ya_existe`; E7 (`en_duda` con `PVI-<X>` en `SAT`) → `se_enlaza`; E12
+(`descartada`) → no es candidata, sin veredicto.
+
+**El caso real** (VILLA 15 de la 0677, ≈ 285 incidencias importadas por Excel a
+Sigrid **sin** referencia `PVI-`): si las de la bandeja salen del mismo Excel,
+misma unidad, oficio, ubicación y descripción → `ya_existe` y no se mandan;
+las que solo casan por descripción (otra ubicación u oficio) → `choca` y piden
+confirmación. Cuántas caen en cada una lo dice el bloque `volcado` de la ruta
+**antes** de ensayar.
+
+`ReclamacionSigrid.ficha` (§10.1) pasa a `FichaReclamacion | None`: `None` en
+la lectura de la guarda, que no lee R33. El cruce no la mira (ya era así).
+
+### 15.3 · El contrato que usará F-040
+
+**Paso (1)–(2): sincronizar.** La ruta de esta ficha **tal cual** (S-9),
+`GET /api/revision/sigrid?obra=`, con un bloque aditivo (R42):
+
+```jsonc
+"volcado": {
+  "candidatas": 285,
+  "por_veredicto": {"va": 0, "se_enlaza": 0, "ya_existe": 0, "choca": 0},
+  "por_unidad": {"VILLA 15": {"va": 0, "se_enlaza": 0, "ya_existe": 0, "choca": 0}},
+  "veredictos": [
+    {"incidencia_id": "…", "unidad_codigo": "VILLA 15", "estado": "aprobada",
+     "veredicto": "choca", "sigrid_cods": ["RS26.09/0123"]}
+  ]
+}
+```
+
+(números de relleno). F-064 lo ignora. La página de F-040 enseña el recuento
+por unidad y, por cada `choca`, las reclamaciones con las que choca (las tiene
+en `reclamaciones` de la misma respuesta) y el segundo clic.
+
+**Paso (3): ensayar.** `POST /api/volcado/ensayo` con una clave **opcional**
+(R43):
+
+```jsonc
+{ "obra": "0677", "usuario_oid": "…", "usuario_correo": "alguien@ejemplo.invalid",
+  "incidencias": ["…", "…"],
+  "conflictos_confirmados": [ {"incidencia_id": "…", "sigrid_cods": ["RS26.09/0123"]} ] }
+```
+
+La respuesta 200 de F-059, con las `excluidas` de siempre (dos motivos más) y
+un bloque aditivo (R47):
+
+```jsonc
+"sigrid": { "leido_at_utc": "…+00:00", "reclamaciones_leidas": 312,
+            "veredictos": [ {"incidencia_id": "…", "veredicto": "choca",
+                             "sigrid_cods": ["RS26.09/0123"], "confirmada": true} ] }
+```
+
+**Errores nuevos del ensayo** (R46), con el cuerpo `{error, codigo}` del
+volcado: **503** `sigrid_no_disponible` (`CatalogoNoDisponible`), **409**
+`reclamaciones_sin_verificar` (`ReclamacionesSinVerificar`, con `filas`),
+**409** `obra_ambigua` (`ObraAmbigua`). Se añaden a `CODIGOS_DEL_VOLCADO` y
+`HTTP_DEL_VOLCADO` de `function_app.py`; el resto de la tabla no cambia.
+
+**Paso (4): volcar.** `POST /api/volcado/volcar` **sin cambios** (R49): solo
+manda lo que el ensayo dio `previsto`, y lo excluido por la guarda no tiene
+`previsto`.
+
+### 15.4 · Cómo viaja la confirmación (S-4)
+
+**Por incidencia y con los códigos**: «confirmo que esta incidencia no es
+`RS26.09/0123`». El ensayo recalcula el veredicto con lo que lee **en ese
+momento** y exige que **todos** los códigos de conflicto estén confirmados; si
+desde la sincronización ha aparecido otra reclamación que choca, la incidencia
+sale `conflicto_sin_confirmar` con **ese** código y F-040 vuelve a preguntar.
+El backend no puede saber si una persona vio la pantalla (igual que el
+`confirmado: true` de `volcar`); lo que sí garantiza es que nadie confirma lo
+que no se le ha enseñado con su código. Una confirmación de algo que ya no
+choca se ignora (y se cuenta en el log). La UX de F-040 puede confirmar en
+bloque («todas las que chocan en esta unidad»): el cuerpo lleva igualmente la
+lista por incidencia. Nombre de la clave distinto de `confirmado` a propósito:
+R9 de F-059 sigue rechazando `confirmado` en el ensayo.
+
+Descartadas: un booleano por lote (confirma a ciegas lo que aparezca entre la
+sincronización y el ensayo); un `sincronizacion_id` guardado por la ruta y
+citado por el ensayo (DDL, una caché que D-7 rechazó y estado entre
+peticiones).
+
+### 15.5 · Qué lee el ensayo, y su coste (S-5)
+
+El troceo de F-059 (D-6) hace que una obra sean muchas llamadas: 285
+incidencias con `N` = 5 son **57 ensayos**. Releer la obra entera en cada uno
+serían 57 lecturas de las ≈ 1.276 + 285 reclamaciones de la 0677, **con** los
+datos personales, dentro del presupuesto de 45 s de cada llamada, y con los
+picos de 4–8 s de las lecturas de `sigrid-api` que mide F-061.
+
+**Propuesta: la guarda lee solo las unidades de lo que se manda**, porque los
+dos criterios de Q-3 exigen la **misma unidad** (R14, R15) y el veredicto de
+una incidencia solo depende de las reclamaciones de su unidad y de las que
+llevan su `PVI-`:
+
+```sql
+-- SQL_RECLAMACIONES_DE_LAS_UNIDADES: las 12 columnas de R6 (sin R33), mismas
+-- uniones que §3 salvo las de R33, y el filtro de unidades
+SELECT v.obride, c.cod, e.cod, c.fec, u.cod, a.cod, a.res, t.cod, t.res, r.resubi, c.res, p.valt
+FROM dbo.rcp r
+JOIN dbo.con c ON c.ide = r.ide
+JOIN dbo.upv v ON v.ide = r.upvide
+JOIN dbo.con u ON u.ide = v.ide
+JOIN dbo.con o ON o.ide = v.obride
+LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est
+LEFT JOIN dbo.auxofc a ON a.ide = r.ofcide
+LEFT JOIN dbo.auxtrcp t ON t.ide = r.trcpide
+OUTER APPLY (SELECT TOP 1 x.valt FROM dbo.conext x
+             WHERE x.conide = c.ide AND x.cod = ? AND x.valt LIKE ?
+             ORDER BY x.ide) p
+WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ? AND u.cod IN (?, …, ?)
+ORDER BY c.cod
+```
+
+De 1 a `N` marcadores en el `IN`, compuestos por una función pura
+(`select_reclamaciones_de_las_unidades(codigo_obra, unidades)`), sin
+interpolar ningún valor; el script 29 lanza el mismo texto con `-Unidades`
+(R70). El caso que no cubre —una referencia `PVI-<i>` en **otra** unidad— lo
+para la pasarela (`referencia_en_conflicto`): queda escrito y con su test
+(R49). F-040 puede además agrupar los trozos por unidad para que cada ensayo
+lea una o dos.
+
+Alternativa escrita: leer la obra entera en cada ensayo (la consulta de §3 sin
+R33). Más simple, una consulta menos, pero `k` lecturas grandes por
+«Registrar»; solo si T-A0 bis mide que la de la obra cuesta lo mismo que la de
+cinco unidades.
+
+**Medirlo (R71), MANUAL y de solo lectura** (`tasks.md` T-A0 bis): el script 29
+con la 0677 entera y con `-Unidades` de una (VILLA 15) y de cinco unidades,
+segundos y bytes; y, tras publicar, la duración de los ensayos (la línea de
+F-059 ya la lleva) y la de la guarda (R48). Umbrales para volver al humano:
+obra > ≈ 10 s, guarda > ≈ 3 s.
+
+### 15.6 · Ficheros
+
+**A crear** (además de los de §9.1):
+
+| Ruta | Qué |
+|---|---|
+| `services/postventa-api/application/pipelines/guarda_sigrid.py` | `aplicar_guarda_de_sigrid(seleccion, situaciones, *, reclamaciones, obra, tip, confirmados) -> GuardaDelEnsayo`: la lectura de R44, sus errores (R46), el cruce, los veredictos y la nueva `Seleccion` con las exclusiones de R45, y la línea de R48. Separada de `volcado.py` para que el pipeline de F-059 solo gane una llamada |
+| `services/postventa-api/tests/test_f065_veredicto.py` | R41 (precedencia, códigos, todos los pares) y R49 (lectura de la obra = lectura por unidades) |
+| `services/postventa-api/tests/test_f065_guarda_ensayo.py` | R43–R48 en la aplicación y en el borde |
+
+**A modificar** (además de los de §9.2; **solo si S-1 se aprueba**):
+
+| Ruta | Qué cambia |
+|---|---|
+| `domain/models/sigrid_bandeja.py` | (nuevo en esta ficha) `Veredicto`, `VeredictoDeVolcado`, `ParDeCoincidencia`, `Cruce.pares`, `veredictos` |
+| `domain/models/volcado.py` | **Solo** dos valores más en `MotivoExclusion`: `DUPLICADA_EN_SIGRID`, `CONFLICTO_SIN_CONFIRMAR`. Las exclusiones no se guardan (el `CHECK` de `16_volcados_sigrid.sql` no las ve): **sin DDL** |
+| `application/pipelines/volcado.py` | `PeticionDeEnsayo` gana `conflictos_confirmados: Mapping[UUID, frozenset[str]]` (vacío por defecto); `ensayar` gana `reclamaciones: ReclamacionesObraPort` y `tip: int`, y entre `seleccionar_para_ensayo` y `_login` llama a la guarda; `ResultadoDeEnsayo` gana `guarda: GuardaDelEnsayo \| None`. Nada más |
+| `interface_adapters/api/volcado.py` | `_CLAVES_DEL_ENSAYO` admite la clave opcional (R43) y su validación; construye `construir_reclamaciones_obra` **después** de `construir_ensayador` y **antes** de la base; serializa `sigrid` (R47) |
+| `function_app.py` | Tres entradas en `CODIGOS_DEL_VOLCADO` y `HTTP_DEL_VOLCADO`; `filas` en el cuerpo de `reclamaciones_sin_verificar`; la docstring de la ruta del ensayo |
+| `interface_adapters/api/sigrid_bandeja.py`, `application/pipelines/sigrid_bandeja.py` | (nuevos en esta ficha) el bloque `volcado` (R42) |
+| `infrastructure/sigrid/consultas_reclamaciones_obra.py`, `reclamaciones_obra.py`, `domain/ports/reclamaciones_obra.py` | (nuevos) la segunda consulta y `leer(..., unidades=None)`; el log de R25 gana `unidades=<cuántas>` |
+| `infra/29_reclamaciones_obra_sigrid.ps1` | (nuevo) `-Unidades` (R70) |
+| `tests/test_f059_volcado_http.py`, `tests/test_f059_pipeline_volcado.py` | **Solo** el doble del lector de reclamaciones (vacío) donde se construye el ensayo, para que sigan probando lo mismo; **ninguna aserción cambia**. Lo fija la guarda de alcance de F-065 |
+| `docs/ARCHITECTURE.md` (sección de F-059), `docs/INTEGRACION.md` §1 y §4, `azure-apps/postventa_incidencias.md` | El ensayo lee Sigrid una vez más, solo `sql/read`, sin datos personales |
+
+**Lo que NO se toca**: `infrastructure/sigrid/volcado.py` (el adaptador de
+`partes-reclamacion`), `infrastructure/persistencia/` del volcado y su DDL,
+`seleccionar_para_ensayo`, `seleccionar_para_volcado`, `validar_ensayo`,
+`interpretar_respuesta`, `volcar`, `panel_de_volcado`, la caducidad de 30 min,
+`N`, las ventanas, `config/settings.py`, `tiempos.py` y el front.
+
+### 15.7 · El orden del ensayo, con la guarda
+
+```
+cuerpo (R9 + R43) → construir_ensayador → construir_reclamaciones_obra → base
+  → candidatas + situaciones (F-059) → seleccionar_para_ensayo
+  → [si hay algo] GUARDA: Sigrid sql/read por unidades → truncated / obras → cruce → veredictos → exclusiones
+  → [si queda algo] login (dbo.usu) → partes-reclamacion commit:false → guardar ensayo → respuesta
+```
+
+Lo que no escribe y es barato, primero; **nada** guardado si la guarda falla.
+
+### 15.8 · Riesgos
+
+- **Un falso `ya_existe` no tiene salida en el ensayo** (no se puede
+  confirmar). Es lo que Q-4 evitó para la aprobación; aquí se limita a los dos
+  criterios **y** una reclamación abierta. La salida: corregir la incidencia
+  (ubicación u oficio) o anular la de Sigrid. Si el humano prefiere que también
+  se pueda confirmar, `ya_existe` se funde con `choca` (S-2).
+- **Entre el ensayo y el volcado** pasan hasta 30 min y `volcar` no relee
+  Sigrid (S-6): una importación por Excel de Posventa en esa ventana no la ve
+  la guarda; sí la pasarela si lleva `PVI-` (no la lleva). Riesgo aceptado en
+  la propuesta.
+- **Sigrid caída = no se registra nada** (S-8): es la regla de `dedicacion`, y
+  es preferible a volcar a ciegas; no hay interruptor.
+- **Presupuesto de 45 s del ensayo**: tres llamadas a la pasarela (guarda,
+  login, dry-run) y las lecturas de la base. Se mide (R71).
+- **Las pruebas de F-059 ganan un doble**: se tocan dos ficheros de tests de
+  otra feature; solo para inyectar el lector vacío.
+
+## 16 · Preguntas para el humano (2026-10-28)
+
+Ninguna cambia una decisión aprobada por su cuenta: cada una dice **qué choca**
+y **qué recomienda** el spec-author. La spec está escrita con la
+recomendación.
+
+- **S-1 · Que la guarda cambie el ensayo de F-059.** Choca con R26, R27 y §13
+  de F-065 (aprobados el 2026-10-21: «las tres rutas del volcado sin cambios»;
+  «el ensayo de F-059 no mira los conflictos») y con R9 (cuerpo con
+  **exactamente** cuatro claves) y R11 (los cinco motivos de exclusión) de
+  F-059. **Recomendación**: enmendarlos así: el ensayo gana una clave
+  **opcional**, una lectura de Sigrid, dos motivos de exclusión y un bloque
+  aditivo en la respuesta (R43–R48); el panel y `volcar` no cambian (R49); un
+  ensayo sin la clave nueva y sin nada que choque responde **lo mismo que
+  hoy** más `sigrid`.
+- **S-2 · Qué se excluye y qué se confirma.** El encargo dice «lo que ya está
+  en Sigrid (emparejado por `PVI-`, o un hallazgo de los criterios aprobados)
+  se excluye; lo que choca exige confirmación». Excluir **cualquier** hallazgo
+  de criterios sin salida es lo que Q-4 descartó para la aprobación («bloquea
+  sin salida para un falso positivo»): «descripción parecida» es Jaccard ≥ 50.
+  **Recomendación**: los cuatro veredictos de R41 —se excluye sin salida solo
+  `ya_existe` (los dos criterios y abierta); `choca` (un criterio y abierta) se
+  confirma; las cerradas solo avisan—. Alternativas: (b) todo hallazgo de
+  conflicto, excluido; (c) nada excluido, todo conflicto confirmable.
+- **S-3 · Lo emparejado por `PVI-`.** Excluirlo deja la incidencia `en_duda`
+  para siempre: F-059 la resuelve **reenviándola** (R27) y su `idempotente`
+  la deja `volcada` (R13). **Recomendación**: no excluirla (`se_enlaza`); la
+  pasarela no puede crear otro parte con esa referencia.
+- **S-4 · Cómo viaja la confirmación.** **Recomendación**:
+  `conflictos_confirmados` por incidencia **con los códigos** (§15.4).
+  Descartados el booleano por lote y el `sincronizacion_id` guardado.
+- **S-5 · Qué lee el ensayo.** **Recomendación**: solo las unidades de lo que
+  se manda, sin datos personales (§15.5), y medirlo antes (T-A0 bis).
+  Alternativa: la obra entera en cada ensayo.
+- **S-6 · ¿`volcar` vuelve a mirar Sigrid?** `dedicacion` relee justo antes de
+  escribir; aquí el ensayo tiene ≤ 30 min. Releer en `volcar` cambia también
+  R15 de F-059 (la confirmación tendría que viajar en `volcar`) y mete una
+  lectura en el camino de la escritura. **Recomendación**: no, por ahora;
+  riesgo en §15.8.
+- **S-7 · ¿Se guarda quién confirmó un conflicto?** **Recomendación**: no en
+  la base (sería DDL en `volcados_sigrid` o una tabla nueva); consta en el log
+  de R48 con la incidencia y cuántos códigos. Si el humano quiere auditoría
+  persistente, es una columna o tabla nueva en el esquema propio.
+- **S-8 · Si Sigrid falla o viene `truncated`.** **Recomendación**: no se
+  ensaya (503 `sigrid_no_disponible`; 409 `reclamaciones_sin_verificar` u
+  `obra_ambigua`), sin nada guardado y **sin interruptor** para saltarse la
+  guarda (R28).
+- **S-9 · La ruta de sincronizar.** **Recomendación**: la de F-065 tal cual,
+  con el bloque `volcado` (R42); una sola lectura, y F-064 y F-040 ven lo
+  mismo. Lleva los datos personales de toda la obra al panel de volcado,
+  que es del mismo grupo `posventa-usuarios`. Si T-A0 mide una respuesta
+  pesada, alternativa: un parámetro `vista=volcado` sin `ficha` (cambia R1,
+  que hoy ignora los demás parámetros).

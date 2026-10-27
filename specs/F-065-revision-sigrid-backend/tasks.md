@@ -18,6 +18,15 @@
 >
 > **Datos de prueba** (R39): solo inventados —«Ejemplo …», correos
 > `@ejemplo.invalid`, teléfonos `000 000 000`—. Nada copiado de Sigrid.
+>
+> **Conciliado el 2026-10-28 con `dev` `f7f63da`.** La rama sale de ahí
+> (commit `6eb23fa`); la base fija la anota el implementer al empezar. Lo
+> **nuevo** —la guarda del ensayo, R41–R49 y R70–R71— añade **T2 bis** y
+> **T-A0 bis** al Bloque A1, el **Bloque A4 bis** (T13–T17), una línea a T10
+> y **T-A17–T-A18** al Bloque A7. **Esas tareas esperan al OK del humano a
+> S-1–S-9** (`design.md` §16); las demás se pueden empezar ya. Las
+> numeraciones nuevas no siguen el orden de ejecución: el orden es el de los
+> bloques, y **T12** (`init.sh`) sigue siendo la última.
 
 ## Bloque A1 · El script de medición, y medir antes del dominio
 
@@ -35,6 +44,15 @@
   los recuentos de R29, con el parecido de §5.3 aproximado en PowerShell (dicho
   en la ayuda); los bytes de la respuesta con todos los campos y los de R33
   aparte, `truncated` y los segundos; y si la pasarela aceptó la consulta. | Verificación: `python -m pytest tests/test_f065_scripts_infra.py` en verde
+- [ ] **T2 bis** *(nuevo, 2026-10-28; espera a S-5)*: `-Unidades` en el script
+  29 (R70): con ella lanza la consulta de la guarda de `design.md` §15.5 (las
+  12 columnas de R6, sin R33, con `u.cod IN (?, …)`), un marcador por unidad;
+  imprime filas, `truncated`, bytes y segundos, y **cuántas** unidades (no
+  cuáles). Tests en `tests/test_f065_scripts_infra.py`, primero en rojo: las
+  reglas de T1 también en esta rama del script, y que el texto para 1 y para 5
+  unidades es **idéntico** al de `select_reclamaciones_de_las_unidades` (que
+  aún no existe: el test compara contra el texto de §15.5 escrito en el test, y
+  T15 lo cambia a comparar con la función). | Verificación: `python -m pytest tests/test_f065_scripts_infra.py` en rojo y después en verde, traza en el informe
 
 **Parar. Review del Bloque A1.**
 
@@ -52,6 +70,20 @@
   leer por trozos (N-1: más de ≈ 10 s), si el umbral 50 se queda (N-2) y la
   columna de fecha; si alguno cambia, se enmienda la spec **antes** del Bloque
   A2. |
+  Verificación: MANUAL (humano)
+- [ ] **T-A0 bis · MANUAL (humano)** *(nuevo, 2026-10-28; espera a S-5)*,
+  solo lectura, junto con T-A0 y **antes del Bloque A4 bis** (R71): el coste
+  de la guarda.
+  ```
+  powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra 0677 -Unidades 'VILLA 15' -SigridBaseUrl <raíz de la pasarela> -SigridBaseDatos ruesma
+  powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra 0677 -Unidades '<u1>','<u2>','<u3>','<u4>','<u5>' -SigridBaseUrl <raíz de la pasarela> -SigridBaseDatos ruesma
+  ```
+  (cinco unidades cualesquiera de la 0677, las que el humano elija). Anotar
+  en `progress/impl_F-065.md` **solo** filas, `truncated`, bytes y segundos de
+  cada una, junto a los de la obra entera de T-A0, y repetir cada comando
+  tres veces (los picos de F-061). Si la obra pasa de ≈ 10 s o la guarda de
+  ≈ 3 s, el líder vuelve al humano antes del Bloque A4 bis (S-5: obra entera
+  o por unidades). |
   Verificación: MANUAL (humano)
 
 ## Bloque A2 · El dominio puro
@@ -105,7 +137,9 @@
   cruzar (R8), 409 `obra_ambigua` y 200 vacío (R9), 400 sin construir nada
   (R1), Sigrid antes que la base (R2), la forma de R20 y el orden de R21, nada
   de `oid`, correo, `ide` ni `obride` (R22), la traducción de R23 y la línea
-  `F-065 sigrid de la bandeja` sin textos ni códigos y con los bytes (R24);
+  `F-065 sigrid de la bandeja` sin textos ni códigos y con los bytes (R24;
+  *conciliado el 2026-10-28*: con `aplicacion` y `calculo`, y que pedir esta
+  ruta **no** cambia el `proceso_nuevo` de la siguiente línea de F-060);
   `Cache-Control: no-store` en esta y en ninguna otra ruta (R35); que con
   fichas inventadas en el doble (R33), **ningún** registro de log de la ruta ni
   del adaptador contiene ninguno de sus valores, tampoco con error (R38); que nada se escribe en la base (R37: el doble de `RevisionPort` no
@@ -126,6 +160,54 @@
 
 **Parar. Review del Bloque A4.**
 
+## Bloque A4 bis · Sincronizar antes de registrar: la guarda del ensayo (nuevo, 2026-10-28)
+
+> **Espera al OK del humano a S-1–S-9** (`design.md` §16) y a T-A0 bis. Toca
+> piezas de F-059: los tests de F-059 se ejecutan **sin cambiar ninguna
+> aserción** en cada tarea.
+
+- [ ] **T13**: tests RED del veredicto (`tests/test_f065_veredicto.py`): la
+  precedencia de R41 con los ejemplos de `design.md` §15.2 (E1 → `choca`, E1
+  con la descripción de E2b → `ya_existe`, E3/E4 → `va`, E7 → `se_enlaza`,
+  E12 sin veredicto); que mira **todos** los pares y no los 10 de R18 (una
+  incidencia con 12 conflictos da los 12 códigos); los códigos en el orden de
+  R18; solo candidatas; el bloque `volcado` de R42 con su `por_unidad`; y R49:
+  para un juego de fixtures, el veredicto con todas las reclamaciones de la
+  obra es igual al de solo las de sus unidades, con el caso escrito de un
+  `PVI-` en otra unidad. | Verificación: `python -m pytest tests/test_f065_veredicto.py` en **rojo**, traza en el informe
+- [ ] **T14**: `Veredicto`, `VeredictoDeVolcado`, `ParDeCoincidencia`,
+  `Cruce.pares` y `veredictos` en `domain/models/sigrid_bandeja.py`, y el
+  bloque `volcado` en el pipeline y el borde de la ruta (R41, R42). | Verificación: `python -m pytest tests/test_f065_veredicto.py tests/test_f065_dominio.py tests/test_f065_http.py` en verde
+- [ ] **T15**: tests RED de la guarda (`tests/test_f065_guarda_ensayo.py` y
+  `tests/test_f065_consulta.py`): la consulta por unidades carácter a carácter
+  (de 1 a `N` marcadores, sin R33, idéntica a la del script 29: T2 bis pasa a
+  compararla con la función); el cuerpo de R43 (sin la clave, con lista vacía,
+  con un `incidencia_id` que no está en `incidencias`, repetido, sin
+  `sigrid_cods`, con un código mal formado o repetido, con 51 códigos, con una
+  clave de más; y que `confirmado` y `commit` siguen siendo 400), todo 400
+  **sin construir nada**; el orden de R44 (selección → Sigrid → login → lote,
+  y **sin** Sigrid si la selección no deja nada); las exclusiones de R45 (las
+  dos, la confirmación parcial, la que apareció después, la sobrante); los
+  errores de R46 **sin login, sin lote y sin ensayo guardado**; el bloque
+  `sigrid` de R47 y que las claves de R12 de F-059 no cambian; la línea de R48
+  sin códigos `RS` ni textos; y que un ensayo sin la clave nueva y sin nada que
+  choque responde lo mismo que hoy más `sigrid` (R49). Con dobles: sin red,
+  sin base. | Verificación: `python -m pytest tests/test_f065_guarda_ensayo.py tests/test_f065_consulta.py` en **rojo**, traza en el informe
+- [ ] **T16**: la guarda: `select_reclamaciones_de_las_unidades` y
+  `leer(…, unidades=)` (con `unidades=<cuántas>` en el log de R25),
+  `application/pipelines/guarda_sigrid.py`, los dos valores de
+  `MotivoExclusion`, `ensayar` y `PeticionDeEnsayo`, el borde del ensayo y las
+  tres entradas de `function_app.py` (`design.md` §15.6); y el doble vacío del
+  lector en `tests/test_f059_volcado_http.py` y
+  `tests/test_f059_pipeline_volcado.py`. | Verificación: los ficheros de T15 en verde y `python -m pytest tests/test_f059_volcado_http.py tests/test_f059_pipeline_volcado.py tests/test_f059_volcado_dominio.py tests/test_f059_alcance_cerrado.py` en verde, con el diff de esos dos ficheros de tests limitado al doble (traza en el informe)
+- [ ] **T17**: la guarda de alcance de T9 ampliada a §15.6: los ficheros de
+  F-059 que cambian, **solo** en las piezas declaradas; en los dos tests de
+  F-059, ninguna aserción menos ni cambiada; `infrastructure/sigrid/volcado.py`,
+  la persistencia del volcado, `volcar` y `panel_de_volcado` intactos; sin
+  DDL ni variables. | Verificación: `python -m pytest tests/test_f065_alcance_cerrado.py` en verde
+
+**Parar. Review del Bloque A4 bis.**
+
 ## Bloque A5 · Los documentos
 
 - [ ] **T10**: tests (`tests/test_f065_documentacion.py`) y los documentos de
@@ -133,7 +215,11 @@
   `azure-apps/postventa_incidencias.md` y la fila de consumidores de
   `azure-apps/sigrid_api.md` (los de `azure-apps/` con su propio commit local
   en ese repositorio). Que dicen que hay datos personales, dónde se enseñan y
-  dónde no van. | Verificación: `python -m pytest tests/test_f065_documentacion.py` en verde
+  dónde no van. *(2026-10-28, si S-1:)* y la guarda: en la sección de F-059 de
+  `ARCHITECTURE.md`, en `INTEGRACION.md` §1 y en
+  `azure-apps/postventa_incidencias.md`, que el ensayo lee Sigrid una vez más
+  (solo `sql/read`, por unidades, sin datos personales), los dos motivos
+  nuevos y que Sigrid caída = no se ensaya. | Verificación: `python -m pytest tests/test_f065_documentacion.py` en verde
 
 **Parar. Review del Bloque A5.**
 
@@ -196,3 +282,20 @@
   referencia, un código `RS` ni un `oid`. | Verificación: MANUAL (humano)
 - [ ] **T-A16 · MANUAL (humano)**, **después**: repetir T-A12; mismos
   recuentos salvo la actividad de Posventa. | Verificación: MANUAL (humano)
+- [ ] **T-A17 · MANUAL (humano)** *(nuevo, 2026-10-28; si S-1)*, solo lectura,
+  el bloque de la sincronización, en la consola del front publicado:
+  ```
+  fetch('/api/revision/sigrid?obra=0677').then(r => r.json()).then(d => console.log(JSON.stringify({candidatas: d.volcado.candidatas, por_veredicto: d.volcado.por_veredicto, por_unidad: d.volcado.por_unidad})))
+  ```
+  Pasa si `candidatas` cuadra con `aprobadas + en_duda` del panel de F-059
+  (`GET /api/volcado?obra=0677`) y la suma de `por_unidad` con
+  `por_veredicto`. Anotar solo recuentos. | Verificación: MANUAL (humano)
+- [ ] **T-A18 · MANUAL (humano)** *(nuevo, 2026-10-28; si S-1, y solo con la
+  autorización expresa del humano para esa acción)*: **un** ensayo
+  (`commit: false`: no escribe en Sigrid, sí guarda sus eventos de ensayo en
+  nuestra base, como cualquier ensayo de F-059) en la 0626 de una incidencia
+  que la sincronización da `choca`, primero **sin** confirmarla (sale en
+  `excluidas` con `conflicto_sin_confirmar`, `ensayo_id: null`) y después
+  confirmándola (sale `previsto`). Y en Application Insights, la línea
+  `F-065 guarda del ensayo` y la duración del ensayo (R48, R71), sin ningún
+  código `RS` ni texto. Anotar solo motivos, estados, recuentos y segundos. | Verificación: MANUAL (humano)

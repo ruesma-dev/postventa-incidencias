@@ -30,7 +30,7 @@
 
 ## Bloque A1 · El script de medición, y medir antes del dominio
 
-- [ ] **T1**: tests RED de `infra/29_reclamaciones_obra_sigrid.ps1`
+- [x] **T1**: tests RED de `infra/29_reclamaciones_obra_sigrid.ps1`
   (`tests/test_f065_scripts_infra.py`): existe; ASCII sin BOM y CRLF; carga
   `08_lectura_sigrid_comun.ps1`; solo `Invoke-SigridLectura` (ni `sql/write`,
   ni `partes-reclamacion`, ni `concepto-grafico`); todos los valores por `?`;
@@ -39,12 +39,12 @@
   `nom`, `tel`, `ele`…) ni de una fila: solo recuentos, bytes y segundos
   (R29); la consulta no nombra `dni`, `esiglog`, `esigpas`, `clamai` ni
   direcciones. | Verificación: `python -m pytest tests/test_f065_scripts_infra.py` (desde `services/postventa-api`) en **rojo**, traza en `progress/impl_F-065.md`
-- [ ] **T2**: el script (R29), con el SQL de `design.md` §3 en un
+- [x] **T2**: el script (R29), con el SQL de `design.md` §3 en un
   here-string; `-CodigoObra` (con y sin ceros, como el 28) y `-MaxFilas 500000`;
   los recuentos de R29, con el parecido de §5.3 aproximado en PowerShell (dicho
   en la ayuda); los bytes de la respuesta con todos los campos y los de R33
   aparte, `truncated` y los segundos; y si la pasarela aceptó la consulta. | Verificación: `python -m pytest tests/test_f065_scripts_infra.py` en verde
-- [ ] **T2 bis** *(nuevo, 2026-10-28; espera a S-5)*: `-Unidades` en el script
+- [x] **T2 bis** *(nuevo, 2026-10-28; espera a S-5)*: `-Unidades` en el script
   29 (R70): con ella lanza la consulta de la guarda de `design.md` §15.5 (las
   12 columnas de R6, sin R33, con `u.cod IN (?, …)`), un marcador por unidad;
   imprime filas, `truncated`, bytes y segundos, y **cuántas** unidades (no

@@ -174,10 +174,25 @@ class ReclamacionSigrid:
 class Hallazgo:
     """Un conflicto o un aviso (R11–R18).
 
-    `sigrid_cod` es el código de la reclamación de la que habla el hallazgo, o
-    el guardado en la base si no hay ninguna (`volcada_no_encontrada`).
-    `sigrid_cods`, los demás códigos que lo explican: todos en
-    `varias_en_sigrid`, el guardado en `codigo_distinto`.
+    Los códigos de cada tipo (`design.md` §10.1, enmienda del 2026-10-28;
+    contrato con F-064, que busca la reclamación por `sigrid_cod`):
+
+    ========================  ======================  ==============  ============
+    Tipo                      `sigrid_cod`            `sigrid_cods`   `guardado_cod`
+    ========================  ======================  ==============  ============
+    `coincide`                la del par              `()`            `None`
+    `ya_en_sigrid`            la emparejada           `()`            `None`
+    `varias_en_sigrid`        la emparejada (mayor)   todas, de       `None`
+                                                      mayor a menor
+    `volcada_no_encontrada`   `None`                  `()`            el guardado
+    `codigo_distinto`         la emparejada (mayor)   `()`            el guardado
+    `anulada_en_sigrid`       la emparejada (mayor)   `()`            `None`
+    `referencia_desconocida`  la de esa referencia    `()`            `None`
+    ========================  ======================  ==============  ============
+
+    `sigrid_cod`, si no es `None`, es el `cod` de una reclamación de
+    `Cruce.reclamaciones`; `sigrid_cods` son siempre códigos de Sigrid;
+    `guardado_cod` es el código que guarda nuestra base (F-059).
     """
 
     tipo: TipoHallazgo
@@ -187,6 +202,7 @@ class Hallazgo:
     sigrid_cods: tuple[str, ...] = ()
     criterios: tuple[Criterio, ...] = ()
     parecido: int | None = None
+    guardado_cod: str | None = None
 
 
 @dataclass(frozen=True)
@@ -331,13 +347,32 @@ def _orden_de_reclamacion(r: ReclamacionSigrid) -> tuple[bool, date, str]:
     return (r.fecha is not None, r.fecha or date.min, r.cod)
 
 
-def _orden_de_hallazgo(h: Hallazgo) -> tuple[int, int, str, str]:
-    """Severidad (conflicto primero), tipo, `incidencia_id` y código (R21)."""
+class _Ordenable(NamedTuple):
+    """Un hallazgo con lo que desempata a igual severidad, tipo e incidencia (R21).
+
+    En un `coincide`, su puesto en el orden de R18 (un entero); en los demás
+    tipos, su `sigrid_cod` (`""` si es `None`, que así va delante). Nunca se
+    comparan los dos: a igual tipo, los dos desempates son del mismo tipo.
+    """
+
+    hallazgo: Hallazgo
+    desempate: int | str
+
+
+def _ordenable(h: Hallazgo) -> _Ordenable:
+    return _Ordenable(h, h.sigrid_cod or "")
+
+
+def _orden_de_hallazgo(o: _Ordenable) -> tuple[int, int, str, int | str]:
+    """Severidad (conflicto primero), tipo, `incidencia_id` (`None` delante) y
+    el desempate: el orden de R18 en los `coincide`, el código en los demás
+    (R21, enmienda del 2026-10-28)."""
+    h = o.hallazgo
     return (
         _ORDEN_DE_SEVERIDAD[h.severidad],
         _ORDEN_DE_TIPO[h.tipo],
         "" if h.incidencia_id is None else str(h.incidencia_id),
-        h.sigrid_cod or "",
+        o.desempate,
     )
 
 
@@ -394,19 +429,23 @@ def _emparejar(
                     TipoHallazgo.VOLCADA_NO_ENCONTRADA,
                     Severidad.AVISO,
                     incidencia_id,
-                    guardado,
+                    None,
+                    guardado_cod=guardado,
                 )
             )
             continue
+        # R12 con varias (enmienda del 2026-10-28): si el guardado está entre
+        # las suyas, el duplicado ya lo enseña `varias_en_sigrid`; y la
+        # anulación se mira solo en la emparejada, la de código mayor.
         mayor = max(suyas, key=lambda r: r.cod)
-        if mayor.cod != guardado:
+        if all(r.cod != guardado for r in suyas):
             hallazgos.append(
                 Hallazgo(
                     TipoHallazgo.CODIGO_DISTINTO,
                     Severidad.AVISO,
                     incidencia_id,
                     mayor.cod,
-                    sigrid_cods=(guardado,),
+                    guardado_cod=guardado,
                 )
             )
         if mayor.estado == EstadoSigrid.NPR:
@@ -500,7 +539,8 @@ def cruzar(
     """
     por_id = {s.incidencia.incidencia_id: s for s in situaciones}
     estados = {incidencia_id: estado_de(s) for incidencia_id, s in por_id.items()}
-    emparejada_de, propias, hallazgos = _emparejar(por_id, estados, reclamaciones)
+    emparejada_de, propias, de_lo_emparejado = _emparejar(por_id, estados, reclamaciones)
+    hallazgos = [_ordenable(h) for h in de_lo_emparejado]
 
     indice = _indice_por_unidad(reclamaciones)
     evaluadas = 0
@@ -513,13 +553,17 @@ def cruzar(
         if pares:
             pares.sort(key=_orden_de_par, reverse=True)
             coincidencias_total[incidencia_id] = len(pares)
-            hallazgos.extend(h for _, h in pares[:TOPE_COINCIDENCIAS])
+            # Cada `coincide` lleva su puesto en R18: así sale en ese orden (R21).
+            hallazgos.extend(
+                _Ordenable(h, puesto)
+                for puesto, (_, h) in enumerate(pares[:TOPE_COINCIDENCIAS])
+            )
 
     desconocidos = sum(1 for r in reclamaciones if r.estado not in _ESTADOS_CONOCIDOS)
     ordenadas = sorted(reclamaciones, key=_orden_de_reclamacion, reverse=True)
     return Cruce(
         reclamaciones=tuple((r, emparejada_de.get(r.cod)) for r in ordenadas),
-        hallazgos=tuple(sorted(hallazgos, key=_orden_de_hallazgo)),
+        hallazgos=tuple(o.hallazgo for o in sorted(hallazgos, key=_orden_de_hallazgo)),
         coincidencias_total=MappingProxyType(coincidencias_total),
         evaluadas=evaluadas,
         estados_desconocidos=desconocidos,

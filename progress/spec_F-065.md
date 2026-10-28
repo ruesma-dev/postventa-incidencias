@@ -213,3 +213,9 @@ Bloque A3.
   aprobó (sección anterior). No lo he tocado: no es de este encargo, y la
   sección anterior dice que la enmienda se escribe al implementar el Bloque A4
   bis.
+
+### Resuelta por el líder (2026-10-28)
+
+Opción **(a)**: `unidad_codigo` y `oficio_codigo` van tal cual, como los lee F-036, para que R14 compare lo
+mismo con lo mismo. La decisión 6 quería proteger el estado y el código de la reclamación; esto la cumple sin
+tocar nada aprobado. Escrito en `design.md` §10.2 y en T5.

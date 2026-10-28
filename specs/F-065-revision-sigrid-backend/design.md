@@ -477,8 +477,8 @@ y todas las `volcada` darían `codigo_distinto`. Por eso
 `estado_codigo` y `cod`, y también `tipo_codigo` y `clase_codigo` (solo se
 enseñan); un código que queda vacío tras recortar es `None`, salvo `cod`, que
 es obligatorio y da error **sin la fila** (R40). El dominio no cambia: sigue
-siendo estricto. **`unidad_codigo` y `oficio_codigo`: PENDIENTE de decisión**
-(ver `progress/spec_F-065.md`, «Enmiendas tras la review del Bloque A2»):
+siendo estricto. **`unidad_codigo` y `oficio_codigo` van tal cual, sin recortar** (decisión
+del líder del 2026-10-28, opción (a) de `progress/spec_F-065.md`):
 R14 los compara por código exacto con los de la bandeja, que vienen del
 catálogo de F-036 leídos **tal cual** de las mismas columnas (`u.cod`,
 `auxofc.cod`) y que no se tocan (D-9, §9.3); recortarlos solo de este lado

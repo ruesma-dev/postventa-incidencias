@@ -178,9 +178,9 @@
   `cod`, `tipo_codigo` y `clase_codigo`: con su test, `'SAT     '` y `' PTE'`
   quedan en la fila como `SAT` y `PTE`, un `cod` rellenado
   (`'RS26.09/0123  '`) queda sin blancos, un código de solo blancos es `None`
-  y un `cod` de solo blancos es error sin la fila; **`unidad_codigo` y `oficio_codigo`:
-  PENDIENTE** de la decisión del líder (`progress/spec_F-065.md`, «Enmiendas
-  tras la review del Bloque A2»); las filas
+  y un `cod` de solo blancos es error sin la fila; **`unidad_codigo` y `oficio_codigo`
+  tal cual, sin recortar**, como el catálogo de F-036 (decisión del líder del
+  2026-10-28, opción (a) de `progress/spec_F-065.md`), con un test que lo fije; las filas
   sin valores en su `repr` (R40); el adaptador: puerta de entorno sin abrir
   conexión (R2), `max_rows` 500.000, y 409 con `truncated` **o** al techo, 503
   con una respuesta mal formada (R8), reintento de lo transitorio, solo `/api/sql/read` (R27), y

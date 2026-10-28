@@ -1030,9 +1030,12 @@ VALORES_DE_LAS_FILAS = (
 )
 
 
-def _lanzar(tmp_path: Path, *argumentos: str, **entorno: str) -> tuple[int, str, list[tuple[str, str]]]:
+def _lanzar(
+    tmp_path: Path, *argumentos: str, obra: str | None = "999", **entorno: str
+) -> tuple[int, str, list[tuple[str, str]]]:
     """Copia el 29 y el 08 con el doble a `tmp_path`, lo lanza y devuelve el
-    código de salida, la consola y las llamadas (SQL, apunte) en orden."""
+    código de salida, la consola y las llamadas (SQL, apunte) en orden.
+    Con `obra=None` no se pasa `-CodigoObra`."""
     carpeta = tmp_path / "infra"
     salida = tmp_path / "llamadas"
     carpeta.mkdir()
@@ -1052,7 +1055,8 @@ def _lanzar(tmp_path: Path, *argumentos: str, **entorno: str) -> tuple[int, str,
     }
     resultado = subprocess.run(
         [POWERSHELL, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-         "-File", str(carpeta / SCRIPT.name), "-CodigoObra", "999",
+         "-File", str(carpeta / SCRIPT.name),
+         *(() if obra is None else ("-CodigoObra", obra)),
          "-SigridBaseUrl", "http://pasarela.ejemplo.invalid", "-SigridBaseDatos", "ejemplo",
          *argumentos],
         capture_output=True, timeout=120, env=variables, check=False,
@@ -1231,3 +1235,35 @@ def test_f065_r8_r29_ejecutado_llegar_al_techo_no_es_quedar_por_debajo(tmp_path)
     assert codigo == 6, consola
     assert tabla["filas"] == "14"
     assert tabla["filas por debajo del techo"] == "no"
+
+
+#: Cada rechazo de las precondiciones: (id, argumentos, `-CodigoObra`, el
+#: trozo del mensaje que dice cuál ha saltado). 51 = `$MAX_UNIDADES` + 1.
+PARAMETROS_MALOS = [
+    ("maxfilas_0", ("-MaxFilas", "0"), "999", "-MaxFilas va de 1 a 500000"),
+    ("maxfilas_500001", ("-MaxFilas", "500001"), "999", "-MaxFilas va de 1 a 500000"),
+    ("unidades_vacia", ("-Unidades", " , "), "999", "-Unidades sin ninguna unidad"),
+    ("unidades_51", ("-Unidades", ",".join(f"U{n:02d}" for n in range(51))), "999",
+     "-Unidades admite como mucho 50 unidades"),
+    ("obra_no_valida", (), "0 9", "El codigo de obra solo admite"),
+    ("sin_obra", (), None, "Falta -CodigoObra"),
+]
+
+
+@necesita_powershell
+@pytest.mark.parametrize(
+    ("argumentos", "obra", "mensaje"),
+    [pytest.param(a, o, m, id=i) for i, a, o, m in PARAMETROS_MALOS],
+)
+def test_f065_r29_r70_ejecutado_un_parametro_malo_para_antes_de_leer(tmp_path, argumentos, obra, mensaje):
+    """**La puerta va antes del ERP** (regla 7 del protocolo, C-A1-1 de la
+    review). Con un parámetro malo el script para con 3 y **no llega ni a
+    Q0**: el lector doble no apunta ninguna llamada. Que la línea exista no
+    basta; si una comprobación baja por debajo de la lectura, la pasarela de
+    producción ya habría recibido un `max_rows` fuera de rango o una guarda
+    con 51 marcadores."""
+    codigo, consola, llamadas = _lanzar(tmp_path, *argumentos, obra=obra)
+
+    assert codigo == 3, consola
+    assert llamadas == []
+    assert mensaje in consola, consola

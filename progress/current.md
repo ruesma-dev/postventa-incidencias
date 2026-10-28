@@ -10,7 +10,7 @@
 > (faltaba un test de parámetros malos antes de leer); corregido en `4fa1b61` sin tocar el script.
 > **MANUAL (humano, solo lectura), antes del Bloque A2:** T-A0 y T-A0 bis, desde la raíz del worktree, con la raíz de la
 > pasarela y la base en la sesión (`$env:SIGRID_API_BASE_URL`, `$env:SIGRID_BASE_DATOS`):
-> `powershell -ExecutionPolicy Bypass -File infra9_reclamaciones_obra_sigrid.ps1 -CodigoObra 0626` (una vez);
+> `powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra 0626` (una vez);
 > `... -CodigoObra 0677` (tres veces); `... -CodigoObra 0677 -Unidades '<u1>'` (tres veces);
 > `... -CodigoObra 0677 -Unidades '<u1>','<u2>','<u3>','<u4>','<u5>'` (tres veces). Umbrales: obra > ≈ 10 s o guarda > ≈ 3 s
 > → volver al humano antes de A2 / A4 bis. Detalle en `progress/impl_F-065.md` «Órdenes para el humano».

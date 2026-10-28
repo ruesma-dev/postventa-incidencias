@@ -412,3 +412,129 @@ humano antes del Bloque A4 bis: obra > ≈ 10 s, guarda > ≈ 3 s.
 | Mutación (herramienta) | **0 generados, 0 supervivientes**: 0 líneas `.py` de producción en alcance; el motor no muta `.ps1`. 0.0 s, workers: la herramienta escribe `--workers 1` en la cabecera (sin nada que repartir) |
 | Mutación a mano (`.ps1`) | **58 generados, 58 muertos, 0 supervivientes** (ronda 3, 291 s, en serie en un worktree desechable); ronda 1: 22 supervivientes, todos cerrados con tests |
 | Tiempo de la suite | **3605.53 s** (1:00:05) en la 2.ª ejecución, 3175.68 s en la 1.ª: un puesto cargado con otras campañas. Los 41 tests del bloque: 9.9–18.5 s (los 7 que lanzan PowerShell suman la mayor parte) |
+
+## Corrección C-A1-1 (2026-10-28)
+
+Encargo del líder: corregir **solo** C-A1-1 de `progress/review_F-065.md`. El
+script `infra/29_reclamaciones_obra_sigrid.ps1` **no se ha tocado** (el humano
+lo lanza contra Sigrid mientras tanto): el test nuevo confirma que sus
+precondiciones ya van antes de la primera llamada al ERP. Sin conexión a
+Sigrid, a la base ni a SharePoint. Bloque A2 no empezado.
+
+### Qué cambió
+
+Commit `4fa1b61`, solo `services/postventa-api/tests/test_f065_scripts_infra.py`:
+
+- `_lanzar` admite `obra: str | None = "999"` (solo por nombre); con `None` no
+  pasa `-CodigoObra`. Las llamadas de siempre no cambian.
+- `PARAMETROS_MALOS` y
+  `test_f065_r29_r70_ejecutado_un_parametro_malo_para_antes_de_leer`
+  (`@necesita_powershell`, parametrizado, seis casos): `-MaxFilas 0`,
+  `-MaxFilas 500001`, `-Unidades " , "`, `-Unidades` con 51 códigos
+  (`",".join(...)`, `U00`..`U50`), `-CodigoObra "0 9"` y sin `-CodigoObra`.
+  Cada uno exige **salida 3**, **`llamadas == []`** (no se llega ni a Q0) y el
+  trozo del mensaje de la comprobación que tiene que saltar, para que un 3
+  dado por otra comprobación no lo dé por bueno.
+
+### Fase RED
+
+El script ya era correcto, así que el test pasa nada más escribirse (6 passed
+en 24.72 s). La RED que importa aquí es la de los mutantes de la review: el
+test tiene que caer cuando una comprobación baja por debajo de la lectura.
+Aplicados en una **copia desechable** del scratchpad (`infra/` y
+`services/postventa-api/` sin `.venv`, borrada al acabar; el árbol de trabajo
+no se ha tocado), con un guion que mueve el bloque de la comprobación justo
+detrás de `$reloj.Stop()` (el sitio de R08/R09 en la review), ejecuta los
+tests y restaura.
+
+Comando (desde el scratchpad, intérprete del servicio):
+
+```
+.venv/Scripts/python.exe -I traza_c_a1_1.py <copia> R08 R09 RC1
+  -> pytest tests/test_f065_scripts_infra.py -q --tb=short -k parametro_malo
+```
+
+Traza real (recortada solo en las líneas repetidas):
+
+```
+=== R08 (39.6 s) exit=1
+FF....                                                                   [100%]
+_ test_f065_r29_r70_ejecutado_un_parametro_malo_para_antes_de_leer[maxfilas_0] _
+tests\test_f065_scripts_infra.py:1268: in test_f065_r29_r70_ejecutado_un_parametro_malo_para_antes_de_leer
+    assert llamadas == []
+E   AssertionError: assert [('SELECT LTR...708\x1f0999')] == []
+E     Left contains 2 more items, first extra item: ('SELECT LTRIM(RTRIM(o.cod)) AS obra_cod, COUNT(DISTINCT v.obride) AS obras\nFROM dbo.upv v\nJOIN dbo.con o ON o.ide = v.obride\nWHERE LTRIM(RTRIM(o.cod)) IN (?, ?)\nGROUP BY LTRIM(RTRIM(o.cod))', '10\x1fFalse\x1f0999\x1f999')
+_ test_f065_r29_r70_ejecutado_un_parametro_malo_para_antes_de_leer[maxfilas_500001] _
+    assert llamadas == []
+E   AssertionError: assert [('SELECT LTR...708\x1f0999')] == []
+FAILED ...[maxfilas_0]
+FAILED ...[maxfilas_500001]
+2 failed, 4 passed, 41 deselected in 28.63s
+
+=== R09 (32.8 s) exit=1
+...F..                                                                   [100%]
+_ test_f065_r29_r70_ejecutado_un_parametro_malo_para_antes_de_leer[unidades_51] _
+    assert llamadas == []
+E   AssertionError: assert [('SELECT LTR...fU49\x1fU50')] == []
+E     Left contains 2 more items, first extra item: ('SELECT LTRIM(RTRIM(o.cod)) AS obra_cod, ...', '10\x1fFalse\x1f0999\x1f999')
+FAILED ...[unidades_51]
+1 failed, 5 passed, 41 deselected in 16.51s
+
+=== RC1 (17.3 s) exit=1
+....F.                                                                   [100%]
+_ test_f065_r29_r70_ejecutado_un_parametro_malo_para_antes_de_leer[obra_no_valida] _
+    assert llamadas == []
+E   AssertionError: assert [('SELECT LTR...708\x1f0999')] == []
+E     Left contains 2 more items, first extra item: ('SELECT LTRIM(RTRIM(o.cod)) AS obra_cod, ...', '10\x1fFalse\x1f00 9\x1f 9')
+FAILED ...[obra_no_valida]
+1 failed, 5 passed, 41 deselected in 11.71s
+```
+
+Lo que dice la traza: en los tres, **la salida sí es 3** (la primera aserción
+pasa) y aun así cae, porque la pasarela ya habría recibido Q0 y Q1 (en R09,
+la guarda con los 51 marcadores, `...U49\x1fU50`). Es justo lo que C-A1-1
+pedía fijar: salir con 3 no basta, hay que salir **antes**.
+
+### Mutantes
+
+Suite de F-065 **entera** (sin `-k`, sin `-x`) sobre cada mutante, para ver
+quién lo caza. Antes de C-A1-1, R08 y R09 dejaban 41 passed (review).
+
+| Id | Mutación (bloque movido detrás de `$reloj.Stop()`) | Resultado | Lo caza |
+|---|---|---|---|
+| R08 | la de `-MaxFilas` (1..500.000) | **muerto** (2 failed, 45 passed) | `…parametro_malo…[maxfilas_0]` y `[maxfilas_500001]`, solo esos |
+| R09 | el tope de 50 unidades | **muerto** (1 failed, 46 passed) | `…[unidades_51]`, solo ese |
+| RC1 | el código de obra no válido (la del código, pedida «de paso») | **muerto** (1 failed, 46 passed) | `…[obra_no_valida]`, solo ese |
+| RC2 | extra: «Falta -CodigoObra» | **muerto** (1 failed, 46 passed) | `…[sin_obra]`, solo ese |
+| RC3 | extra: `-Unidades` sin ninguna unidad | **muerto** (6 failed, 41 passed) | `…[unidades_vacia]` y cinco ejecutados más |
+
+RC3 lo cazan más tests porque, al sacar el bloque de su `if
+($PSBoundParameters…)`, la comprobación salta también sin `-Unidades` y la
+medición de la obra entera sale con 3; aun así, el caso `unidades_vacia` del
+test nuevo cae por sí solo. **5 generados, 5 muertos, 0 supervivientes.**
+Ningún equivalente. Copia desechable borrada al acabar; `git status` del
+worktree limpio salvo los cambios de este encargo.
+
+### Verificación
+
+| Qué | Resultado |
+|---|---|
+| `pytest tests/test_f065_scripts_infra.py` (servicio api) | **47 passed in 26.50 s** (41 de antes + 6 nuevos) |
+| Barridos de `infra/` (`test_f005`, `f006`, `f009`, `f010_prompt_keys`, `f010`, `f012`, `f013`, `f036`, `f051`, `f059`, `f065` `_scripts_infra.py`) | **529 passed, 3 skipped in 35.62 s** |
+| `ruff check` del fichero de tests | **All checks passed!** (`ruff format --check` lo reformatearía, pero ya pasaba igual antes del cambio y `init.sh` solo mide `ruff check`) |
+| `bash harness/init.sh` | **No ejecutado** por encargo: lo lanza el líder |
+
+### Pendiente
+
+- `init.sh` entero (el líder) y la re-review de C-A1-1.
+- Lo demás de la review (O-1 a O-4) no es de este encargo.
+
+### Evidencias de la corrección
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | 47 passed (F-065), 529 passed + 3 skipped (barridos de `infra/`) |
+| Cobertura de las líneas cambiadas | N/A: el cambio es solo de tests; el `.ps1` no se mide |
+| Mutación (herramienta) | 0: no hay líneas `.py` de producción en alcance |
+| Mutación a mano (`.ps1`) | **5 generados, 5 muertos, 0 supervivientes** (R08, R09, RC1, RC2, RC3), ≈ 175 s en serie |
+| Tiempo | 26.50 s los tests de F-065; 35.62 s los barridos |

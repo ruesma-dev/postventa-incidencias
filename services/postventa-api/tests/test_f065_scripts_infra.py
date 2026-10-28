@@ -37,7 +37,13 @@ IA: solo se leen los ficheros.
 
 from __future__ import annotations
 
+import calendar
+import json
+import os
 import re
+import shutil
+import subprocess
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -857,8 +863,6 @@ def test_f065_r70_la_guarda_es_la_de_la_obra_sin_r33_y_con_el_filtro_de_unidades
 
 def test_f065_r70_un_marcador_por_unidad_y_los_parametros_en_orden():
     """Los cuatro de §3 y después una unidad por marcador, sin interpolar nada."""
-    ejecutable = _ejecutable()
-
     assert (
         "$parametros = @($CAMPO_REFERENCIA, $PATRON_NUESTROS, $Tip, $obraCod) + $codigosDeUnidad"
         in _lineas()
@@ -923,13 +927,6 @@ def test_f065_r70_con_unidades_no_hace_las_cuentas_de_la_obra():
 # …», `@ejemplo.invalid`, `000 000 000`. Si el puesto no tiene PowerShell, se
 # salta: lo de arriba se sigue comprobando.
 
-import calendar  # noqa: E402
-import json  # noqa: E402
-import os  # noqa: E402
-import shutil  # noqa: E402
-import subprocess  # noqa: E402
-from datetime import date, timedelta  # noqa: E402
-
 #: El ejecutable de PowerShell del puesto, si lo hay.
 POWERSHELL = shutil.which("powershell") or shutil.which("pwsh")
 
@@ -973,7 +970,8 @@ function Invoke-SigridLectura {
 def _hace(meses: int, dias: int = 0) -> int:
     """Hoy menos `meses` (el día recortado al último del mes, como
     `AddMonths` de .NET) más `dias`, en el `YYYYMMDD` del ERP."""
-    hoy = date.today()
+    # La fecha LOCAL, a propósito: el script cuenta los meses con `Get-Date`.
+    hoy = date.today()  # noqa: DTZ011
     total = hoy.year * 12 + hoy.month - 1 - meses
     anio, mes = divmod(total, 12)
     dia = min(hoy.day, calendar.monthrange(anio, mes + 1)[1])
@@ -1057,7 +1055,7 @@ def _lanzar(tmp_path: Path, *argumentos: str, **entorno: str) -> tuple[int, str,
          "-File", str(carpeta / SCRIPT.name), "-CodigoObra", "999",
          "-SigridBaseUrl", "http://pasarela.ejemplo.invalid", "-SigridBaseDatos", "ejemplo",
          *argumentos],
-        capture_output=True, timeout=120, env=variables,
+        capture_output=True, timeout=120, env=variables, check=False,
     )
     consola = (resultado.stdout + resultado.stderr).decode("utf-8", errors="replace")
     llamadas = []

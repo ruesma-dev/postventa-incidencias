@@ -566,3 +566,205 @@ Lanzado por el humano desde su puesto, solo lectura, con el script 29 de `f71557
 - **N-2**: el umbral 50 se queda; las cifras no dan motivo para moverlo (874 de 132.347 pares, un 0,66 %).
 - **S-5**: la guarda por unidades se queda; muy por debajo de ≈ 3 s (cota: < 1 s la obra entera).
 - No se enmienda la spec. Pendiente, no bloqueante: medir la guarda con códigos de unidad reales de la 0677.
+
+## Bloque A2 · T3 y T4 (2026-10-28)
+
+Encargo del líder: T3 y T4 tal como los describe `tasks.md`, con N-1, N-2
+(umbral 50, 2 palabras en común), la fecha y S-5 como dice la spec (no se ha
+tocado nada de eso). **Sin red, sin base, sin IA, sin Sigrid ni SharePoint**;
+ni adaptadores, ni rutas, ni nada del Bloque A3. `features.json`, `BACKLOG.md`
+y `current.md` sin tocar.
+
+### Commits
+
+| Commit | Tarea | Qué |
+|---|---|---|
+| `3282d8b` | T3 | Tests RED de `domain/models/sigrid_bandeja.py` (`tests/test_f065_dominio.py`) |
+| `96d9f54` | T4 | El dominio (`design.md` §10.1); T3 y T4 `[x]` en `tasks.md`; el test de coste con otros datos (ver «Desviaciones») |
+| `718a633` | T4 | Sin GUID literal en el test (lo rechazaba la guarda de F-006) e inmutabilidad fijada (los 5 supervivientes de la primera pasada de mutación) |
+| (el de este informe) | — | Este informe y `progress/mutacion_F-065_bloqueA2.md` |
+
+### Ficheros tocados
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-api/domain/models/sigrid_bandeja.py` | **Nuevo**: `EstadoSigrid`, `ABIERTAS`, `CERRADAS`, las constantes de §10.1 (más `MIN_LETRAS` 3 y `MIN_LETRAS_PLURAL` 5 de R36, con nombre para no dejar números sueltos), `Severidad`, `Criterio`, `TipoHallazgo`, `EVALUABLES`, `ReclamacionSigrid`, `Hallazgo`, `Cruce`, `palabras_significativas`, `parecido`, `incidencia_de_referencia`, `cruzar` |
+| `services/postventa-api/tests/test_f065_dominio.py` | **Nuevo**: 108 funciones, **137 tests** con los parametrizados |
+| `specs/F-065-revision-sigrid-backend/tasks.md` | T3 y T4 `[x]` |
+
+Sin tocar `revision.py`, `normalizacion.py`, `plantilla_incidencias.py` ni
+`volcado.py`: se importan `estado_de`, `valores_vigentes`, `EstadoRevision`,
+`SituacionDeRevision`, `clave_de_ubicacion`, `normalizar_para_clave`,
+`plegar` y `PREFIJO_REFERENCIA`. Nada más del servicio importa el módulo nuevo.
+
+### Decisiones de diseño
+
+- **`FichaReclamacion` solo bajo `TYPE_CHECKING`.** §10.1 la tipa con la
+  clase del puerto (`domain/ports/reclamaciones_obra.py`), que crea T6 en el
+  Bloque A3. El módulo la importa solo para la anotación (con `from __future__
+  import annotations` no se evalúa), así que funciona hoy sin crear el puerto
+  antes de tiempo. Los tests pasan una ficha inventada cualquiera
+  (`SimpleNamespace`): el cruce no la mira. En A3 la importación ya resuelve.
+- **El cruce es por unidad**: un índice `unidad_codigo → candidatas`, con la
+  severidad, la clave de ubicación y las palabras de cada reclamación
+  calculadas **una vez**. Las `NPR` y las de estado desconocido no entran en
+  el índice (no dan pares, R17).
+- **Lo barato primero** en la descripción: si no hay 2 palabras en común no
+  se calcula el Jaccard. Y cada texto se pliega una sola vez (la clave es el
+  plegado sin la puntuación final, que de todos modos separa palabras).
+- **`_codigo_guardado` sin guarda**: una `volcada` siempre tiene parte en
+  Sigrid (sale de ahí, R1 de F-059); la guarda defensiva era una línea
+  inalcanzable y un mutante equivalente.
+- `coincidencias_total` es un `MappingProxyType` (no se puede tocar desde
+  fuera) con solo las incidencias que tienen algún `coincide`; el borde (A4)
+  usará `get(…, 0)` para las demás.
+
+### Lecturas de la spec que he tenido que concretar (para la review)
+
+Ninguna cambia una decisión aprobada; son detalles que la spec no fija del
+todo. Cada una tiene su test, así que cambiarla es cambiar una línea y un test.
+
+1. **`sigrid_cod` de cada hallazgo.** Es el código de la reclamación de la que
+   habla el hallazgo, para que la página la encuentre en `reclamaciones`
+   (`lineaDeHallazgo(hallazgo, reclamacionesPorCod)` de F-064): la emparejada
+   en `ya_en_sigrid`, `varias_en_sigrid` (la mayor), `codigo_distinto` y
+   `anulada_en_sigrid`; el **guardado** en `volcada_no_encontrada`, que no
+   tiene otra. En `codigo_distinto` el guardado va en `sigrid_cods`.
+2. **`varias_en_sigrid` sustituye a `ya_en_sigrid`** (la tabla de §5.1 las da
+   como situaciones distintas, y R41 las trata como alternativas). Con una
+   `volcada` con varias, sale `varias_en_sigrid` **y** las comprobaciones de
+   R12 contra la de código mayor (la emparejada de R13 bis). `sigrid_cods`, de
+   mayor a menor.
+3. **R13 con varias**: ninguna de las reclamaciones que llevan la referencia
+   de una incidencia se cruza por criterios con ella (no solo la mayor): son
+   sus propios partes, y `varias_en_sigrid` ya los enseña.
+4. **`ya_en_sigrid` en cualquier estado no `volcada`**, también `descartada` y
+   también si la emparejada está en `NPR` (R11 literal).
+5. **Referencia**: toda referencia no nula que no da una incidencia de la
+   bandeja es `referencia_desconocida` (R6 garantiza que solo llegan las
+   `PVI-`). Se aceptan **blancos al final** (`rstrip`), como la intercalación
+   de SQL Server, por si `conext.valt` («texto de 80») viene rellenado; el
+   UUID, solo en su forma de 36 caracteres (sin llaves ni sin guiones).
+6. **Estado desconocido**: cualquiera que no sea uno de los cinco **tal
+   cual**, también `None`, `sat` o ` SAT`; se cuentan sobre todas las
+   reclamaciones de la obra. Si Sigrid trae los códigos con relleno, el
+   recorte es del mapeo del adaptador (A3), no de aquí.
+7. **Oficio vacío** (`""`) cuenta como sin oficio; la ubicación vacía o de
+   solo blancos no casa (R14).
+8. **R18 sin fecha**: detrás de las fechadas (la misma regla que R21).
+9. **R21**: tipos en el orden del enumerado (`coincide` …
+   `referencia_desconocida`), `incidencia_id` y código **ascendentes** (la
+   spec solo dice «descendente» para las reclamaciones). El tope de R18 elige
+   por fecha; la lista sale por código.
+10. **R36**: `parecido("por la", "por la")` es 100 (claves iguales y no
+    vacías, la primera regla de R36), pero **no casa** (R15: sin palabras
+    significativas no casa). Con claves distintas y las mismas palabras
+    (`Grifos` / `grifo`): 100 de parecido, una sola en común, no casa.
+
+### Desviaciones
+
+- **El test de coste cambió de datos entre T3 y T4** (`96d9f54`). En T3 todas
+  las descripciones de una unidad casaban entre sí: 400.000 hallazgos y ≈ 7 s
+  de cruce, que miden la construcción de hallazgos y no el índice. Ahora solo
+  la primera incidencia de cada unidad casa (con la primera reclamación, por
+  los dos criterios); las demás no tienen dos palabras en común: 500.000 pares
+  evaluados, 3,1 s el test entero. Sus aserciones cambiaron con los datos
+  (`len(coincidencias_total) == 10_000` pasó a comprobar el `coincide` de la
+  primera) y el límite bajó de 30 s a 20 s.
+- **La mutación no es el comando tal cual**: ver «Mutación (Bloque A2)».
+
+### Fase RED (Bloque A2)
+
+**T3 (`3282d8b`): el módulo no existe.** Comando, desde
+`services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f065_dominio.py -q --tb=short
+```
+
+Salida real:
+
+```
+=================================== ERRORS ====================================
+_________________ ERROR collecting tests/test_f065_dominio.py _________________
+ImportError while importing test module 'C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f065_dominio.py:34: in <module>
+    from domain.models.sigrid_bandeja import (
+E   ModuleNotFoundError: No module named 'domain.models.sigrid_bandeja'
+=========================== short test summary info ===========================
+ERROR tests/test_f065_dominio.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 2.27s
+```
+
+**T4 (`96d9f54`): en verde**, el mismo comando: `136 passed in 9.75s`.
+Tras `718a633` (un test más, el de inmutabilidad): **137 passed in 4.08 s**.
+Ese test caza los cinco `frozen=False`: la segunda pasada de mutación lo
+demuestra (mueren todos).
+
+### Tests (Bloque A2)
+
+| Qué | Resultado |
+|---|---|
+| `pytest tests/test_f065_dominio.py` | **137 passed in 4.08 s** (el de coste, 3,14 s) |
+| `pytest tests/test_f065_dominio.py tests/test_f006_arquitectura.py tests/test_f006_repo_sin_identificadores.py` (tras `718a633`) | **202 passed in 44.98 s** |
+| Suite entera del servicio api (sobre `96d9f54`, con la máquina cargada) | **2 failed, 9284 passed, 365 skipped in 1533.06 s** (25 min 33 s). Los dos fallos eran míos: `test_f006_r26_…incrusta_un_identificador` (servicio y repositorio), por el GUID literal del test (`{'services/postventa-api/tests/test_f065_dominio.py': 1}`); corregido en `718a633`, verde en la fila de arriba. **No he relanzado la suite entera** tras `718a633` (otros 25 min): solo cambiaron el módulo nuevo, que solo importa su test, y ese test |
+| `ruff check` del módulo y del test | **All checks passed!** |
+| `bash harness/init.sh` | **No ejecutado** por encargo: lo lanza el líder |
+
+### Mutación (Bloque A2)
+
+`progress/mutacion_F-065_bloqueA2.md`. **No es el comando del encargo tal
+cual**, y lo dice la cabecera del informe: la máquina estaba ocupada con las
+campañas de mutación de `partes`, `facturas` y `albaranes` (sus procesos
+`pytest` estaban vivos), la suite entera tardaba 25 min y, con el timeout de
+120 s por mutante, todos habrían salido `timeout`. He usado
+`harness.mutacion.main` con el **mismo alcance, los mismos mutantes y el mismo
+informe**, pero con un `EjecutorPytest` que lanza solo
+`tests/test_f065_dominio.py` (en serie, `--timeout 300`). Es equivalente para
+matar o sobrevivir porque ningún otro módulo importa `sigrid_bandeja.py`. El
+comando oficial queda en la cabecera del informe para relanzarlo con la
+máquina libre.
+
+| Pasada | Generados | Muertos | Supervivientes | Timeouts | Tiempo |
+|---|---|---|---|---|---|
+| 1.ª (sobre `96d9f54`) | 52 | 47 | **5**: los cinco `@dataclass(frozen=True) → False` | 0 | 255,4 s |
+| 2.ª (sobre `718a633`) | **50** | **50** | **0** | 0 | **193,5 s** |
+
+Los cinco de la 1.ª eran un **hueco real** (nada comprobaba la
+inmutabilidad), no equivalentes: `test_f065_r19_los_tipos_del_cruce_son_inmutables`
+fija los tres públicos, y `_Texto` y `_Candidata` (privados) pasan a
+`NamedTuple`, inmutables sin bandera que mutar (por eso la 2.ª genera 50).
+
+### Cobertura (Bloque A2)
+
+`coverage run --branch -m pytest tests/test_f065_dominio.py` y `coverage
+report --include=domain/models/sigrid_bandeja.py`: **226 sentencias, 0 sin
+cubrir; 66 ramas, 0 parciales: 100 %**. Todo el fichero es nuevo, así que es
+la cobertura de las líneas cambiadas. La `PUERTA COBERTURA` de `init.sh` la
+dará el líder.
+
+### Pendiente (Bloque A2)
+
+- `bash harness/init.sh` entero (el líder) y la review del Bloque A2.
+- Relanzar la mutación con el comando oficial cuando la máquina esté libre,
+  si el líder o el reviewer la quieren con la suite entera.
+- Las lecturas 1–10 de arriba, para que el reviewer las confirme o las mande
+  cambiar.
+- En A3, `FichaReclamacion` en el puerto (la anotación ya la espera ahí). En
+  A4 bis (T14), `ficha: FichaReclamacion | None` (§15.2) y `Cruce.pares`: aquí
+  no se ha adelantado nada de eso.
+
+### Evidencias (Bloque A2)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | **137 passed** (dominio de F-065) en 4,08 s; 202 passed con las guardas de F-006; suite entera: 9284 passed, 2 failed (corregidos después), 365 skipped |
+| Cobertura de las líneas cambiadas | **100 %** (226/226 sentencias, 66/66 ramas) del módulo nuevo, medida con `coverage`; la puerta de `init.sh`, pendiente del líder |
+| Mutantes | **50 generados, 50 muertos, 0 supervivientes, 0 timeouts** (2.ª pasada; la 1.ª, 52/47/5), 1 worker, suite reducida a `test_f065_dominio.py` (ver arriba) |
+| Tiempo de la suite | 4,08 s la de F-065; 1.533 s la del servicio entero con la máquina cargada |

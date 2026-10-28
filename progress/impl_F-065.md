@@ -768,3 +768,329 @@ dará el líder.
 | Cobertura de las líneas cambiadas | **100 %** (226/226 sentencias, 66/66 ramas) del módulo nuevo, medida con `coverage`; la puerta de `init.sh`, pendiente del líder |
 | Mutantes | **50 generados, 50 muertos, 0 supervivientes, 0 timeouts** (2.ª pasada; la 1.ª, 52/47/5), 1 worker, suite reducida a `test_f065_dominio.py` (ver arriba) |
 | Tiempo de la suite | 4,08 s la de F-065; 1.533 s la del servicio entero con la máquina cargada |
+
+## Bloque A2 · T4 bis (2026-10-28)
+
+Encargo del líder: **solo T4 bis** de `tasks.md`, la corrección del dominio
+tras la review del Bloque A2 (C-A2-1, C-A2-2) con las decisiones del humano
+sobre las lecturas 1–4 y 9 (enmiendas `c961345` y `7269617`: R12, R13, R20,
+R21, R41 y `design.md` §10.1). **Sin red, sin base, sin IA, sin Sigrid ni
+SharePoint**; nada del Bloque A3 (el recorte de T5 es del adaptador) ni de
+A4 bis. `features.json`, `BACKLOG.md` y `current.md` sin tocar. `init.sh` no
+ejecutado: lo lanza el líder.
+
+### Commits
+
+| Commit | Qué |
+|---|---|
+| `a0201d7` | `F-065 T4 bis`: tests RED (`tests/test_f065_dominio.py`) |
+| `c99a0d3` | `F-065 T4 bis`: el dominio (`domain/models/sigrid_bandeja.py`) |
+| `d3f94c8` | `F-065 T4 bis`: un test más para el mutante a mano M8b (ver «Mutación») |
+| (el de este informe) | Este informe, `progress/mutacion_F-065_bloqueA2.md` regenerado y T4 bis `[x]` en `tasks.md` |
+
+### Ficheros tocados
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-api/domain/models/sigrid_bandeja.py` | `Hallazgo.guardado_cod` (con la tabla de §10.1 en la docstring); `volcada_no_encontrada` con `sigrid_cod=None`; `codigo_distinto` con `sigrid_cods=()`, el guardado en `guardado_cod` y callado si el guardado está entre las emparejadas; `_Ordenable` y `_ordenable` (privados) para el orden de R21 |
+| `services/postventa-api/tests/test_f065_dominio.py` | 8 tests nuevos, 5 cambiados y 2 cambiados y renombrados (ver «Tests»): 137 → **145** |
+| `specs/F-065-revision-sigrid-backend/tasks.md` | T4 bis `[x]` |
+| `progress/mutacion_F-065_bloqueA2.md` | Regenerado sobre `d3f94c8` (C-A2-2) |
+
+### Lo que pide T4 bis, punto por punto
+
+1. **`guardado_cod`.** `Hallazgo` gana `guardado_cod: str | None = None`, al
+   final (§10.1). `volcada_no_encontrada`: `sigrid_cod=None`, el guardado en
+   `guardado_cod`. `codigo_distinto`: la emparejada (la mayor) en
+   `sigrid_cod`, el guardado en `guardado_cod`, `sigrid_cods=()`. La
+   docstring de `Hallazgo` lleva la tabla. Tests:
+   `test_f065_r12_r20_los_codigos_de_cada_hallazgo_segun_la_tabla` (los siete
+   tipos con sus tres campos, sobre un juego que da los siete) y
+   `test_f065_r12_r20_las_invariantes_de_los_codigos` (sobre el mismo juego:
+   `sigrid_cod` no nulo está en `Cruce.reclamaciones`, `sigrid_cods` son de
+   Sigrid y solo no vacíos en `varias_en_sigrid`, `guardado_cod` solo en los
+   dos tipos).
+2. **`codigo_distinto` con varias.** Se da solo si el guardado **no** está
+   entre las suyas (`all(r.cod != guardado for r in suyas)`; con una sola
+   equivale a lo de antes). El test de T4
+   `test_f065_r13_bis_varias_de_una_volcada_y_el_codigo_contra_la_mayor`
+   cambia con la decisión y **de nombre**, porque ya no decía lo que fija:
+   ahora `test_f065_r12_r13_bis_volcada_con_varias_y_el_guardado_entre_ellas_sin_codigo_distinto`
+   (`0081` guardada, `PVI-` en `0081` y `0082` → solo `varias_en_sigrid`).
+   Nuevo: `..._y_el_guardado_fuera_da_codigo_distinto` (`0080` guardada →
+   `varias_en_sigrid` y `codigo_distinto` con `sigrid_cod` `0082` y
+   `guardado_cod` `0080`).
+3. **`anulada_en_sigrid` solo contra la mayor (C-A2-1).** El código ya lo
+   hacía (T4); faltaba el test. `test_f065_r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid`
+   y el simétrico `..._la_mayor_anulada_da_anulada_en_sigrid`. **Matan M12**:
+   traza abajo, en «Mutación».
+4. **R13 con varias.** El test de T4 (`r13_bis_varias_emparejadas…`) fijaba
+   que ninguna de las suyas coincide con ella, pero **no** que sí lo hacen
+   frente a otra. Se completa con
+   `test_f065_r13_enmienda_ninguna_de_las_suyas_coincide_con_ella_y_todas_con_las_demas`
+   (X `en_duda` con tres `PVI-<X>` y B `nueva` igual: ningún `coincide` de X,
+   los tres —también las dos menores— de B; `coincidencias_total` `{B: 3}`).
+   Compara los `coincide` como conjunto: el orden lo fija R21, aparte.
+5. **El orden de los `coincide`.** Cada `coincide` lleva como desempate su
+   puesto en la lista de la incidencia ya ordenada por R18 (`enumerate` sobre
+   los 10 del tope); los demás tipos, su `sigrid_cod` (`""` si es `None`, que
+   así va delante). `Hallazgo` no gana campo: el puesto vive en un
+   `NamedTuple` privado (`_Ordenable`) solo mientras se ordena (§10.1). Tests:
+   `test_f065_r21_los_coincide_de_una_incidencia_en_el_orden_de_r18_con_el_tope`
+   (12 pares: conflictos y avisos con fechas que **no** siguen el orden de sus
+   códigos —el de código menor, el más reciente—, uno sin fecha en cada
+   severidad, dos de la misma fecha en cada una; filtrar por incidencia y
+   `coincide` da el orden de R18 y los 10 del tope; fuera, los dos avisos sin
+   fecha) y `test_f065_r21_los_coincide_por_fecha_y_no_por_codigo` (sustituye
+   a `test_f065_r21_dentro_del_tope_el_orden_es_por_codigo`, cuyo nombre
+   decía lo contrario de la decisión; además, sus datos daban el mismo orden
+   por fecha que por código, así que no distinguían).
+   `test_f065_r21_hallazgos_por_severidad_tipo_incidencia_y_codigo` se
+   adapta: los dos `coincide` de cada incidencia, de igual fecha, salen por
+   código **descendente**, y `volcada_no_encontrada` con `sigrid_cod` `None`.
+6. **La enmienda a S-3** (una emparejada en `NPR` da `choca`, R41): **no**
+   toca este dominio. Es del veredicto, que nace en T13/T14 (Bloque A4 bis),
+   como dice `tasks.md` (T4 bis, punto 6). Aquí nada.
+7. **C-A2-2**: abajo, en «Mutación».
+
+### Decisiones de diseño
+
+- **El desempate es `int | str`** en la clave de orden: un entero (el puesto
+  de R18) en los `coincide`, el código en los demás. Nunca se comparan entre
+  sí porque la clave pone antes el tipo: a igual tipo, los dos son del mismo.
+  La alternativa —un campo de fecha o de puesto en `Hallazgo`— cambiaba el
+  tipo público, que §10.1 descarta («sin campo público nuevo»).
+- **Sin literales nuevos** que la herramienta de mutación pueda cambiar por un
+  equivalente: el puesto sale de `enumerate` (no de un `0` fijo para los
+  demás tipos), para que la campaña no dé un superviviente equivalente.
+- `codigo_distinto` con `all(...)` en vez de `guardado not in {...}`: el mismo
+  resultado, sin construir un conjunto por incidencia.
+
+### Desviaciones
+
+- **Dos tests de T4 cambian de nombre** (puntos 2 y 5): sus nombres afirmaban
+  el comportamiento que la decisión del humano cambia. T4 bis pedía
+  «cambia» / «se adapta»; el nombre nuevo cita la enmienda en su docstring.
+- **Un test fuera de los puntos de T4 bis**,
+  `test_f065_r14_los_dos_con_oficio_vacio_no_casan` (`d3f94c8`): el mutante a
+  mano M8b (la bandeja con oficio `""` casa con una reclamación con oficio
+  `""`) **sobrevivía**, porque ningún test de T4 ponía `""` en los dos lados.
+  Es la lectura 7 de T4, ya implementada (`if oficio and …`); el test solo la
+  fija. En `critico` no podía quedar vivo. No cambia código.
+
+### Fase RED (T4 bis)
+
+Desde `services/postventa-api`, sobre `a0201d7` (los tests nuevos contra el
+dominio de T4):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f065_dominio.py -q --tb=line -p no:cacheprovider
+```
+
+Salida real:
+
+```
+..............................................FF.F....FF...FF........... [ 50%]
+.................................................FFF................F... [100%]
+================================== FAILURES ===================================
+E   TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:538: TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+E   TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:550: TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+E   TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:576: TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+E   AssertionError: assert (Hallazgo(tip...arecido=None)) == (Hallazgo(tip...recido=None),)
+      
+      Left contains one more item: Hallazgo(tipo=<TipoHallazgo.CODIGO_DISTINTO: 'codigo_distinto'>, severidad=<Severidad.AVISO: 'aviso'>, incidencia_id=U...0-0000-0000-0000-000000000001'), sigrid_cod='RS26.10/0082', sigrid_cods=('RS26.10/0081',), criterios=(), parecido=None)
+      Use -v to get more diff
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:664: AssertionError: assert (Hallazgo(tip...arecido=None)) == (Hallazgo(tip...recido=None),)
+E   TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:679: TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+E   TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:778: TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+E   AttributeError: 'Hallazgo' object has no attribute 'guardado_cod'
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:801: AttributeError: 'Hallazgo' object has no attribute 'guardado_cod'
+E   AssertionError: assert [(<Severidad....9/0200'), ...] == [(<Severidad....9/0100'), ...]
+      
+      At index 0 diff: (<Severidad.CONFLICTO: 'conflicto'>, <TipoHallazgo.COINCIDE: 'coincide'>, UUID(int=1), 'RS26.09/0100') != (<Severidad.CONFLICTO: 'conflicto'>, <TipoHallazgo.COINCIDE: 'coincide'>, UUID(int=1), 'RS26.09/0200')
+      Use -v to get more diff
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:1254: AssertionError: assert [(<Severidad....9/0200'), ...] == [(<Severidad....9/0100'), ...]
+E   AssertionError: assert ['RS26.09/000...RS26.09/0003'] == ['RS26.09/000...RS26.09/0001']
+      
+      At index 0 diff: 'RS26.09/0001' != 'RS26.09/0003'
+      Use -v to get more diff
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:1280: AssertionError: assert ['RS26.09/000...RS26.09/0003'] == ['RS26.09/000...RS26.09/0001']
+E   AssertionError: assert [(<Severidad....8/0001'), ...] == [(<Severidad....8/0001'), ...]
+      
+      At index 1 diff: (<Severidad.CONFLICTO: 'conflicto'>, 'RS26.09/0002') != (<Severidad.CONFLICTO: 'conflicto'>, 'RS26.09/0004')
+      Use -v to get more diff
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:1316: AssertionError: assert [(<Severidad....8/0001'), ...] == [(<Severidad....8/0001'), ...]
+E   TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_dominio.py:1449: TypeError: Hallazgo.__init__() got an unexpected keyword argument 'guardado_cod'
+=========================== short test summary info ===========================
+FAILED tests/test_f065_dominio.py::test_f065_r12_volcada_no_encontrada - Type...
+FAILED tests/test_f065_dominio.py::test_f065_r12_codigo_distinto - TypeError:...
+FAILED tests/test_f065_dominio.py::test_f065_r12_anulada_y_con_otro_codigo_da_los_dos_avisos
+FAILED tests/test_f065_dominio.py::test_f065_r12_r13_bis_volcada_con_varias_y_el_guardado_entre_ellas_sin_codigo_distinto
+FAILED tests/test_f065_dominio.py::test_f065_r12_r13_bis_volcada_con_varias_y_el_guardado_fuera_da_codigo_distinto
+FAILED tests/test_f065_dominio.py::test_f065_r12_r20_los_codigos_de_cada_hallazgo_segun_la_tabla
+FAILED tests/test_f065_dominio.py::test_f065_r12_r20_las_invariantes_de_los_codigos
+FAILED tests/test_f065_dominio.py::test_f065_r21_hallazgos_por_severidad_tipo_incidencia_y_codigo
+FAILED tests/test_f065_dominio.py::test_f065_r21_los_coincide_por_fecha_y_no_por_codigo
+FAILED tests/test_f065_dominio.py::test_f065_r21_los_coincide_de_una_incidencia_en_el_orden_de_r18_con_el_tope
+FAILED tests/test_f065_dominio.py::test_f065_e13_volcada_no_encontrada - Type...
+11 failed, 133 passed in 4.59s
+```
+
+(En la traza, el identificador de la incidencia se ha escrito `UUID(int=1)`: el
+literal de 36 caracteres lo rechaza la guarda de F-006, R26.)
+
+Lo que falla y por qué: `guardado_cod` no existe (puntos 1 y 2), el
+`codigo_distinto` con el guardado entre las suyas (2) y el orden por código
+(5). **En verde ya en la RED, y es lo esperado**: los dos tests de la
+anulación (3: T4 ya miraba solo la mayor; su prueba es que matan M12, abajo)
+y el de R13 (4: T4 ya lo hacía así; completa lo que faltaba por fijar).
+
+**En verde** (sobre `d3f94c8`), el mismo comando: **145 passed in 4.53 s**.
+
+### Tests (T4 bis)
+
+| Qué | Resultado |
+|---|---|
+| `pytest tests/test_f065_dominio.py` | **145 passed in 4.53 s** (el de coste, 3,50 s) |
+| `pytest tests/test_f065_dominio.py tests/test_f006_arquitectura.py tests/test_f006_repo_sin_identificadores.py` | **210 passed in 33.58 s** |
+| `ruff check` del módulo y del test (desde la raíz del worktree) | **All checks passed!** |
+| Importadores de `sigrid_bandeja` (`grep -rln` en `services/`, `harness/`, `tests/`) | solo el módulo y su test |
+| `bash harness/init.sh` | **No ejecutado** por encargo: lo lanza el líder |
+
+- **Nuevos (8):** `r12_r13_bis_volcada_con_varias_y_el_guardado_fuera_da_codigo_distinto`,
+  `r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid`,
+  `r12_r13_bis_la_mayor_anulada_da_anulada_en_sigrid`,
+  `r13_enmienda_ninguna_de_las_suyas_coincide_con_ella_y_todas_con_las_demas`,
+  `r12_r20_los_codigos_de_cada_hallazgo_segun_la_tabla`,
+  `r12_r20_las_invariantes_de_los_codigos`,
+  `r21_los_coincide_de_una_incidencia_en_el_orden_de_r18_con_el_tope` y
+  `r14_los_dos_con_oficio_vacio_no_casan` (`d3f94c8`).
+- **Cambiados y renombrados (2):** `r13_bis_varias_de_una_volcada_y_el_codigo_contra_la_mayor`
+  → `r12_r13_bis_volcada_con_varias_y_el_guardado_entre_ellas_sin_codigo_distinto`;
+  `r21_dentro_del_tope_el_orden_es_por_codigo` → `r21_los_coincide_por_fecha_y_no_por_codigo`.
+- **Cambiados (5):** `r12_volcada_no_encontrada`, `e13_volcada_no_encontrada`,
+  `r12_codigo_distinto`, `r12_anulada_y_con_otro_codigo_da_los_dos_avisos`,
+  `r21_hallazgos_por_severidad_tipo_incidencia_y_codigo`.
+
+### Mutación (T4 bis)
+
+**Herramienta (C-A2-2).** `progress/mutacion_F-065_bloqueA2.md`, regenerado
+**sobre `d3f94c8`** con `git status --porcelain` vacío antes de empezar
+(23:11:37) y la rama sin moverse durante la campaña. Misma suite reducida que
+en T4, con su nota en la cabecera (la review la acepta):
+`harness.mutacion.main` con un `EjecutorPytest` que lanza solo
+`tests/test_f065_dominio.py`, `--base 16453b5 --workers 1 --timeout 300`. El
+alcance ahora cuadra con lo medido: **570 líneas** = `wc -l` del módulo en
+`d3f94c8` (el fichero entero, nuevo desde `16453b5`).
+
+| Generados | Muertos | Supervivientes | Timeouts | Tiempo | Workers |
+|---|---|---|---|---|---|
+| **50** | **50** | **0** | 0 | **178,7 s** | 1 |
+
+Un primer intento a las 23:11 falló **antes de mutar nada**: el envoltorio
+pasaba la ruta del intérprete relativa y `subprocess` no la encontraba desde
+`services/postventa-api` (`FileNotFoundError` en la ejecución de referencia).
+`git status` siguió limpio y se relanzó con la ruta absoluta.
+
+**A mano** (lo que la herramienta no muta): M1–M18 de la review, reescritos
+sobre el código de T4 bis (M8 en dos variantes), y M19–M26 por los cambios 1,
+2 y 5. Cada uno contra `tests/test_f065_dominio.py` entero, sin `-x`, en un
+`git worktree` desechable del scratchpad sobre `d3f94c8` (ya borrado), con
+`PYTHONDONTWRITEBYTECODE=1`:
+
+| Id | Mutación | Resultado | Lo caza |
+|---|---|---|---|
+| M1 | R13: sin `if r.cod in propias: continue` | muerto (4) | `r13_la_emparejada_no_coincide…`, `r13_bis_varias_emparejadas…`, `r13_enmienda_…`, `e7` |
+| M2 | R10: la referencia sin `rstrip()` | muerto (1) | `r10_referencia_con_blancos_al_final` |
+| M3 | lectura 3: `propias` solo con la mayor | muerto (2) | `r13_bis_varias_emparejadas…`, `r13_enmienda_…` |
+| M4 | R15: sin el atajo de la clave igual | muerto (1) | `r15_la_misma_clave_con_una_sola_palabra_casa` |
+| M5 | `_texto` con `plegar` | muerto (1) | `r15_la_misma_clave_con_una_sola_palabra_casa` |
+| M6 | `None` no cuenta como desconocido | muerto (2) | `r17_estado_desconocido…[None]`, `r17_los_desconocidos…` |
+| M7 | sin la guarda «la bandeja sin palabras» | muerto (2) | `r15_descripcion_vacia_o_sin_palabras…` (2) |
+| M8 | `if oficio == r.oficio_codigo` (sin oficio casa con sin oficio; la de la review) | muerto (2) | `r14_los_dos_sin_oficio_no_casan`, `r14_los_dos_con_oficio_vacio_no_casan` |
+| M8b | `if oficio is not None and …` (el `""` de la bandeja cuenta) | muerto (1) | `r14_los_dos_con_oficio_vacio_no_casan` (**sobrevivía** antes de `d3f94c8`) |
+| M9 | la ubicación vacía casa | muerto (3) | `r14_ubicacion_vacia_o_ausente…` (3) |
+| M10 | `varias` además da `ya_en_sigrid` | muerto (4) | `r13_bis_varias…`, `r13_bis_dos_bastan…`, `r13_enmienda_…`, `r12_r20_…segun_la_tabla` |
+| M11 | los demás tipos por código descendente | muerto (1) | `r21_hallazgos_por_severidad…` |
+| **M12** | **`if any(r.estado == EstadoSigrid.NPR for r in suyas):`** | **muerto (1)** | **`r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid`** |
+| M13 | `referencia_desconocida` solo si hay UUID | muerto (5) | `r10_pvi_sin_uuid…`, los 2 `r12_r20_…`, `r21_hallazgos…`, `e8` |
+| M14 | `codigo_distinto` contra la menor | muerto (1) | `r12_r13_bis_…_guardado_fuera_da_codigo_distinto` |
+| M15 | `ya_en_sigrid` solo para las evaluables | muerto (1) | `r11_emparejada_y_no_volcada…[descartada]` |
+| M16 | se empareja con la menor | muerto (7) | los 4 `r12_r13_bis_…`, `r13_bis_varias…`, `r13_enmienda_…`, `r12_r20_…segun_la_tabla` |
+| M17 | R18 sin «conflicto primero» | muerto (1) | `r18_primero_los_conflictos` |
+| M18 | el tope sobre la lista sin ordenar | muerto (7) | 4 de R18 y los 3 de R21 con `coincide` |
+| M19 | 1: `volcada_no_encontrada` sin `guardado_cod` | muerto (4) | `r12_volcada_no_encontrada`, `e13`, los 2 `r12_r20_…` |
+| M20 | 1: `codigo_distinto` sin `guardado_cod` | muerto (5) | `r12_codigo_distinto`, `r12_anulada_y_con_otro…`, `…_guardado_fuera…`, los 2 `r12_r20_…` |
+| M21 | 1: `volcada_no_encontrada` con el guardado en `sigrid_cod` (como T4) | muerto (5) | `r12_volcada_no_encontrada`, `e13`, los 2 `r12_r20_…`, `r21_hallazgos…` |
+| M22 | 1: `codigo_distinto` con el guardado también en `sigrid_cods` (como T4) | muerto (5) | los mismos que M20 |
+| M23 | 2: `codigo_distinto` con el guardado entre las suyas (`mayor.cod != guardado`, como T4) | muerto (1) | `r12_r13_bis_…_guardado_entre_ellas_sin_codigo_distinto` |
+| M24 | 2: `all` → `any` | muerto (3) | `…_guardado_entre_ellas…` y los 2 de la anulación |
+| M25 | 5: los `coincide` otra vez por código (como T4) | muerto (3) | los 3 de R21 con `coincide` |
+| M26 | 5: los `coincide` en el orden inverso de R18 (`-puesto`) | muerto (3) | los 3 de R21 con `coincide` |
+
+**27 a mano, 27 muertos, 0 supervivientes.** En la primera pasada (sobre
+`c99a0d3`) M8b sobrevivía —su test entró en `d3f94c8`— y M17 daba un error de
+sintaxis (`(*x)` sin coma), no un mutante válido: corregido a `(*x,)`. La
+tabla es la segunda pasada, sobre `d3f94c8`. Todos los cazan tests **de la
+propia feature** (nadie más importa el módulo).
+
+**La traza de M12 muerto** (C-A2-1), en la copia desechable sobre `d3f94c8`,
+con `sigrid_bandeja.py` l. 451 cambiada a
+`if any(r.estado == EstadoSigrid.NPR for r in suyas):`, desde
+`services/postventa-api`:
+
+```
+$ python -m pytest tests/test_f065_dominio.py -q --tb=short -p no:cacheprovider
+........................................................F............... [ 49%]
+........................................................................ [ 99%]
+.                                                                        [100%]
+================================== FAILURES ===================================
+_______ test_f065_r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid ________
+tests\test_f065_dominio.py:699: in test_f065_r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid
+    assert cruce.hallazgos == (_varias(1, "RS26.10/0081", "RS26.10/0082"),)
+E   AssertionError: assert (Hallazgo(tip...ado_cod=None)) == (Hallazgo(tip...do_cod=None),)
+E     
+E     Left contains one more item: Hallazgo(tipo=<TipoHallazgo.ANULADA_EN_SIGRID: 'anulada_en_sigrid'>, severidad=<Severidad.AVISO: 'aviso'>, incidencia_...00-0000-0000-000000000001'), sigrid_cod='RS26.10/0082', sigrid_cods=(), criterios=(), parecido=None, guardado_cod=None)
+E     Use -v to get more diff
+=========================== short test summary info ===========================
+FAILED tests/test_f065_dominio.py::test_f065_r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid
+1 failed, 144 passed in 5.78s
+```
+
+(Sobre el árbol de la review, `44c3163`, el mismo mutante daba `137 passed`.)
+
+### Cobertura (T4 bis)
+
+`coverage run --branch -m pytest tests/test_f065_dominio.py` y
+`coverage report --include=domain/models/sigrid_bandeja.py` (sobre `c99a0d3`;
+`d3f94c8` solo añade un test): **234 sentencias, 0 sin cubrir; 66 ramas, 0
+parciales: 100 %**. Todo el fichero es nuevo desde la base del tramo, así que
+es la cobertura de lo cambiado. La `PUERTA COBERTURA` de `init.sh`, del líder.
+
+### Pendiente (T4 bis)
+
+- `bash harness/init.sh` entero (el líder) y la **review del Bloque A2**
+  otra vez, sobre T4 bis (`tasks.md`: «Parar»).
+- La mutación con el comando oficial (suite entera), si la quieren con la
+  máquina libre.
+- Lo que T4 bis deja en cascada, de otros bloques y sin tocar aquí: T7
+  serializa `guardado_cod` (R20, `null` donde no toca); T13/T14, la `choca`
+  por `NPR` (enmienda a S-3); F-064 (otro worktree) recoge `guardado_cod`, el
+  `sigrid_cod` `null` en `volcada_no_encontrada` y los `coincide` ya en el
+  orden de R18.
+- Sin verificaciones MANUAL en este bloque.
+
+### Evidencias (T4 bis)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | **145 passed** (dominio de F-065) en 4,53 s; **210 passed** con las guardas de F-006 en 33,58 s. Suite entera del servicio: no ejecutada (la lanza el líder con `init.sh`) |
+| Cobertura de las líneas cambiadas | **100 %** (234/234 sentencias, 66/66 ramas) del módulo, medida con `coverage`; la puerta de `init.sh`, pendiente del líder |
+| Mutantes | Herramienta: **50 generados, 50 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 178,7 s, sobre `d3f94c8` con el árbol limpio (suite reducida). A mano: **27, 27 muertos, 0 supervivientes** (M12, muerto) |
+| Tiempo de la suite | 4,53 s la de F-065 (el test de coste, 3,50 s) |

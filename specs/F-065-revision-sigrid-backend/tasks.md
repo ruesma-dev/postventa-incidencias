@@ -103,7 +103,7 @@
 - [x] **T4**: `domain/models/sigrid_bandeja.py` (`design.md` §10.1), sin tocar
   `revision.py`, `normalizacion.py`, `plantilla_incidencias.py` ni
   `volcado.py`. | Verificación: `python -m pytest tests/test_f065_dominio.py` en verde
-- [ ] **T4 bis** *(nuevo, 2026-10-28: la corrección del Bloque A2 tras su
+- [x] **T4 bis** *(nuevo, 2026-10-28: la corrección del Bloque A2 tras su
   review, con las decisiones del humano sobre las lecturas 1–4 y 9 y los
   cambios C-A2-1 y C-A2-2 de `progress/review_F-065.md`)*. Primero los tests
   en `tests/test_f065_dominio.py`, en **rojo** contra el dominio de T4 (traza

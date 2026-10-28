@@ -528,12 +528,16 @@ def test_f065_r12_volcada_y_encontrada_sin_hallazgo() -> None:
 
 def test_f065_r12_volcada_no_encontrada() -> None:
     # E13.
+    # Enmienda del 2026-10-28 (R12, R20): sin reclamación, `sigrid_cod` es
+    # `None` y el código que guarda la base viaja en `guardado_cod`.
     cruce = cruzar(
         [sit(1, "volcada", volcada_como="RS26.10/0090")],
         [rec("RS26.10/0091", unidad=U2)],
     )
     assert cruce.hallazgos == (
-        Hallazgo(T.VOLCADA_NO_ENCONTRADA, S.AVISO, UUID(int=1), "RS26.10/0090"),
+        Hallazgo(
+            T.VOLCADA_NO_ENCONTRADA, S.AVISO, UUID(int=1), None, guardado_cod="RS26.10/0090"
+        ),
     )
 
 
@@ -548,7 +552,7 @@ def test_f065_r12_codigo_distinto() -> None:
             S.AVISO,
             UUID(int=1),
             "RS26.10/0075",
-            sigrid_cods=("RS26.10/0074",),
+            guardado_cod="RS26.10/0074",
         ),
     )
 
@@ -574,7 +578,7 @@ def test_f065_r12_anulada_y_con_otro_codigo_da_los_dos_avisos() -> None:
             S.AVISO,
             UUID(int=1),
             "RS26.10/0075",
-            sigrid_cods=("RS26.10/0074",),
+            guardado_cod="RS26.10/0074",
         ),
         Hallazgo(T.ANULADA_EN_SIGRID, S.AVISO, UUID(int=1), "RS26.10/0075"),
     )
@@ -637,7 +641,19 @@ def test_f065_r13_bis_dos_bastan_para_varias() -> None:
     assert [h.tipo for h in cruce.hallazgos] == [T.VARIAS_EN_SIGRID]
 
 
-def test_f065_r13_bis_varias_de_una_volcada_y_el_codigo_contra_la_mayor() -> None:
+def _varias(n: int, *cods: str) -> Hallazgo:
+    return Hallazgo(
+        T.VARIAS_EN_SIGRID,
+        S.CONFLICTO,
+        UUID(int=n),
+        max(cods),
+        sigrid_cods=tuple(sorted(cods, reverse=True)),
+    )
+
+
+def test_f065_r12_r13_bis_volcada_con_varias_y_el_guardado_entre_ellas_sin_codigo_distinto() -> None:
+    """Enmienda del 2026-10-28 a R12 (lectura 2): el guardado está entre las
+    suyas, así que el duplicado lo enseña `varias_en_sigrid` y nada más."""
     cruce = cruzar(
         [sit(1, "volcada", volcada_como="RS26.10/0081")],
         [
@@ -645,22 +661,144 @@ def test_f065_r13_bis_varias_de_una_volcada_y_el_codigo_contra_la_mayor() -> Non
             rec("RS26.10/0082", referencia=pvi(1)),
         ],
     )
+    assert cruce.hallazgos == (_varias(1, "RS26.10/0081", "RS26.10/0082"),)
+
+
+def test_f065_r12_r13_bis_volcada_con_varias_y_el_guardado_fuera_da_codigo_distinto() -> None:
+    """Enmienda del 2026-10-28 a R12: el guardado no está entre las suyas; la
+    emparejada (la mayor) en `sigrid_cod` y el guardado en `guardado_cod`."""
+    cruce = cruzar(
+        [sit(1, "volcada", volcada_como="RS26.10/0080")],
+        [
+            rec("RS26.10/0081", referencia=pvi(1)),
+            rec("RS26.10/0082", referencia=pvi(1)),
+        ],
+    )
     assert cruce.hallazgos == (
-        Hallazgo(
-            T.VARIAS_EN_SIGRID,
-            S.CONFLICTO,
-            UUID(int=1),
-            "RS26.10/0082",
-            sigrid_cods=("RS26.10/0082", "RS26.10/0081"),
-        ),
+        _varias(1, "RS26.10/0081", "RS26.10/0082"),
         Hallazgo(
             T.CODIGO_DISTINTO,
             S.AVISO,
             UUID(int=1),
             "RS26.10/0082",
-            sigrid_cods=("RS26.10/0081",),
+            guardado_cod="RS26.10/0080",
         ),
     )
+
+
+def test_f065_r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid() -> None:
+    """Enmienda del 2026-10-28 a R12 (C-A2-1): `anulada_en_sigrid` mira solo
+    la emparejada, la de código mayor; que la menor esté en `NPR`, no."""
+    cruce = cruzar(
+        [sit(1, "volcada", volcada_como="RS26.10/0082")],
+        [
+            rec("RS26.10/0081", "NPR", referencia=pvi(1)),
+            rec("RS26.10/0082", "SAT", referencia=pvi(1)),
+        ],
+    )
+    assert cruce.hallazgos == (_varias(1, "RS26.10/0081", "RS26.10/0082"),)
+
+
+def test_f065_r12_r13_bis_la_mayor_anulada_da_anulada_en_sigrid() -> None:
+    """El simétrico de C-A2-1: la emparejada (la mayor) en `NPR`."""
+    cruce = cruzar(
+        [sit(1, "volcada", volcada_como="RS26.10/0082")],
+        [
+            rec("RS26.10/0081", "SAT", referencia=pvi(1)),
+            rec("RS26.10/0082", "NPR", referencia=pvi(1)),
+        ],
+    )
+    assert cruce.hallazgos == (
+        _varias(1, "RS26.10/0081", "RS26.10/0082"),
+        Hallazgo(T.ANULADA_EN_SIGRID, S.AVISO, UUID(int=1), "RS26.10/0082"),
+    )
+
+
+def test_f065_r13_enmienda_ninguna_de_las_suyas_coincide_con_ella_y_todas_con_las_demas() -> None:
+    """Enmienda del 2026-10-28 a R13 (lectura 3): con varias, **ninguna** de
+    las que llevan la referencia de X se cruza con X —tampoco las menores—, y
+    frente a otra incidencia entran todas. (El orden lo fija R21, aparte.)"""
+    cruce = cruzar(
+        [sit(1, "en_duda"), sit(2)],
+        [
+            rec("RS26.10/0081", referencia=pvi(1), descripcion=GOTEA),
+            rec("RS26.10/0083", referencia=pvi(1), descripcion=GOTEA),
+            rec("RS26.10/0082", referencia=pvi(1), descripcion=GOTEA),
+        ],
+    )
+    ambos = (OU, DP)
+    assert set(de_tipo(cruce, T.COINCIDE)) == {
+        coincide(2, "RS26.10/0081", criterios=ambos, valor=100),
+        coincide(2, "RS26.10/0082", criterios=ambos, valor=100),
+        coincide(2, "RS26.10/0083", criterios=ambos, valor=100),
+    }
+    assert de_tipo(cruce, T.VARIAS_EN_SIGRID) == [
+        _varias(1, "RS26.10/0081", "RS26.10/0082", "RS26.10/0083")
+    ]
+    assert len(cruce.hallazgos) == 4
+    assert cruce.coincidencias_total == {UUID(int=2): 3}
+
+
+#: Los siete tipos, cada uno en una incidencia y en una unidad que no se
+#: cruzan con las demás (`VILLA 07` no tiene reclamaciones).
+U3 = "VILLA 07"
+
+
+def _los_siete_tipos() -> Cruce:
+    return cruzar(
+        [
+            sit(2),
+            sit(3, "en_duda", unidad=U3),
+            sit(4, "descartada", unidad=U3),
+            sit(5, "volcada", volcada_como="RS26.10/0090"),
+            sit(6, "volcada", volcada_como="RS26.10/0074"),
+            sit(7, "volcada", volcada_como="RS26.10/0076"),
+        ],
+        [
+            rec("RS26.09/0123", "PTE"),
+            rec("RS26.10/0080", referencia=pvi(3), unidad=U2),
+            rec("RS26.10/0081", referencia=pvi(4), unidad=U2),
+            rec("RS26.10/0082", referencia=pvi(4), unidad=U2),
+            rec("RS26.10/0075", referencia=pvi(6), unidad=U2),
+            rec("RS26.10/0076", "NPR", referencia=pvi(7), unidad=U2),
+            rec("RS26.09/0439", referencia="PVI-PRUEBA-0001", unidad=U2),
+        ],
+    )
+
+
+def test_f065_r12_r20_los_codigos_de_cada_hallazgo_segun_la_tabla() -> None:
+    """`design.md` §10.1, «Los códigos de cada hallazgo» (enmienda del
+    2026-10-28, contrato con F-064): `sigrid_cod`, `sigrid_cods` y
+    `guardado_cod` de los siete tipos."""
+    cruce = _los_siete_tipos()
+    assert cruce.hallazgos == (
+        coincide(2, "RS26.09/0123"),
+        Hallazgo(T.YA_EN_SIGRID, S.CONFLICTO, UUID(int=3), "RS26.10/0080"),
+        _varias(4, "RS26.10/0081", "RS26.10/0082"),
+        Hallazgo(
+            T.VOLCADA_NO_ENCONTRADA, S.AVISO, UUID(int=5), None, guardado_cod="RS26.10/0090"
+        ),
+        Hallazgo(
+            T.CODIGO_DISTINTO, S.AVISO, UUID(int=6), "RS26.10/0075", guardado_cod="RS26.10/0074"
+        ),
+        Hallazgo(T.ANULADA_EN_SIGRID, S.AVISO, UUID(int=7), "RS26.10/0076"),
+        Hallazgo(T.REFERENCIA_DESCONOCIDA, S.AVISO, None, "RS26.09/0439"),
+    )
+
+
+def test_f065_r12_r20_las_invariantes_de_los_codigos() -> None:
+    """`sigrid_cod` no nulo siempre está en `Cruce.reclamaciones`; `sigrid_cods`
+    son códigos de Sigrid y solo no están vacíos en `varias_en_sigrid`;
+    `guardado_cod`, solo en `volcada_no_encontrada` y `codigo_distinto`."""
+    cruce = _los_siete_tipos()
+    assert {h.tipo for h in cruce.hallazgos} == set(TipoHallazgo)
+    de_sigrid = {r.cod for r, _ in cruce.reclamaciones}
+    con_guardado = {T.VOLCADA_NO_ENCONTRADA, T.CODIGO_DISTINTO}
+    for h in cruce.hallazgos:
+        assert h.sigrid_cod is None or h.sigrid_cod in de_sigrid, h
+        assert set(h.sigrid_cods) <= de_sigrid, h
+        assert bool(h.sigrid_cods) is (h.tipo is T.VARIAS_EN_SIGRID), h
+        assert (h.guardado_cod is not None) is (h.tipo in con_guardado), h
 
 
 # --------------------------------------------------------------------------
@@ -1094,6 +1232,10 @@ def test_f065_r21_reclamaciones_por_fecha_y_codigo_descendentes_nulas_al_final()
 
 
 def test_f065_r21_hallazgos_por_severidad_tipo_incidencia_y_codigo() -> None:
+    """Enmienda del 2026-10-28 a R21 (lectura 9): los `coincide` de cada
+    incidencia, en el orden de R18 (aquí, a igual fecha, código descendente);
+    los demás tipos, por `sigrid_cod` ascendente; `incidencia_id` ascendente
+    con `None` delante."""
     situaciones = [
         sit(3),
         sit(1),
@@ -1110,35 +1252,81 @@ def test_f065_r21_hallazgos_por_severidad_tipo_incidencia_y_codigo() -> None:
     ]
     cruce = cruzar(situaciones, reclamaciones)
     assert [(h.severidad, h.tipo, h.incidencia_id, h.sigrid_cod) for h in cruce.hallazgos] == [
-        (S.CONFLICTO, T.COINCIDE, UUID(int=1), "RS26.09/0100"),
         (S.CONFLICTO, T.COINCIDE, UUID(int=1), "RS26.09/0200"),
-        (S.CONFLICTO, T.COINCIDE, UUID(int=2), "RS26.09/0100"),
+        (S.CONFLICTO, T.COINCIDE, UUID(int=1), "RS26.09/0100"),
         (S.CONFLICTO, T.COINCIDE, UUID(int=2), "RS26.09/0200"),
-        (S.CONFLICTO, T.COINCIDE, UUID(int=3), "RS26.09/0100"),
+        (S.CONFLICTO, T.COINCIDE, UUID(int=2), "RS26.09/0100"),
         (S.CONFLICTO, T.COINCIDE, UUID(int=3), "RS26.09/0200"),
+        (S.CONFLICTO, T.COINCIDE, UUID(int=3), "RS26.09/0100"),
         (S.CONFLICTO, T.YA_EN_SIGRID, UUID(int=2), "RS26.10/0080"),
         (S.AVISO, T.COINCIDE, UUID(int=1), "RS26.09/0300"),
         (S.AVISO, T.COINCIDE, UUID(int=2), "RS26.09/0300"),
         (S.AVISO, T.COINCIDE, UUID(int=3), "RS26.09/0300"),
-        (S.AVISO, T.VOLCADA_NO_ENCONTRADA, UUID(int=4), "RS26.10/0090"),
+        (S.AVISO, T.VOLCADA_NO_ENCONTRADA, UUID(int=4), None),
         (S.AVISO, T.REFERENCIA_DESCONOCIDA, None, "RS26.09/0998"),
         (S.AVISO, T.REFERENCIA_DESCONOCIDA, None, "RS26.09/0999"),
     ]
 
 
-def test_f065_r21_dentro_del_tope_el_orden_es_por_codigo() -> None:
-    # El tope elige por fecha (R18); la lista sale por código (R21).
+def test_f065_r21_los_coincide_por_fecha_y_no_por_codigo() -> None:
+    """Enmienda del 2026-10-28 a R21 (lectura 9): la lista sale en el orden de
+    R18 (fecha descendente), no por código ascendente."""
     reclamaciones = [
-        rec("RS26.09/0003", "SAT", fecha=date(2026, 1, 1)),
-        rec("RS26.09/0001", "SAT", fecha=date(2026, 3, 1)),
+        rec("RS26.09/0001", "SAT", fecha=date(2026, 1, 1)),
+        rec("RS26.09/0003", "SAT", fecha=date(2026, 3, 1)),
         rec("RS26.09/0002", "SAT", fecha=date(2026, 2, 1)),
     ]
     cruce = cruzar([sit(1)], reclamaciones)
     assert [h.sigrid_cod for h in cruce.hallazgos] == [
-        "RS26.09/0001",
-        "RS26.09/0002",
         "RS26.09/0003",
+        "RS26.09/0002",
+        "RS26.09/0001",
     ]
+
+
+def test_f065_r21_los_coincide_de_una_incidencia_en_el_orden_de_r18_con_el_tope() -> None:
+    """Enmienda del 2026-10-28 a R21 (lectura 9; `design.md` §10.1, «El orden
+    de `Cruce.hallazgos`»): filtrar `hallazgos` por `incidencia_id` y
+    `coincide` da el orden de R18 —conflicto primero, fecha descendente, sin
+    fecha al final, a igual fecha código descendente— y los mismos 10 que elige
+    el tope. Las fechas **no** siguen el orden de los códigos: el de código
+    menor es el más reciente."""
+    reclamaciones = [
+        # Conflictos.
+        rec("RS26.09/0001", "SAT", fecha=date(2026, 9, 20)),
+        rec("RS26.09/0005", "PTE", fecha=date(2026, 9, 1)),
+        rec("RS26.09/0003", "SAT", fecha=None),
+        rec("RS26.09/0002", "SAT", fecha=date(2026, 9, 10)),
+        rec("RS26.09/0004", "PTE", fecha=date(2026, 9, 10)),
+        # Avisos.
+        rec("RS26.08/0001", "CER", fecha=date(2026, 8, 30)),
+        rec("RS26.08/0009", "TER", fecha=date(2026, 8, 1)),
+        rec("RS26.08/0005", "CER", fecha=None),
+        rec("RS26.08/0003", "TER", fecha=date(2026, 8, 15)),
+        rec("RS26.08/0007", "CER", fecha=date(2026, 8, 15)),
+        rec("RS26.08/0008", "CER", fecha=date(2026, 7, 1)),
+        rec("RS26.08/0002", "TER", fecha=None),
+    ]
+    cruce = cruzar([sit(1)], reclamaciones)
+    de_la_1 = [
+        (h.severidad, h.sigrid_cod)
+        for h in cruce.hallazgos
+        if h.incidencia_id == UUID(int=1) and h.tipo is T.COINCIDE
+    ]
+    assert de_la_1 == [
+        (S.CONFLICTO, "RS26.09/0001"),
+        (S.CONFLICTO, "RS26.09/0004"),
+        (S.CONFLICTO, "RS26.09/0002"),
+        (S.CONFLICTO, "RS26.09/0005"),
+        (S.CONFLICTO, "RS26.09/0003"),
+        (S.AVISO, "RS26.08/0001"),
+        (S.AVISO, "RS26.08/0007"),
+        (S.AVISO, "RS26.08/0003"),
+        (S.AVISO, "RS26.08/0009"),
+        (S.AVISO, "RS26.08/0008"),
+    ]
+    # Fuera, las dos sin fecha de los avisos (las últimas de R18).
+    assert cruce.coincidencias_total == {UUID(int=1): 12}
 
 
 def test_f065_r21_tipos_en_el_orden_del_enumerado() -> None:
@@ -1258,7 +1446,9 @@ def test_f065_e12_descartada_nada() -> None:
 def test_f065_e13_volcada_no_encontrada() -> None:
     cruce = cruzar([sit(1, "volcada", volcada_como="RS26.10/0090")], [])
     assert cruce.hallazgos == (
-        Hallazgo(T.VOLCADA_NO_ENCONTRADA, S.AVISO, UUID(int=1), "RS26.10/0090"),
+        Hallazgo(
+            T.VOLCADA_NO_ENCONTRADA, S.AVISO, UUID(int=1), None, guardado_cod="RS26.10/0090"
+        ),
     )
     assert cruce.reclamaciones == ()
 

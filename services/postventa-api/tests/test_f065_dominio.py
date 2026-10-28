@@ -848,6 +848,13 @@ def test_f065_r14_reclamacion_con_oficio_vacio_no_casa_con_una_sin_oficio() -> N
     assert cruce.hallazgos == ()
 
 
+def test_f065_r14_los_dos_con_oficio_vacio_no_casan() -> None:
+    """Lectura 7 de T4: el oficio `""` es «sin oficio» también en la bandeja
+    (lo pedía el mutante a mano M8b de T4 bis, que sobrevivía)."""
+    cruce = cruzar([sit(1, oficio="")], [rec("RS26.09/0123", oficio="")])
+    assert cruce.hallazgos == ()
+
+
 @pytest.mark.parametrize(
     ("bandeja", "sigrid"),
     [(None, None), ("", ""), ("   ", "  "), (None, "Cocina"), ("Cocina", None), ("", "Cocina")],

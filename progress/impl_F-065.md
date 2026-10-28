@@ -538,3 +538,31 @@ worktree limpio salvo los cambios de este encargo.
 | Mutación (herramienta) | 0: no hay líneas `.py` de producción en alcance |
 | Mutación a mano (`.ps1`) | **5 generados, 5 muertos, 0 supervivientes** (R08, R09, RC1, RC2, RC3), ≈ 175 s en serie |
 | Tiempo | 26.50 s los tests de F-065; 35.62 s los barridos |
+
+## T-A0 y T-A0 bis · resultado del humano (2026-10-28, lo anota el líder)
+
+Lanzado por el humano desde su puesto, solo lectura, con el script 29 de `f715576`. Solo recuentos, bytes y segundos.
+
+| Medición | Filas | `truncated` | Bytes (todos / R33) | Segundos (3 ejecuciones) |
+|---|---|---|---|---|
+| 0626 entera | 7 | no | 1.776 / 739 | 1,21 (una) |
+| 0677 entera | 1.345 | no | 493.218 / 260.168 | 0,83 · 0,62 · 0,77 |
+| Guarda 0677, 5 unidades | 0 | no | 2 | 0,49 · 0,10 · 0,12 y 0,14 · 0,10 · 0,13 |
+
+- La pasarela acepta la consulta de §3 (con el `OUTER APPLY`), 31 columnas; la guarda de §15.5, 12 columnas.
+- 0677: 10 unidades con reclamaciones (mínimo 2, mediana 159, máximo 261); PTE 309, SAT 23, TER 135, CER 719,
+  NPR 159; todas con menos de 6 meses; sin oficio 8, sin ubicación 2, con `PVI-` 0. Ruido de R14: 272 grupos con
+  857 reclamaciones. Pares de la misma unidad: 132.347; con parecido ≥ 40: 1.254, ≥ 50: 874, ≥ 60: 465.
+- `con.fec` igual a `rcp.fec` en las 1.345 (y en las 7 de la 0626).
+- **Fallo del guion del líder**: con `powershell -File`, la lista `-CincoUnidades` llegó como un solo texto con
+  comas, así que las tres ejecuciones «de 1 unidad» pidieron también las 5. Y las 5 unidades tecleadas
+  (`VILLA 15`…`VILLA 11`) no casan con el código de Sigrid: 0 filas. La guarda se ha medido, pues, sin filas.
+  Cota superior: la guarda lee un subconjunto de la consulta de la obra y sin R33, y la obra entera tarda < 1 s.
+
+### Decisiones del líder con estas cifras
+
+- **N-1**: sin lectura por trozos (0,6–0,8 s frente al umbral de ≈ 10 s; 493 KB).
+- **Fecha**: indiferente, `con.fec` = `rcp.fec` en todas; se queda la de la spec.
+- **N-2**: el umbral 50 se queda; las cifras no dan motivo para moverlo (874 de 132.347 pares, un 0,66 %).
+- **S-5**: la guarda por unidades se queda; muy por debajo de ≈ 3 s (cota: < 1 s la obra entera).
+- No se enmienda la spec. Pendiente, no bloqueante: medir la guarda con códigos de unidad reales de la 0677.

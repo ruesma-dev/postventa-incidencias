@@ -56,7 +56,7 @@
 
 **Parar. Review del Bloque A1.**
 
-- [ ] **T-A0 · MANUAL (humano)**, solo lectura, **antes del Bloque A2**:
+- [x] **T-A0 · MANUAL (humano)**, solo lectura, **antes del Bloque A2**:
   ```
   powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra 0677 -SigridBaseUrl <raíz de la pasarela> -SigridBaseDatos ruesma
   powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra 0626 -SigridBaseUrl <raíz de la pasarela> -SigridBaseDatos ruesma
@@ -71,7 +71,7 @@
   columna de fecha; si alguno cambia, se enmienda la spec **antes** del Bloque
   A2. |
   Verificación: MANUAL (humano)
-- [ ] **T-A0 bis · MANUAL (humano)** *(nuevo, 2026-10-28; espera a S-5)*,
+- [x] **T-A0 bis · MANUAL (humano)** *(nuevo, 2026-10-28; espera a S-5)*,
   solo lectura, junto con T-A0 y **antes del Bloque A4 bis** (R71): el coste
   de la guarda.
   ```

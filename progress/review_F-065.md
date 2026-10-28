@@ -297,3 +297,236 @@ lee `infra9_reclamaciones_obra_sigrid.ps1`, y `od -c` enseña `i n f r a 002 9 _
 No rompe nada (fallaría antes de leer), pero es justo el comando que el humano va a copiar: corrígelo a
 `infra\29_reclamaciones_obra_sigrid.ps1` y comprueba con `grep -c $'\x02' progress/current.md` que sale 0. Los
 comandos de `tasks.md` y de «Órdenes para el humano» en `progress/impl_F-065.md` están bien.
+
+## Review del Bloque A2 (T3, T4) · 2026-10-28
+
+- **Veredicto:** **CHANGES_REQUESTED** (RECHAZADO), por **un** hallazgo de tests (C-A2-1) y un arreglo del
+  informe de mutación que va con él (C-A2-2). El código del dominio no tiene ningún defecto que yo haya encontrado.
+- **Alcance revisado:** `git diff 16453b5..44c3163`: T3 `3282d8b`, T4 `96d9f54` y `718a633`, informe `44c3163`.
+  Solo `services/postventa-api/domain/models/sigrid_bandeja.py` (nuevo, 526 líneas) y
+  `services/postventa-api/tests/test_f065_dominio.py` (nuevo, 137 tests), más dos casillas de `tasks.md`.
+  Contrastado con R10–R19, R21 y R36, `design.md` §5 y §10.1, `docs/CONVENTIONS.md` y `CHECKPOINTS.md`. Nada del
+  Bloque A3 ni posterior.
+- **Nivel de rigor:** `critico`, declarado en `harness/features.json`. Exige: fase RED con la traza pegada,
+  cobertura ≥ 80 % de lo cambiado, campaña de mutación con **cero supervivientes** (también a mano) salvo
+  justificación escrita que acepte el humano, y la sección «Evidencias» con los workers.
+- **No me he conectado** a Sigrid, a la base ni a SharePoint. Las mutaciones las he hecho en dos `git worktree`
+  desechables del scratchpad (ya borrados); el árbol de trabajo no se ha tocado (`git status` limpio).
+
+El bloque está muy bien. El dominio es puro (solo biblioteca estándar y `domain.*`, lo fija un test por AST),
+fiel a §10.1, el cruce es de verdad por unidad, y los 137 tests nombran su requisito y recorren E1–E13 tal cual.
+Lo que falta es pequeño: un comportamiento que el implementer **declara** (lectura 2) y que ningún test fija.
+
+### `init.sh`
+
+`bash harness/init.sh`, tal cual, en el worktree sobre `44c3163`: **exit 0, «ENTORNO LISTO»**. Servicio api **9287 passed, 365 skipped in 3054,32 s** (50 min 54 s, con la máquina cargada por las campañas de otros repositorios); front en verde; raíz 115 passed; `PUERTA COBERTURA: 100.0% de 226 líneas cambiadas cubiertas (226/226, umbral 80%, nivel critico)`; ruff con 76 avisos de deuda previa, **ninguno** de los dos ficheros del bloque (`ruff check` de ambos: «All checks passed!»). Ningún test de tiempo falló, así que no he tenido que repetir ninguno. Los dos tests de F-006 que rompía el GUID literal (`test_f006_r26_…incrusta_un_identificador`) pasan: el arreglo de `718a633` queda verificado con la suite entera, que el implementer no había relanzado.
+
+### 1 · La campaña de mutación con la suite reducida
+
+**El argumento es cierto.** `grep -rn sigrid_bandeja` sobre todo el árbol (sin `.git` ni `.venv`): solo el
+módulo, su test y las specs/informes. Ningún otro módulo del servicio lo importa.
+
+**Y el resultado es fiable**, por una razón más fuerte que la del implementer: un mutante que **muere** con un
+subconjunto de la suite muere también con la suite entera (pytest sale con error si falla cualquier test, y
+`test_f065_dominio.py` está dentro de la suite completa). Con la suite entera, lo único que podría cambiar es que
+un mutante muerto saliera `timeout` por la carga; nunca que sobreviviera. Como aquí murieron los 50, la suite
+reducida no puede haber escondido ningún superviviente.
+
+**Lo he comprobado tres veces, de forma independiente:**
+
+| Comprobación | Resultado |
+|---|---|
+| Alcance recalculado (`harness.alcance.alcance_de_feature("F-065", base="16453b5")`) | 1 fichero, **526** líneas |
+| Mutantes recalculados (`generar_mutantes`, cálculo puro) | **50** (entero 14, comparación 12, lógico 10, booleano 7, `not` 4, aritmético 3) |
+| **Campaña reejecutada** con `harness.mutacion.main` y el mismo `EjecutorPytest` reducido, en una copia desechable de `44c3163`, salida en el scratchpad | **50 generados, 50 muertos, 0 supervivientes, 0 timeouts, 240,6 s**, 1 worker |
+| Coste por mutante (`tiempo × workers ÷ mutantes`) | 193,5 s → 3,9 s; el mío, 4,8 s; la suite reducida tarda 4–6 s con el arranque del intérprete. Cuadra |
+
+**Campaña oficial con la suite entera, no reejecutada**, y lo digo: a las 21:0x seguían vivas las campañas de
+`partes` (4 workers), `facturas` y `proformas` y las suites de `arnes-trabajo`, y la suite entera del servicio
+tarda > 120 s (el timeout por mutante) en estas condiciones: habría dado 50 `timeout`, que no verifican nada. Por
+el argumento de arriba, la reducida basta.
+
+**Una discrepancia en el informe** (C-A2-2): el informe dice 528 líneas en alcance y yo calculo 526. La
+explicación está en las horas: el informe se generó a las 20:59 y `718a633` es de las 21:00. La campaña corrió
+sobre el árbol **sin confirmar** (el módulo de 526 líneas, con los `NamedTuple`), mientras que el alcance lo
+calculó la herramienta sobre la rama **confirmada**, todavía `96d9f54` (528 líneas). Como el fichero es nuevo
+entero, el alcance cubre todas las líneas igual y los 50 mutantes son los mismos (mi reejecución sobre `44c3163`
+lo confirma), pero el informe certifica un commit que no midió. Ver la automejora.
+
+### 2 · Mutantes a mano (donde los operadores de la herramienta no llegan)
+
+La herramienta no borra sentencias ni cambia qué se compara con qué. He aplicado 18 a mano, cada uno contra
+`tests/test_f065_dominio.py` entero y sin `-x`, en la copia desechable:
+
+| Id | Mutación | Resultado | Lo caza (tests **de la propia feature**) |
+|---|---|---|---|
+| M1 | R13: sin `if r.cod in propias: continue` | muerto | `r13_la_emparejada_no_coincide…`, `r13_bis_varias…`, `e7` |
+| M2 | R10: la referencia sin `rstrip()` | muerto | `r10_referencia_con_blancos_al_final` |
+| M3 | lectura 3: `propias` solo con la mayor | muerto | `r13_bis_varias_emparejadas…` |
+| M4 | R15: sin el atajo de la clave igual | muerto | `r15_la_misma_clave_con_una_sola_palabra_casa` |
+| M5 | `_texto` con `plegar` en vez de `normalizar_para_clave` | muerto | `r15_la_misma_clave…` |
+| M6 | lectura 6: `None` no cuenta como desconocido | muerto | `r17_estado_desconocido…[None]`, `r17_los_desconocidos…` |
+| M7 | R15: sin la guarda «la bandeja no tiene palabras» | muerto | `r15_descripcion_vacia_o_sin_palabras…` (2 casos) |
+| M8 | lectura 7: el oficio vacío cuenta | muerto | `r14_los_dos_sin_oficio_no_casan` |
+| M9 | R14: la ubicación vacía casa | muerto | `r14_ubicacion_vacia_o_ausente…` (3 casos) |
+| M10 | lectura 2: `varias` además da `ya_en_sigrid` | muerto | `r13_bis_varias…`, `r13_bis_dos_bastan…` |
+| M11 | lectura 9: hallazgos por código descendente | muerto | `r21_hallazgos_por_severidad…`, `r21_dentro_del_tope…` |
+| **M12** | **lectura 2: `anulada_en_sigrid` si cualquiera de las suyas está en `NPR`, no solo la mayor** | **SOBREVIVE** | **ninguno** (137 passed) |
+| M13 | R10: `referencia_desconocida` solo si hay UUID | muerto | `r10_pvi_sin_uuid…`, `r21_hallazgos…`, `e8` |
+| M14 | `codigo_distinto` contra la menor | muerto | `r13_bis_varias_de_una_volcada…` |
+| M15 | lectura 4: `ya_en_sigrid` solo para las evaluables | muerto | `r11_emparejada_y_no_volcada…[descartada]` |
+| M16 | R13 bis: se empareja con la menor | muerto | `r13_bis_varias…` (2) |
+| M17 | R18: sin «conflicto primero» | muerto | `r18_primero_los_conflictos` |
+| M18 | R18: el tope sobre la lista sin ordenar | muerto | 4 tests de R18 |
+
+Todos los muertos los caza un test **de la propia feature** (el módulo no lo importa nadie más). **M12 sobrevive**:
+la lectura 2 dice que con una `volcada` con varias «las comprobaciones de R12 [van] contra la de código mayor»,
+pero el único test del caso (`test_f065_r13_bis_varias_de_una_volcada_y_el_codigo_contra_la_mayor`) fija el
+**código**, no la anulación. En `critico`, eso es C-A2-1.
+
+### 3 · Las diez lecturas de la spec, una a una
+
+Ninguna cambia N-1, N-2 ni N-3 (el tope 500.000, el umbral 50 con 2 palabras en común y la ficha sin mirar, con
+`repr=False`, están tal cual), y S-1 a S-9 no se tocan en este bloque (son de A4 bis). Pero **cuatro eligen
+donde la spec no dice nada y tienen consecuencias fuera del dominio**: las marco **[al humano]** para que las
+lleves tú.
+
+| # | Lectura | Mi juicio |
+|---|---|---|
+| 1 | `sigrid_cod` = la reclamación de la que habla el hallazgo; en `volcada_no_encontrada`, el **guardado**; en `codigo_distinto`, el guardado va en `sigrid_cods` | **[al humano] Elige donde la spec no dice**. R20 solo nombra los campos y R13 bis dice que `sigrid_cods` lleva «todos los códigos» de `varias`. Con esta lectura `sigrid_cods` significa dos cosas distintas según el tipo («todas las de Sigrid» en `varias`, «el de nuestra base» en `codigo_distinto`), y en `volcada_no_encontrada` el `sigrid_cod` **no está** en `reclamaciones`, así que el `lineaDeHallazgo(hallazgo, reclamacionesPorCod)` de F-064 no lo encontrará. No es un error, pero es contrato con F-064: hay que escribirlo en `design.md` §10.1 / R20 antes de F-064, o usar un campo propio (p. ej. `guardado_cod`) |
+| 2 | `varias_en_sigrid` sustituye a `ya_en_sigrid`; con una `volcada` con varias, `varias` **y** R12 contra la mayor | Conforme con la tabla de §5.1 y con R41 (las da como alternativas). **[al humano] Una consecuencia a enseñar**: con la letra de R12 + R13 bis, una `volcada` guardada como `0081` con `PVI-` en `0081` y `0082` da `varias_en_sigrid` **y** `codigo_distinto` («otro código que el guardado»), aunque el guardado **sí** está en Sigrid (lo fija el test `r13_bis_varias_de_una_volcada…`). El aviso es literal pero engañoso: el problema es el duplicado, que `varias` ya enseña. Que el humano diga si `codigo_distinto` debe callarse cuando el guardado está entre las suyas |
+| 3 | R13 con varias: **ninguna** de las que llevan su referencia se cruza por criterios con ella, no solo la mayor | **[al humano, informativo] Va más allá de la letra**: R13 excluye «la emparejada» y R13 bis dice que la emparejada es la mayor, así que literalmente las otras sí se cruzarían. La lectura es sensata (son sus propios partes; sin ella saldrían `coincide` de la incidencia consigo misma) y solo cambia los hallazgos y `coincidencias_total` de esa incidencia: su veredicto de R41 es `se_enlaza` igual. Recomiendo aceptarla y escribirla en R13 |
+| 4 | `ya_en_sigrid` en cualquier estado no `volcada`, también `descartada` y con la emparejada en `NPR` | **Conforme** con R11 literal («una incidencia que **no** está `volcada`»), fijado por test (M15). Para **A4 bis**, no para este bloque: una `aprobada` emparejada con una `NPR` será `se_enlaza` (R41), y el ensayo la dejará `volcada` enlazada a un parte anulado vía `idempotente`. Conviene que el humano lo vea cuando toque S-3 |
+| 5 | Toda referencia no nula que no da incidencia es `referencia_desconocida`; `rstrip`; UUID solo de 36 caracteres | **Conforme**. Los dos detalles no los dice la spec, pero son más estrictos o iguales que la pasarela, no cambian nada aprobado y están fijados (M2, M13) |
+| 6 | Estado desconocido: cualquiera que no sea uno de los cinco **tal cual**, también `None`; el recorte, «del mapeo del adaptador (A3)» | **[al líder, importante para A3]** La lectura del dominio es correcta, pero **traslada a A3 una obligación que `tasks.md` no recoge**: T5 no dice que el mapeo recorte `estado` (ni `cod`). Si `conest.cod` llegara rellenado con blancos, **todas** las reclamaciones serían «desconocidas» y el cruce daría **cero pares sin error** (solo lo delataría `estados_desconocidos`). T-A0 no lo descarta: el script 29 hace `.Trim()` antes de contar por estado (línea 613). Pido que T5 lo diga explícitamente (con su test) o que se compruebe. Lo de contar `None` como desconocido es una elección menor (el script de T-A0 los separaba en «sin estado»); fijada por test (M6) |
+| 7 | Oficio `""` como sin oficio; ubicación vacía o de blancos no casa | **Conforme** con R14 (M8, M9) |
+| 8 | R18 sin fecha: detrás de las fechadas | **Conforme** (la regla de R21 para las reclamaciones); fijado por test |
+| 9 | R21: hallazgos por tipo del enumerado, `incidencia_id` y código **ascendentes**; el tope elige por fecha y la lista sale por código | **[al humano] Elige donde la spec no dice**, y **tiene consecuencia en F-064**: R56 de F-064 enseña «las 3 primeras y y N más». Si la página toma los tres primeros `coincide` de una incidencia en el orden de `hallazgos`, saldrán los de **código menor** (los más antiguos, `RS23…` antes que `RS26…`), no los tres que R18 prioriza (conflicto, fecha descendente). O la página reordena con la fecha de `reclamaciones`, o el backend emite los `coincide` de cada incidencia en el orden de R18. Hay que decidirlo antes de F-064 |
+| 10 | `parecido("por la","por la")` = 100 pero no casa; `Grifos`/`grifo`, 100 y una sola en común, no casa | **Conforme** con R36 y la última frase de R15 (M7). Y `Grifo`/`grifo` (misma clave, una palabra) **sí** casa por la regla «la misma descripción por `normalizar_para_clave`», que es la letra de R15 (M4) |
+
+### Checkpoints
+
+Review de **bloque**: lo que solo se puede juzgar al cerrar la feature se marca N/A con su motivo.
+
+**C1 — El arnés está completo y en verde**
+- [x] `bash harness/init.sh` exit 0, suite entera en verde (arriba).
+- [x] Existen los ficheros del arnés (los comprueba `init.sh`).
+
+**C2 — El estado es coherente**
+- [x] Una sola `in_progress` (F-065), según `init.sh`.
+- [x] Rama `feature/F-065-revision-sigrid-backend`.
+- N/A `progress/current.md`: lo lleva el líder y el encargo me prohíbe tocarlo; no es objeto de una review de
+  bloque.
+- N/A Toda feature `done` en `history.md`: este bloque no cierra ninguna feature.
+
+**C3 — Arquitectura y convenciones**
+- [x] Hexagonal: el módulo vive en `domain/models/` e importa solo biblioteca estándar y `domain.models.*`
+  (`normalizacion`, `plantilla_incidencias`, `revision`, `volcado`); `FichaReclamacion`, del puerto
+  (`domain/ports/`), solo bajo `TYPE_CHECKING`, para la anotación. Lo fija `test_f065_r19_el_dominio_es_puro`
+  (AST) y lo vigilan las guardas de F-006. Ni `revision.py`, ni `normalizacion.py`, ni
+  `plantilla_incidencias.py`, ni `volcado.py` tocados (T4).
+- [x] Primera línea con la ruta, en el módulo y en el test.
+- [x] Sin `print()`, sin TODOs, sin secretos; sin GUID literal (lo arregló `718a633`; los dos tests de F-006
+  vuelven a verde en `init.sh`). Datos inventados (R39): `UUID(int=n)`, `Ejemplo …`, `@ejemplo.invalid`, los
+  códigos ficticios de §5.4.
+- N/A Parte como unidad de trabajo, firma, manuscritos, reprocesar, archivar: el bloque no procesa partes ni
+  escribe nada.
+- [x] Ningún número de estado: el estado de Sigrid es su **código** (`EstadoSigrid`), C3.
+- [x] Ningún parte escaneado ni PDF en git.
+
+**C3 bis — Documentos de fuera**
+- N/A El bloque no toca `docs/referencia/`.
+
+**C4 — La verificación es real**
+- [x] R10–R19, R21, R36 y E1–E13 tienen tests trazables, todos en verde (tabla abajo).
+- [x] Sin red, sin base, sin IA, sin reloj (el test de pureza prohíbe `.now(`, `.today(`, `perf_counter`… en el
+  módulo).
+- N/A Verificaciones MANUAL: este bloque no tiene ninguna.
+
+**C4 bis — El rigor declarado se cumple**
+- [x] `rigor: critico` declarado.
+- [x] Fase RED con la salida real pegada (`ModuleNotFoundError` en la recogida, `3282d8b`).
+- [x] Cobertura: `PUERTA COBERTURA` `[OK]`, **100 %** de 226 líneas cambiadas (umbral 80 %).
+- [x] Mutación: informe generado por la herramienta (con la nota de la suite reducida), alcance y mutantes
+  recalculados (526 líneas, 50 mutantes; la diferencia 528/526 se explica arriba y es C-A2-2).
+- [x] Los muertos comprobados: campaña de 193,5 s (< 5 min) **reejecutada** por mí con la misma suite reducida:
+  50/50/0/0. Con la suite entera, no (motivo arriba).
+- [x] Tiempo de la campaña: 3,9 s por mutante con 1 worker, coherente con la suite reducida.
+- [ ] **Cero supervivientes, también a mano (critico)**: la campaña, 0; **a mano, M12 sobrevive**. C-A2-1.
+- [x] «Evidencias» con los cuatro números y los workers (1).
+- N/A Guarda por definiciones de un fichero que sale de «no se toca»: no aplica a este bloque.
+- [x] Ningún N/A sin motivo en este bloque.
+
+**C4 ter — Rutas sensibles**
+- N/A No existe `harness/rutas_sensibles.json` (solo el `.ejemplo.json`).
+
+**C5 — La sesión se cerró bien**
+- [x] T3 y T4 `[x]` en `tasks.md`, con commits `F-065 T3: …` y `F-065 T4: …`. El resto, de bloques posteriores.
+- [x] Sin ficheros sin trackear (`git status` limpio, también tras mis copias).
+- N/A `features.json`: F-065 sigue `in_progress`, su estado real; no me toca.
+
+### Cobertura: requisito → test
+
+| Requisito | Tests (`tests/test_f065_dominio.py`) |
+|---|---|
+| R8 (la constante del tope) | `r8_el_tope_es_el_de_la_pasarela_desplegada` |
+| R10 | `r10_referencia_canonica`, `…sin_distinguir_mayusculas`, `…con_blancos_al_final`, `…lo_que_no_es_pvi_y_un_uuid…`, `…empareja_con_y_sin_mayusculas`, `…pvi_sin_uuid…`, `…pvi_de_otra_obra…`, `…sin_referencia_no_hay_aviso`, `e8` |
+| R11 | `r11_emparejada_y_no_volcada_es_ya_en_sigrid` (con `descartada`), `r11_…anulada`, `e7` |
+| R12 | `r12_volcada_y_encontrada_sin_hallazgo`, `…volcada_no_encontrada`, `…codigo_distinto`, `…anulada_en_sigrid`, `…anulada_y_con_otro_codigo…`, `e13` |
+| R13 / R13 bis | `r13_la_emparejada_no_coincide…`, `r13_la_emparejada_si_coincide_con_las_demas`, `r13_bis_varias…`, `r13_bis_dos_bastan…`, `r13_bis_varias_de_una_volcada…` (falta la anulación: C-A2-1), `e6` |
+| R14 | los 13 `r14_…` (unidad, oficio, ubicación, sin oficio en cada lado, vacía, mayúsculas, extremos, `Cocina 1`, ambiguo), `e9`–`e11` |
+| R15 | los 14 `r15_…` (umbral justo, 49, 50, una palabra, misma clave, vacía, vigente frente a importada, misma unidad), `e2`–`e2d` |
+| R16 | `r16_las_seis_situaciones`, `r16_descartada…`, `r16_volcada…`, `e12` |
+| R17 | `r17_severidad_por_estado`, `…reincidencia…`, `…sin_corte_de_fecha`, `…anulada_no_da_pares`, `…estado_desconocido…`, `…los_desconocidos_cuentan…`, `r17_los_dos_criterios…`, `e3`–`e5` |
+| R18 | los 6 `r18_…` (tope, conflictos primero, código a igual fecha, sin fecha, por incidencia, diez justas) |
+| R19 | `r19_el_dominio_es_puro`, `r19_el_cruce_es_por_unidad_y_acotado`, `r19_los_tipos_del_cruce_son_inmutables` |
+| R21 | los 4 `r21_…` |
+| R36 | los 15 `r36_…` |
+| R9 (sin filas) / R33 (la ficha, sin `repr`) | `r9_sin_nada_que_cruzar`, `r33_la_ficha_viaja_sin_tocar…` |
+
+### Cambios requeridos
+
+1. **C-A2-1 · Fijar que `anulada_en_sigrid` mira solo la emparejada (la mayor).** En
+   `services/postventa-api/tests/test_f065_dominio.py`, junto a
+   `test_f065_r13_bis_varias_de_una_volcada_y_el_codigo_contra_la_mayor` (l. 640), un test con una `volcada`
+   guardada como la **mayor**, dos `PVI-` suyas y la **menor** en `NPR`: debe salir `varias_en_sigrid` y **ningún**
+   `anulada_en_sigrid`; y el caso simétrico (la mayor en `NPR`) con `anulada_en_sigrid` sobre la mayor. Debe matar
+   M12: en `sigrid_bandeja.py` l. 412, `if mayor.estado == EstadoSigrid.NPR:` →
+   `if any(r.estado == EstadoSigrid.NPR for r in suyas):`. Pega en el informe la traza del mutante muerto. Si el
+   humano decide en la lectura 2 que el comportamiento debe ser otro, el test se escribe con lo que decida.
+2. **C-A2-2 · Regenerar `progress/mutacion_F-065_bloqueA2.md` desde un árbol confirmado.** Tras confirmar C-A2-1,
+   relanzar la campaña (con la suite reducida y su nota, que acepto) sobre el commit, con `git status` limpio
+   antes de empezar, para que el alcance (526) y el commit que dice el informe sean los que se midieron. Hoy el
+   informe declara 528 líneas (`96d9f54`) y midió el árbol sin confirmar de `718a633`.
+
+### Para el líder (no son del implementer)
+
+- **Llevar al humano** las lecturas **1, 2, 3 y 9** (tabla de arriba): las cuatro eligen donde la spec no dice
+  nada; la 1 y la 9 son contrato con F-064 y conviene fijarlas en `design.md` §10.1 / R20–R21 antes de esa
+  feature.
+- **Lectura 6 → A3**: añadir a T5 que el mapeo recorta `estado` (y `cod`) y su test, o comprobar con una lectura
+  que `conest.cod` no viene rellenado. Sin eso, un relleno daría cero pares sin error.
+- **Lectura 4 → A4 bis**: enseñar al humano, con S-3, que una candidata emparejada con una `NPR` será `se_enlaza`.
+
+### Observaciones (no bloquean)
+
+- **O-A2-1 · Unidad nula.** El índice es `dict[str | None, …]`: una incidencia sin unidad casaría con las
+  reclamaciones sin unidad. En la práctica no pasa (la consulta de §3 sube a la unidad por `JOIN`, y la revisión
+  exige unidad), pero una guarda `if vigentes.unidad_codigo is None: return []` con su test lo cerraría.
+- **O-A2-2 · El test de coste cambió de datos tras la RED** (declarado en «Desviaciones»). Lo acepto: sigue
+  demostrando el índice (500.000 pares con él, 500 millones sin él, imposibles en 20 s) y el cambio evita medir la
+  construcción de 400.000 hallazgos en vez del cruce. El límite de 20 s frente a 3,1 s deja margen para la carga.
+- **O-A2-3 · `_codigo_guardado` sin guarda**: de acuerdo con el implementer; `volcada` implica parte en Sigrid
+  (R1 de F-059).
+
+### Automejora (propuesta, no aplicada)
+
+1. **`harness/mutacion.py`: negarse (o avisar en la cabecera) si los ficheros del alcance tienen cambios sin
+   confirmar.** El alcance sale de `git diff base..rama` (lo confirmado) y los mutantes, del fichero en disco: si
+   difieren, el informe certifica un commit que no midió (es lo que ha pasado aquí, 528 frente a 526). Vale para
+   cualquier proyecto: candidata a `arnes-base`.
+2. **Protocolo del reviewer, regla 4: reconocer la campaña con suite reducida.** Cuando la suite entera no cabe en
+   el timeout por mutante, una campaña con solo los tests de la feature es válida si (a) ningún otro módulo
+   importa el fichero mutado (comprobado por el reviewer), (b) el informe lo declara en su cabecera y (c) el
+   reviewer la reejecuta igual; con cero supervivientes, la suite entera no puede dar menos muertos. Hoy la regla
+   pide la orden oficial tal cual y deja este caso al criterio de cada review. Candidata a `arnes-base`.

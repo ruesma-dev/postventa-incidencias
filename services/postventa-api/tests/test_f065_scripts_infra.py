@@ -81,6 +81,30 @@ OUTER APPLY (SELECT TOP 1 x.valt FROM dbo.conext x
 WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ?
 ORDER BY c.cod"""
 
+#: Q0 · qué forma del código guarda Sigrid (con y sin ceros) y cuántas obras
+#: con unidades de posventa la tienen.
+SQL_FORMAS = """\
+SELECT LTRIM(RTRIM(o.cod)) AS obra_cod, COUNT(DISTINCT v.obride) AS obras
+FROM dbo.upv v
+JOIN dbo.con o ON o.ide = v.obride
+WHERE LTRIM(RTRIM(o.cod)) IN (?, ?)
+GROUP BY LTRIM(RTRIM(o.cod))"""
+
+#: Q2 · `con.fec` frente a `rcp.fec` (T-A0), solo recuentos, con el filtro de
+#: obra de §3.
+SQL_FECHAS = """\
+SELECT COUNT(*) AS reclamaciones,
+       SUM(CASE WHEN r.fec = c.fec THEN 1 ELSE 0 END) AS iguales,
+       SUM(CASE WHEN r.fec > c.fec THEN 1 ELSE 0 END) AS rcp_posterior,
+       SUM(CASE WHEN r.fec < c.fec THEN 1 ELSE 0 END) AS rcp_anterior,
+       SUM(CASE WHEN r.fec IS NULL OR r.fec = 0 THEN 1 ELSE 0 END) AS rcp_vacia,
+       SUM(CASE WHEN c.fec IS NULL OR c.fec = 0 THEN 1 ELSE 0 END) AS con_vacia
+FROM dbo.rcp r
+JOIN dbo.con c ON c.ide = r.ide
+JOIN dbo.upv v ON v.ide = r.upvide
+JOIN dbo.con o ON o.ide = v.obride
+WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ?"""
+
 #: `design.md` §5.3, paso 3: la lista cerrada de palabras vacías del dominio.
 PALABRAS_VACIAS = (
     "del", "las", "los", "con", "por", "para", "que", "sus", "una", "unos",
@@ -233,6 +257,11 @@ def _sin_comentarios(texto: str) -> str:
 def _ejecutable(texto: str | None = None) -> str:
     """Sin la ayuda ni las líneas de comentario: lo que de verdad se ejecuta."""
     return _sin_comentarios(_sin_ayuda(_texto() if texto is None else texto))
+
+
+def _lineas(texto: str | None = None) -> set[str]:
+    """Las líneas ejecutables, recortadas: para exigir una línea **entera**."""
+    return {linea.strip() for linea in _ejecutable(texto).splitlines()}
 
 
 def _ayuda() -> str:
@@ -426,25 +455,39 @@ def test_f065_r29_el_sql_viaja_con_saltos_lf_como_el_del_adaptador():
         "cada llamada a Invoke-SigridLectura con su -Sql $variable"
     )
     assert llamadas, "no se encuentra ninguna llamada a Invoke-SigridLectura"
-    for variable in llamadas:
-        assert re.search(rf"\{variable} = ConvertTo-SqlConLf\b", ejecutable), (
-            f"{variable} no pasa por ConvertTo-SqlConLf"
-        )
+    for variable in set(llamadas):
+        asignaciones = re.findall(rf"^\s*\{variable} = (.*)$", ejecutable, flags=re.MULTILINE)
+        assert asignaciones, f"{variable} no se asigna"
+        for asignacion in asignaciones:
+            assert asignacion.startswith("ConvertTo-SqlConLf "), (
+                f"{variable} no pasa por ConvertTo-SqlConLf: {asignacion}"
+            )
 
 
 def test_f065_r29_los_parametros_van_en_el_orden_de_los_marcadores():
-    """`RCPCLI`, `PVI-%`, el tipo y la obra (§3); y el techo de la pasarela."""
-    ejecutable = _ejecutable()
+    """`RCPCLI`, `PVI-%`, el tipo y la obra (§3); y el techo de la pasarela.
+    Por **líneas enteras**: `= 500` contiene `= 50`, y la línea de la guarda
+    empieza como la de la obra."""
+    lineas = _lineas()
 
-    assert '$CAMPO_REFERENCIA = "RCPCLI"' in ejecutable
-    assert '$PATRON_NUESTROS = "PVI-%"' in ejecutable
-    assert "[int]$Tip = 708" in ejecutable
-    assert "$parametros = @($CAMPO_REFERENCIA, $PATRON_NUESTROS, $Tip, $obraCod)" in ejecutable
-    assert "-Parametros $parametros" in ejecutable
-    assert "[int]$MaxFilas = 500000" in ejecutable
-    assert "$TECHO_PASARELA = 500000" in ejecutable
-    assert "-MaxFilas $MaxFilas" in ejecutable
-    assert "if ($MaxFilas -lt 1 -or $MaxFilas -gt $TECHO_PASARELA)" in ejecutable
+    for linea in (
+        '$CAMPO_REFERENCIA = "RCPCLI"',
+        '$PATRON_NUESTROS = "PVI-%"',
+        "[int]$Tip = 708,",
+        "[int]$MaxFilas = 500000",
+        "$TECHO_PASARELA = 500000",
+        "$parametros = @($CAMPO_REFERENCIA, $PATRON_NUESTROS, $Tip, $obraCod)",
+        "-Parametros $parametros -MaxFilas $MaxFilas -Tolerante",
+        "if ($MaxFilas -lt 1 -or $MaxFilas -gt $TECHO_PASARELA) {",
+    ):
+        assert linea in lineas, f"falta la línea «{linea}»"
+
+
+def test_f065_r29_las_consultas_auxiliares_son_las_que_dice_la_ayuda():
+    """La forma del código (Q0) y `con.fec` frente a `rcp.fec` (Q2), escritas
+    aquí enteras: solo recuentos y el código recortado, nunca un `ide`."""
+    assert _consulta("SQL_FORMAS_DE_LA_OBRA") == SQL_FORMAS
+    assert _consulta("SQL_FECHAS_DE_LA_OBRA") == SQL_FECHAS
 
 
 def test_f065_r29_la_obra_con_y_sin_ceros_como_el_28():
@@ -487,7 +530,7 @@ def test_f065_r29_la_pasarela_tiene_que_aceptarla_y_sin_truncar():
         'Comprobar -Que "columnas de la respuesta" -Esperado $columnasEsperadas -Obtenido $columnasLeidas'
         in ejecutable
     )
-    assert "$COLUMNAS_DE_LA_OBRA = 31" in ejecutable
+    assert "$COLUMNAS_DE_LA_OBRA = 31" in _lineas()
     assert "[Diagnostics.Stopwatch]::StartNew()" in ejecutable
 
 
@@ -590,7 +633,7 @@ def test_f065_r29_los_campos_de_r33_son_los_diecinueve_y_en_su_columna():
     )
 
     assert [(nombre, int(columna)) for nombre, columna in declarados] == list(CAMPOS_R33)
-    assert "$PRIMERA_COLUMNA_R33 = 12" in ejecutable
+    assert "$PRIMERA_COLUMNA_R33 = 12" in _lineas()
 
 
 def test_f065_r29_las_columnas_de_trabajo_estan_en_su_sitio():
@@ -608,7 +651,7 @@ def test_f065_r29_las_columnas_de_trabajo_estan_en_su_sitio():
         "$COL_DESCRIPCION = 10",
         "$COL_REFERENCIA = 11",
     ):
-        assert constante in ejecutable, f"falta «{constante}»"
+        assert constante in _lineas(), f"falta «{constante}»"
     assert ejecutable.index("-Obtenido $columnasLeidas") < ejecutable.index("[$COL_ESTADO]")
 
 
@@ -809,7 +852,7 @@ def test_f065_r70_la_guarda_es_la_de_la_obra_sin_r33_y_con_el_filtro_de_unidades
     for de_r33 in ("dbo.auxrcp", "dbo.per", "r.cliide", "r.tex", "r.tel", "r.ele", "motrcp", "solrcp", "texurg", "rcptip", "fecpre", ".nom"):
         assert de_r33 not in guarda, f"la guarda lee {de_r33}: no lee ni un dato personal"
     assert "AND u.cod IN (__MARCADORES__)\nORDER BY c.cod" in guarda
-    assert "$COLUMNAS_DE_LAS_UNIDADES = 12" in _ejecutable()
+    assert "$COLUMNAS_DE_LAS_UNIDADES = 12" in _lineas()
 
 
 def test_f065_r70_un_marcador_por_unidad_y_los_parametros_en_orden():
@@ -818,9 +861,9 @@ def test_f065_r70_un_marcador_por_unidad_y_los_parametros_en_orden():
 
     assert (
         "$parametros = @($CAMPO_REFERENCIA, $PATRON_NUESTROS, $Tip, $obraCod) + $codigosDeUnidad"
-        in ejecutable
+        in _lineas()
     )
-    assert "$columnasEsperadas = $COLUMNAS_DE_LAS_UNIDADES" in ejecutable
+    assert "$columnasEsperadas = $COLUMNAS_DE_LAS_UNIDADES" in _lineas()
 
 
 def test_f065_r70_la_lista_se_parte_por_comas_y_tiene_tope():
@@ -834,7 +877,7 @@ def test_f065_r70_la_lista_se_parte_por_comas_y_tiene_tope():
     # llamada `$unidades` pisaría el parámetro `$Unidades` antes de leerlo.
     assert re.search(r"\$unidades\s*=", ejecutable, flags=re.IGNORECASE) is None
     assert "$codigosDeUnidad = @($Unidades | ForEach-Object" in ejecutable
-    assert "$MAX_UNIDADES = 50" in ejecutable
+    assert "$MAX_UNIDADES = 50" in _lineas()
     assert "if ($codigosDeUnidad.Count -gt $MAX_UNIDADES)" in ejecutable
     assert 'if ($PSBoundParameters.ContainsKey("Unidades"))' in ejecutable
     assert "if ($codigosDeUnidad.Count -eq 0)" in ejecutable
@@ -866,3 +909,315 @@ def test_f065_r70_con_unidades_no_hace_las_cuentas_de_la_obra():
     assert rama < veredicto < ejecutable.index("[$COL_ESTADO]")
     assert veredicto < ejecutable.index("$SQL_FECHAS_DE_LA_OBRA", rama)
     assert ejecutable.index("bytes de la respuesta, todos los campos") < rama
+
+
+# --------------------------------------------------------------------------
+# El script, ejecutado contra un lector doble (sin red, datos inventados)
+# --------------------------------------------------------------------------
+#
+# Leer el script fija su forma; ejecutarlo fija lo que **hace**: las cuentas de
+# R29, el texto exacto que manda a la pasarela y, sobre todo, que con datos
+# personales delante no saca **ninguno** por la consola. El doble es el `08`
+# de verdad con `Invoke-SigridLectura` redefinida al final: no hay red (y la
+# raíz es `.invalid`, que no resuelve nunca). Datos de prueba de R39: «Ejemplo
+# …», `@ejemplo.invalid`, `000 000 000`. Si el puesto no tiene PowerShell, se
+# salta: lo de arriba se sigue comprobando.
+
+import calendar  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import shutil  # noqa: E402
+import subprocess  # noqa: E402
+from datetime import date, timedelta  # noqa: E402
+
+#: El ejecutable de PowerShell del puesto, si lo hay.
+POWERSHELL = shutil.which("powershell") or shutil.which("pwsh")
+
+#: `Invoke-SigridLectura` de mentira: apunta cada llamada (SQL, parámetros,
+#: `max_rows`, `-Tolerante`) y devuelve filas inventadas según la consulta.
+LECTOR_DOBLE = r"""
+
+# --- Doble de test_f065_scripts_infra.py: sin red ---------------------------
+$script:LlamadaDoble = 0
+function Invoke-SigridLectura {
+    param([string]$BaseUrl, [string]$Clave, [string]$BaseDatos, [string]$Sql,
+        [object[]]$Parametros = @(), [int]$MaxFilas = 50, [int]$TimeoutS = 35, [switch]$Tolerante)
+    $script:LlamadaDoble = $script:LlamadaDoble + 1
+    $base = Join-Path $env:F065_SALIDA ("llamada_" + $script:LlamadaDoble)
+    [IO.File]::WriteAllText($base + ".sql", $Sql)
+    $apunte = ("" + $MaxFilas + [char]31 + [bool]$Tolerante + [char]31 + (($Parametros | ForEach-Object { "$_" }) -join [char]31))
+    [IO.File]::WriteAllText($base + ".par", $apunte)
+    if ($Sql.Contains("AS obra_cod")) {
+        $obras = 2
+        if ($env:F065_OBRAS_TEXTO -eq "1") { $obras = "Ejemplo Nombre Secreto" }
+        return [pscustomobject]@{ ok = $true; truncated = $false; columns = @("obra_cod", "obras"); rows = @(,@("0999", $obras)); row_count = 1 }
+    }
+    if ($Sql.Contains("AS rcp_posterior")) {
+        return [pscustomobject]@{ ok = $true; truncated = $false; columns = @("reclamaciones", "iguales", "rcp_posterior", "rcp_anterior", "rcp_vacia", "con_vacia"); rows = @(,@(14, 3, 1, $null, 0, 0)); row_count = 1 }
+    }
+    if ($env:F065_RECHAZO -eq "1") {
+        if ($Tolerante) { Write-Host "  AVISO: la pasarela no ha dado por buena la consulta."; return $null }
+        exit 4
+    }
+    $filas = [IO.File]::ReadAllText($env:F065_FILAS) | ConvertFrom-Json
+    $columnas = 31
+    if ($Sql.Contains("u.cod IN")) {
+        $columnas = 12
+        $filas = @($filas | ForEach-Object { ,($_[0..11]) })
+    }
+    return [pscustomobject]@{ ok = $true; truncated = $false; columns = @(1..$columnas); rows = $filas; row_count = @($filas).Count }
+}
+"""
+
+
+def _hace(meses: int, dias: int = 0) -> int:
+    """Hoy menos `meses` (el día recortado al último del mes, como
+    `AddMonths` de .NET) más `dias`, en el `YYYYMMDD` del ERP."""
+    hoy = date.today()
+    total = hoy.year * 12 + hoy.month - 1 - meses
+    anio, mes = divmod(total, 12)
+    dia = min(hoy.day, calendar.monthrange(anio, mes + 1)[1])
+    return int((date(anio, mes + 1, dia) + timedelta(days=dias)).strftime("%Y%m%d"))
+
+
+#: R33 entero (dos reclamaciones) y casi vacío (las demás): un blanco no
+#: cuenta, `rcptip` 0 sí (es un valor), la fecha prevista 0 no.
+R33_ENTERO = [
+    "Ejemplo descripcion larga", "Ejemplo motivo", "Ejemplo urgencia", 1, 20260101,
+    "Ejemplo solucion", "C1", "Ejemplo clase", "000 000 000", "avisos@ejemplo.invalid",
+    "Ejemplo Propietario", "Ejemplo Reclama", "000 000 000", "000 000 000",
+    "reclama@ejemplo.invalid", "Ejemplo Contacto", "000 000 000", "000 000 000",
+    "contacto@ejemplo.invalid",
+]
+R33_CASI_VACIO = ["Ejemplo descripcion larga", "  ", None, 0, 0] + [None] * 14
+
+
+def _fila(obra, cod, estado, fecha, unidad, oficio, ubicacion, descripcion, referencia, r33):
+    nombre_oficio = None if oficio is None else "Ejemplo oficio"
+    return [obra, cod, estado, fecha, unidad, oficio, nombre_oficio, "0002", "Ejemplo tipo",
+            ubicacion, descripcion, referencia, *r33]
+
+
+def _filas() -> list[list]:
+    """Catorce reclamaciones inventadas; cada una está ahí por una regla."""
+    c = R33_CASI_VACIO
+    return [
+        _fila(11, "RSX/1", "PTE", _hace(2), "VILLA 05", "0039", "Cocina", "Gotea el grifo", "PVI-ejemplo-1", R33_ENTERO),
+        _fila(11, "RSX/2", "SAT", _hace(8), "VILLA 05", "0039", " cocina ", "Gotea el grifo.", None, R33_ENTERO),
+        _fila(11, "RSX/3", "XYZ", 0, "VILLA 05", None, None, "Silicona negra en banera", None, c),
+        _fila(12, "RSX/4", None, 20251301, "Villa 05", "0039", "Cocina", "Cambiar silicona banera", None, c),
+        _fila(11, "RSX/5", "CER", _hace(18), "VILLA 06", "0039", "Bano", "Grifos sueltos", None, c),
+        _fila(11, "RSX/6", "TER", _hace(30), "VILLA 06", "0039", "BANO", "Grifo suelto en cocina", None, c),
+        _fila(11, "RSX/7", "NPR", _hace(6, 1), "VILLA 07", "0039", "  ", "Silicona negra banera", None, c),
+        _fila(11, "RSX/8", "pte", _hace(6), "VILLA 07", "0039", "Salon", "Cambiar silicona banera", None, c),
+        _fila(11, "RSX/9", "SAT", _hace(12), "VILLA 07", "0039", "salon ", "Silicona negra para pared salon", None, c),
+        _fila(11, "RSX/10", "SAT", _hace(2), "VILLA 06", "0039", "Bano", "", None, c),
+        _fila(11, "RSX/11", "SAT", _hace(2), "VILLA 06", "0039", "Bano", "  ", None, c),
+        _fila(11, "RSX/12", "TER", _hace(40), "VILLA 08", "0012", None, "Grifo!", None, c),
+        _fila(11, "RSX/13", "CER", _hace(40), "VILLA 08", "0012", None, "grifo?", None, c),
+        _fila(11, "RSX/14", "PTE", _hace(40), "VILLA 08", "0012", None, "Grifo cocina", None, c),
+    ]
+
+
+def _bytes_json(valor) -> int:
+    """El JSON compacto en UTF-8: lo que el script aproxima (su ayuda)."""
+    return len(json.dumps(valor, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+
+
+#: Lo que no puede aparecer en la consola: cada valor inventado de una fila.
+VALORES_DE_LAS_FILAS = (
+    "Ejemplo", "ejemplo.invalid", "000 000 000", "RSX/", "PVI-ejemplo", "VILLA", "Villa",
+    "Gotea", "Cocina", "cocina", "Silicona", "Grifo", "grifo", "Salon", "salon", "Bano",
+    "BANO", "XYZ", "pte ", "Secreto",
+)
+
+
+def _lanzar(tmp_path: Path, *argumentos: str, **entorno: str) -> tuple[int, str, list[tuple[str, str]]]:
+    """Copia el 29 y el 08 con el doble a `tmp_path`, lo lanza y devuelve el
+    código de salida, la consola y las llamadas (SQL, apunte) en orden."""
+    carpeta = tmp_path / "infra"
+    salida = tmp_path / "llamadas"
+    carpeta.mkdir()
+    salida.mkdir()
+    shutil.copyfile(SCRIPT, carpeta / SCRIPT.name)
+    (carpeta / COMUN.name).write_bytes(
+        COMUN.read_bytes() + LECTOR_DOBLE.replace("\n", "\r\n").encode("ascii")
+    )
+    filas = tmp_path / "filas.json"
+    filas.write_text(json.dumps(_filas()), encoding="utf-8")
+    variables = {
+        **os.environ,
+        "SIGRID_API_KEY": "falsa",
+        "F065_FILAS": str(filas),
+        "F065_SALIDA": str(salida),
+        **entorno,
+    }
+    resultado = subprocess.run(
+        [POWERSHELL, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+         "-File", str(carpeta / SCRIPT.name), "-CodigoObra", "999",
+         "-SigridBaseUrl", "http://pasarela.ejemplo.invalid", "-SigridBaseDatos", "ejemplo",
+         *argumentos],
+        capture_output=True, timeout=120, env=variables,
+    )
+    consola = (resultado.stdout + resultado.stderr).decode("utf-8", errors="replace")
+    llamadas = []
+    for n in range(1, 10):
+        sql = salida / f"llamada_{n}.sql"
+        if not sql.exists():
+            break
+        llamadas.append(
+            (sql.read_text(encoding="utf-8"), (salida / f"llamada_{n}.par").read_text(encoding="utf-8"))
+        )
+    return resultado.returncode, consola, llamadas
+
+
+def _veredicto(consola: str) -> dict[str, str]:
+    """La tabla de `Escribir-Veredicto` (`{0,-46} {1,-22} {2}`): qué → obtenido."""
+    tabla = {}
+    for linea in consola.splitlines():
+        if len(linea) > 70 and linea[46] == " " and linea[69] == " " and not linea.startswith("QUE "):
+            tabla[linea[:46].rstrip()] = linea[70:].strip()
+    return tabla
+
+
+def _apunte(max_rows: int, tolerante: bool, *parametros: object) -> str:
+    return chr(31).join([str(max_rows), str(tolerante), chr(31).join(str(p) for p in parametros)])
+
+
+necesita_powershell = pytest.mark.skipif(POWERSHELL is None, reason="sin PowerShell en el puesto")
+
+
+@pytest.fixture(scope="module")
+def obra_entera(tmp_path_factory):
+    return _lanzar(tmp_path_factory.mktemp("obra"))
+
+
+@pytest.fixture(scope="module")
+def guarda(tmp_path_factory):
+    return _lanzar(tmp_path_factory.mktemp("guarda"), "-Unidades", "VILLA 05, ,VILLA 07")
+
+
+@necesita_powershell
+def test_f065_r29_ejecutado_no_saca_ningun_valor_de_las_filas(obra_entera, guarda):
+    """**El test central de R29, ejecutado.** Con R33 entero delante, ni un
+    texto, nombre, teléfono, correo, código ni referencia en la consola."""
+    for codigo, consola, _ in (obra_entera, guarda):
+        assert codigo == 0, consola
+        assert [valor for valor in VALORES_DE_LAS_FILAS if valor in consola] == []
+
+
+@necesita_powershell
+def test_f065_r29_ejecutado_manda_a_la_pasarela_el_texto_de_design(obra_entera):
+    """Las tres lecturas, en orden: las dos formas del código; la de §3 tal
+    cual (en LF), con sus cuatro parámetros, el techo y `-Tolerante`; y la de
+    las fechas, con la forma que guarda Sigrid."""
+    _, _, llamadas = obra_entera
+
+    assert [sql for sql, _ in llamadas] == [SQL_FORMAS, SQL_DE_LA_OBRA, SQL_FECHAS]
+    assert [apunte for _, apunte in llamadas] == [
+        _apunte(10, False, "0999", "999"),
+        _apunte(500000, True, "RCPCLI", "PVI-%", 708, "0999"),
+        _apunte(1, True, 708, "0999"),
+    ]
+
+
+@necesita_powershell
+def test_f065_r29_ejecutado_cuenta_lo_que_pide_r29(obra_entera):
+    """Las cuentas de R29 sobre las catorce filas inventadas, una por una."""
+    _, consola, _ = obra_entera
+    filas = _filas()
+    esperado = {
+        "obras con ese codigo y unidades de posventa": "2",
+        "la pasarela acepto la consulta, sin truncated": "si",
+        "truncated": "no",
+        "filas": "14",
+        "filas por debajo del techo": "si",
+        "columnas de la respuesta": "31",
+        "bytes de la respuesta, todos los campos": str(_bytes_json(filas)),
+        "bytes de los campos de R33": str(sum(_bytes_json(f[12:]) - 1 for f in filas)),
+        "obras distintas en las filas": "2",
+        "estado PTE": "2",
+        "estado SAT": "4",
+        "estado TER": "2",
+        "estado CER": "2",
+        "estado NPR": "1",
+        "otro estado": "2",
+        "sin estado": "1",
+        "antiguedad: menos de 6 meses": "4",
+        "antiguedad: de 6 a 12 meses": "2",
+        "antiguedad: de 12 a 24 meses": "2",
+        "antiguedad: mas de 24 meses": "4",
+        "antiguedad: sin fecha legible": "2",
+        "unidades con reclamaciones": "5",
+        "reclamaciones por unidad: minimo": "1",
+        "reclamaciones por unidad: mediana": "3",
+        "reclamaciones por unidad: maximo": "4",
+        "sin oficio": "1",
+        "sin ubicacion": "5",
+        "con referencia PVI-": "1",
+        "grupos unidad+oficio+ubicacion con mas de una": "3",
+        "reclamaciones en esos grupos": "8",
+        "pares de la misma unidad comparados": "15",
+        "pares con parecido >= 40": "5",
+        "pares con parecido >= 50": "4",
+        "pares con parecido >= 60": "3",
+        "con.fec igual a rcp.fec": "3",
+        "rcp.fec posterior a con.fec": "1",
+        "rcp.fec anterior a con.fec": "0",
+        "rcp.fec vacia": "0",
+        "con.fec vacia": "0",
+    }
+    for nombre, _ in CAMPOS_R33:
+        esperado[f"R33 rellenos: {nombre}"] = "2"
+    esperado["R33 rellenos: descripcion larga"] = "14"
+    esperado["R33 rellenos: forma de comunicacion"] = "14"
+
+    tabla = _veredicto(consola)
+    assert {clave: tabla.get(clave) for clave in esperado} == esperado
+    assert "MEDICION DE LA OBRA : PASA" in consola
+
+
+@necesita_powershell
+def test_f065_r70_ejecutado_la_guarda_manda_su_texto_y_solo_cuenta(guarda):
+    """Con `-Unidades` (una lista con comas y un hueco, como la entrega
+    `powershell -File`): la consulta de §15.5 con dos marcadores, las unidades
+    detrás de los cuatro de siempre, y solo filas, bytes y cuántas unidades."""
+    _, consola, llamadas = guarda
+    filas = _filas()
+    tabla = _veredicto(consola)
+
+    assert [sql for sql, _ in llamadas] == [
+        SQL_FORMAS,
+        SQL_DE_UNA_UNIDAD.replace("u.cod IN (?)", "u.cod IN (?, ?)"),
+    ]
+    assert llamadas[1][1] == _apunte(500000, True, "RCPCLI", "PVI-%", 708, "0999", "VILLA 05", "VILLA 07")
+    assert tabla["filas"] == "14"
+    assert tabla["columnas de la respuesta"] == "12"
+    assert tabla["unidades pedidas"] == "2"
+    assert tabla["bytes de la respuesta, todos los campos"] == str(_bytes_json([f[:12] for f in filas]))
+    assert not [clave for clave in tabla if clave.startswith(("R33", "estado", "pares", "bytes de los campos"))]
+    assert "MEDICION DE LA GUARDA : PASA" in consola
+
+
+@necesita_powershell
+def test_f065_r29_ejecutado_si_la_pasarela_la_rechaza_no_pasa(tmp_path):
+    """Un `OUTER APPLY` rechazado (o un `truncated`): se dice, no se cuenta
+    nada, y el veredicto sale 6, no un `exit` a medias del común."""
+    codigo, consola, _ = _lanzar(tmp_path, F065_RECHAZO="1")
+    tabla = _veredicto(consola)
+
+    assert codigo == 6, consola
+    assert tabla["la pasarela acepto la consulta, sin truncated"] == "no"
+    assert "filas" not in tabla
+    assert "NO PASA" in consola
+
+
+@necesita_powershell
+def test_f065_r29_ejecutado_un_texto_en_una_cifra_para_sin_repetirlo(tmp_path):
+    """Si a `Anotar-Cifra` le llega un texto (aquí, el recuento de obras), el
+    script para con 5 y el texto no sale por la consola."""
+    codigo, consola, _ = _lanzar(tmp_path, F065_OBRAS_TEXTO="1")
+
+    assert codigo == 5, consola
+    assert "Secreto" not in consola
+    assert "no ha salido como cifra" in consola

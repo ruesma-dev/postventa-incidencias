@@ -10,8 +10,8 @@
 > `feature/F-065-revision-sigrid-backend`, commit `6eb23fa`): ajustes a la
 > realidad del código en §2, §5.1, §9.3, §10.4 y §13, marcados en su sitio; y
 > **lo nuevo**, la sincronización antes de registrar y la guarda del ensayo de
-> F-059, en **§15**, con sus preguntas **S-1 a S-9** en **§16**, **pendientes
-> de OK del humano**. Nada de §14 ha cambiado.
+> F-059, en **§15**, con sus preguntas **S-1 a S-9** en **§16**, **aprobadas
+> por el humano el 2026-10-28** (`b863b46`). Nada de §14 ha cambiado.
 >
 > Base original: `dev` `383bfd5`. Documentos contra los que se diseña:
 > `docs/ARCHITECTURE.md` (F-036, F-056, F-038, F-060, F-059 y «Acceso a datos
@@ -565,7 +565,7 @@ personales.
   propietario o teléfono en la página (F-064). *Aprobado por el humano el
   2026-10-21* (sustituye a la propuesta de ficha bajo demanda).
 
-## 15 · Sincronizar antes de registrar: la guarda del ensayo (nuevo, 2026-10-28, PENDIENTE DE OK)
+## 15 · Sincronizar antes de registrar: la guarda del ensayo (nuevo, 2026-10-28, aprobado por el humano el 2026-10-28)
 
 > Decisión del humano del 2026-10-28 (C-4 de F-040): el botón **«Registrar»**
 > del panel de volcado (F-040) primero trae las reclamaciones de la obra y las
@@ -573,7 +573,7 @@ personales.
 > recuento por unidad, y solo después ensaya y vuelca. Es la filosofía de
 > `dedicacion` (`azure-apps/dedicacion.md`): leer lo que ya hay en Sigrid antes
 > de escribir, no duplicar nunca, `truncated` = error y nada escrito. Lo que
-> sigue es la propuesta del spec-author; **todo** depende de S-1 a S-9 (§16).
+> sigue es el diseño del spec-author, con S-1 a S-9 (§16) aprobadas por el humano.
 > Requisitos: R41–R49, R70–R71.
 
 ### 15.1 · El límite de servicio

@@ -1,13 +1,19 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-065 · `in_progress` · 2026-10-28 · paso 1: el spec-author concilia la spec con `dev` y añade la guarda del ensayo
+> ## F-065 · `in_progress` · 2026-10-28 · Bloque A1 hecho (script 29), en re-review tras C-A1-1; esperando T-A0 del humano
 > Decisión del humano (2026-10-28): el botón «Registrar» de F-040 sincroniza con Sigrid antes de registrar (filosofía de
 > dedicación: leer lo que ya hay y no duplicar). Ese cruce es F-065, que va primero. Rama `feature/F-065-revision-sigrid-backend`
-> desde `dev` `f7f63da` en el worktree `postventa-f065` (venv por unión; front sacado en LF salvo los `.ps1`); spec traída de
-> `e38f01b` (aprobada el 2026-10-21 con N-1..N-3). **El estado del backlog se lleva en esta rama mientras F-065 esté en curso.**
-> Lo nuevo para la spec: el ensayo del volcado de F-059 consulta el cruce, excluye lo que ya está en Sigrid y pide segundo clic
-> para lo que choca. Si cambia una decisión aprobada, vuelve al humano.
+> desde `dev` `f7f63da` en el worktree `postventa-f065` (venv por unión; front sacado en LF salvo los `.ps1`). S-1 a S-9
+> aprobadas por el humano (`b863b46`). **El estado del backlog se lleva en esta rama mientras F-065 esté en curso.**
+> Bloque A1 (T1, T2, T2 bis): `infra/29_reclamaciones_obra_sigrid.ps1`, solo lectura. Review: CHANGES_REQUESTED por C-A1-1
+> (faltaba un test de parámetros malos antes de leer); corregido en `4fa1b61` sin tocar el script.
+> **MANUAL (humano, solo lectura), antes del Bloque A2:** T-A0 y T-A0 bis, desde la raíz del worktree, con la raíz de la
+> pasarela y la base en la sesión (`$env:SIGRID_API_BASE_URL`, `$env:SIGRID_BASE_DATOS`):
+> `powershell -ExecutionPolicy Bypass -File infra9_reclamaciones_obra_sigrid.ps1 -CodigoObra 0626` (una vez);
+> `... -CodigoObra 0677` (tres veces); `... -CodigoObra 0677 -Unidades '<u1>'` (tres veces);
+> `... -CodigoObra 0677 -Unidades '<u1>','<u2>','<u3>','<u4>','<u5>'` (tres veces). Umbrales: obra > ≈ 10 s o guarda > ≈ 3 s
+> → volver al humano antes de A2 / A4 bis. Detalle en `progress/impl_F-065.md` «Órdenes para el humano».
 
 > ## F-040 · `blocked` (espera a F-065) · 2026-10-28 · spec conciliada, decisiones C-1..C-6 contestadas
 > Spec conciliada con `dev` en `b86e876` (worktree `postventa-f040`). Humano, 2026-10-28: C-2 el volcado de la VILLA 15 no es

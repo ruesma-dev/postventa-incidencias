@@ -6,6 +6,9 @@
     bytes y segundos: ni un texto, ni un nombre, ni un telefono, ni un correo,
     ni un codigo de reclamacion, ni una referencia.
 
+    Con -Unidades mide, en vez de la obra entera, la lectura de la GUARDA DEL
+    ENSAYO (R70): la de `design.md` 15.5, solo esas unidades y sin R33.
+
 .DESCRIPTION
     Es la medicion previa T-A0 de `specs/F-065-revision-sigrid-backend/tasks.md`
     (`design.md` 4 y 11): antes de escribir el dominio hay que saber cuanto
@@ -75,6 +78,19 @@
         (iguales, posterior, anterior, vacias), porque la de la obra no lee
         `rcp.fec` (`design.md` 3: si Posventa ve la de `rcp`, se cambia).
 
+    CON -Unidades (R70, T-A0 bis, S-5): lanza
+    `$SQL_RECLAMACIONES_DE_LAS_UNIDADES`, la de `design.md` 15.5, la que leera
+    la guarda del ensayo: las doce columnas de R6, sin R33 (ni un dato
+    personal), las mismas uniones salvo las de R33 y `u.cod IN (?, ...)` con UN
+    marcador por unidad. El texto, para una y para cinco unidades, es el que
+    compondra `select_reclamaciones_de_las_unidades` (lo fija el mismo test).
+    Imprime solo si la pasarela acepto la consulta, `truncated`, filas, bytes,
+    segundos y cuantas unidades se han pedido, nunca cuales; no hace las
+    cuentas de la obra ni la consulta de las fechas. Con `powershell -File` la
+    lista llega como un solo texto con comas: el script la parte por comas,
+    recorta cada codigo y quita los vacios. Como mucho 50 unidades, las partes
+    que caben en una llamada del ensayo (`VOLCADO_PARTES_POR_LLAMADA`).
+
     Si la pasarela rechaza la consulta, o la respuesta viene `truncated`, el
     comun lo avisa (sin el cuerpo de la respuesta) y el veredicto NO PASA:
     nunca se miden reclamaciones a medias.
@@ -92,6 +108,11 @@
 .PARAMETER CodigoObra
     El codigo de la obra en Sigrid. Obligatorio. Se preguntan las dos formas,
     con y sin ceros a la izquierda.
+
+.PARAMETER Unidades
+    Codigos de unidad de posventa de la obra (`con.cod` de la unidad, tal
+    cual), de 1 a 50. Con ellos se mide la lectura de la guarda del ensayo, sin
+    R33; sin ellos, la obra entera.
 
 .PARAMETER SigridBaseUrl
     La raiz de la pasarela. Si no se pasa, `$env:SIGRID_API_BASE_URL`.
@@ -114,11 +135,17 @@
 .EXAMPLE
     # Con la raiz y la base en la sesion ($env:SIGRID_API_BASE_URL, $env:SIGRID_BASE_DATOS).
     powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra <obra>
+
+.EXAMPLE
+    # T-A0 bis: la lectura de la guarda, con una y con cinco unidades de la obra.
+    powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra <obra> -Unidades '<u1>' -SigridBaseUrl <raiz de la pasarela> -SigridBaseDatos <base>
+    powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra <obra> -Unidades '<u1>','<u2>','<u3>','<u4>','<u5>' -SigridBaseUrl <raiz de la pasarela> -SigridBaseDatos <base>
 #>
 
 [CmdletBinding()]
 param(
     [string]$CodigoObra,
+    [string[]]$Unidades,
     [string]$SigridBaseUrl,
     [string]$SigridBaseDatos,
     [int]$Tip = 708,
@@ -136,6 +163,12 @@ $PATRON_NUESTROS = "PVI-%"
 # El `MAX_ALLOWED_ROWS` de la pasarela desplegada (`sigrid_api.md` 4.1).
 $TECHO_PASARELA = 500000
 $COLUMNAS_DE_LA_OBRA = 31
+$COLUMNAS_DE_LAS_UNIDADES = 12
+# Las partes de una llamada del ensayo van de 1 a 50 (F-059, R30): una
+# guarda nunca lee mas unidades que esas.
+$MAX_UNIDADES = 50
+# Donde van los marcadores del `IN` de la guarda, uno por unidad.
+$MARCADORES = "__MARCADORES__"
 
 # Las columnas de trabajo, por posicion en `$SQL_RECLAMACIONES_DE_LA_OBRA`.
 # `v.obride` solo se cuenta: un `ide` del ERP no se imprime nunca.
@@ -207,6 +240,25 @@ OUTER APPLY (SELECT TOP 1 x.valt FROM dbo.conext x
              WHERE x.conide = c.ide AND x.cod = ? AND x.valt LIKE ?
              ORDER BY x.ide) p
 WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ?
+ORDER BY c.cod
+'@
+
+# La de la guarda del ensayo (R70): `design.md` 15.5, las doce columnas de R6
+# sin R33, y el `IN` con un marcador por unidad (se sustituye `__MARCADORES__`).
+$SQL_RECLAMACIONES_DE_LAS_UNIDADES = @'
+SELECT v.obride, c.cod, e.cod, c.fec, u.cod, a.cod, a.res, t.cod, t.res, r.resubi, c.res, p.valt
+FROM dbo.rcp r
+JOIN dbo.con c ON c.ide = r.ide
+JOIN dbo.upv v ON v.ide = r.upvide
+JOIN dbo.con u ON u.ide = v.ide
+JOIN dbo.con o ON o.ide = v.obride
+LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est
+LEFT JOIN dbo.auxofc a ON a.ide = r.ofcide
+LEFT JOIN dbo.auxtrcp t ON t.ide = r.trcpide
+OUTER APPLY (SELECT TOP 1 x.valt FROM dbo.conext x
+             WHERE x.conide = c.ide AND x.cod = ? AND x.valt LIKE ?
+             ORDER BY x.ide) p
+WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ? AND u.cod IN (__MARCADORES__)
 ORDER BY c.cod
 '@
 
@@ -412,6 +464,18 @@ if ($MaxFilas -lt 1 -or $MaxFilas -gt $TECHO_PASARELA) {
     Salir-Con ("-MaxFilas va de 1 a " + $TECHO_PASARELA + ": la pasarela no sirve mas por peticion.") $SALIDA_PARAMETRO
 }
 
+$codigosDeUnidad = @()
+if ($PSBoundParameters.ContainsKey("Unidades")) {
+    $codigosDeUnidad = @($Unidades | ForEach-Object { "$_" -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($codigosDeUnidad.Count -eq 0) {
+        Salir-Con "-Unidades sin ninguna unidad: pasa al menos un codigo, o quitalo para medir la obra." $SALIDA_PARAMETRO
+    }
+    if ($codigosDeUnidad.Count -gt $MAX_UNIDADES) {
+        Salir-Con ("-Unidades admite como mucho " + $MAX_UNIDADES + " unidades: las de una llamada del ensayo.") $SALIDA_PARAMETRO
+    }
+}
+$conUnidades = ($codigosDeUnidad.Count -gt 0)
+
 $conCeros = $codigo.PadLeft(4, "0")
 $sinCeros = $codigo.TrimStart("0")
 if (-not $sinCeros) { $sinCeros = $codigo }
@@ -438,6 +502,11 @@ if ($formas.row_count -gt 1) {
 $obraCod = ([string](Get-SigridValor -Respuesta $formas -Fila $indiceForma -Columna "obra_cod")).Trim()
 $obrasConElCodigo = Get-SigridValor -Respuesta $formas -Fila $indiceForma -Columna "obras"
 $modo = "la obra entera, con los campos de R33"
+$tituloDelVeredicto = "MEDICION DE LA OBRA"
+if ($conUnidades) {
+    $modo = "solo las unidades pedidas, sin R33 (la guarda del ensayo)"
+    $tituloDelVeredicto = "MEDICION DE LA GUARDA"
+}
 
 Write-Host ""
 Write-Host "Reclamaciones de la obra en Sigrid (SOLO LECTURA, solo recuentos)" -ForegroundColor Cyan
@@ -451,9 +520,17 @@ Reiniciar-Veredicto
 Anotar-Cifra -Que "obras con ese codigo y unidades de posventa" -Valor $obrasConElCodigo
 
 # --- Q1 - la lectura que se mide ---------------------------------------------
-$sql = ConvertTo-SqlConLf $SQL_RECLAMACIONES_DE_LA_OBRA
-$parametros = @($CAMPO_REFERENCIA, $PATRON_NUESTROS, $Tip, $obraCod)
-$columnasEsperadas = $COLUMNAS_DE_LA_OBRA
+if ($conUnidades) {
+    # Un marcador por unidad, y las unidades como parametros: nada interpolado.
+    $sql = ConvertTo-SqlConLf ($SQL_RECLAMACIONES_DE_LAS_UNIDADES.Replace($MARCADORES, ((@("?") * $codigosDeUnidad.Count) -join ", ")))
+    $parametros = @($CAMPO_REFERENCIA, $PATRON_NUESTROS, $Tip, $obraCod) + $codigosDeUnidad
+    $columnasEsperadas = $COLUMNAS_DE_LAS_UNIDADES
+}
+else {
+    $sql = ConvertTo-SqlConLf $SQL_RECLAMACIONES_DE_LA_OBRA
+    $parametros = @($CAMPO_REFERENCIA, $PATRON_NUESTROS, $Tip, $obraCod)
+    $columnasEsperadas = $COLUMNAS_DE_LA_OBRA
+}
 
 $reloj = [Diagnostics.Stopwatch]::StartNew()
 $respuesta = Invoke-SigridLectura -BaseUrl $destino.BaseUrl -Clave $clave `
@@ -465,7 +542,7 @@ $segundos = [math]::Round($reloj.Elapsed.TotalSeconds, 2)
 if ($null -eq $respuesta) {
     Comprobar -Que "la pasarela acepto la consulta, sin truncated" -Esperado "si" -Obtenido "no"
     Anotar-Cifra -Que "segundos" -Valor $segundos
-    Escribir-Veredicto -Titulo "MEDICION DE LA OBRA"
+    Escribir-Veredicto -Titulo $tituloDelVeredicto
 }
 
 $filas = @($respuesta.rows)
@@ -483,13 +560,34 @@ Anotar-Cifra -Que "segundos" -Valor $segundos
 
 if ($columnasLeidas -ne $columnasEsperadas) {
     # Por posicion no se puede contar nada de una respuesta con otra forma.
-    Escribir-Veredicto -Titulo "MEDICION DE LA OBRA"
+    Escribir-Veredicto -Titulo $tituloDelVeredicto
 }
 
-# --- Las cuentas, en una pasada ------------------------------------------------
-$hoy = Get-Date
+# --- Los bytes, en las dos lecturas --------------------------------------------
 $bytesTotales = 2
 $bytesR33 = 0
+for ($i = 0; $i -lt $numeroDeFilas; $i++) {
+    $fila = $filas[$i]
+    if ($i -gt 0) { $bytesTotales = $bytesTotales + 1 }
+    $bytesTotales = $bytesTotales + 2 + ($columnasLeidas - 1)
+    for ($c = 0; $c -lt $columnasLeidas; $c++) {
+        $bytes = Get-BytesDeValor $fila[$c]
+        $bytesTotales = $bytesTotales + $bytes
+        # Cada valor de R33 con la coma que lo separa del anterior.
+        if ($c -ge $PRIMERA_COLUMNA_R33) { $bytesR33 = $bytesR33 + $bytes + 1 }
+    }
+}
+Anotar-Cifra -Que "bytes de la respuesta, todos los campos" -Valor $bytesTotales
+
+if ($conUnidades) {
+    # La guarda mide lo que cuesta, no la poblacion: aqui acaba.
+    Anotar-Cifra -Que "unidades pedidas" -Valor $codigosDeUnidad.Count
+    Escribir-Veredicto -Titulo "MEDICION DE LA GUARDA"
+}
+Anotar-Cifra -Que "bytes de los campos de R33" -Valor $bytesR33
+
+# --- Las cuentas de R29, en una pasada -------------------------------------------
+$hoy = Get-Date
 $obras = New-Object 'System.Collections.Generic.HashSet[string]'
 $porEstado = @{}
 foreach ($nombreEstado in $ESTADOS_CONOCIDOS) { $porEstado[$nombreEstado] = 0 }
@@ -507,14 +605,6 @@ $grupos = New-Object 'System.Collections.Generic.Dictionary[string,object]'
 
 for ($i = 0; $i -lt $numeroDeFilas; $i++) {
     $fila = $filas[$i]
-
-    if ($i -gt 0) { $bytesTotales = $bytesTotales + 1 }
-    $bytesTotales = $bytesTotales + 2 + ($columnasLeidas - 1)
-    for ($c = 0; $c -lt $columnasLeidas; $c++) {
-        $bytes = Get-BytesDeValor $fila[$c]
-        $bytesTotales = $bytesTotales + $bytes
-        if ($c -ge $PRIMERA_COLUMNA_R33) { $bytesR33 = $bytesR33 + $bytes + 1 }
-    }
 
     [void]$obras.Add([string]$fila[$COL_OBRA])
 
@@ -555,8 +645,6 @@ for ($i = 0; $i -lt $numeroDeFilas; $i++) {
         else { $grupos[$claveGrupo] = 1 }
     }
 }
-if ($numeroDeFilas -gt 0) { $bytesR33 = $bytesR33 - $numeroDeFilas }
-if ($bytesR33 -lt 0) { $bytesR33 = 0 }
 
 # Por unidad: cuantas, y el minimo, la mediana y el maximo (nunca cuales).
 $cuantasPorUnidad = @($porUnidad.Values | ForEach-Object { $_.Count } | Sort-Object)
@@ -597,8 +685,6 @@ foreach ($lista in $porUnidad.Values) {
 }
 
 Anotar-Cifra -Que "obras distintas en las filas" -Valor $obras.Count
-Anotar-Cifra -Que "bytes de la respuesta, todos los campos" -Valor $bytesTotales
-Anotar-Cifra -Que "bytes de los campos de R33" -Valor $bytesR33
 foreach ($nombreEstado in $ESTADOS_CONOCIDOS) {
     Anotar-Cifra -Que ("estado " + $nombreEstado) -Valor $porEstado[$nombreEstado]
 }

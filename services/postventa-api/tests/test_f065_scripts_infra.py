@@ -717,3 +717,152 @@ def test_f065_r29_el_comun_sigue_siendo_de_solo_lectura():
 
     assert '-Uri ($BaseUrl + "/api/sql/read")' in comun
     assert "sql/write" not in comun
+
+
+# --------------------------------------------------------------------------
+# R70 · `-Unidades`: la consulta de la guarda del ensayo (T2 bis, S-5)
+# --------------------------------------------------------------------------
+
+#: `design.md` §15.5, `SQL_RECLAMACIONES_DE_LAS_UNIDADES` con **una** unidad:
+#: las 12 columnas de R6, sin R33, y un marcador en el `IN`.
+SQL_DE_UNA_UNIDAD = """\
+SELECT v.obride, c.cod, e.cod, c.fec, u.cod, a.cod, a.res, t.cod, t.res, r.resubi, c.res, p.valt
+FROM dbo.rcp r
+JOIN dbo.con c ON c.ide = r.ide
+JOIN dbo.upv v ON v.ide = r.upvide
+JOIN dbo.con u ON u.ide = v.ide
+JOIN dbo.con o ON o.ide = v.obride
+LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est
+LEFT JOIN dbo.auxofc a ON a.ide = r.ofcide
+LEFT JOIN dbo.auxtrcp t ON t.ide = r.trcpide
+OUTER APPLY (SELECT TOP 1 x.valt FROM dbo.conext x
+             WHERE x.conide = c.ide AND x.cod = ? AND x.valt LIKE ?
+             ORDER BY x.ide) p
+WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ? AND u.cod IN (?)
+ORDER BY c.cod"""
+
+#: La misma con **cinco** unidades: cinco marcadores, separados por coma y
+#: espacio. Escrita entera, no compuesta: T15 cambia esta comparación por la
+#: de `select_reclamaciones_de_las_unidades`.
+SQL_DE_CINCO_UNIDADES = """\
+SELECT v.obride, c.cod, e.cod, c.fec, u.cod, a.cod, a.res, t.cod, t.res, r.resubi, c.res, p.valt
+FROM dbo.rcp r
+JOIN dbo.con c ON c.ide = r.ide
+JOIN dbo.upv v ON v.ide = r.upvide
+JOIN dbo.con u ON u.ide = v.ide
+JOIN dbo.con o ON o.ide = v.obride
+LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est
+LEFT JOIN dbo.auxofc a ON a.ide = r.ofcide
+LEFT JOIN dbo.auxtrcp t ON t.ide = r.trcpide
+OUTER APPLY (SELECT TOP 1 x.valt FROM dbo.conext x
+             WHERE x.conide = c.ide AND x.cod = ? AND x.valt LIKE ?
+             ORDER BY x.ide) p
+WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ? AND u.cod IN (?, ?, ?, ?, ?)
+ORDER BY c.cod"""
+
+#: Cómo compone el script el `IN`: su línea, tal cual. Si cambia (otro
+#: separador, otro marcador), el test que la exige falla antes que el resto.
+LINEA_QUE_COMPONE = (
+    "$sql = ConvertTo-SqlConLf ($SQL_RECLAMACIONES_DE_LAS_UNIDADES.Replace("
+    '$MARCADORES, ((@("?") * $codigosDeUnidad.Count) -join ", ")))'
+)
+
+
+def _lo_que_manda_el_script_con(unidades: int) -> str:
+    """El texto que el script manda con `unidades` unidades: su here-string con
+    el marcador sustituido como dice `LINEA_QUE_COMPONE` (y en LF)."""
+    plantilla = _consulta("SQL_RECLAMACIONES_DE_LAS_UNIDADES")
+    return plantilla.replace("__MARCADORES__", ", ".join(["?"] * unidades))
+
+
+def test_f065_r70_admite_unidades_y_lo_explica():
+    """`-Unidades`, una lista de códigos, con su ayuda y su ejemplo."""
+    ejecutable = _ejecutable()
+    ayuda = _plano(_ayuda())
+
+    assert "[string[]]$Unidades" in ejecutable
+    assert ".PARAMETER Unidades" in _ayuda()
+    for texto in ("R70", "T-A0 bis", "15.5", "sin R33", "cuantas unidades", "-Unidades"):
+        assert texto in ayuda, f"la ayuda no dice «{texto}»"
+    ejemplos = _ayuda().split(".EXAMPLE")[1:]
+    assert any("-Unidades" in ejemplo for ejemplo in ejemplos), "ningun ejemplo con -Unidades"
+
+
+def test_f065_r70_la_consulta_de_la_guarda_es_la_de_design_con_una_y_con_cinco():
+    """**El test central de T2 bis.** R70: «texto idéntico para 1 y para 5
+    unidades»."""
+    ejecutable = _ejecutable()
+
+    assert '$MARCADORES = "__MARCADORES__"' in ejecutable
+    assert LINEA_QUE_COMPONE in ejecutable
+    assert _lo_que_manda_el_script_con(1) == SQL_DE_UNA_UNIDAD
+    assert _lo_que_manda_el_script_con(5) == SQL_DE_CINCO_UNIDADES
+
+
+def test_f065_r70_la_guarda_es_la_de_la_obra_sin_r33_y_con_el_filtro_de_unidades():
+    """Mismas uniones que §3 salvo las de R33 (`auxrcp`, el propietario y las
+    dos personas), las doce primeras columnas, y el `IN` al final del `WHERE`."""
+    guarda = _consulta("SQL_RECLAMACIONES_DE_LAS_UNIDADES")
+    obra = _consulta("SQL_RECLAMACIONES_DE_LA_OBRA")
+
+    assert guarda.splitlines()[0] == obra.splitlines()[0].rstrip(",")
+    for de_r33 in ("dbo.auxrcp", "dbo.per", "r.cliide", "r.tex", "r.tel", "r.ele", "motrcp", "solrcp", "texurg", "rcptip", "fecpre", ".nom"):
+        assert de_r33 not in guarda, f"la guarda lee {de_r33}: no lee ni un dato personal"
+    assert "AND u.cod IN (__MARCADORES__)\nORDER BY c.cod" in guarda
+    assert "$COLUMNAS_DE_LAS_UNIDADES = 12" in _ejecutable()
+
+
+def test_f065_r70_un_marcador_por_unidad_y_los_parametros_en_orden():
+    """Los cuatro de §3 y después una unidad por marcador, sin interpolar nada."""
+    ejecutable = _ejecutable()
+
+    assert (
+        "$parametros = @($CAMPO_REFERENCIA, $PATRON_NUESTROS, $Tip, $obraCod) + $codigosDeUnidad"
+        in ejecutable
+    )
+    assert "$columnasEsperadas = $COLUMNAS_DE_LAS_UNIDADES" in ejecutable
+
+
+def test_f065_r70_la_lista_se_parte_por_comas_y_tiene_tope():
+    """Con `powershell -File` la lista llega como **un** texto con comas (el
+    comando de T-A0 bis): el script la parte, recorta y quita los vacíos; sin
+    ninguna unidad, o con más de las que caben en una llamada del ensayo, para."""
+    ejecutable = _ejecutable()
+
+    assert '-split ","' in ejecutable
+    # Las variables de PowerShell no distinguen mayúsculas: una lista local
+    # llamada `$unidades` pisaría el parámetro `$Unidades` antes de leerlo.
+    assert re.search(r"\$unidades\s*=", ejecutable, flags=re.IGNORECASE) is None
+    assert "$codigosDeUnidad = @($Unidades | ForEach-Object" in ejecutable
+    assert "$MAX_UNIDADES = 50" in ejecutable
+    assert "if ($codigosDeUnidad.Count -gt $MAX_UNIDADES)" in ejecutable
+    assert 'if ($PSBoundParameters.ContainsKey("Unidades"))' in ejecutable
+    assert "if ($codigosDeUnidad.Count -eq 0)" in ejecutable
+
+
+def test_f065_r70_imprime_cuantas_unidades_y_no_cuales():
+    """R70: filas, `truncated`, bytes y segundos, y **cuántas** unidades. Ni una
+    línea que imprime nombra la lista, salvo por su `Count`."""
+    ejecutable = _ejecutable()
+
+    assert 'Anotar-Cifra -Que "unidades pedidas" -Valor $codigosDeUnidad.Count' in ejecutable
+    for linea in ejecutable.splitlines():
+        if re.search(r"Write-Host|Anotar|Comprobar|Salir-Con", linea):
+            sin_count = re.sub(r"\$codigosDeUnidad\.Count\b", "", linea)
+            assert (
+                re.search(r"\$(?:unidades|codigosDeUnidad)\b", sin_count, flags=re.IGNORECASE)
+                is None
+            ), linea
+
+
+def test_f065_r70_con_unidades_no_hace_las_cuentas_de_la_obra():
+    """La guarda mide lo que cuesta, no la población: con `-Unidades` el
+    veredicto sale **antes** de las cuentas de R29 y de la consulta de fechas."""
+    ejecutable = _ejecutable()
+    veredicto = ejecutable.index('Escribir-Veredicto -Titulo "MEDICION DE LA GUARDA"')
+    # La rama que cierra la guarda: el último `if ($conUnidades)` antes de su veredicto.
+    rama = ejecutable.rindex("if ($conUnidades) {", 0, veredicto)
+
+    assert rama < veredicto < ejecutable.index("[$COL_ESTADO]")
+    assert veredicto < ejecutable.index("$SQL_FECHAS_DE_LA_OBRA", rama)
+    assert ejecutable.index("bytes de la respuesta, todos los campos") < rama

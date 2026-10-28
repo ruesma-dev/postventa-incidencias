@@ -530,3 +530,155 @@ Review de **bloque**: lo que solo se puede juzgar al cerrar la feature se marca 
    importa el fichero mutado (comprobado por el reviewer), (b) el informe lo declara en su cabecera y (c) el
    reviewer la reejecuta igual; con cero supervivientes, la suite entera no puede dar menos muertos. Hoy la regla
    pide la orden oficial tal cual y deja este caso al criterio de cada review. Candidata a `arnes-base`.
+
+## Re-review del Bloque A2, tras T4 bis · 2026-10-28
+
+- **Veredicto:** **CHANGES_REQUESTED** (RECHAZADO), por dos cosas que **no piden código al implementer**:
+  - **C-A2-3**: la aceptación escrita del humano de un mutante a mano equivalente (R4, abajo). En `critico` yo no
+    puedo aceptarla (`CHECKPOINTS.md` C4 bis).
+  - **C-A2-4**: un `bash harness/init.sh` en verde de una pasada. El mío salió rojo por un test de tiempo de F-036
+    (1,04 s frente a 1 s) con el puesto cargado.
+
+  C-A2-1, C-A2-2 y las decisiones 1, 2, 3 y 9 están cerradas en el código y en los tests. **Con las dos cosas
+  anotadas, el bloque queda APROBADO sin otra review del código.**
+- **Alcance:** spec `c961345` y `7269617`; código `a0201d7..fbb77dc` (RED `a0201d7`, dominio `c99a0d3`, test
+  M8b `d3f94c8`, informe y mutación `fbb77dc`). Solo `sigrid_bandeja.py`, `test_f065_dominio.py`, `tasks.md` y los
+  dos informes. Nada de A3 ni posterior.
+- **Nivel de rigor:** `critico`, como antes.
+- No me he conectado a Sigrid, a la base ni a SharePoint. Mutaciones en dos `git worktree` desechables del
+  scratchpad sobre `fbb77dc`, ya borrados; el árbol de trabajo, limpio.
+
+### `init.sh`
+
+`bash harness/init.sh`, tal cual, una vez, sobre `fbb77dc`: **exit 1, en ROJO**, por **un test de tiempo**, no
+por este bloque.
+
+- Servicio api: `1 failed, 5324 passed, 49 skipped in 763,84 s`, parado por `-x` en
+  `test_f036_excel_lector.py::test_f036_r115_…_se_lee_en_menos_de_un_segundo[combinado-A-H-Incidencias]`:
+  **1,04 s frente al tope de 1,0 s**. El puesto estaba cargado: seguían vivas las campañas de mutación de
+  `partes`, `facturas` y `proformas`.
+- Por ese `-x`, la `PUERTA COBERTURA` sale `[KO]` **46,2 % (108/234)**: midió solo la parte de la suite que llegó a
+  correr, y `test_f065_dominio.py` va detrás.
+- El resto, en verde: arnés, `features.json`, `BACKLOG.md`, `compileall`, raíz (115 passed), front, rama. ruff: 76
+  avisos de deuda previa.
+
+Lo que he hecho después, y lo digo para que se vea qué nivel de verificación hay:
+
+| Qué | Resultado |
+|---|---|
+| `test_f036_r115_…` **a solas**, tres veces | **9 passed**, las tres (30,3 s, 31,2 s y 52,3 s, los 9 casos) |
+| **La parte de la suite que `-x` no llegó a correr** (los 54 ficheros desde `test_f036_excel_lector.py`, sin `-x`) | `1 failed, 4073 passed, 212 skipped in 1101,03 s`. El fallo, **otro test de tiempo del mismo fichero**: `test_f036_r117_…_se_rechazan_en_menos_de_un_segundo[celda-con-estilo-fila-1200]` |
+| `test_f036_r117_…` **a solas**, tres veces | **7 passed**, las tres |
+| Cobertura del módulo con su test (`coverage run --branch`, datos en el scratchpad) | **234 sentencias, 0 sin cubrir; 66 ramas, 0 parciales: 100 %** |
+
+Entre las dos pasadas han corrido todos los tests del servicio (5324 + 4073 = 9397 passed). Los únicos dos fallos
+son topes de 1 s de F-036 por la carga, y pasan a solas. T4 bis no toca nada que lean: solo
+`sigrid_bandeja.py`, que únicamente importa su test. **Aun así, `init.sh` no ha salido en verde de una pasada**, y
+con `init.sh` en rojo no se aprueba (regla dura del reviewer). C-A2-4.
+
+### 1 · C-A2-1 y C-A2-2: cerrados
+
+- **C-A2-1.** `test_f065_r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid` y su simétrico
+  `…_la_mayor_anulada_da_anulada_en_sigrid`. **M12 muere** en mi copia (1 failed, el primero de los dos), como en la
+  traza del implementer.
+- **C-A2-2.** El informe se regeneró sobre `d3f94c8` (23:06) a las 23:14, con el árbol limpio; `d3f94c8..fbb77dc` no
+  toca el módulo. **Recalculado**: 570 líneas en alcance (= `wc -l`), 50 mutantes (los mismos operadores).
+  **Reejecutada** la campaña (178,7 s < 5 min) con la misma suite reducida, en una copia de `fbb77dc`: **50 / 50 /
+  0 / 0, 250,5 s**, 1 worker; 5,0 s por mutante, coherente con la suite reducida. Los importadores siguen siendo
+  solo el módulo y su test, así que la suite reducida sigue siendo válida (argumento de la review anterior).
+
+### 2 · Las decisiones, cumplidas en el código
+
+| Decisión | Código (`sigrid_bandeja.py`) | Lo fija | Mutante mío |
+|---|---|---|---|
+| **1** · `guardado_cod`; `sigrid_cod` siempre de una reclamación de la respuesta o `None` | `Hallazgo.guardado_cod`; `volcada_no_encontrada` con `None` y el guardado aparte; `codigo_distinto` con `sigrid_cods=()`; la tabla de §10.1 en la docstring | `r12_r20_los_codigos_de_cada_hallazgo_segun_la_tabla` y `r12_r20_las_invariantes_de_los_codigos` (los siete tipos) | R6 (el guardado otra vez en `sigrid_cod`) y R7 (`guardado_cod` en `anulada`): **muertos** (5 tests cada uno) |
+| **2** · `codigo_distinto` callado si el guardado está entre las suyas; `anulada` solo contra la mayor | `if all(r.cod != guardado for r in suyas)` (l. 441); `if mayor.estado == NPR` (l. 451) | `r12_r13_bis_…_guardado_entre_ellas_sin_codigo_distinto`, `…_guardado_fuera_da_codigo_distinto`, los dos de la anulación | R2 (como T4) y R1 (= M12): **muertos** |
+| **3** · R13 con varias: ninguna de las suyas se cruza con ella, todas con las demás | sin cambio (ya era así en T4) | `r13_enmienda_ninguna_de_las_suyas_coincide_con_ella_y_todas_con_las_demas` (completa la mitad que faltaba) | M1 y M3 del implementer, muertos |
+| **9** · los `coincide` de una incidencia en el orden de R18; los demás por `sigrid_cod` ascendente | `_Ordenable(h, puesto)` con el puesto de R18 (l. 558) | `r21_los_coincide_de_una_incidencia_en_el_orden_de_r18_con_el_tope` (fechas que no siguen el orden de los códigos, sin fecha, empates), `r21_los_coincide_por_fecha_y_no_por_codigo`, `r21_hallazgos_por_severidad…` | R3 (por código, como T4) y R5 (orden inverso): **muertos** (3 tests); **R4: sobrevive, equivalente** (C-A2-3) |
+
+El desempate `int | str` no puede comparar un entero con un texto: el tipo va antes en la clave, y a igual tipo los
+dos desempates son del mismo tipo. Comprobado leyendo la clave; ningún test da `TypeError`.
+
+**La enmienda de `7269617`** (no recortar `unidad_codigo` ni `oficio_codigo`, como F-036) no toca este bloque: es
+del mapeo de T5 y está escrita allí con su test. Sin objeción: recortar solo un lado podía romper R14.
+
+### 3 · La enmienda a S-3 (NPR → `choca`): es correcto dejarla para A4 bis
+
+- Es una regla del **veredicto** (R41, regla 0 de §15.2), y el veredicto no existe en este bloque: `Veredicto`,
+  `veredictos` y `Cruce.pares` nacen en T14. Ponerla ahora sería adelantar T14.
+- **El dominio de A2 ya da lo que necesita**: `Cruce.reclamaciones` lleva cada reclamación con su `incidencia_id`
+  emparejado, y solo la mayor lo lleva (`emparejada_de`), con su `estado`. `veredictos` podrá saber «la emparejada
+  de X está en `NPR`» sin que `Cruce` gane nada, como dice §15.2. Los tests de T4 bis ya fijan que la emparejada es
+  la mayor (M16) y que la menor anulada no cuenta (M12), que es justo lo que la regla 0 necesita.
+- **Está en las tareas**: T13 trae los tres casos (E7 con la emparejada en `NPR` → `choca` con solo su código,
+  también con un `ya_existe`; la menor de dos en `NPR` → `se_enlaza`) y T15 la exclusión del ensayo (sin confirmar,
+  excluida con ese código; confirmada, se manda). T14 no la nombra, pero su verificación ejecuta los tests de T13.
+
+### 4 · Mutantes a mano
+
+Los 27 del implementer (M1–M26 y M8b) los doy por buenos por su tabla; he repetido los que tocan lo nuevo, en mi
+copia, con `tests/test_f065_dominio.py` entero y sin `-x`:
+
+| Id | Mutación | Resultado | Lo caza (tests de la propia feature) |
+|---|---|---|---|
+| R1 | M12: `anulada` si cualquiera de las suyas está en `NPR` | muerto (1) | `r12_r13_bis_la_menor_anulada_no_da_anulada_en_sigrid` |
+| R2 | `codigo_distinto` con `mayor.cod != guardado` (como T4) | muerto (1) | `…_guardado_entre_ellas_sin_codigo_distinto` |
+| R3 | los `coincide` por código ascendente (como T4) | muerto (3) | los 3 `r21_…` con `coincide` |
+| **R4** | **los `coincide` con desempate constante, `_Ordenable(h, 0)`** | **sobrevive (145 passed)** | **ninguno: equivalente** |
+| R5 | los `coincide` en orden inverso (`-puesto`) | muerto (3) | los 3 `r21_…` con `coincide` |
+| R6 | `volcada_no_encontrada` con el guardado en `sigrid_cod` | muerto (5) | `r12_volcada_no_encontrada`, los 2 `r12_r20_…`… |
+| R7 | `anulada_en_sigrid` con `guardado_cod` | muerto (5) | `r12_anulada_en_sigrid`, `…anulada_y_con_otro_codigo…`, `…la_mayor_anulada…`… |
+
+**R4 es equivalente, no un hueco de los tests.** `sorted` de Python es **estable** (garantía del lenguaje), y los
+`coincide` de cada incidencia entran en `hallazgos` **ya** en el orden de R18 (`pares` se ordena antes del
+`enumerate`), contiguos y después de los de emparejamiento. A igual severidad, tipo e `incidencia_id` solo empatan
+`coincide` de la misma incidencia y severidad, y la estabilidad los deja en su orden de entrada, que es R18. Así
+que el `puesto` no cambia ninguna salida posible: ningún test puede matar R4. El implementer eligió el `enumerate`
+para que la clave no dependa de la estabilidad ni de un literal que la herramienta mutaría (lo explica en
+«Decisiones de diseño»), y me parece bien: quitarlo dejaría la misma equivalencia escondida en la estabilidad, o
+un `0` literal que la campaña daría como superviviente equivalente. **No pido cambiar el código.**
+
+### Checkpoints que cambian respecto de la review del Bloque A2
+
+- [ ] C1 · **`init.sh` en rojo** sobre `fbb77dc` por un test de tiempo de F-036 (arriba). C-A2-4.
+- [ ] C4 bis · `PUERTA COBERTURA` `[KO]` 46,2 %, **efecto del `-x`**, no de este bloque: medida a mano, 100 % del
+  módulo (234/234, 66/66 ramas). Se cierra con C-A2-4.
+- [x] C4 · Las enmiendas de R12, R13, R20 y R21 tienen tests trazables (tabla de §2).
+- [x] C4 bis · Fase RED de T4 bis con la salida real (11 failed, `a0201d7`); los dos de la anulación y el de R13
+  en verde en la RED, explicado (fijan lo que T4 ya hacía; su prueba es que matan M12 y M3).
+- [x] C4 bis · Mutación: informe regenerado desde un árbol confirmado, recalculado y reejecutado (50/50).
+- [ ] C4 bis · **Cero supervivientes, también a mano (critico)**: la campaña, 0; a mano, **R4 equivalente**, que
+  necesita la aceptación escrita del humano. C-A2-3.
+- [x] C4 bis · «Evidencias» de T4 bis con los cuatro números y el worker.
+- [x] C5 · T4 bis `[x]`, commits `F-065 T4 bis: …`; `git status` limpio.
+
+El resto, como en la review del Bloque A2.
+
+### Cambios requeridos
+
+1. **C-A2-3 · (para el líder y el humano, no para el implementer)**: que el humano acepte **por escrito** R4 como
+   mutante equivalente, con el motivo de §4 (la ordenación de Python es estable y los `coincide` entran ya en el
+   orden de R18, así que el desempate por puesto no cambia ninguna salida). Basta con que el líder anote la
+   aceptación, con fecha, debajo de esta sección o en `progress/current.md`. Sin cambios de código ni de tests, y
+   sin otra review.
+2. **C-A2-4 · (para el líder)**: `bash harness/init.sh` en verde de una pasada sobre `fbb77dc` (o sobre lo que haya
+   encima, si solo son informes), con el puesto más libre, y anotar el resultado aquí. Si vuelve a caer un
+   `test_f036_r11x_…_menos_de_un_segundo`, es el tope de 1 s de F-036 frente a la carga de las otras campañas, no
+   este bloque: el remedio es lanzarlo con el puesto libre, no tocar el tope.
+
+### Observaciones (no bloquean)
+
+- **O-A2-4 · La cascada a otros bloques está apuntada**: T7 serializa `guardado_cod` (`null` donde no toca) y
+  F-064 recoge `guardado_cod`, el `sigrid_cod` `null` en `volcada_no_encontrada` y el orden de R18 sin reordenar.
+  F-064 está en otro worktree (`postventa-f064`): conviene que su spec lo recoja antes de empezarla, porque el
+  contrato ya ha cambiado aquí.
+- **O-A2-1 y O-A2-2** de la review anterior siguen igual (la unidad nula, el test de coste): no bloquean.
+
+### Automejora (propuesta, no aplicada)
+
+Para `CHECKPOINTS.md` C4 bis («cada [mutante a mano] declarado equivalente necesita la aceptación escrita del
+humano»): permitir que el reviewer dé por cerrado un mutante a mano cuya equivalencia se **demuestra** con una
+garantía del lenguaje o de la biblioteca estándar citada (aquí, la estabilidad de `sorted`), dejándolo anotado para
+que el humano lo vea, y reservar la aceptación del humano para las equivalencias que son un juicio. Hoy un caso
+demostrable bloquea el bloque igual que uno discutible. Vale para cualquier proyecto: candidata a `arnes-base` si
+el humano la aprueba.

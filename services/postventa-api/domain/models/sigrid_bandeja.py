@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from enum import StrEnum
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 from uuid import UUID
 
 from domain.models.normalizacion import clave_de_ubicacion
@@ -210,16 +210,14 @@ class Cruce:
     estados_desconocidos: int
 
 
-@dataclass(frozen=True)
-class _Texto:
+class _Texto(NamedTuple):
     """Una descripción preparada para compararla muchas veces (R36)."""
 
     clave: str
     palabras: frozenset[str]
 
 
-@dataclass(frozen=True)
-class _Candidata:
+class _Candidata(NamedTuple):
     """Una reclamación que puede dar pares: su severidad y sus claves, calculadas una vez."""
 
     reclamacion: ReclamacionSigrid

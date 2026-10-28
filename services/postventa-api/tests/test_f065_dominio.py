@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import ast
 import time
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -284,6 +284,21 @@ def test_f065_r20_los_valores_de_los_enumerados() -> None:
     ]
 
 
+def test_f065_r19_los_tipos_del_cruce_son_inmutables() -> None:
+    """Lo que sale del cruce no se puede tocar por el camino (lo serializa el borde)."""
+    cruce = cruzar([sit(1)], [rec("RS26.09/0123")])
+    reclamacion, _ = cruce.reclamaciones[0]
+    hallazgo = cruce.hallazgos[0]
+    with pytest.raises(FrozenInstanceError):
+        reclamacion.cod = "RS26.09/0999"  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        hallazgo.severidad = S.AVISO  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        cruce.evaluadas = 0  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        cruce.coincidencias_total[UUID(int=1)] = 0  # type: ignore[index]
+
+
 def test_f065_r33_la_ficha_viaja_sin_tocar_y_no_sale_en_el_repr() -> None:
     r = rec("RS26.09/0123")
     assert r.ficha is FICHA
@@ -402,7 +417,7 @@ def test_f065_r10_referencia_canonica() -> None:
 
 
 def test_f065_r10_referencia_sin_distinguir_mayusculas() -> None:
-    uid = UUID("0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d")
+    uid = UUID(int=0xA1B2C3D4E5F60718293A4B5C6D7E8F90)  # con letras: cambia al pasar a mayúsculas
     assert incidencia_de_referencia(f"PVI-{str(uid).upper()}") == uid
     assert incidencia_de_referencia(f"pvi-{uid}") == uid
     assert incidencia_de_referencia(f"Pvi-{str(uid).upper()}") == uid

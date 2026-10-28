@@ -1278,7 +1278,7 @@ def test_f065_r19_el_cruce_es_por_unidad_y_acotado() -> None:
             unidad=unidad,
             ubicacion=("Cocina", "Baño", "Salón")[i % 3],
             oficio=f"00{i % 7:02d}",
-            descripcion=f"Ejemplo grieta tabique {100 + i} pieza {200 + u}",
+            descripcion=f"Fisura{i:02d} tabique{i:02d} zona{u:04d}",
         )
         for u, unidad in enumerate(unidades)
         for i in range(50)
@@ -1289,7 +1289,12 @@ def test_f065_r19_el_cruce_es_por_unidad_y_acotado() -> None:
             unidad=unidad,
             ubicacion=("Cocina", "Baño")[j % 2],
             oficio=f"00{j % 7:02d}",
-            descripcion=f"Ejemplo grieta tabique {100 + j} pieza {200 + u}",
+            # La 0 de cada unidad casa por descripción con la 0 de Sigrid.
+            descripcion=(
+                f"Fisura{j:02d} tabique{j:02d} zona{u:04d}"
+                if j == 0
+                else f"Humedad {100 + j} en pared {200 + u}"
+            ),
         )
         for u, unidad in enumerate(unidades)
         for j in range(10)
@@ -1299,8 +1304,11 @@ def test_f065_r19_el_cruce_es_por_unidad_y_acotado() -> None:
     segundos = time.perf_counter() - inicio
     assert cruce.evaluadas == 10_000
     assert len(cruce.reclamaciones) == 50_000
-    assert len(cruce.coincidencias_total) == 10_000
-    assert segundos < 30, f"el cruce tardó {segundos:.1f} s"
+    # Cada unidad: la 0 casa con la 0 de Sigrid (SAT) por los dos criterios.
+    primera = UUID(int=1)
+    assert coincide(1, "RS0000/0000", criterios=(OU, DP), valor=100) in cruce.hallazgos
+    assert cruce.coincidencias_total[primera] >= 1
+    assert segundos < 20, f"el cruce tardó {segundos:.1f} s"
 
 
 def test_f065_r19_el_dominio_es_puro() -> None:

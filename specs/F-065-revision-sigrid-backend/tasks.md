@@ -88,7 +88,7 @@
 
 ## Bloque A2 · El dominio puro
 
-- [ ] **T3**: tests RED de `domain/models/sigrid_bandeja.py`
+- [x] **T3**: tests RED de `domain/models/sigrid_bandeja.py`
   (`tests/test_f065_dominio.py`): R10 (UUID con y sin mayúsculas, `PVI-` sin
   UUID, de otra obra), R11, R12 (los tres avisos), R13, R13 bis, R14 (cada lado
   sin oficio, ubicación vacía, `COCINA`/`Cocina`, `Cocina 1`), R15 (umbral
@@ -100,7 +100,7 @@
   tal cual; y que el cruce es por unidad (una obra de 50.000 reclamaciones y
   10.000 incidencias se cruza en un tiempo acotado). Sin red, sin base, sin
   reloj. | Verificación: `python -m pytest tests/test_f065_dominio.py` en **rojo**, traza en el informe
-- [ ] **T4**: `domain/models/sigrid_bandeja.py` (`design.md` §10.1), sin tocar
+- [x] **T4**: `domain/models/sigrid_bandeja.py` (`design.md` §10.1), sin tocar
   `revision.py`, `normalizacion.py`, `plantilla_incidencias.py` ni
   `volcado.py`. | Verificación: `python -m pytest tests/test_f065_dominio.py` en verde
 

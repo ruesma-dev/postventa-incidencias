@@ -125,3 +125,10 @@ del arnés que cita `tasks.md`). La spec está escrita con la recomendación.
   en el mismo worktree (dos suites a la vez en el mismo equipo), que es lo
   más probable detrás de 0,01 s de más. No se ha reintentado ni tocado el
   test: lo decide el líder.
+
+### Aprobación del humano (2026-10-28)
+
+El humano aprueba S-1 a S-9 con las recomendaciones («si paruebo», tras el resumen del líder). Lo nuevo de la
+conciliación (T2 bis, T-A0 bis, Bloque A4 bis, T-A17, T-A18 y la línea de T10) deja de esperar y entra en la ficha.
+R26 y R27 de F-065 y R9, R11 y §13 de F-059 quedan enmendados en el sentido de S-1: la enmienda se escribe al
+implementar el Bloque A4 bis, con su nota fechada en cada spec.

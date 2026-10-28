@@ -40,6 +40,12 @@
 >   R26, R27 y `design.md` §13 aprobados, y con R9 y R11 de F-059; las
 >   preguntas, numeradas S-1 a S-9, en `design.md` §16. R26 y R27 **no se han
 >   cambiado**: llevan una nota que remite a S-1.
+>
+> **Enmiendas tras la review del Bloque A2 (2026-10-28).** Decisiones del humano
+> sobre las lecturas 1, 2, 3, 4 y 9 de `progress/review_F-065.md` («Review del
+> Bloque A2»): R12, R13, R20, R21 y R41 (esta última, **enmienda del humano a
+> S-3**). Y una del líder sobre la lectura 6, que va a T5 (`tasks.md`). Marcadas
+> «*Enmienda del 2026-10-28*» en su sitio.
 
 ## 0 · De dónde sale
 
@@ -146,8 +152,34 @@ emparejada con ella; **`codigo_distinto`** (aviso) si la emparejada tiene un
 `con.cod` distinto del `sigrid_cod` guardado; **`anulada_en_sigrid`** (aviso)
 si la emparejada está en `NPR`.
 
+> *Enmienda del 2026-10-28 (decisiones del humano, lecturas 1 y 2 de la review
+> del Bloque A2).*
+>
+> - **Dónde va cada código.** El código que guarda nuestra base viaja en un
+>   campo propio del hallazgo, **`guardado_cod`** (R20), y **solo** en
+>   `volcada_no_encontrada` y `codigo_distinto`; en los demás tipos es `null`.
+>   `sigrid_cod` es siempre el `cod` de una reclamación que está en
+>   `reclamaciones` de la misma respuesta, o `null`: en `volcada_no_encontrada`
+>   es `null` (no hay reclamación); en `codigo_distinto` y `anulada_en_sigrid`,
+>   la emparejada.
+> - **`codigo_distinto` con varias.** SI la incidencia `volcada` tiene dos o
+>   más reclamaciones emparejadas (R13 bis) y el código guardado **está entre
+>   ellas**, ENTONCES **no** se da `codigo_distinto`: el duplicado ya lo enseña
+>   `varias_en_sigrid`. SI no está entre ellas, se da, con la emparejada (la de
+>   código mayor) en `sigrid_cod`.
+> - **Las demás comprobaciones de R12** (`anulada_en_sigrid`) se hacen
+>   **solo** contra la emparejada, la de código mayor (R13 bis): que otra de
+>   las suyas esté en `NPR` no da `anulada_en_sigrid`.
+
 **R13.** Una reclamación emparejada con una incidencia **no** entra en los
 criterios R14–R15 frente a esa misma incidencia; sí frente a las demás.
+
+> *Enmienda del 2026-10-28 (decisión del humano, lectura 3 de la review del
+> Bloque A2).* Con dos o más (R13 bis), **ninguna** de las reclamaciones que
+> llevan la referencia `PVI-` de una incidencia se cruza por criterios con
+> ella, no solo la de código mayor: son sus propios partes, y
+> `varias_en_sigrid` ya los enseña. Frente a las demás incidencias, todas
+> entran en los criterios.
 
 **R13 bis.** SI dos o más reclamaciones están emparejadas con la misma
 incidencia, ENTONCES **`varias_en_sigrid`** (conflicto) con todos los códigos,
@@ -205,7 +237,12 @@ sin base y sin reloj, en **una sola función** de cruce.
   `incidencia_id` solo si está emparejada, y `ficha` con los campos de R33
   (`null` lo que no haya);
 - `hallazgos`: cada uno `{tipo, severidad, incidencia_id, sigrid_cod,
-  sigrid_cods, criterios, parecido}`;
+  sigrid_cods, guardado_cod, criterios, parecido}` (*enmienda del
+  2026-10-28*, `guardado_cod`): `sigrid_cod`, el `cod` de una reclamación de
+  `reclamaciones` o `null`; `sigrid_cods`, **siempre** códigos de Sigrid, y
+  solo no vacío en `varias_en_sigrid` (todas las emparejadas, de mayor a
+  menor); `guardado_cod`, el código que guarda nuestra base, solo en
+  `volcada_no_encontrada` y `codigo_distinto`, `null` en los demás (R12);
 - `incidencias`: por cada incidencia con algún hallazgo, indexado por
   `incidencia_id`, `{estado, unidad_codigo, ubicacion, oficio_codigo,
   descripcion, coincidencias_total}` de los **vigentes**;
@@ -216,6 +253,22 @@ sin base y sin reloj, en **una sola función** de cruce.
 **R21.** Las reclamaciones deben ir en orden estable: fecha descendente
 (`null` al final) y, a igual fecha, código descendente. Los hallazgos, por
 severidad (conflicto primero), tipo, `incidencia_id` y código.
+
+> *Enmienda del 2026-10-28 (decisión del humano, lectura 9 de la review del
+> Bloque A2).* Concretado, porque es contrato con F-064:
+>
+> - **El tipo**, en el orden del enumerado (`coincide`, `ya_en_sigrid`,
+>   `varias_en_sigrid`, `volcada_no_encontrada`, `codigo_distinto`,
+>   `anulada_en_sigrid`, `referencia_desconocida`); **`incidencia_id`**
+>   ascendente, con `null` delante.
+> - **Los `coincide` de una misma incidencia** salen en el **orden de R18**:
+>   a igual severidad, fecha de la reclamación descendente (`null` al final)
+>   y, a igual fecha, código descendente. Así, tomar los `coincide` de una
+>   incidencia en el orden de `hallazgos` (filtrando por `incidencia_id` y
+>   `tipo`) da exactamente el orden de R18 —primero los de conflicto—, y la
+>   página toma los primeros **sin reordenar**.
+> - **Los demás tipos**, a igual severidad, tipo e `incidencia_id`, por
+>   `sigrid_cod` ascendente (`null` delante).
 
 **R22.** Ninguna respuesta, tampoco las de error, debe llevar el `oid` ni el
 correo de quien revisa o vuelca, el `ide` de ningún concepto ni persona, la
@@ -405,6 +458,21 @@ Cada veredicto lleva los **códigos** de las reclamaciones que lo deciden, en el
 orden de R18: la emparejada en `se_enlaza`; las de los dos criterios en
 `ya_existe`; **todas** las de conflicto en `choca`; ninguno en `va`.
 
+> *Enmienda del 2026-10-28: **enmienda del humano a S-3*** (lectura 4 de la
+> review del Bloque A2). SI la reclamación emparejada de una candidata —la de
+> código mayor, R13 bis— está en **`NPR`** (anulada en Sigrid), ENTONCES el
+> veredicto es **`choca`**, no `se_enlaza`: mandarla la dejaría `volcada`
+> enlazada a un parte anulado (el `idempotente` de la pasarela), y eso exige
+> la **confirmación explícita** en el ensayo, como el resto de `choca` (R45:
+> sin ella, `conflicto_sin_confirmar`). Va **antes** de la regla 1 en la
+> precedencia: una candidata emparejada con una `NPR` es `choca` aunque
+> también tenga un `ya_existe` o un `choca` por criterios. Sus códigos: **solo
+> el de la emparejada**, porque es la que decide lo que hará la pasarela (no
+> puede crear otro parte, así que los `coincide` no cambian nada). Que otra de
+> las suyas (no la mayor) esté en `NPR` no cambia el veredicto, como en R12.
+> La regla 1 se lee entonces «`se_enlaza` si tiene una reclamación emparejada
+> por `PVI-` **que no está en `NPR`**».
+
 **R42.** *(S-9.)* CUANDO la ruta de R1 responde 200, la respuesta debe llevar
 además un bloque **`volcado`** —aditivo: R20 no pierde ni cambia nada—:
 `{candidatas, por_veredicto: {va, se_enlaza, ya_existe, choca}, por_unidad:
@@ -448,6 +516,12 @@ que mandar, **no** lee Sigrid (como hoy no hay login).
 Una confirmación de una incidencia que ya no choca se ignora y se cuenta. SI
 tras la guarda no queda nada que mandar, ENTONCES la respuesta de «nada que
 mandar» de F-059 (`ensayo_id: null`), **sin** login ni lote.
+
+> *Enmienda del 2026-10-28 (consecuencia de la enmienda a S-3, R41).* «Sus
+> códigos de conflicto» son **los códigos de su veredicto**: en una `choca`
+> por una emparejada en `NPR`, el de esa emparejada. Confirmarlo es confirmar
+> que se enlace con el parte anulado; sin confirmarlo, sale
+> `conflicto_sin_confirmar` con ese código en `sigrid_cod`.
 
 **R46.** *(S-8.)* SI la lectura de la guarda falla —la pasarela no responde,
 responde mal formado o fuera de entorno— ENTONCES **503**

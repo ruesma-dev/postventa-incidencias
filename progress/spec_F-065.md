@@ -132,3 +132,84 @@ El humano aprueba S-1 a S-9 con las recomendaciones («si paruebo», tras el res
 conciliación (T2 bis, T-A0 bis, Bloque A4 bis, T-A17, T-A18 y la línea de T10) deja de esperar y entra en la ficha.
 R26 y R27 de F-065 y R9, R11 y §13 de F-059 quedan enmendados en el sentido de S-1: la enmienda se escribe al
 implementar el Bloque A4 bis, con su nota fechada en cada spec.
+
+## Enmiendas tras la review del Bloque A2 (2026-10-28)
+
+Encargo del líder: llevar a la spec las decisiones que tomó el humano el
+2026-10-28 sobre las lecturas 1, 2, 3, 4 y 9 de `progress/review_F-065.md`
+(«Review del Bloque A2», tabla «Las diez lecturas»), la del líder sobre la
+lectura 6, y una tarea de corrección del Bloque A2. Solo spec: no se ha tocado
+código, ni `features.json`, ni `BACKLOG.md`, ni `current.md`. No se ha
+consultado Sigrid, ni la base, ni SharePoint.
+
+### Qué cambió
+
+| # | Decisión | Dónde | Qué dice ahora |
+|---|---|---|---|
+| 1 | Humano, lectura 1 | R12 (nota), R20, `design.md` §5.1 y §10.1 (`Hallazgo` y la tabla «Los códigos de cada hallazgo») | `Hallazgo` gana **`guardado_cod`**, el código de nuestra base, solo en `volcada_no_encontrada` y `codigo_distinto` (`null` en los demás). `sigrid_cods` son **siempre** códigos de Sigrid y solo no está vacío en `varias_en_sigrid`. `sigrid_cod`, si no es `null`, es siempre el `cod` de una reclamación de `reclamaciones`; por eso en `volcada_no_encontrada` pasa a `null`. Contrato con F-064 |
+| 2 | Humano, lectura 2 | R12 (nota), §5.1 | `codigo_distinto` no se da si el guardado está entre las emparejadas; si no está, se da con la de código mayor en `sigrid_cod`. `anulada_en_sigrid` mira **solo** la de código mayor (es lo que pide C-A2-1) |
+| 3 | Humano, lectura 3 | R13 (nota), §5.1 | **Ninguna** de las que llevan la referencia de una incidencia se cruza por criterios con ella; frente a las demás, todas |
+| 4 | Humano, lectura 9 | R21 (nota), §10.1 («El orden de `Cruce.hallazgos`») | Tipo en el orden del enumerado, `incidencia_id` ascendente (`null` delante); los `coincide` de una incidencia en el **orden de R18** (fecha descendente, sin fecha al final, código descendente); los demás tipos por `sigrid_cod` ascendente. Filtrar `hallazgos` por incidencia y `coincide` da el orden de R18: F-064 toma los primeros sin reordenar. `Hallazgo` no gana la fecha |
+| 5 | Humano, **enmienda a S-3**, lectura 4 | R41 (nota), R45 (nota), §15.2 (regla 0 de la tabla, ejemplos y párrafo), §16 S-3 | Una candidata cuya emparejada (la de código mayor) está en `NPR` da **`choca`**, no `se_enlaza`, con **solo** el código de la emparejada, y exige confirmación explícita en el ensayo (R45: sin ella, `conflicto_sin_confirmar` con ese código). Va antes de `se_enlaza` en la precedencia (también gana a un `ya_existe`). Que la menor de dos esté en `NPR` no cambia nada |
+| 6 | Líder, lectura 6 | T5, `design.md` §10.2 | El mapeo del adaptador recorta `estado_codigo`, `cod`, `tipo_codigo` y `clase_codigo` (vacío tras recortar → `None`; `cod` vacío → error sin la fila), con su test. **`unidad_codigo` y `oficio_codigo`, PENDIENTE** (abajo) |
+| — | Corrección del Bloque A2 | `tasks.md`, **T4 bis** (Bloque A2, antes de su «Parar. Review») | Lo que cambia el implementer en el dominio por 1–4 (5 no toca el dominio de A2: es de T13/T14), más C-A2-1 (fijar que `anulada_en_sigrid` mira solo la mayor, matar M12) y C-A2-2 (regenerar el informe de mutación desde un árbol confirmado). Y en cascada: T7 (la forma de R20 con `guardado_cod`), T13 (los casos de la enmienda a S-3) y T15 (la exclusión de la `choca` por `NPR`) |
+
+Cabeceras de `requirements.md` y `design.md` con una nota que remite a estas
+enmiendas; cada una marcada «*Enmienda del 2026-10-28*» en su sitio.
+
+### Lecturas del spec-author (para que el líder las valide)
+
+Ninguna cambia una decisión; concretan lo que las decisiones no dicen:
+
+- **`sigrid_cod` = `null` en `volcada_no_encontrada`** (decisión 1). La
+  decisión habla de `sigrid_cods`; he extendido la misma regla a `sigrid_cod`
+  («solo códigos de reclamaciones que están en la respuesta»), porque es lo que
+  señalaba la review (F-064 no encontraría ese código en `reclamaciones`) y con
+  `guardado_cod` el guardado ya no se pierde.
+- **Los códigos del veredicto `choca` por `NPR`** (decisión 5): solo el de la
+  emparejada, no los de los `coincide` de conflicto, porque la pasarela no
+  puede crear otro parte con esa referencia y lo que se confirma es «enlázala
+  con el parte anulado». Y precedencia por delante de `se_enlaza` y de
+  `ya_existe`.
+- **El orden de los demás tipos** (decisión 4): por `sigrid_cod` ascendente,
+  que es lo que ya hace T4.
+
+### Decisión abierta: `unidad_codigo` y `oficio_codigo` en el recorte (decisión 6)
+
+La decisión 6 dice «recorta `estado` y `cod` (y el resto de códigos que lleguen
+de Sigrid)». Para `estado`, `cod`, `tipo_codigo` y `clase_codigo` no choca con
+nada y está escrito. Para **`unidad_codigo` y `oficio_codigo` choca con partes
+aprobadas** y no lo he resuelto:
+
+- R14 (aprobado el 2026-10-21) los compara **por código exacto** con los de la
+  bandeja.
+- Los de la bandeja vienen del catálogo de F-036, que los lee **tal cual** de
+  **las mismas columnas** (`SQL_UNIDADES_DE_LA_OBRA` lee `u.cod` de `con`;
+  `SQL_OFICIOS_DE_LA_OBRA`, `a.cod` de `auxofc`; `_texto` no recorta) y que
+  F-065 no puede tocar (D-9, §9.3).
+- Si Sigrid rellenara esos códigos con blancos, recortarlos **solo** de este
+  lado haría que ninguna unidad casara: **cero pares sin error**, justo lo que
+  la decisión quiere evitar. Sin relleno, recortar no cambia nada.
+
+Opciones: (a) dejarlos **tal cual**, como F-036, para que R14 compare lo mismo
+con lo mismo (recomendación del spec-author: cumple la intención de la decisión
+y no toca nada aprobado); (b) recortarlos y además comparar recortado en los
+dos lados en el dominio (cambia R14 y el dominio ya revisado); (c) recortarlos
+solo aquí, aceptando el riesgo. Está marcado **PENDIENTE** en T5 y en
+`design.md` §10.2; no bloquea T4 bis ni el resto del Bloque A2, sí el T5 del
+Bloque A3.
+
+### Para el líder
+
+- **F-064**: su spec (otro worktree, no tocada) tiene que recoger
+  `guardado_cod` (y que `sigrid_cod` puede ser `null` en
+  `volcada_no_encontrada`) y que los `coincide` de cada incidencia ya vienen
+  en el orden de R18, para su R56 («las 3 primeras y N más») sin reordenar.
+- **F-040**: la enmienda a S-3 cambia lo que verá en el bloque `volcado`: una
+  candidata emparejada con una `NPR` sale `choca`, con un código, y hay que
+  confirmarla.
+- `requirements.md` §12 y la cabecera de `tasks.md` siguen diciendo
+  «PENDIENTE DE OK» / «esperan al OK del humano a S-1–S-9», aunque el humano lo
+  aprobó (sección anterior). No lo he tocado: no es de este encargo, y la
+  sección anterior dice que la enmienda se escribe al implementar el Bloque A4
+  bis.

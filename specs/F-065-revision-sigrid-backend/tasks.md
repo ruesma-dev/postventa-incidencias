@@ -103,8 +103,66 @@
 - [x] **T4**: `domain/models/sigrid_bandeja.py` (`design.md` §10.1), sin tocar
   `revision.py`, `normalizacion.py`, `plantilla_incidencias.py` ni
   `volcado.py`. | Verificación: `python -m pytest tests/test_f065_dominio.py` en verde
+- [ ] **T4 bis** *(nuevo, 2026-10-28: la corrección del Bloque A2 tras su
+  review, con las decisiones del humano sobre las lecturas 1–4 y 9 y los
+  cambios C-A2-1 y C-A2-2 de `progress/review_F-065.md`)*. Primero los tests
+  en `tests/test_f065_dominio.py`, en **rojo** contra el dominio de T4 (traza
+  en el informe), y después `domain/models/sigrid_bandeja.py`. Lo que cambia:
+  1. **`guardado_cod`** (R12, R20, `design.md` §10.1, tabla «Los códigos de
+     cada hallazgo»): `Hallazgo` gana `guardado_cod: str | None = None`. En
+     `volcada_no_encontrada`, `sigrid_cod=None` y el guardado en
+     `guardado_cod`; en `codigo_distinto`, la emparejada en `sigrid_cod`, el
+     guardado en `guardado_cod` y `sigrid_cods=()`. La docstring de `Hallazgo`,
+     con la tabla. Tests: cada tipo con sus tres campos según la tabla, y las
+     invariantes (`sigrid_cod` no nulo siempre está en `Cruce.reclamaciones`;
+     `sigrid_cods` solo no vacío en `varias_en_sigrid`; `guardado_cod` solo en
+     los dos tipos), sobre un juego que dé los siete tipos.
+  2. **`codigo_distinto` con varias** (R12): no se da si el guardado está entre
+     las emparejadas. `test_f065_r13_bis_varias_de_una_volcada_y_el_codigo_contra_la_mayor`
+     cambia con la decisión: `volcada` guardada como `0081`, `PVI-` en `0081`
+     y `0082` → `varias_en_sigrid` y **ningún** `codigo_distinto`; y uno
+     nuevo: guardada como `0080`, `PVI-` en `0081` y `0082` →
+     `varias_en_sigrid` y `codigo_distinto` con `sigrid_cod` `0082` y
+     `guardado_cod` `0080`. (Códigos ficticios de §5.4.)
+  3. **`anulada_en_sigrid` solo contra la mayor** (R12; **C-A2-1**): una
+     `volcada` guardada como la mayor, dos `PVI-` suyas y la **menor** en
+     `NPR` → `varias_en_sigrid` y **ningún** `anulada_en_sigrid`; el caso
+     simétrico (la mayor en `NPR`) → `anulada_en_sigrid` sobre la mayor. Debe
+     matar M12 de la review (`if mayor.estado == EstadoSigrid.NPR:` →
+     `if any(r.estado == EstadoSigrid.NPR for r in suyas):`): la traza del
+     mutante muerto, en el informe.
+  4. **R13 con varias** (lectura 3, ya implementada así en T4): comprobar que
+     un test fija que **ninguna** de las que llevan la referencia de la
+     incidencia da `coincide` con ella (también la menor) y que **sí** lo dan
+     frente a otra incidencia; si el de T4 no fija las dos cosas, se completa.
+     Su nombre o docstring cita la enmienda de R13.
+  5. **El orden de los `coincide`** (R21, lectura 9; `design.md` §10.1, «El
+     orden de `Cruce.hallazgos`»): a igual severidad, tipo e `incidencia_id`,
+     los `coincide` en el orden de R18 (fecha descendente, sin fecha al final,
+     código descendente), no por código ascendente; los demás tipos, por
+     `sigrid_cod` ascendente (`None` delante). Tests: una incidencia con
+     `coincide` de conflicto y de aviso cuyas fechas **no** siguen el orden de
+     sus códigos (el de código menor, el más reciente), uno sin fecha y dos de
+     la misma fecha, y que filtrar `hallazgos` por `incidencia_id` y `coincide` da
+     exactamente el orden de R18 y los mismos 10 que elige el tope;
+     `test_f065_r21_…` se adapta a la decisión.
+  6. **La enmienda a S-3** (lectura 4) **no** toca el dominio de este bloque:
+     es del veredicto (R41), que nace en T13/T14 (Bloque A4 bis). Aquí nada.
+  7. **C-A2-2**: con todo lo anterior confirmado y `git status` limpio **antes
+     de empezar**, regenerar `progress/mutacion_F-065_bloqueA2.md` (con la
+     suite reducida a `tests/test_f065_dominio.py` y su nota, que la review
+     acepta) sobre ese commit, para que el alcance y el commit que declara el
+     informe sean los que se midieron. Cero supervivientes (`critico`), también
+     a mano: repetir M1–M18 de la review que sigan aplicando, más uno por cada
+     cambio de 1, 2 y 5 (quitar `guardado_cod`, volver a dar `codigo_distinto`
+     con el guardado entre las suyas, volver al orden por código).
+  | Verificación: `python -m pytest tests/test_f065_dominio.py` en **rojo** y
+  después en verde (trazas en `progress/impl_F-065.md`); `ruff check` del
+  módulo y del test; `progress/mutacion_F-065_bloqueA2.md` regenerado desde un
+  árbol confirmado, con 0 supervivientes; la tabla de mutantes a mano en el
+  informe
 
-**Parar. Review del Bloque A2.**
+**Parar. Review del Bloque A2** (otra vez, sobre T4 bis).
 
 ## Bloque A3 · Las consultas y el adaptador
 
@@ -114,7 +172,15 @@
   de R33, y ninguna prohibida (`dni`, `esiglog`, `esigpas`, `clamai`,
   direcciones, `per.tex`);
   el mapeo (columnas exactas, `obra_ref` y `cod` obligatorios, `YYYYMMDD` a
-  fecha, `0` a nulo, un entero imposible a error **sin la fila**); las filas
+  fecha, `0` a nulo, un entero imposible a error **sin la fila**);
+  *(enmienda del 2026-10-28, decisión del líder sobre la lectura 6 de la review
+  del Bloque A2; `design.md` §10.2)* el mapeo **recorta** `estado_codigo`,
+  `cod`, `tipo_codigo` y `clase_codigo`: con su test, `'SAT     '` y `' PTE'`
+  quedan en la fila como `SAT` y `PTE`, un `cod` rellenado
+  (`'RS26.09/0123  '`) queda sin blancos, un código de solo blancos es `None`
+  y un `cod` de solo blancos es error sin la fila; **`unidad_codigo` y `oficio_codigo`:
+  PENDIENTE** de la decisión del líder (`progress/spec_F-065.md`, «Enmiendas
+  tras la review del Bloque A2»); las filas
   sin valores en su `repr` (R40); el adaptador: puerta de entorno sin abrir
   conexión (R2), `max_rows` 500.000, y 409 con `truncated` **o** al techo, 503
   con una respuesta mal formada (R8), reintento de lo transitorio, solo `/api/sql/read` (R27), y
@@ -135,7 +201,8 @@
   listado, el orden de lecturas, **una** de la base y **como mucho una** de
   Sigrid (R3), 409 por la bandeja sin leer Sigrid (R4), 409 al techo sin
   cruzar (R8), 409 `obra_ambigua` y 200 vacío (R9), 400 sin construir nada
-  (R1), Sigrid antes que la base (R2), la forma de R20 y el orden de R21, nada
+  (R1), Sigrid antes que la base (R2), la forma de R20 (con `guardado_cod`,
+  `null` donde no toca; *enmienda del 2026-10-28*) y el orden de R21, nada
   de `oid`, correo, `ide` ni `obride` (R22), la traducción de R23 y la línea
   `F-065 sigrid de la bandeja` sin textos ni códigos y con los bytes (R24;
   *conciliado el 2026-10-28*: con `aplicacion` y `calculo`, y que pedir esta
@@ -169,7 +236,10 @@
 - [ ] **T13**: tests RED del veredicto (`tests/test_f065_veredicto.py`): la
   precedencia de R41 con los ejemplos de `design.md` §15.2 (E1 → `choca`, E1
   con la descripción de E2b → `ya_existe`, E3/E4 → `va`, E7 → `se_enlaza`,
-  E12 sin veredicto); que mira **todos** los pares y no los 10 de R18 (una
+  E12 sin veredicto; *enmienda del humano a S-3, 2026-10-28*: E7 con la
+  emparejada en `NPR` → `choca` con solo su código, también con un
+  `ya_existe` por criterios, y con la menor de dos en `NPR` → `se_enlaza`;
+  `design.md` §15.2, regla 0); que mira **todos** los pares y no los 10 de R18 (una
   incidencia con 12 conflictos da los 12 códigos); los códigos en el orden de
   R18; solo candidatas; el bloque `volcado` de R42 con su `por_unidad`; y R49:
   para un juego de fixtures, el veredicto con todas las reclamaciones de la
@@ -187,7 +257,9 @@
   clave de más; y que `confirmado` y `commit` siguen siendo 400), todo 400
   **sin construir nada**; el orden de R44 (selección → Sigrid → login → lote,
   y **sin** Sigrid si la selección no deja nada); las exclusiones de R45 (las
-  dos, la confirmación parcial, la que apareció después, la sobrante); los
+  dos, la confirmación parcial, la que apareció después, la sobrante, y la
+  `choca` por una emparejada en `NPR`: sin confirmar, excluida con ese código;
+  confirmada, se manda); los
   errores de R46 **sin login, sin lote y sin ensayo guardado**; el bloque
   `sigrid` de R47 y que las claves de R12 de F-059 no cambian; la línea de R48
   sin códigos `RS` ni textos; y que un ensayo sin la clave nueva y sin nada que

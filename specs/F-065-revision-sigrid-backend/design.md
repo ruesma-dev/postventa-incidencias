@@ -13,6 +13,11 @@
 > F-059, en **§15**, con sus preguntas **S-1 a S-9** en **§16**, **aprobadas
 > por el humano el 2026-10-28** (`b863b46`). Nada de §14 ha cambiado.
 >
+> **Enmiendas tras la review del Bloque A2 (2026-10-28):** decisiones del
+> humano sobre las lecturas 1–4 y 9 (§5.1, §10.1, §15.2 y S-3 en §16, esta
+> como **enmienda del humano a S-3**) y del líder sobre la lectura 6 (§10.2).
+> Marcadas en su sitio.
+>
 > Base original: `dev` `383bfd5`. Documentos contra los que se diseña:
 > `docs/ARCHITECTURE.md` (F-036, F-056, F-038, F-060, F-059 y «Acceso a datos
 > y sistemas externos»), `docs/CONVENTIONS.md`, `CHECKPOINTS.md`,
@@ -169,9 +174,17 @@ aquí también (`incidencia_de_referencia`).
 | `PVI-<id>` de una incidencia de la obra que **no** está `volcada` | `ya_en_sigrid` | conflicto |
 | Dos o más `PVI-<id>` de la misma incidencia | `varias_en_sigrid` | conflicto |
 | Incidencia `volcada` sin reclamación emparejada | `volcada_no_encontrada` | aviso |
-| Incidencia `volcada` emparejada con otro código que el guardado | `codigo_distinto` | aviso |
-| Incidencia `volcada` emparejada con una `NPR` | `anulada_en_sigrid` | aviso |
+| Incidencia `volcada` emparejada con otro código que el guardado, **y el guardado no está entre las suyas** | `codigo_distinto` | aviso |
+| Incidencia `volcada` cuya emparejada (la de código mayor) está en `NPR` | `anulada_en_sigrid` | aviso |
 | `PVI-` sin UUID o de una incidencia que no es de esta obra | `referencia_desconocida` | aviso |
+
+*Enmienda del 2026-10-28 (decisiones del humano, lecturas 1–3 de la review del
+Bloque A2; R12, R13):* con varias emparejadas, `codigo_distinto` se calla si el
+guardado está entre ellas (`varias_en_sigrid` ya enseña el duplicado), y
+`anulada_en_sigrid` mira solo la de código mayor. **Ninguna** de las que llevan
+la referencia de una incidencia se cruza por criterios con ella. El código
+guardado viaja en `guardado_cod` (§10.1), no en `sigrid_cod` ni en
+`sigrid_cods`.
 
 `ya_en_sigrid` es típicamente una `en_duda` cuyo volcado sí llegó: **ensayar y
 volcar de nuevo la deja `volcada` sin crear otro parte** (la pasarela devuelve
@@ -379,6 +392,7 @@ class Hallazgo:
     tipo: TipoHallazgo; severidad: Severidad; incidencia_id: UUID | None
     sigrid_cod: str | None; sigrid_cods: tuple[str, ...] = ()
     criterios: tuple[Criterio, ...] = (); parecido: int | None = None
+    guardado_cod: str | None = None   # enmienda del 2026-10-28 (R12, R20)
 
 @dataclass(frozen=True)
 class Cruce:
@@ -394,6 +408,38 @@ def incidencia_de_referencia(referencia: str | None) -> UUID | None: ...# R10
 def cruzar(situaciones: Sequence[SituacionDeRevision],
            reclamaciones: Sequence[ReclamacionSigrid]) -> Cruce: ...    # R10–R18
 ```
+
+**Los códigos de cada hallazgo** (*enmienda del 2026-10-28*, decisión del
+humano sobre la lectura 1 de la review del Bloque A2; **contrato con F-064**,
+que busca la reclamación de un hallazgo en `reclamaciones` por `sigrid_cod`):
+
+| Tipo | `sigrid_cod` | `sigrid_cods` | `guardado_cod` |
+|---|---|---|---|
+| `coincide` | la reclamación del par | `()` | `None` |
+| `ya_en_sigrid` | la emparejada | `()` | `None` |
+| `varias_en_sigrid` | la emparejada (la de código mayor) | **todas** las emparejadas, de mayor a menor | `None` |
+| `volcada_no_encontrada` | **`None`** (no hay reclamación) | `()` | **el guardado** |
+| `codigo_distinto` | la emparejada (la de código mayor) | `()` | **el guardado** |
+| `anulada_en_sigrid` | la emparejada (la de código mayor) | `()` | `None` |
+| `referencia_desconocida` | la reclamación con esa referencia | `()` | `None` |
+
+Invariantes, con su test: `sigrid_cod`, si no es `None`, es el `cod` de una
+reclamación de `Cruce.reclamaciones`; `sigrid_cods` son **siempre** códigos de
+Sigrid y solo no está vacío en `varias_en_sigrid`; `guardado_cod` solo en los
+dos tipos de la tabla. El borde (A4) serializa `guardado_cod` como clave más del
+hallazgo (R20), `null` cuando es `None`.
+
+**El orden de `Cruce.hallazgos`** (*enmienda del 2026-10-28*, lectura 9; R21):
+severidad (conflicto primero), tipo en el orden del enumerado, `incidencia_id`
+ascendente (`None` delante) y, a igual de todo eso: en los **`coincide`**, el
+orden de R18 —fecha de la reclamación descendente, sin fecha al final, y a
+igual fecha código descendente—; en los demás tipos, `sigrid_cod` ascendente
+(`None` delante). Consecuencia que fija un test: filtrar `hallazgos` por
+`incidencia_id` y `tipo == coincide` da los pares en el orden de R18 (los de
+conflicto primero), y F-064 toma los primeros sin reordenar. `Hallazgo` no gana
+la fecha: el orden se fija en `cruzar` (por ejemplo, con la posición de cada
+par en la lista ya ordenada por R18 como clave interna), sin campo público
+nuevo.
 
 ### 10.2 · Puerto — `domain/ports/reclamaciones_obra.py`
 
@@ -418,6 +464,25 @@ class FilaReclamacionObra:   # las 31 columnas de §3; obra_ref nunca sale; text
 class ReclamacionesObraPort(Protocol):
     def leer(self, *, codigo_obra: str, tip: int) -> LecturaCatalogo[FilaReclamacionObra]: ...
 ```
+
+**El recorte de los códigos en el mapeo** (*enmienda del 2026-10-28, decisión
+del líder sobre la lectura 6 de la review del Bloque A2*). El dominio compara
+el estado **tal cual** con los cinco códigos (R17) y el `cod` con el
+`sigrid_cod` guardado por F-059, que cumple `PATRON_COD_PARTE` sin blancos
+(R12); los dos se usan además como códigos en R43. Si `conest.cod` o `con.cod`
+llegaran rellenados con blancos («texto de 8 caracteres»), todas las
+reclamaciones serían «desconocidas» y el cruce daría **cero pares sin error**,
+y todas las `volcada` darían `codigo_distinto`. Por eso
+`consultas_reclamaciones_obra.py` **recorta** (`strip`) en el mapeo
+`estado_codigo` y `cod`, y también `tipo_codigo` y `clase_codigo` (solo se
+enseñan); un código que queda vacío tras recortar es `None`, salvo `cod`, que
+es obligatorio y da error **sin la fila** (R40). El dominio no cambia: sigue
+siendo estricto. **`unidad_codigo` y `oficio_codigo`: PENDIENTE de decisión**
+(ver `progress/spec_F-065.md`, «Enmiendas tras la review del Bloque A2»):
+R14 los compara por código exacto con los de la bandeja, que vienen del
+catálogo de F-036 leídos **tal cual** de las mismas columnas (`u.cod`,
+`auxofc.cod`) y que no se tocan (D-9, §9.3); recortarlos solo de este lado
+podría romper el cruce que el recorte quiere proteger.
 
 `FichaReclamacion` vive en el puerto (es lo que llega de Sigrid) y el dominio
 la importa del puerto sin mirarla: solo la lleva. Si el reviewer prefiere el
@@ -610,7 +675,8 @@ criterios, parecido, fecha)`. `veredictos` mira solo las **candidatas**
 
 | Orden | Veredicto | Cuándo | En el ensayo |
 |---|---|---|---|
-| 1 | `se_enlaza` | emparejada por `PVI-` (`ya_en_sigrid` o `varias_en_sigrid`) | **se manda**: la pasarela no puede crear otro parte (S-3) |
+| 0 | `choca` | emparejada por `PVI-` con una reclamación (la de código mayor) en **`NPR`** — *enmienda del humano a S-3, 2026-10-28* | **excluida** `conflicto_sin_confirmar` salvo que el código de la emparejada esté confirmado |
+| 1 | `se_enlaza` | emparejada por `PVI-` (`ya_en_sigrid` o `varias_en_sigrid`) **y la emparejada no está en `NPR`** | **se manda**: la pasarela no puede crear otro parte (S-3) |
 | 2 | `ya_existe` | un par con **los dos** criterios y la reclamación en `SAT`/`PTE` | **excluida** `duplicada_en_sigrid` |
 | 3 | `choca` | algún otro par de severidad conflicto | **excluida** `conflicto_sin_confirmar` salvo que **todos** sus códigos estén confirmados |
 | 4 | `va` | lo demás (también con avisos `TER`/`CER`) | se manda |
@@ -620,7 +686,23 @@ E2 (descripción 100, oficio y ubicación distintos) → `choca`; **E1 con la
 descripción de E2b** (los dos criterios, `PTE`) → `ya_existe`; E3 y E4 (`CER`)
 → `va` con aviso; E6, B → si B tiene los dos criterios con la `SAT` emparejada
 con A, `ya_existe`; E7 (`en_duda` con `PVI-<X>` en `SAT`) → `se_enlaza`; E12
-(`descartada`) → no es candidata, sin veredicto.
+(`descartada`) → no es candidata, sin veredicto. **E7 con la reclamación en
+`NPR`** (X `en_duda`, RS26.10/0080 · **NPR** · `PVI-<X>`) → `choca` con
+`(RS26.10/0080,)`, aunque X tenga además un `coincide` con los dos criterios
+con una abierta; y X con `PVI-<X>` en RS26.10/0080 (`SAT`) y RS26.10/0079
+(`NPR`) → `se_enlaza` (la emparejada es la mayor, que no está anulada).
+
+**La enmienda a S-3 (decisión del humano del 2026-10-28, lectura 4 de la review
+del Bloque A2).** La recomendación aprobada de S-3 («no excluir lo emparejado:
+`se_enlaza`») se mantiene **salvo** cuando la emparejada está anulada en
+Sigrid: entonces el `idempotente` de la pasarela dejaría la incidencia
+`volcada` enlazada a un parte anulado, y el humano quiere que eso pase solo con
+confirmación explícita. Por eso va **antes** de `se_enlaza` en la precedencia
+(regla 0 de la tabla) y su único código es el de la emparejada: la pasarela no
+puede crear otro parte con esa referencia, así que los `coincide` de la
+incidencia no cambian lo que pasará al mandarla. `veredictos` lo sabe por
+`Cruce.reclamaciones` (cada reclamación con su `incidencia_id` emparejado y su
+`estado`); `Cruce` no gana nada más por esto.
 
 **El caso real** (VILLA 15 de la 0677, ≈ 285 incidencias importadas por Excel a
 Sigrid **sin** referencia `PVI-`): si las de la bandeja salen del mismo Excel,
@@ -840,6 +922,9 @@ recomendación.
   para siempre: F-059 la resuelve **reenviándola** (R27) y su `idempotente`
   la deja `volcada` (R13). **Recomendación**: no excluirla (`se_enlaza`); la
   pasarela no puede crear otro parte con esa referencia.
+  **Enmienda del humano del 2026-10-28** (lectura 4 de la review del Bloque
+  A2): salvo si la emparejada está en `NPR`, que da `choca` y exige
+  confirmación explícita en el ensayo (R41, R45; §15.2, regla 0).
 - **S-4 · Cómo viaja la confirmación.** **Recomendación**:
   `conflictos_confirmados` por incidencia **con los códigos** (§15.4).
   Descartados el booleano por lote y el `sincronizacion_id` guardado.

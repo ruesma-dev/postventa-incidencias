@@ -238,3 +238,62 @@ con un sistema de producción, las precondiciones de parámetros se prueban ejec
 exigiendo que no se llegue a la primera llamada**, no viendo que la línea existe. Vale para cualquier proyecto
 con scripts de medición o de despliegue (es la misma familia de «la puerta va antes del ERP», con la consola en
 vez del backend): candidata a portarse a `arnes-base` si el humano la aprueba.
+
+## Re-review del Bloque A1, tras C-A1-1 · 2026-10-28
+
+- **Veredicto:** **APPROVED** (APROBADO). C-A1-1 queda cerrado.
+- **Alcance:** `git diff 1c7cfdf..43b822f`: `4fa1b61` (solo el test), `4ab142b` (informe del implementer,
+  «Corrección C-A1-1») y `43b822f` (del líder: O-2 y O-3). `infra/` sin cambios (`git diff --quiet` sobre
+  `infra/`, y el script y el `08` idénticos byte a byte a los de mi copia de la primera review).
+- **Nivel de rigor:** `critico`, como antes.
+- **`init.sh` no ejecutado por mí**, por encargo del líder (lo está ejecutando él en el worktree). El último
+  `init.sh` mío en verde es el de la primera review; el del líder sobre `43b822f` es el que cuenta para cerrar el
+  bloque.
+
+### 1 · El test nuevo cubre lo que pedí
+
+`test_f065_r29_r70_ejecutado_un_parametro_malo_para_antes_de_leer`, ejecutado con el lector doble y
+parametrizado con los seis casos que pedí: `-MaxFilas 0`, `-MaxFilas 500001`, `-Unidades " , "`, 51 unidades,
+`-CodigoObra "0 9"` y sin `-CodigoObra` (`_lanzar` gana `obra: str | None`, solo por nombre; las llamadas de
+siempre no cambian). Cada caso exige **salida 3**, **`llamadas == []`** (no se llega ni a Q0) y el trozo del
+mensaje de **su** comprobación, para que un 3 de otra comprobación no lo dé por bueno. Es lo pedido, y un poco
+más (el mensaje).
+
+### 2 · R08 y R09 caen por él (copia desechable)
+
+En mi copia desechable del scratchpad, con el test nuevo copiado y el mismo guion de la primera review (suite de
+F-065 entera, sin `-x`):
+
+| Id | Mutación | Antes | Ahora | Lo caza |
+|---|---|---|---|---|
+| R08 | la validación de `-MaxFilas`, detrás de `$reloj.Stop()` | 41 passed | **muerto**, 2 failed, 45 passed | `…parametro_malo…[maxfilas_0]` y `[maxfilas_500001]`, **solo esos** |
+| R09 | el tope de 50 unidades, detrás de `$reloj.Stop()` | 41 passed | **muerto**, 1 failed, 46 passed | `…[unidades_51]`, **solo ese** |
+
+Los dos los caza el test **de la propia feature**, y precisamente el caso que corresponde. Los otros tres del
+implementer (RC1 código no válido, RC2 sin código, RC3 unidades vacías) los doy por buenos por su traza; no los
+he repetido. El árbol de trabajo no se ha tocado (`git status` limpio).
+
+Con esto, la mutación a mano del bloque queda en **cero supervivientes**: 58 + 5 del implementer, 12 míos.
+
+### 3 · Los tests siguen en verde
+
+| Qué | Resultado |
+|---|---|
+| El test nuevo, en la copia | **6 passed** |
+| Los diez `test_*_scripts_infra.py` (f005, f006, f009, f010, f012, f013, f036, f051, f059, f065) y `test_f010_prompt_keys_infra.py`, en el worktree | **529 passed, 3 skipped in 52.26s** (los 47 de F-065 dentro) |
+| `ruff check` del test | No lo he podido pasar: el `.venv` del servicio no trae `ruff`. Lo mide el `init.sh` del líder |
+
+### Checkpoints que cambian
+
+- [x] C4 bis · Cero supervivientes, también a mano (era el único `[ ]`).
+- [x] C4 · Verificaciones MANUAL en `progress/current.md`: ahora están (O-2), **con el defecto de O-5**.
+- O-3 aplicada: `design.md` §15 y su cabecera recogen la aprobación de S-1 a S-9 (`b863b46`).
+
+### O-5 · Para el líder, antes de pasarle T-A0 al humano (no es del implementer)
+
+En `progress/current.md` (`43b822f`), el comando de T-A0 lleva un **byte de control** en vez de `\2`: la ruta se
+lee `infra9_reclamaciones_obra_sigrid.ps1`, y `od -c` enseña `i n f r a 002 9 _ r e c …` (el `\2` de
+`infra\29_…` se tomó como escape octal al escribirlo). Copiado tal cual, PowerShell no encontraría el fichero.
+No rompe nada (fallaría antes de leer), pero es justo el comando que el humano va a copiar: corrígelo a
+`infra\29_reclamaciones_obra_sigrid.ps1` y comprueba con `grep -c $'\x02' progress/current.md` que sale 0. Los
+comandos de `tasks.md` y de «Órdenes para el humano» en `progress/impl_F-065.md` están bien.

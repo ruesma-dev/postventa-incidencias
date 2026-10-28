@@ -1007,7 +1007,7 @@ def _filas() -> list[list]:
         _fila(11, "RSX/3", "XYZ", 0, "VILLA 05", None, None, "Silicona negra en banera", None, c),
         _fila(12, "RSX/4", None, 20251301, "Villa 05", "0039", "Cocina", "Cambiar silicona banera", None, c),
         _fila(11, "RSX/5", "CER", _hace(18), "VILLA 06", "0039", "Bano", "Grifos sueltos", None, c),
-        _fila(11, "RSX/6", "TER", _hace(30), "VILLA 06", "0039", "BANO", "Grifo suelto en cocina", None, c),
+        _fila(11, "RSX/6", "TER", _hace(24), "VILLA 06", "0039", "BANO", "Grifo suelto en cocina", None, c),
         _fila(11, "RSX/7", "NPR", _hace(6, 1), "VILLA 07", "0039", "  ", "Silicona negra banera", None, c),
         _fila(11, "RSX/8", "pte", _hace(6), "VILLA 07", "0039", "Salon", "Cambiar silicona banera", None, c),
         _fila(11, "RSX/9", "SAT", _hace(12), "VILLA 07", "0039", "salon ", "Silicona negra para pared salon", None, c),
@@ -1221,3 +1221,15 @@ def test_f065_r29_ejecutado_un_texto_en_una_cifra_para_sin_repetirlo(tmp_path):
     assert codigo == 5, consola
     assert "Secreto" not in consola
     assert "no ha salido como cifra" in consola
+
+
+@necesita_powershell
+def test_f065_r8_r29_ejecutado_llegar_al_techo_no_es_quedar_por_debajo(tmp_path):
+    """R8: «con ese número de filas **o más**», 409. Con `-MaxFilas` igual a las
+    filas que llegan, la medición lo dice y no pasa."""
+    codigo, consola, _ = _lanzar(tmp_path, "-MaxFilas", "14")
+    tabla = _veredicto(consola)
+
+    assert codigo == 6, consola
+    assert tabla["filas"] == "14"
+    assert tabla["filas por debajo del techo"] == "no"

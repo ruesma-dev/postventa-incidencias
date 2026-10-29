@@ -1729,3 +1729,342 @@ vuelve a dar N/A con la suite entera merece mirarse.
 | Cobertura de las líneas cambiadas | **100 %**: el pipeline 28/28 sentencias y 6/6 ramas; el borde 94/94 y 14/14; la clase nueva de `errores.py` y la ruta con sus ayudantes de `function_app.py`, enteras. Medida con `coverage --branch`; la puerta de `init.sh` es del líder |
 | Mutantes | Herramienta: **19 generados, 19 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 293,5 s, sobre `fb0ad71` con el árbol limpio (suite reducida; la 1.ª pasada dio 3 supervivientes, cada uno con su test). A mano: **40, 40 muertos, 0 supervivientes**, sobre `ca66e3f` |
 | Tiempo de la suite | 26,20 s la del bloque; 1525,54 s la del servicio entero |
+
+## Bloque A4 bis · T13–T14 (2026-10-29)
+
+Encargo del líder: la **primera mitad** del Bloque A4 bis, **solo T13 y T14**,
+el veredicto por incidencia. La guarda del ensayo (T15–T17) va en otro encargo
+y no se ha empezado: ni `volcado.py`, ni `guarda_sigrid.py`, ni la consulta por
+unidades, ni `function_app.py`. Trabajo hecho sobre el A4 aprobado (`0919e5d`),
+con S-1 a S-9 aprobadas, T-A0 bis hecho y la **enmienda del humano a S-3**
+(2026-10-28): una candidata cuya emparejada está en `NPR` da `choca`, no
+`se_enlaza`. No me he conectado a Sigrid, a la base ni a SharePoint. No he
+tocado `features.json`, `BACKLOG.md` ni `current.md`. `init.sh` entero lo lanza
+el líder.
+
+### Commits
+
+| Commit | Tarea | Qué |
+|---|---|---|
+| `36d10b5` | T13 | Tests en RED: `tests/test_f065_veredicto.py` (nuevo) y el bloque `volcado` entre las claves exactas de `tests/test_f065_http.py`; T13 `[x]` |
+| `af4b356` | T14 | El dominio (`Veredicto`, `VeredictoDeVolcado`, `ParDeCoincidencia`, `Cruce.pares`, `veredictos`), la vista del pipeline y el bloque `volcado` del borde; T14 `[x]` |
+| `2ef038d` | T14 | Una aserción que mata MV18, el único superviviente de los mutantes a mano |
+| (el siguiente) | — | Este informe y `progress/mutacion_F-065_bloqueA4bis_veredicto.md` |
+
+### Ficheros tocados
+
+- **Producción**. Son tres ficheros nuevos de F-065, así que no hay ninguno de
+  otra feature:
+  - `services/postventa-api/domain/models/sigrid_bandeja.py`:
+    - `Veredicto` (`va`, `se_enlaza`, `ya_existe`, `choca`, en ese orden);
+    - `ParDeCoincidencia(sigrid_cod, estado, criterios, parecido, fecha)`;
+    - `VeredictoDeVolcado(incidencia_id, veredicto, sigrid_cods)`;
+    - el campo `Cruce.pares`, con `cruzar` rellenándolo;
+    - `veredictos(situaciones, cruce)` y su ayudante `_veredicto`;
+    - `_LOS_DOS_CRITERIOS`, `_par` y `_sin_pares`;
+    - la cabecera del módulo, que gana el párrafo del veredicto.
+  - `services/postventa-api/application/pipelines/sigrid_bandeja.py`:
+    `VistaDeSigrid.veredictos`, y `mirar_sigrid` lo rellena con
+    `veredictos(situaciones, cruce)` (paso 6 de la cabecera).
+  - `services/postventa-api/interface_adapters/api/sigrid_bandeja.py`: la clave
+    `volcado` del cuerpo, `_volcado` y `_por_veredicto`, y el párrafo de la
+    cabecera.
+- **Tests**:
+  - `tests/test_f065_veredicto.py`: nuevo, 64 tests.
+  - `tests/test_f065_http.py`: `CLAVES_DE_LA_RESPUESTA` gana `volcado`; se
+    añaden `CLAVES_DEL_VOLCADO`, `CLAVES_DE_VEREDICTO` y
+    `VALORES_DEL_VEREDICTO`; las claves permitidas de R22 ganan las del bloque,
+    y la tabla de la cabecera gana una fila. Ver «Desviaciones».
+- `specs/F-065-revision-sigrid-backend/tasks.md`: T13 y T14 `[x]`.
+- **Sin tocar**: `revision.py`, `volcado.py`, `normalizacion.py`,
+  `plantilla_incidencias.py`, el puerto, la consulta, el adaptador,
+  `fabrica.py`, `errores.py`, `function_app.py` y ningún test de F-059 ni de
+  otra feature.
+
+### Decisiones de diseño
+
+- **`veredictos` es una función pura** del dominio y recibe lo que ya da
+  `cruzar`. De `Cruce.reclamaciones` saca la emparejada de cada incidencia: es
+  la única reclamación con su `incidencia_id`, y por R13 bis siempre es la de
+  código mayor. De `Cruce.pares` saca todos sus pares. `Cruce` no gana nada más
+  por la regla 0, como dice §15.2. La precedencia, en `_veredicto`:
+  0. Si hay emparejada y está en `NPR`: `choca`, con **solo** su código
+     (enmienda a S-3).
+  1. Si hay emparejada (en cualquier otro estado, también uno desconocido o
+     ninguno): `se_enlaza`, con su código. Si son varias, solo la mayor, que es
+     la emparejada: R41 dice «la emparejada».
+  2. Si algún par tiene los dos criterios y está abierto (`SAT`/`PTE`):
+     `ya_existe`, con los códigos de **esos** pares.
+  3. Si algún par está abierto, es decir, si hay algún conflicto: `choca`, con
+     los códigos de **todos** los abiertos.
+  4. En los demás casos, `va`, sin códigos. Así quedan las que solo tienen
+     avisos (`TER`/`CER`).
+  Los códigos salen en el orden de los pares, que ya es el de R18.
+- **Lectura de «las de los dos criterios en `ya_existe`»**: solo los pares con
+  los dos criterios **y abiertos**. Uno con los dos criterios contra una
+  cerrada es un aviso y no decide nada: con una `TER` de dos criterios y una
+  `PTE` de uno, la incidencia sale `choca` con la `PTE`. Así lo leo de R41
+  («con una reclamación abierta») y lo fija un test.
+- **`Cruce.pares`** lleva solo las incidencias evaluables con algún par, las
+  mismas claves que `coincidencias_total`; un test fija que coinciden. Los pares
+  van en el orden de R18, sin el tope de 10, y sus 10 primeros son exactamente
+  los `coincide` de la vista. `estado` es `EstadoSigrid`: solo dan pares los
+  cuatro estados conocidos. Es un campo **con valor por defecto** (un mapa
+  vacío e inmutable), para que `Cruce(...)` siga construyéndose sin él como en
+  `test_f065_r9_sin_nada_que_cruzar`, que no cambia.
+- **El orden de los veredictos** es el de `situaciones`, sin reordenar:
+  - la ruta pasa la bandeja tal como la da `listar`, que ya viene en el orden
+    de R25 de F-056 (R42);
+  - el ensayo (T16) podrá pasar las suyas en el orden pedido (R47) con la
+    misma función.
+- **El bloque `volcado`** (R42) lo arma el borde con `VistaDeSigrid.veredictos`.
+  La aplicación no calcula nada más: solo llama a la función del dominio, y lo
+  fija un test con un espía.
+  - `unidad_codigo` y `estado` son los **vigentes** (`valores_vigentes`,
+    `estado_de`), es decir, los de lo aprobado.
+  - `por_veredicto` y cada unidad de `por_unidad` llevan siempre las cuatro
+    claves, en el orden del enumerado.
+  - `por_unidad` solo lleva las unidades con candidatas, ordenadas por código.
+  - `sigrid_cods` va entero, sin el tope de los hallazgos.
+  - `unidad_codigo` nunca es nulo (`ValoresIncidencia.unidad_codigo: str`), así
+    que no hace falta una clave `null` en `por_unidad`.
+- **R49, con fixtures**: una obra con candidatas en dos unidades y una tercera
+  sin candidatas pero con reclamaciones que casarían con ellas si el cruce no
+  fuera por unidad. Da los cuatro veredictos y la regla 0. El veredicto con
+  toda la obra es igual que con solo `{U, U2}`, y también que con la unidad de
+  cada candidata por separado, que es el troceo de D-6.
+  - **La excepción escrita**, en dos casos: la única `PVI-` en otra unidad
+    (con la obra `se_enlaza`, con su unidad `va`) y la mayor de dos en otra
+    unidad y anulada (con la obra `choca`, con su unidad `se_enlaza` con la
+    menor). Las dos las para la pasarela con `referencia_en_conflicto`.
+  - En los dos lados la bandeja es **entera**: es lo que necesita el
+    emparejamiento. Qué bandeja pasará el ensayo es cosa de T16.
+- **`ReclamacionSigrid.ficha` sigue sin admitir `None`** (§15.2 lo prevé para
+  la lectura de la guarda). Es de T16, que es quien lee sin R33: aquí no lo
+  necesita nada.
+
+### Desviaciones
+
+- **`tests/test_f065_http.py` cambia dos aserciones** de la forma de R20:
+  - `set(cuerpo) == CLAVES_DE_LA_RESPUESTA` ahora incluye `volcado`;
+  - las claves permitidas de R22 ganan las del bloque.
+
+  Es un test de F-065 y es la consecuencia directa de R42 («aditivo: R20 no
+  pierde ni cambia nada»): no se quita ninguna clave ni ninguna aserción. Va en
+  el commit de T13, porque es parte del RED. T14 lo pide en verde y la guarda
+  T9 lo admite (patrón `test_f065_*.py`).
+- Nada más. No he tenido que decidir nada que la spec no diga, salvo las
+  lecturas de arriba sobre los códigos de `ya_existe` y de `se_enlaza` con
+  varias, y las dos salen del texto de R41.
+
+### Fase RED (T13)
+
+**1. Contra el árbol de `0919e5d`** (sin nada de T14), desde
+`services/postventa-api`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_veredicto.py tests/test_f065_http.py -q --tb=line -p no:cacheprovider --continue-on-collection-errors
+..........................F..................F.....................      [100%]
+=================================== ERRORS ====================================
+________________ ERROR collecting tests/test_f065_veredicto.py ________________
+ImportError while importing test module 'C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_veredicto.py'.
+...
+tests\test_f065_veredicto.py:45: in <module>
+    from domain.models.sigrid_bandeja import (
+E   ImportError: cannot import name 'ParDeCoincidencia' from 'domain.models.sigrid_bandeja' (C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\domain\models\sigrid_bandeja.py)
+================================== FAILURES ===================================
+E   AssertionError: assert {'criterio', ...aciones', ...} == {'criterio', ...aciones', ...}
+      Extra items in the right set:
+      'volcado'
+...
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_http.py:906: KeyError: 'volcado'
+=========================== short test summary info ===========================
+FAILED tests/test_f065_http.py::test_f065_r20_las_claves_de_la_respuesta_y_el_criterio
+FAILED tests/test_f065_http.py::test_f065_r22_las_claves_son_solo_las_de_r20_y_r33
+ERROR tests/test_f065_veredicto.py
+2 failed, 65 passed, 1 error in 11.35s
+```
+
+**2. El RED de comportamiento, no solo de importación.** Con un `ImportError`
+solo se prueba que el test es anterior al código. Para ver qué caza cada test,
+pegué **temporalmente** en el dominio unos tipos de relleno: los tres tipos con
+sus campos, `Cruce.pares` siempre vacío y `veredictos` devolviendo `()`. Sin
+pipeline ni borde. Lancé la suite y lo revertí con `git checkout`, sin
+versionarlo:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_veredicto.py tests/test_f065_http.py -q --tb=line -p no:cacheprovider
+...
+E   ValueError: not enough values to unpack (expected 1, got 0)          (×40: los ejemplos E1–E12, la regla 0, el orden de R18)
+E   KeyError: 'volcado'                                                    (×8: el bloque de R42 y las dos de test_f065_http)
+E   KeyError: UUID('00000000-0000-0000-0000-000000000001')                 (Cruce.pares sin los pares)
+E   AttributeError: 'VistaDeSigrid' object has no attribute 'veredictos'
+E   AttributeError: <module 'application.pipelines.sigrid_bandeja' ...> has no attribute 'veredictos'
+E   AssertionError: assert {} == {UUID('000000...26, 9, 15)),)}
+E   AssertionError: assert [] == [(1, <Veredic...to.VA: 'va'>)]
+E   AssertionError: assert () == (VeredictoDeV....10/0074',)),)
+...
+FAILED tests/test_f065_veredicto.py::test_f065_r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo[aprobada]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_s3_la_emparejada_en_npr_choca_tambien_con_un_ya_existe_por_criterios
+FAILED tests/test_f065_veredicto.py::test_f065_r41_s3_la_menor_de_dos_en_npr_se_enlaza_con_la_mayor
+FAILED tests/test_f065_veredicto.py::test_f065_r41_mira_todos_los_pares_y_no_los_diez_de_r18
+FAILED tests/test_f065_veredicto.py::test_f065_r49_con_toda_la_obra_o_con_sus_unidades_el_mismo_veredicto
+FAILED tests/test_f065_veredicto.py::test_f065_r42_por_unidad_las_unidades_de_las_candidatas_por_codigo
+... (58 en total)
+58 failed, 73 passed in 5.21s
+```
+
+Los 73 que pasan son los 65 de `test_f065_http.py` que no miran el bloque y 8
+de `test_f065_veredicto.py`, que con esos tipos de relleno pasan por motivos
+legítimos:
+- los valores y los campos de los tipos;
+- E12 y los demás estados que no son candidatas (que no tengan veredicto es
+  justo lo que devuelve `()`);
+- el cruce vacío.
+
+El octavo **pasaba en vacío**:
+`test_f065_r49_cada_candidata_con_solo_su_unidad_tiene_el_mismo_veredicto`
+recorría un diccionario vacío. Antes del commit de T13 le añadí
+`assert len(toda) == 6`, así que ya no puede pasar sin mirar nada.
+
+**3. En verde, sobre `2ef038d`**:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_veredicto.py tests/test_f065_dominio.py tests/test_f065_http.py -q -p no:cacheprovider
+276 passed in 13.41s
+```
+
+### Tests (T13–T14)
+
+Desde `services/postventa-api`:
+
+| Qué | Sobre | Resultado |
+|---|---|---|
+| La verificación de T14: `test_f065_veredicto.py` (64), `test_f065_dominio.py` y `test_f065_http.py` | `2ef038d` | **276 passed** en 13,41 s |
+| Todos los `test_f065_*.py` | `af4b356` (después solo cambia una aserción) | **595 passed** en 103,61 s |
+| Las guardas de arquitectura, alcance y fábricas (`test_*arquitectura*`, `test_*alcance_cerrado*`, `test_*fabrica*`) más `test_f010_endpoints_protegidos.py` | `af4b356` | **621 passed, 234 skipped** en 415,33 s. Los *skipped* son las guardas de diff de otras ramas. `test_f065_alcance_cerrado.py` pasa en verde: los tres ficheros de producción son nuevos de F-065 y los tests siguen el patrón `test_f065_*.py` |
+| `ruff check` de los tres módulos y de los dos tests | `2ef038d` | Limpio salvo el `I001` de siempre (la línea en blanco entre bloques de `import` que lleva todo el repositorio) |
+
+No he lanzado ni `init.sh` ni el servicio entero, como pedía el encargo. Los
+tests de F-059 no se han ejecutado porque este encargo no toca nada de F-059:
+eso es de T16.
+
+### Mutación (T13–T14)
+
+**Herramienta** (`progress/mutacion_F-065_bloqueA4bis_veredicto.md`, con la
+nota del implementer): `--base 0919e5d`, 3 ficheros y 194 líneas en alcance,
+1 worker, en un `git worktree` desechable de `af4b356`, con el árbol limpio
+antes y después. La suite está reducida a los cinco ficheros que importan lo
+mutado; la búsqueda de quién lo importa está en la nota.
+- **7 generados, 7 muertos, 0 supervivientes, 0 timeouts**, en 103,0 s.
+- La herramienta casi no encuentra qué mutar en este código. Solo da:
+  - el `frozen` de los dos tipos;
+  - el `not` de `es_candidata`;
+  - el `==` de `NPR` y el de los dos criterios;
+  - el `+= 1` del recuento por unidad (dos mutantes).
+
+**A mano: 33.** Atacan lo que sostiene R41 y R42: la precedencia, los códigos
+de cada veredicto, el orden, la regla 0, los pares y el bloque. Los lanza un
+script fuera del repo, en otro worktree desechable, con la misma suite
+reducida y sin `-x`. El script sustituye el texto exacto, comprueba que solo
+aparece una vez y restaura el fichero byte a byte; el árbol queda limpio
+después.
+- **1.ª vuelta**, sobre `af4b356`: 32 muertos y **1 superviviente**, MV18 (el
+  estado del par como texto y no como `EstadoSigrid`). Es casi equivalente,
+  porque `StrEnum` compara igual que el texto, pero T16 (el ensayo) va a
+  consumir ese campo y debe poder contar con el enumerado. Lo mata una aserción
+  `type(p.estado) is EstadoSigrid`, en `2ef038d`.
+- **2.ª vuelta**, de MV18 sobre `2ef038d`: muerto. Las otras 32 no hace falta
+  repetirlas: `2ef038d` solo añade una aserción, y una aserción de más solo
+  puede matar más.
+- Resultado: **33, 33 muertos, 0 supervivientes.**
+
+| Id | Mutante | Resultado (tests que fallan) | Uno de los que lo matan |
+|---|---|---|---|
+| MV1 | la emparejada en NPR se enlaza (sin la regla 0) | muerto (7) | `r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo` |
+| MV2 | la regla 0 con los códigos de los pares además | muerto (1) | `r41_s3_la_emparejada_en_npr_choca_tambien_con_un_ya_existe_por_criterios` |
+| MV3 | `se_enlaza` por detrás de `ya_existe` | muerto (2) | `r41_se_enlaza_gana_a_ya_existe_y_a_choca_con_solo_la_emparejada` |
+| MV4 | `ya_existe` también con una cerrada | muerto (4) | `r41_los_dos_criterios_con_una_cerrada_no_es_ya_existe_sino_va` |
+| MV5 | `ya_existe` con cualquier criterio | muerto (13) | `r41_e1_un_criterio_con_una_pte_choca` |
+| MV6 | `ya_existe` solo con la descripción | muerto (2) | `r41_e2_la_descripcion_100_con_una_sat_choca` |
+| MV7 | `ya_existe` con los códigos de todas las abiertas | muerto (1) | `r41_ya_existe_lleva_solo_las_de_los_dos_criterios_abiertas_en_el_orden_de_r18` |
+| MV8 | `choca` con los avisos entre sus códigos | muerto (3) | `r41_los_codigos_de_choca_en_el_orden_de_r18_y_sin_los_avisos` |
+| MV9 | `choca` solo con el primer código | muerto (4) | `r41_mira_todos_los_pares_y_no_los_diez_de_r18` |
+| MV10 | `choca` con los códigos en orden ascendente | muerto (4) | `r41_mira_todos_los_pares_y_no_los_diez_de_r18` |
+| MV11 | las cerradas cuentan como abiertas | muerto (9) | `r41_los_dos_criterios_con_una_cerrada_no_es_ya_existe_sino_va` |
+| MV12 | veredicto también para las que no son candidatas | muerto (12) | `r41_e6_b_con_los_dos_criterios_con_la_sat_emparejada_con_a_ya_existe` |
+| MV13 | solo las aprobadas son candidatas (sin `en_duda`) | muerto (18) | `r41_e1_un_criterio_con_una_pte_choca[en_duda]` |
+| MV14 | los veredictos ordenados por `incidencia_id` y no en el orden recibido | muerto (2) | `r41_solo_las_candidatas_y_en_el_orden_recibido` |
+| MV15 | los pares con el tope de 10 | muerto (3) | `r41_mira_todos_los_pares_y_no_los_diez_de_r18` |
+| MV16 | los pares ordenados por código y no en el orden de R18 | muerto (7) | `r41_mira_todos_los_pares_y_no_los_diez_de_r18` |
+| MV17 | el par sin la fecha | muerto (1) | `r41_cada_par_con_su_codigo_estado_criterios_parecido_y_fecha` |
+| MV18 | el estado del par como texto y no como `EstadoSigrid` | superviviente en `af4b356`; **muerto (1)** en `2ef038d` | `r41_los_pares_son_todos_en_el_orden_de_r18_y_empiezan_como_la_vista` |
+| MV19 | sin la emparejada (nadie se enlaza) | muerto (27) | `r41_e7_emparejada_y_no_anulada_se_enlaza` |
+| MV20 | la regla 0 con `is` (el estado llega como texto) | muerto (7) | `r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo` |
+| MV21 | los pares sin criterios | muerto (9) | `r41_e1_con_la_descripcion_de_e2b_los_dos_criterios_ya_existe` |
+| MV22 | los pares sin parecido | muerto (1) | `r41_cada_par_con_su_codigo_estado_criterios_parecido_y_fecha` |
+| MV23 | `pares` también para las incidencias sin pares (vacíos) | muerto (1) | `r41_pares_solo_de_las_evaluables_con_algun_par_y_sin_las_suyas` |
+| MP1 | la vista sin veredictos | muerto (7) | `r42_las_candidatas_sus_veredictos_y_las_cuentas` |
+| MP2 | los veredictos de un cruce vacío | muerto (6) | `r42_las_candidatas_sus_veredictos_y_las_cuentas` |
+| MB1 | `por_unidad` sin ordenar | muerto (1) | `r42_por_unidad_las_unidades_de_las_candidatas_por_codigo` |
+| MB2 | la unidad importada y no la vigente | muerto (1) | `r42_la_unidad_es_la_vigente` |
+| MB3 | `por_veredicto` solo con los que hay | muerto (4) | `r42_el_bloque_volcado_con_sus_claves` |
+| MB4 | los `sigrid_cods` del bloque con el tope de 10 | muerto (1) | `r42_la_ruta_da_todos_los_codigos_aunque_los_hallazgos_lleven_diez` |
+| MB5 | `candidatas` cuenta toda la bandeja | muerto (2) | `r42_las_candidatas_sus_veredictos_y_las_cuentas` |
+| MB6 | el estado del veredicto, fijo | muerto (1) | `r42_las_candidatas_sus_veredictos_y_las_cuentas` |
+| MB7 | sin el bloque `volcado` | muerto (9) | `r42_el_bloque_volcado_con_sus_claves` |
+| MB8 | cada unidad de `por_unidad` con las cuentas de toda la obra | muerto (1) | `r42_por_unidad_las_unidades_de_las_candidatas_por_codigo` |
+
+### Cobertura (T13–T14)
+
+Medida con `coverage run --branch` y la suite reducida (los cinco ficheros), sobre
+`af4b356`, con el fichero de datos fuera del árbol para no ensuciar la guarda
+de alcance:
+
+```
+Name                                       Stmts   Miss Branch BrPart  Cover
+application\pipelines\sigrid_bandeja.py       29      0      6      0   100%
+domain\models\sigrid_bandeja.py              282      0     78      0   100%
+interface_adapters\api\sigrid_bandeja.py     106      0     16      0   100%
+TOTAL                                        417      0    100      0   100%
+```
+
+**Cobertura de lo cambiado: 100 %, 63 de 63 sentencias** (las líneas añadidas
+del diff `0919e5d..HEAD` que son sentencias ejecutables, cruzadas con el
+`coverage.json`):
+- el pipeline, 3/3;
+- el dominio, 48/48;
+- el borde, 12/12.
+
+Ninguna rama queda sin cubrir. `python -m harness.cobertura --base 0919e5d
+--cov <ese json> --raiz services/postventa-api` vuelve a responder `PUERTA
+COBERTURA: N/A (… no contienen sentencias ejecutables)`, igual que en el A4.
+Las claves del json salen relativas al servicio y con `\`, y sospecho que la
+puerta no las casa con las rutas del diff. No lo he investigado: no es de este
+encargo y la medición de arriba es directa. La puerta oficial es la de
+`init.sh`.
+
+### Pendiente (T13–T14)
+
+- `bash harness/init.sh` entero (el líder).
+- **T15–T17** (la guarda del ensayo), en el encargo siguiente. Lo que dejan
+  preparado T13 y T14:
+  - `veredictos` acepta las situaciones **en el orden que se le den**, que en
+    el ensayo será el pedido (R47);
+  - `ParDeCoincidencia.estado` es `EstadoSigrid`;
+  - `ReclamacionSigrid.ficha` sigue sin admitir `None`, y T16 tendrá que
+    abrirla para la lectura sin R33 (§15.2). Al hacerlo, el borde de esta ruta
+    sigue leyendo fichas no nulas, porque la ruta lee con R33.
+- **Para F-040**: la forma del bloque `volcado` es la de §15.3, con los cuatro
+  veredictos siempre presentes en `por_veredicto` y en cada unidad.
+- **La review del Bloque A4 bis** llega después de T17 (`tasks.md`: «Parar»).
+- Sin verificaciones MANUAL en esta mitad.
+
+### Evidencias (T13–T14)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | **276 passed** los de la verificación de T14, en 13,41 s; **595 passed** todo F-065, en 103,61 s; **621 passed, 234 skipped** las guardas de arquitectura, alcance y fábricas más F-010, en 415,33 s |
+| Cobertura de las líneas cambiadas | **100 %** (63/63 sentencias y ninguna rama sin cubrir), con `coverage --branch`. La puerta de `harness.cobertura` da N/A con el json de la suite reducida (ver arriba); la de `init.sh` es del líder |
+| Mutantes | Herramienta: **7 generados, 7 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 103,0 s, sobre `af4b356` con el árbol limpio (suite reducida). A mano: **33, 33 muertos, 0 supervivientes**. MV18 sobrevivió en `af4b356` y lo mata `2ef038d` |
+| Tiempo de la suite | 13,41 s la de la verificación de T14; 103,61 s todo F-065 |

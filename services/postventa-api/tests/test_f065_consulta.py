@@ -414,7 +414,8 @@ def test_f065_r40_una_fecha_imposible_es_error_sin_la_fila(columna: int, valor: 
 
     assert str(fallo.value) == "una fecha de Sigrid que no es un entero YYYYMMDD válido"
     assert fallo.value.__cause__ is None
-    assert fallo.value.__suppress_context__ is True
+    # Ni la causa ni el contexto: el error de `date` no viaja con él.
+    assert fallo.value.__context__ is None or fallo.value.__suppress_context__
     for texto in [str(valor), *TEXTOS_DE_LA_FILA]:
         assert texto not in str(fallo.value)
 

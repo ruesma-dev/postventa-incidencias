@@ -186,7 +186,7 @@
   con una respuesta mal formada (R8), reintento de lo transitorio, solo `/api/sql/read` (R27), y
   el log con obra, filas, techo y segundos y **nada más** (R25, R38). La
   fábrica, con sus dos puertas en orden. | Verificación: `python -m pytest tests/test_f065_consulta.py tests/test_f065_adaptador.py` en **rojo**, traza en el informe
-- [ ] **T6**: `domain/ports/reclamaciones_obra.py`,
+- [x] **T6**: `domain/ports/reclamaciones_obra.py`,
   `infrastructure/sigrid/consultas_reclamaciones_obra.py`,
   `infrastructure/sigrid/reclamaciones_obra.py` (hereda
   `AdaptadorCatalogoSigridApi` **sin tocarlo**, `design.md` §2) y

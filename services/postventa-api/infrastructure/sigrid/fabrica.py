@@ -70,6 +70,14 @@ sello de `gra.cod` lo pone la pasarela y aquí no hay ninguna hora que escribir.
 > El error del entorno y de la ventana es `VolcadoDeshabilitado` (503); el de
 > la configuración, `ConfiguracionSigridIncompleta`; el de `N` fuera de 1 a 50
 > o que no es un entero, `ConfiguracionDeVolcadoInvalida` (503, R30).
+
+> **Enmienda del 2026-10-29 (F-065, Bloque A3).** Hay una **octava**,
+> `construir_reclamaciones_obra`, **añadida** sin cambiar las demás: las mismas
+> dos puertas, en el mismo orden y con los mismos errores que
+> `construir_ubicaciones_validas` (entorno → configuración), para la lectura de
+> todas las reclamaciones de la obra
+> (`specs/F-065-revision-sigrid-backend/design.md` §9.2, R2). Sin ninguna
+> ventana de escritura: solo lee.
 """
 
 from __future__ import annotations
@@ -83,6 +91,7 @@ from domain.models.errores import ConfiguracionSigridIncompleta, VolcadoDeshabil
 from domain.models.volcado import validar_partes_por_llamada
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.erp import ErpPort
+from domain.ports.reclamaciones_obra import ReclamacionesObraPort
 from domain.ports.grafico import GraficoPort
 from domain.ports.ubicacion import UbicacionPort
 from domain.ports.ubicaciones_validas import UbicacionesValidasPort
@@ -99,6 +108,9 @@ from infrastructure.sigrid.cliente import (
     exigir_interruptor_de_cierre,
 )
 from infrastructure.sigrid.graficos import AdaptadorGraficoSigridApi
+from infrastructure.sigrid.reclamaciones_obra import (
+    AdaptadorReclamacionesObraSigridApi,
+)
 from infrastructure.sigrid.ubicacion import (
     AdaptadorUbicacionSigridApi,
     exigir_entorno_con_ubicacion,
@@ -118,6 +130,7 @@ __all__ = [
     "construir_ensayador",
     "construir_erp",
     "construir_graficos",
+    "construir_reclamaciones_obra",
     "construir_ubicaciones",
     "construir_ubicaciones_validas",
     "construir_volcador",
@@ -286,6 +299,39 @@ def construir_ubicaciones_validas(ajustes: Ajustes) -> UbicacionesValidasPort:
         ajustes.entorno,
     )
     return AdaptadorUbicacionesValidasSigridApi(
+        entorno=ajustes.entorno,
+        base_url=str(ajustes.sigrid_api_base_url),
+        api_key=str(ajustes.sigrid_api_key),
+        base_datos=str(ajustes.sigrid_base_datos),
+        timeout_s=ajustes.sigrid_timeout_s,
+        reintentos=ajustes.sigrid_reintentos,
+    )
+
+
+def construir_reclamaciones_obra(ajustes: Ajustes) -> ReclamacionesObraPort:
+    """El lector de las reclamaciones de la obra, o el motivo por el que aquí no.
+
+    F-065, `specs/F-065-revision-sigrid-backend/design.md` §9.2 y R2: las dos
+    puertas de `construir_ubicaciones_validas`, en el mismo orden y con los
+    mismos errores —entorno → configuración—, porque es la cuarta lectura de
+    la misma familia. Sin la de ninguna ventana (`CIERRE_HABILITADO`,
+    `ARCHIVO_HABILITADO`, `VOLCADO_HABILITADO`): solo lee. Tampoco resuelve el
+    huso ni pide el tipo de concepto: el tipo lo pasa quien lee, en cada
+    lectura.
+
+    Levanta `CatalogoNoDisponible` (→ 503) si este entorno no lee Sigrid
+    —**antes** de mirar la configuración y sin construir nada— y
+    `ConfiguracionSigridIncompleta` (→ 503) si falta configuración,
+    **nombrando las variables y jamás sus valores**.
+    """
+    exigir_entorno_con_catalogo(ajustes.entorno)
+    _exigir_configuracion(ajustes)
+
+    log.info(
+        "F-065 lector de las reclamaciones de la obra en Sigrid construido en el entorno %s",
+        ajustes.entorno,
+    )
+    return AdaptadorReclamacionesObraSigridApi(
         entorno=ajustes.entorno,
         base_url=str(ajustes.sigrid_api_base_url),
         api_key=str(ajustes.sigrid_api_key),

@@ -1183,3 +1183,308 @@ de tiempo. Vale para cualquier proyecto: candidata a `arnes-base` si el humano l
 «ENTORNO LISTO»**. Raíz 115 passed; servicio api **9639 passed, 365 skipped in 3169,46 s**; `PUERTA COBERTURA: 100.0%
 de 530 líneas cambiadas cubiertas (530/530, umbral 80%, nivel critico)`. **Bloque A4 APROBADO**, como dejó dicho el
 reviewer. D-A4-3 y D-A4-4: el líder recomienda al humano dejarlas así y fijarlas en la spec de F-064.
+
+## Review del Bloque A4 bis, primera mitad (T13, T14) · 2026-10-29
+
+- **Veredicto:** CHANGES_REQUESTED, **solo por `init.sh`** (C-A4b-1). El rojo lo provoca el informe de este
+  bloque, no el código. En el código y los tests de T13 y T14 no he encontrado nada que corregir.
+- **Alcance de esta review:** `0919e5d..59fb26f` (`36d10b5`, `af4b356`, `2ef038d`, `59fb26f`), en el worktree
+  `postventa-f065`, rama `feature/F-065-revision-sigrid-backend`. Solo T13 y T14. La guarda del ensayo (T15–T17)
+  no está hecha y no la he revisado. No me he conectado a Sigrid, a la base ni a SharePoint. No he tocado
+  `features.json`, `BACKLOG.md` ni `current.md`.
+- **Nivel de rigor:** `critico`, declarado en `features.json`. Exige fase RED con la salida real, cobertura de lo
+  cambiado ≥ 80 %, mutación con cero supervivientes (o la aceptación escrita del humano) y la sección
+  «Evidencias».
+
+### `init.sh`
+
+`bash harness/init.sh`, tal cual, una vez, sobre `59fb26f`: **exit 1, en ROJO**, «2 comprobaciones fallidas».
+
+- Servicio api: `1 failed, 892 passed in 171.89s`, parado por `-x` en
+  `tests/test_f006_repo_sin_identificadores.py::test_f006_r26_ningun_fichero_del_repositorio_incrusta_un_identificador`:
+  `{'progress/impl_F-065.md': 1}`.
+  - **No es un test de tiempo ni la carga del puesto.** Es la guarda de R26 de F-006, que barre todo el árbol
+    buscando GUID.
+  - El GUID está en `progress/impl_F-065.md`, **línea 1900**, dentro de la traza del RED de comportamiento
+    (`E   KeyError: UUID('…')   (Cruce.pares sin los pares)`). Lo añade `59fb26f`, el commit del informe
+    (`git blame`). En `0919e5d` el fichero no tenía ninguno.
+  - **No es un identificador real.** Lo he mirado sin imprimirlo: tiene la forma `00000000-0000-0000-0000-00000000000X`,
+    es decir, un `UUID(int=n)` de los fixtures. Sacarlo del historial no hace falta, pero la guarda no distingue,
+    y no debe hacerlo.
+  - **Es la segunda vez en F-065.** El mismo test cayó en el Bloque A2 por lo mismo, y lo arregló `718a633`.
+- Por ese `-x`, la `PUERTA COBERTURA` sale `[KO]` con **47,0 % (278/591)**: midió solo la parte de la suite que
+  llegó a correr. Es el mismo efecto que en la re-review del A2 y en el A4.
+- Todo lo demás, en verde: arnés, `features.json`, `BACKLOG.md`, `compileall`, raíz (115 passed), front (caché) y
+  la rama. `ruff` da 80 avisos de deuda.
+
+Después, para saber qué hay detrás del rojo, he lanzado lo siguiente. **No sustituye a `init.sh`**:
+
+| Qué | Resultado |
+|---|---|
+| La suite entera del servicio, **sin `-x`**, con `coverage run -m pytest tests`, desde `services/postventa-api` (en paralelo con mi reejecución de la mutación) | **1 failed, 9702 passed, 261 skipped in 3865,21 s**: el único fallo es el de C-A4b-1; ningún test de tiempo cayó |
+| `python -m harness.cobertura --base dev --config harness/rigor.json` sobre ese `coverage.json` (la misma puerta de `init.sh`) | **`PUERTA COBERTURA: 100.0% de 591 líneas cambiadas cubiertas (591/591, umbral 80%, nivel critico)`** |
+| `git status --porcelain` después | vacío |
+
+### 1 · Lo que pidió mirar el líder
+
+**R41 contra `design.md` §15.2 y S-1 a S-9.** `veredictos` es una función pura del dominio. Recibe la bandeja y el
+`Cruce` y solo mira las candidatas (`es_candidata`). Aplica la tabla de §15.2 en `_veredicto`, regla por regla:
+
+| Regla de §15.2 | Código | Test que la fija |
+|---|---|---|
+| 0 · emparejada (la mayor) en `NPR` → `choca`, solo su código, por delante de todo | `emparejada.estado == EstadoSigrid.NPR` → `(emparejada.cod,)` | `r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo[aprobada/en_duda]`, `r41_s3_la_emparejada_en_npr_choca_tambien_con_un_ya_existe_por_criterios`, `r41_s3_la_mayor_de_dos_en_npr_choca_con_solo_la_mayor` |
+| 1 · emparejada no `NPR` → `se_enlaza`, con la emparejada | `(emparejada.cod,)`, antes de mirar pares | `r41_e7_emparejada_y_no_anulada_se_enlaza` (×12), `r41_se_enlaza_gana_a_ya_existe_y_a_choca_con_solo_la_emparejada`, `r41_varias_emparejadas_se_enlaza_con_la_de_codigo_mayor`, `r41_s3_la_menor_de_dos_en_npr_se_enlaza_con_la_mayor` |
+| 2 · par con los dos criterios y `SAT`/`PTE` → `ya_existe`, con esos | `abiertos` y `frozenset(criterios) == _LOS_DOS_CRITERIOS` | `r41_e1_con_la_descripcion_de_e2b_los_dos_criterios_ya_existe[SAT/PTE]`, `r41_e6_b_…_ya_existe`, `r41_ya_existe_lleva_solo_las_de_los_dos_criterios_abiertas_en_el_orden_de_r18` |
+| 3 · otro par de conflicto → `choca`, con todos | `abiertos`, en su orden | `r41_e1_un_criterio_con_una_pte_choca`, `r41_e2_…_choca`, `r41_mira_todos_los_pares_y_no_los_diez_de_r18` (12 códigos), `r41_los_codigos_de_choca_en_el_orden_de_r18_y_sin_los_avisos`, `r41_choca_lleva_las_de_conflicto_de_cualquiera_de_los_dos_criterios` |
+| 4 · lo demás → `va`, sin códigos | `()` | `r41_e3_e4_…_va_sin_codigos`, `r41_los_dos_criterios_con_una_cerrada_no_es_ya_existe_sino_va`, `r41_e5_…_no_cuentan`, `r41_sin_reclamaciones_va` |
+| E12 y las no candidatas, sin veredicto | `if not es_candidata(...)` | `r41_e12_lo_que_no_es_candidata_no_tiene_veredicto` (×4), `r41_solo_las_candidatas_y_en_el_orden_recibido` |
+
+- **«Severidad conflicto» se lee como `SAT`/`PTE`.** El código no mira la severidad del hallazgo: mira
+  `p.estado in ABIERTAS`. Es equivalente, porque `_SEVERIDAD_DE_ESTADO` da conflicto justo a esos dos (R17), y
+  `ParDeCoincidencia` (§15.2) no lleva severidad.
+- **La emparejada sale de `Cruce.reclamaciones`, como dice §15.2.** He comprobado en `_emparejar` que solo la de
+  código mayor lleva su `incidencia_id` (`emparejada_de[mayor.cod]`). Así que el diccionario de `veredictos` no puede
+  quedarse con una que no sea la mayor. `Cruce` gana solo `pares`.
+- **S-1 a S-9.** En esta mitad solo entran S-2 (los cuatro veredictos, con `ya_existe` y `choca` separados), S-3 con
+  su enmienda y S-9 (el bloque en la ruta de F-065 tal cual, sin parámetro nuevo). Las tres se cumplen. S-1, S-4 a
+  S-8 son de la guarda (T15–T17).
+
+**La enmienda del humano a S-3 (2026-10-28).** Están los tres casos de `progress/spec_F-065.md` (decisión 5) y de
+§15.2:
+- la emparejada en `NPR` da `choca` con solo su código;
+- también con un `ya_existe` por criterios: en el test hay además un `choca` por criterios, y los dos se ignoran;
+- la menor de dos en `NPR` da `se_enlaza` con la mayor.
+
+Hay además un cuarto caso, la mayor de dos en `NPR`, y la ruta lo devuelve igual
+(`r42_la_emparejada_en_npr_choca_en_la_ruta`).
+
+**Que `se_enlaza` no se excluya.** Es un veredicto propio y no se funde con `ya_existe` ni con `choca`:
+`Veredicto` tiene los cuatro valores, la regla 1 va por delante de las 2 y 3, y ningún código de esta mitad excluye
+nada (las exclusiones son de R45, en T16). Mis mutantes a mano R4 (`se_enlaza` por detrás de `ya_existe`) y R16
+(`se_enlaza` sin código) mueren.
+
+**El bloque `volcado` y los datos personales.** Cada veredicto lleva **exactamente**
+`{incidencia_id, unidad_codigo, estado, veredicto, sigrid_cods}`. `_volcado` solo lee el `UUID`, la unidad vigente,
+el estado de revisión y los códigos `RS` del dominio. No toca la `ficha` ni ningún campo de R33. Lo fijan:
+- las claves exactas (`r42_el_bloque_volcado_con_sus_claves`);
+- `r22_las_claves_son_solo_las_de_r20_y_r33`, ampliado solo con las claves del bloque y las unidades de `por_unidad`;
+- la línea de la ruta (R24), que no cambia: `_volcado` no registra nada.
+
+No hay un test que busque los valores de las fichas dentro de `volcado`. Por construcción no pueden llegar, así
+que no lo pido (O-A4b-2).
+
+**Que la suite reducida de la mutación sea válida.** Sí, por el mismo argumento que en A2, A3 y A4:
+- Quitar tests solo puede **sumar** supervivientes, y con la suite reducida da cero.
+- Los cinco ficheros son todos los que **ejecutan** lo mutado. Lo he comprobado con
+  `grep sigrid_bandeja` en `services/` y `harness/`:
+  - fuera de F-065, el dominio lo importan solo el pipeline y el borde nuevos;
+  - el adaptador y `test_f065_adaptador.py` solo importan la constante `TOPE_RECLAMACIONES_OBRA`, que no está en
+    el alcance;
+  - el borde lo importa solo `function_app.py`;
+  - `test_f065_alcance_cerrado.py` lee los ficheros como texto.
+- La suite reducida está en verde antes de mutar, así que ningún muerto se debe a una suite que ya fallaba.
+- Además, la suite entera sin `-x` (tabla de arriba) pasa sin más fallo que el de C-A4b-1.
+
+### 2 · Las lecturas del implementer
+
+Ninguna cambia algo aprobado. Las tres primeras salen del texto de R41. Las demás eligen donde la spec no dice
+nada, y las señalo para que las lleves al humano si te parece. Mi recomendación, en todas, es dejarlas como están.
+
+| # | Lectura | ¿La spec lo dice? | Mi valoración |
+|---|---|---|---|
+| L-1 | **Códigos de `ya_existe`**: solo los pares con los dos criterios **y abiertos**. Uno con los dos criterios contra una `TER`/`CER` no entra, y con una `TER` de dos criterios y una `PTE` de uno sale `choca` con la `PTE` | Sí: R41, regla 2, «con una reclamación **abierta**», y «los códigos de las reclamaciones **que lo deciden**» | Correcta. Importa para R45: el `sigrid_cod` de `duplicada_en_sigrid` será siempre una abierta |
+| L-2 | **Códigos de `se_enlaza` con varias** emparejadas: solo la mayor | Sí: «la emparejada» de R41 es, por R13 bis, la de código mayor | Correcta |
+| L-3 | **Una emparejada con estado desconocido o sin estado** (`XYZ`, `None`) da **`se_enlaza`**, no `choca` (`r41_e7_…[XYZ/None]`) | **No de forma explícita.** La regla 1 enmendada dice «que no está en `NPR`», y la regla 0 solo habla de `NPR`. La lectura literal es la del implementer | Es la única que toca el espíritu de la enmienda a S-3: no enlazar a ciegas con un parte que puede no estar vivo. Un estado que Sigrid no tenía no es un `NPR` que sepamos, y la pasarela lo devolvería `idempotente` igual. **La dejaría así**, pero que lo confirme el humano. Si dijera lo contrario, el cambio es una condición en `_veredicto` y mi mutante R3 muestra que los tests ya lo verían (4 fallos) |
+| L-4 | **`por_unidad` solo lleva las unidades con candidatas**, ordenadas por código | No: R42 dice «las unidades por código», no cuáles | Razonable: una unidad sin candidatas sería una fila de ceros. Es contrato con F-040 |
+| L-5 | **`unidad_codigo` y `estado` del bloque son los vigentes** (`valores_vigentes`, `estado_de`) | No de forma explícita | Correcta: el cruce va por la unidad vigente (§5.2), así que contar por otra no casaría con los pares. Lo fija `r42_la_unidad_es_la_vigente` |
+| L-6 | **`por_veredicto` y cada unidad llevan siempre las cuatro claves**, en el orden del enumerado | El ejemplo de §15.3 las trae las cuatro | Correcta |
+| L-7 | **`ReclamacionSigrid.ficha` sigue sin admitir `None`**. §15.2 lo prevé para la lectura de la guarda, y queda para T16 | §15.2 sí; T14 no lo lista entre sus piezas | Bien aplazado: aquí no lo usa nada. **Que lo mire la review de T16** |
+
+La desviación declarada son las dos aserciones de `test_f065_http.py`: el conjunto exacto de claves gana `volcado` y
+las claves permitidas de R22 ganan las del bloque. Es la consecuencia directa de R42 («aditivo»): no quita ninguna
+clave ni ninguna aserción. La acepto.
+
+### 3 · La mutación
+
+**Recálculo puro.** `harness.alcance.alcance_de_feature("F-065", base="0919e5d", rama="59fb26f")` da **3 ficheros y
+194 líneas** (19 + 130 + 45). `generar_mutantes` da **7 mutantes**:
+- en el dominio, dos `frozen`, el `not` de `es_candidata`, el `==` de `NPR` y el de los dos criterios;
+- en el borde, el `+= 1` dos veces (aritmético y entero).
+
+Coinciden con el informe en alcance, número y operadores.
+
+**Reejecución.** El «Tiempo total» declarado es 103,0 s, por debajo de 5 min, así que he reejecutado la campaña
+**entera**:
+- en un `git worktree` desechable de `59fb26f`, en mi scratchpad;
+- con `harness.mutacion.main` y el mismo `EjecutorPytest` reducido de la nota del implementer;
+- con `--base 0919e5d --workers 1 --timeout 300` y la salida en el scratchpad.
+
+Resultado: **7 generados, 7 muertos, 0 supervivientes, 0 timeouts, 93,8 s**, los mismos totales. El worktree estaba
+limpio después y ya está eliminado.
+
+**Coste por mutante.** 103,0 × 1 ÷ 7 = 14,7 s (el mío, 13,4 s). La suite reducida tarda unos 13 s y para con `-x`,
+así que no es sospechoso.
+
+**A mano.** La campaña se queda corta (7 mutantes para 194 líneas), así que la verificación real son los mutantes a
+mano. No tengo el script del implementer, así que he escrito los míos: **25**, en otra copia desechable, sin `-x` y
+**solo con `test_f065_veredicto.py` y `test_f065_http.py`**.
+- Son 22 de su tabla (MV1–MV5, MV7–MV16 y la regla 0, MP2, MB1–MB8) y 3 nuevos:
+  - R3: la regla 0 también con estado desconocido (la lectura L-3);
+  - R16: `se_enlaza` sin código;
+  - B8: los veredictos del bloque al revés.
+- **25 muertos, 0 supervivientes, todos por tests de la propia feature** (casi siempre `test_f065_veredicto.py`).
+  Ninguno lo caza solo una suite vecina.
+
+| Mutante | Fallan | Uno que lo mata |
+|---|---|---|
+| R1 sin la regla 0 | 7 | `r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo[aprobada]` |
+| R2 regla 0 con los códigos de los pares | 1 | `r41_s3_la_emparejada_en_npr_choca_tambien_con_un_ya_existe_por_criterios` |
+| R3 regla 0 también con estado desconocido | 4 | `r41_e7_emparejada_y_no_anulada_se_enlaza[XYZ-aprobada]` |
+| R4 `se_enlaza` detrás de `ya_existe` | 2 | `r41_se_enlaza_gana_a_ya_existe_y_a_choca_con_solo_la_emparejada` |
+| R5 `ya_existe` con cerradas | 4 | `r41_los_dos_criterios_con_una_cerrada_no_es_ya_existe_sino_va[TER]` |
+| R6 `ya_existe` con un criterio | 13 | `r41_e1_un_criterio_con_una_pte_choca[aprobada]` |
+| R7 `ya_existe` con todos los abiertos | 1 | `r41_ya_existe_lleva_solo_las_de_los_dos_criterios_abiertas_en_el_orden_de_r18` |
+| R8 `choca` con los avisos | 3 | `r41_los_codigos_de_choca_en_el_orden_de_r18_y_sin_los_avisos` |
+| R9 `choca` solo con el primero | 4 | `r41_mira_todos_los_pares_y_no_los_diez_de_r18` |
+| R10 `choca` en orden ascendente | 4 | `r41_mira_todos_los_pares_y_no_los_diez_de_r18` |
+| R11 las cerradas como abiertas | 9 | `r41_los_dos_criterios_con_una_cerrada_no_es_ya_existe_sino_va[TER]` |
+| R12 candidatas = evaluables | 9 | `r41_e12_lo_que_no_es_candidata_no_tiene_veredicto[nueva]` |
+| R13 veredictos ordenados por id | 2 | `r41_solo_las_candidatas_y_en_el_orden_recibido` |
+| R14 pares con el tope de 10 | 3 | `r41_mira_todos_los_pares_y_no_los_diez_de_r18` |
+| R15 pares por código y no en el orden de R18 | 7 | `r41_mira_todos_los_pares_y_no_los_diez_de_r18` |
+| R16 `se_enlaza` sin código | 20 | `r41_e7_emparejada_y_no_anulada_se_enlaza[SAT-aprobada]` |
+| P1 el pipeline con un cruce vacío | 6 | `r42_las_candidatas_sus_veredictos_y_las_cuentas` |
+| B1 `por_unidad` sin ordenar | 1 | `r42_por_unidad_las_unidades_de_las_candidatas_por_codigo` |
+| B2 la unidad importada | 1 | `r42_la_unidad_es_la_vigente` |
+| B3 `por_veredicto` solo con los que hay | 4 | `r42_el_bloque_volcado_con_sus_claves` |
+| B4 `sigrid_cods` con el tope de 10 | 1 | `r42_la_ruta_da_todos_los_codigos_aunque_los_hallazgos_lleven_diez` |
+| B5 `candidatas` = la bandeja | 2 | `r42_las_candidatas_sus_veredictos_y_las_cuentas` |
+| B6 el estado fijo | 1 | `r42_las_candidatas_sus_veredictos_y_las_cuentas` |
+| B7 sin el bloque `volcado` | 9 | `r42_el_bloque_volcado_con_sus_claves` |
+| B8 los veredictos del bloque al revés | 1 | `r42_las_candidatas_sus_veredictos_y_las_cuentas` |
+
+**Regla de orden (RM7).** N/A en esta mitad, y lo justifico: la regla mira una puerta que va **antes** de un
+colaborador. Aquí no hay ninguna: es una función pura, y la ruta no cambia su orden de llamadas. La puerta
+«guarda → login → lote» es de R44, en T15–T16, y ahí sí aplica.
+
+### 4 · Fase RED y «Evidencias»
+
+- **RED.** El informe trae la **salida real** dos veces:
+  - contra `0919e5d`: el `ImportError` de `ParDeCoincidencia` y las dos aserciones de `test_f065_http.py`;
+  - con tipos de relleno pegados temporalmente: **58 failed, 73 passed**.
+
+  El segundo RED es el que vale, porque enseña qué caza cada test y no solo que el código aún no existía. Explica
+  los 8 que pasan con relleno. El que pasaba en vacío (`r49_cada_candidata_con_solo_su_unidad…`) se arregló con
+  `assert len(toda) == 6` **antes** de commitear T13. Bien visto.
+- **Evidencias**, con los cuatro números y los workers: tests (276 / 595 / 621 + 234 skipped), cobertura de lo
+  cambiado (100 %, 63/63 sentencias, `coverage --branch`), mutantes (7/7 y 33/33 a mano, 1 worker) y tiempos.
+
+### Checkpoints
+
+**C1 · Arnés completo y en verde**
+- [ ] `init.sh` con exit 0. **No**: exit 1 por C-A4b-1.
+- [x] Existen los ficheros del arnés (los comprueba `init.sh`: todos `[OK]`).
+
+**C2 · Estado coherente**
+- [x] Una sola feature `in_progress` (F-065).
+- [x] La rama es `feature/F-065-revision-sigrid-backend`.
+- [x] `current.md`: no lo he tocado, y no es de esta mitad.
+- [x] `history.md`: F-065 no está `done`.
+
+**C3 · Arquitectura y convenciones**
+- [x] Hexagonal:
+  - `veredictos` y sus tipos viven en el dominio, sin red ni reloj, y solo importan del dominio (`es_candidata` de
+    `revision.py`);
+  - el pipeline solo llama a la función;
+  - el borde solo serializa;
+  - `test_f065_alcance_cerrado.py` y las guardas de arquitectura pasan en verde en la suite entera.
+- [x] Primera línea con la ruta en `test_f065_veredicto.py` y en el informe de mutación. Los demás ya la tenían.
+- [x] Sin `print`, sin TODO y sin secretos en el código. El GUID de C-A4b-1 es del informe, no del código, y es de
+  un fixture.
+- [x] La unidad de trabajo es la incidencia (el veredicto va por incidencia).
+- N/A · Archivar, lo manuscrito, «firmado no es conforme» y reprocesar sin duplicar: esta mitad no toca partes
+  escaneados, ni archivo, ni la ingesta.
+- [x] Ningún número de estado de Sigrid hardcodeado: los estados van por `EstadoSigrid` (texto) y el tipo de parte
+  sigue saliendo de `SIGRID_TIP_RECLAMACION`.
+- [x] Ningún parte ni PDF en git.
+
+**C3 bis · Documentos de fuera.** N/A: no entra ningún documento externo.
+
+**C4 · Verificación real**
+- [x] R41 y R42 cubiertos (tabla de cobertura, abajo). R49 en lo que toca a esta mitad: el veredicto con toda la
+  obra frente al de sus unidades. La parte de R49 sobre `volcar` y el panel es de T15–T17.
+- [x] Sin red ni base: dobles en memoria (`Mundo`, `BandejaSoloLectura`, `LectorDeReclamaciones`).
+- N/A · Verificaciones `MANUAL`: esta mitad no tiene (el informe lo dice). La de R71 es de T-A0 bis, ya hecha.
+
+**C4 bis · Rigor**
+- [x] `rigor: critico` declarado.
+- [x] Fase RED con la salida real (§4).
+- [ ] Cobertura: la puerta de `init.sh` sale `[KO]` 47,0 % por el `-x` de C-A4b-1. Con la suite entera sin `-x` y la misma puerta da **100 % (591/591)**: el `[KO]` es efecto del rojo, no de la cobertura. Queda `[ ]` hasta que `init.sh` lo dé en verde
+- [x] Mutación: informe de la herramienta, recalculado (194 líneas, 7 mutantes) y sin superviviente `PENDIENTE`.
+- [x] Los muertos, comprobados: campaña de 103 s reejecutada (7/7).
+- [x] Coste por mutante normal (14,7 s).
+- [x] Cero supervivientes, también a mano (los 33 del implementer, y mis 25).
+- [x] «Evidencias» con los cuatro números y los workers.
+- N/A · Guarda por definiciones: ningún fichero sale de una lista de «no se toca» en esta mitad. La guarda T9 se
+  amplía en T17.
+- [x] Ningún N/A sin justificar.
+
+**C4 ter · Rutas sensibles.** N/A: no existe `harness/rutas_sensibles.json`.
+
+**C5 · Cierre**
+- [x] T13 y T14 `[x]`, con commits `F-065 T13: …` y `F-065 T14: …`. T15–T17, T10, T11 y T12 siguen `[ ]`, como toca
+  a mitad de bloque.
+- [x] Sin temporales sin trackear (`git status` limpio; `coverage.json` y `.coverage` están en `.gitignore`).
+- [x] `features.json`: F-065 `in_progress`, que es su estado real.
+
+### Cobertura · requisito → test
+
+| Requisito | Tests |
+|---|---|
+| R41 · precedencia y ejemplos de §15.2 | `r41_e1_…`, `r41_e2_…`, `r41_e1_con_la_descripcion_de_e2b_…`, `r41_e3_e4_…`, `r41_e5_…`, `r41_e6_b_…`, `r41_e7_…`, `r41_e12_…`, `r41_se_enlaza_gana_…`, `r41_los_dos_criterios_con_una_cerrada_…` (los dos) |
+| R41 · enmienda a S-3 (regla 0) | `r41_s3_…` (los cuatro), `r42_la_emparejada_en_npr_choca_en_la_ruta` |
+| R41 · todos los pares, los códigos en el orden de R18, solo candidatas y en su orden | `r41_mira_todos_los_pares_y_no_los_diez_de_r18`, `r41_los_codigos_de_choca_en_el_orden_de_r18_…`, `r41_choca_lleva_…`, `r41_ya_existe_lleva_solo_…`, `r41_solo_las_candidatas_y_en_el_orden_recibido`, `r41_la_emparejada_no_choca_con_su_propia_incidencia` |
+| R41 · `Cruce.pares` y los tipos (§15.2) | `r41_los_valores_…`, `r41_los_campos_…`, `r41_el_veredicto_y_los_pares_no_se_pueden_cambiar`, `r41_cada_par_con_…`, `r41_los_pares_son_todos_en_el_orden_de_r18_…`, `r41_pares_solo_de_las_evaluables_…`, `r41_sin_nada_que_cruzar_…` |
+| R41 · la misma función en la ruta | `r41_r42_la_vista_lleva_el_veredicto_de_la_funcion_del_dominio`, `r41_r42_la_aplicacion_llama_a_la_funcion_del_dominio` |
+| R42 · el bloque `volcado` | `r42_el_bloque_volcado_con_sus_claves`, `r42_las_candidatas_sus_veredictos_y_las_cuentas`, `r42_por_unidad_…`, `r42_la_unidad_es_la_vigente`, `r42_sin_candidatas_el_bloque_a_cero`, `r42_la_ruta_da_todos_los_codigos_…`; aditivo: `test_f065_http.py::r20_…` y `r22_…` |
+| R49 · toda la obra = sus unidades, con la excepción escrita | `r49_con_toda_la_obra_o_con_sus_unidades_el_mismo_veredicto`, `r49_cada_candidata_con_solo_su_unidad_…`, `r49_la_excepcion_escrita_una_pvi_en_otra_unidad` (los dos casos) |
+
+### Cambios requeridos
+
+**C-A4b-1 · para el implementer.** En `progress/impl_F-065.md`, **línea 1900**, quita el GUID literal de la traza
+del RED. Basta con `KeyError: UUID('…')` o `KeyError: UUID(int=1)`.
+- Después, lanza `tests/test_f006_repo_sin_identificadores.py` desde `services/postventa-api` y comprueba que pasa.
+- Haz commit, y que el líder lance `bash harness/init.sh` entero.
+- No se amplía la tolerancia del test ni se toca el patrón: lo prohíbe su docstring, y aquí no hace falta.
+- Del historial no hay que sacar nada: el valor es de un fixture (`UUID(int=n)`), no un identificador real.
+
+Con `init.sh` en verde y la `PUERTA COBERTURA` en `[OK]`, esta mitad queda aprobada **sin más cambios**: no pido
+nada en el código ni en los tests.
+
+### Observaciones (no bloquean)
+
+- **O-A4b-1 · `ruff` en `test_f065_veredicto.py`.** Da `I001`, pero no es el salto de línea entre bloques que dice
+  el informe: es el **orden de los nombres** (`U, U2` frente a `U2, U`). Se arregla con `ruff --fix`, cuando toque.
+- **O-A4b-2 · Datos personales del bloque.** Ningún test busca los valores de las fichas dentro de `volcado`. Hoy
+  no hace falta, porque las claves del bloque son exactas y sus valores, tipados. Si T16 reutiliza `_volcado` o
+  añade campos, conviene uno.
+- **O-A4b-3 · Para la review de T16.** Dos puntos:
+  - que `ReclamacionSigrid.ficha` pase a `FichaReclamacion | None` sin que la ruta de F-065 deje de leer fichas no
+    nulas (L-7);
+  - que el ensayo llame a `veredictos` con las situaciones **en el orden pedido** (R47).
+
+### Propuesta de automejora (para el humano)
+
+**El mismo rojo, dos veces en la misma feature.** En A2 y ahora, el informe del implementer metió un GUID de
+fixture en `progress/`. La guarda que lo caza está bien. El hueco es de protocolo: el implementer escribe el
+informe **al final**, después de su última pasada de tests, y no lanza `init.sh` (lo lanza el líder). Así, lo que
+entra en el último commit no lo ve nadie hasta la review. Propongo añadir a `.claude/agents/implementer.md` de este
+repositorio:
+
+> Después de escribir tus ficheros de `progress/` y antes de su commit, ejecuta las guardas que barren todo el
+> árbol (`tests/test_f006_repo_sin_identificadores.py` y `tests/test_f065_datos_personales.py::…r39…` o sus
+> equivalentes). Una traza pegada en un informe es texto del repositorio como cualquier otro. Y en las trazas, los
+> `UUID` van como `UUID(int=n)` o `UUID('…')`, nunca con sus 36 caracteres.
+
+La regla general vale para cualquier proyecto con guardas sobre `progress/`: «lo último que se commitea pasa por las
+guardas que lo leen». Si el humano la aprueba, es candidata a `arnes-base`.

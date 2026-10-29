@@ -682,3 +682,11 @@ garantía del lenguaje o de la biblioteca estándar citada (aquí, la estabilida
 que el humano lo vea, y reservar la aceptación del humano para las equivalencias que son un juicio. Hoy un caso
 demostrable bloquea el bloque igual que uno discutible. Vale para cualquier proyecto: candidata a `arnes-base` si
 el humano la aprueba.
+
+### C-A2-4 · cerrado por el líder (2026-10-29)
+
+`bash harness/init.sh`, tal cual, una pasada sobre `71799a4` (código de `fbb77dc` más informes): **exit 0, «ENTORNO
+LISTO»**. Raíz 115 passed; servicio api **9295 passed, 365 skipped in 3694,09 s**; `PUERTA COBERTURA: 100.0% de 234
+líneas cambiadas cubiertas (234/234, umbral 80%, nivel critico)`. Ningún test de tiempo cayó.
+
+### C-A2-3 · pendiente de la aceptación escrita del humano (R4 equivalente)

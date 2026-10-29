@@ -268,6 +268,18 @@ def test_f065_r1_la_obra_se_normaliza_como_en_f036(mundo) -> None:
     assert mundo.lector.pedidas == [{"codigo_obra": OBRA, "tip": TIP_POR_DEFECTO}]
 
 
+def test_f065_r5_el_tipo_de_concepto_sale_de_la_configuracion(mundo, monkeypatch) -> None:
+    """`SIGRID_TIP_RECLAMACION` manda: el 708 es su defecto, no un literal del borde (precriba)."""
+    monkeypatch.setattr(
+        _modulo(), "obtener_ajustes", lambda: Ajustes(_env_file=None, sigrid_tip_reclamacion=999)
+    )
+
+    estado, _ = _leer(_get())
+
+    assert estado == 200
+    assert mundo.lector.pedidas == [{"codigo_obra": OBRA, "tip": 999}]
+
+
 def test_f065_r1_cualquier_otro_parametro_se_ignora(mundo) -> None:
     referencia = _leer(_get())[1]
     estado, cuerpo = _leer(
@@ -488,6 +500,14 @@ def test_f065_r9_ninguna_fila_es_200_con_las_listas_vacias(monkeypatch) -> None:
     assert cuerpo["incidencias"] == {}
     assert cuerpo["resumen"]["reclamaciones"] == 0
     assert cuerpo["resumen"]["incidencias_evaluadas"] == 1
+    # Las cuentas, con todas sus claves también a cero (precriba de mutación):
+    # quien pinta el resumen no tiene que adivinar qué estado falta.
+    resumen = cuerpo["resumen"]
+    assert resumen["por_estado"] == {e.value: 0 for e in EstadoSigrid}
+    assert resumen["por_tipo"] == {t.value: 0 for t in TipoHallazgo}
+    assert resumen["por_criterio"] == {c.value: 0 for c in Criterio}
+    assert resumen["emparejadas"] == resumen["estados_desconocidos"] == 0
+    assert resumen["incidencias_con_conflicto"] == resumen["incidencias_con_aviso"] == 0
 
 
 ERRORES_DE_LA_LECTURA = [

@@ -28,6 +28,7 @@ ficticios de §5.4, textos «Ejemplo …»; los identificadores, `UUID(int=n)`.
 from __future__ import annotations
 
 import inspect
+from dataclasses import FrozenInstanceError
 import logging
 from datetime import UTC, date, datetime
 from typing import Any
@@ -352,7 +353,8 @@ def test_f065_r44_las_unidades_son_las_vigentes_tal_cual() -> None:
 
 def test_f065_r44_veredictos_con_las_situaciones_en_el_orden_pedido(monkeypatch) -> None:
     """O-A4b-3: la **misma** función del dominio, con las situaciones de lo que
-    se manda en el orden pedido (R47)."""
+    se manda en el orden pedido (R47). La 4 está en la bandeja pero sin
+    aprobar: la excluye la selección y no pasa por la guarda."""
     vistas: list[list[UUID]] = []
 
     def espia(situaciones, cruce):
@@ -362,11 +364,13 @@ def test_f065_r44_veredictos_con_las_situaciones_en_el_orden_pedido(monkeypatch)
     assert guarda_sigrid.veredictos is veredictos
     assert guarda_sigrid.cruzar is cruzar
     monkeypatch.setattr(guarda_sigrid, "veredictos", espia)
-    mundo = _aprobadas(1, 2, 3)
+    mundo = Mundo(1, 2, 3, 4)
+    mundo.aprobar(1, 2, 3)
 
-    mundo.ensayar(3, 77, 1, 2)
+    resultado = mundo.ensayar(3, 4, 77, 1, 2)
 
     assert vistas == [[ID(3), ID(1), ID(2)]]
+    assert [v.incidencia_id for v in resultado.guarda.veredictos] == [ID(3), ID(1), ID(2)]
 
 
 # ==========================================================================
@@ -463,6 +467,18 @@ def test_f065_r45_la_confirmacion_de_una_que_ya_no_choca_se_ignora_y_se_cuenta()
     assert mundo.mandadas() == [ID(1), ID(2)]
     assert _veredictos(resultado) == [(ID(1), V.VA, (), False), (ID(2), V.VA, (), False)]
     assert resultado.guarda.confirmaciones_sobrantes == 2
+
+
+def test_f065_r45_la_confirmacion_de_una_que_no_paso_por_la_guarda_tambien_sobra() -> None:
+    """La 2 está en la bandeja sin aprobar: la excluye la selección, no tiene
+    veredicto y su confirmación no sirve para nada: se cuenta (R48)."""
+    mundo = Mundo(1, 2)
+    mundo.aprobar(1)
+
+    resultado = mundo.ensayar(1, 2, confirmados={2: ("RS26.09/0123",)})
+
+    assert [v.incidencia_id for v in resultado.guarda.veredictos] == [ID(1)]
+    assert resultado.guarda.confirmaciones_sobrantes == 1
 
 
 def test_f065_r45_la_emparejada_en_npr_sin_confirmar_se_excluye_con_su_codigo() -> None:
@@ -623,6 +639,17 @@ def test_f065_r46_cero_filas_no_es_un_error() -> None:
 # ==========================================================================
 
 
+def test_f065_r47_lo_que_deja_la_guarda_no_se_puede_cambiar() -> None:
+    """La guarda y cada veredicto son de solo lectura: el borde los serializa
+    tal cual y la línea de R48 los cuenta después."""
+    resultado = _aprobadas(1).con(choca("RS26.09/0123")).ensayar(1, confirmados={1: ("RS26.09/0123",)})
+
+    with pytest.raises(FrozenInstanceError):
+        resultado.guarda.reclamaciones_leidas = 0  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        resultado.guarda.veredictos[0].confirmada = False  # type: ignore[misc]
+
+
 def test_f065_r47_la_guarda_dice_cuando_leyo_cuantas_y_cada_veredicto() -> None:
     mundo = _aprobadas(1, 2, 3).con(ya_existe("RS26.09/0123"), emparejada("RS26.10/0081", 2))
     mundo.revision.aprobar(3, ubicacion="Terraza", descripcion="Ejemplo de otra cosa")
@@ -759,8 +786,12 @@ def test_f065_r48_ningun_codigo_rs_ni_texto_ni_unidad_ni_persona(caplog) -> None
     with caplog.at_level(logging.DEBUG):
         mundo.ensayar(1, 2, 3, 4, 5, confirmados={4: ("RS26.09/0140", "RS26.09/0141")})
 
-    texto = "\n".join(r.getMessage() for r in caplog.records if r.getMessage().startswith("F-065 guarda"))
-    assert texto
+    # Todo lo que escribe el módulo de la guarda, no solo sus dos líneas.
+    suyas = [r.getMessage() for r in caplog.records if r.name == guarda_sigrid.log.name]
+    assert suyas and all(m.startswith("F-065 guarda del ensayo") for m in suyas)
+    texto = "\n".join(
+        [*suyas, *(r.getMessage() for r in caplog.records if r.getMessage().startswith("F-065 guarda"))]
+    )
     for prohibido_ in ("RS2", TEXTO_DE_SIGRID, UBICACION_DE_SIGRID, DESCRIPCION, "Baño", U1, U2, "VILLA",
                        "Ejemplo de oficio", "Ejemplo de tipo", OID, CORREO, "PVI-", OBRA_REF):  # fmt: skip
         assert prohibido_ not in texto, prohibido_
@@ -978,6 +1009,17 @@ def test_f065_r43_sin_la_clave_o_con_la_lista_vacia_se_ensaya(borde, cuerpo) -> 
     assert len(datos["partes"]) == 1
 
 
+def test_f065_r43_cincuenta_codigos_distintos_es_el_maximo_que_se_admite(borde) -> None:
+    """El techo es 50 incluido: con 51 es 400 (`cods-51`), con 50 se ensaya."""
+    _aprobar(borde, 1)
+    cods = [f"RS26.09/{i:04d}" for i in range(50)]
+
+    estado, datos = _leer(_ensayo(_cuerpo_ensayo(1, conflictos_confirmados=[_confirmacion(1, cods)])))
+
+    assert estado == 200, datos
+    assert [p["incidencia_id"] for p in datos["partes"]] == [str(ID(1))]
+
+
 def test_f065_r43_r45_la_confirmacion_viaja_por_incidencia_con_sus_codigos(borde) -> None:
     _aprobar(borde, 1, 2)
     borde.lector.filas = (choca(COD), choca("RS26.09/0124", unidad=U2))
@@ -1128,6 +1170,26 @@ def test_f065_r44_el_tipo_de_la_guarda_es_el_de_los_ajustes(borde) -> None:
 
     assert estado == 200, datos
     assert [p["tip"] for p in borde.lector.pedidas] == [709]
+
+
+def test_f065_r47_leido_at_utc_en_utc_con_microsegundos_como_caduca_at_utc(monkeypatch, borde) -> None:
+    """La forma de F-059 (`_instante`): en UTC, con los microsegundos aunque
+    sean cero y `+00:00`, aunque el reloj diera otro huso."""
+    from datetime import timedelta, timezone
+
+    class Reloj(datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return datetime(2026, 10, 8, 11, 30, tzinfo=timezone(timedelta(hours=2)))
+
+    monkeypatch.setattr(modulo, "datetime", Reloj)
+    _aprobar(borde, 1)
+
+    estado, datos = _leer(_ensayo(_cuerpo_ensayo(1)))
+
+    assert estado == 200, datos
+    assert datos["sigrid"]["leido_at_utc"] == "2026-10-08T09:30:00.000000+00:00"
+    assert datos["caduca_at_utc"] == "2026-10-08T10:00:00.000000+00:00"
 
 
 def test_f065_r44_el_instante_de_la_lectura_es_el_del_ensayo(borde) -> None:

@@ -793,6 +793,24 @@ def test_f065_r40_una_fila_de_la_guarda_mal_formada_no_se_repite(fila: Any) -> N
         assert texto not in str(fallo.value)
 
 
+@pytest.mark.parametrize(
+    ("cambio", "mensaje"),
+    [
+        ({"i0": None, "i16": 20261345}, "una reclamación sin referencia de obra"),
+        ({"i0": "  ", "i15": "2"}, "una reclamación sin referencia de obra"),
+        ({"i1": "  ", "i16": 20261345}, "una reclamación sin código"),
+        ({"i1": None, "i15": "2"}, "una reclamación sin código"),
+    ],
+    ids=["sin-obra-y-fecpre", "obra-en-blanco-y-rcptip", "sin-codigo-y-fecpre", "codigo-nulo-y-rcptip"],
+)
+def test_f065_r40_la_obra_y_el_codigo_se_miran_antes_que_la_ficha(cambio: dict[str, Any], mensaje: str) -> None:
+    """Con la ficha también mal, el error es el de la fila: la ficha va después."""
+    with pytest.raises(ValueError) as fallo:
+        fila_a_reclamacion_obra(_con(**cambio))
+
+    assert str(fallo.value) == mensaje
+
+
 def test_f065_r44_la_obra_sigue_dando_la_ficha_entera() -> None:
     """O-A4b-3 / L-7: la ficha admite `None` solo en la lectura de la guarda; la
     de la obra (la de la ruta) la sigue dando entera."""

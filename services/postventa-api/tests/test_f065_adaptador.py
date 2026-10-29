@@ -650,6 +650,17 @@ def test_f065_r44_sin_unidades_es_la_lectura_de_toda_la_obra_de_siempre() -> Non
     assert [p.json["sql"] for p in cliente.peticiones] == [SQL_RECLAMACIONES_DE_LA_OBRA] * 2
 
 
+def test_f065_r44_una_lista_vacia_de_unidades_es_error_y_no_la_obra_entera() -> None:
+    """Solo `None` es la lectura de toda la obra: `()` es error y no sale ninguna petición."""
+    adaptador, cliente = _adaptador()
+
+    with pytest.raises(ValueError) as fallo:
+        adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=())
+
+    assert str(fallo.value) == "la lectura de la guarda lleva de 1 a 50 unidades"
+    assert cliente.urls == []
+
+
 def test_f065_r44_la_guarda_no_admite_una_fila_con_la_ficha() -> None:
     """Si la pasarela devolviera 31 columnas a la consulta de 12, es 503: no se
     cuelan datos personales por un cambio de consulta."""

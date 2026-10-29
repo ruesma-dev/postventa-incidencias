@@ -212,7 +212,7 @@ class Mundo:
             setattr(self.lector, nombre, valor)
         return self
 
-    def ensayar(self, *ns: int, confirmados: dict[int, tuple[str, ...]] | None = None):
+    def ensayar(self, *ns: int, confirmados: dict[int, tuple[str, ...]] | None = None, tip: int = TIP):
         return pipeline.ensayar(
             PeticionDeEnsayo(
                 obra_codigo=OBRA,
@@ -225,7 +225,7 @@ class Mundo:
             usuarios=self.usuarios,
             sigrid=self.sigrid,
             reclamaciones=self.lector,
-            tip=TIP,
+            tip=tip,
             ajustes_volcado=AJUSTES,
             ahora=AHORA,
             nuevo_id=self.nuevo_id,
@@ -328,6 +328,15 @@ def test_f065_r44_lee_solo_las_unidades_de_lo_que_se_manda_una_vez_cada_una() ->
     mundo.ensayar(4, 3, 1, 2)
 
     assert mundo.lector.pedidas == [{"codigo_obra": OBRA, "tip": TIP, "unidades": (U1, U2)}]
+
+
+def test_f065_r44_el_tipo_de_la_lectura_es_el_que_recibe_el_ensayo() -> None:
+    """Con otro que el de por defecto (708): un tipo fijo no pasaría."""
+    mundo = _aprobadas(1)
+
+    mundo.ensayar(1, tip=709)
+
+    assert [p["tip"] for p in mundo.lector.pedidas] == [709]
 
 
 def test_f065_r44_las_unidades_son_las_vigentes_tal_cual() -> None:
@@ -1105,6 +1114,20 @@ def test_f065_r47_los_codigos_de_la_guarda_en_function_app() -> None:
 
 def test_f065_r47_el_borde_exporta_su_costura() -> None:
     assert "construir_reclamaciones_obra" in modulo.__all__
+
+
+def test_f065_r44_el_tipo_de_la_guarda_es_el_de_los_ajustes(borde) -> None:
+    """`SIGRID_TIP_RECLAMACION` llega a la lectura tal cual, con otro valor que
+    el de por defecto (708): un tipo fijo en el borde no pasaría."""
+    from tests.test_f059_volcado_http import _completos
+
+    borde.ajustes = _completos(SIGRID_TIP_RECLAMACION="709")
+    _aprobar(borde, 1)
+
+    estado, datos = _leer(_ensayo(_cuerpo_ensayo(1)))
+
+    assert estado == 200, datos
+    assert [p["tip"] for p in borde.lector.pedidas] == [709]
 
 
 def test_f065_r44_el_instante_de_la_lectura_es_el_del_ensayo(borde) -> None:

@@ -412,6 +412,9 @@ def test_f065_r41_los_pares_son_todos_en_el_orden_de_r18_y_empiezan_como_la_vist
     vista = [(h.sigrid_cod, h.criterios, h.parecido) for h in cruce.hallazgos if h.tipo is TipoHallazgo.COINCIDE]
     assert vista == [(p.sigrid_cod, p.criterios, p.parecido) for p in pares[:10]]
     assert {p.estado for p in pares} == {EstadoSigrid.SAT, EstadoSigrid.CER}
+    # El enumerado, no el texto de Sigrid (que compara igual): quien lo use
+    # (el ensayo, T16) puede contar con `EstadoSigrid`.
+    assert all(type(p.estado) is EstadoSigrid for p in pares)
 
 
 def test_f065_r41_pares_solo_de_las_evaluables_con_algun_par_y_sin_las_suyas() -> None:

@@ -690,3 +690,7 @@ LISTO»**. Raíz 115 passed; servicio api **9295 passed, 365 skipped in 3694,09 
 líneas cambiadas cubiertas (234/234, umbral 80%, nivel critico)`. Ningún test de tiempo cayó.
 
 ### C-A2-3 · pendiente de la aceptación escrita del humano (R4 equivalente)
+
+**Aceptado por el humano el 2026-10-29** («acepto»): R4 es un mutante equivalente, por el motivo de §4 (la
+ordenación de Python es estable y los `coincide` entran ya en el orden de R18, así que el desempate por puesto no
+cambia ninguna salida). Con C-A2-3 y C-A2-4 cerrados, **Bloque A2 APROBADO**, como dejó dicho el reviewer.

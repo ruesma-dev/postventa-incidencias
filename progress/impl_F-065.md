@@ -1897,7 +1897,7 @@ $ .venv/Scripts/python.exe -m pytest tests/test_f065_veredicto.py tests/test_f06
 ...
 E   ValueError: not enough values to unpack (expected 1, got 0)          (×40: los ejemplos E1–E12, la regla 0, el orden de R18)
 E   KeyError: 'volcado'                                                    (×8: el bloque de R42 y las dos de test_f065_http)
-E   KeyError: UUID('00000000-0000-0000-0000-000000000001')                 (Cruce.pares sin los pares)
+E   KeyError: UUID('UUID(int=1)')                 (Cruce.pares sin los pares)
 E   AttributeError: 'VistaDeSigrid' object has no attribute 'veredictos'
 E   AttributeError: <module 'application.pipelines.sigrid_bandeja' ...> has no attribute 'veredictos'
 E   AssertionError: assert {} == {UUID('000000...26, 9, 15)),)}

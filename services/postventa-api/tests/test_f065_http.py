@@ -17,6 +17,7 @@ ninguna llamada de red.
 | una lectura de la base y una de Sigrid por petición | R3 |
 | 409 `bandeja_demasiado_grande`, `reclamaciones_sin_verificar`, `obra_ambigua`; 503 de Sigrid, su configuración, el entorno y la base; el 503 «no dice si viene cortada» sigue siendo 503 | R4, R8, R9, R23 |
 | la forma de la respuesta: claves exactas, `guardado_cod` (`null` donde no toca), `ficha` con la lista cerrada, fechas, resumen | R20 |
+| el bloque `volcado`, aditivo, entre las claves exactas (su contenido, en `test_f065_veredicto.py`) | R42 |
 | el orden de las reclamaciones y de los hallazgos, el del dominio; los `coincide` en el de R18 | R21 |
 | ni `oid`, ni correo de quien revisa, ni `ide`, ni `obride`; los errores no repiten filas | R22 |
 | la línea `F-065 sigrid de la bandeja`, con 200 y con error, sin textos ni códigos y con los bytes; su `proceso_nuevo` no toca el del listado de F-060 | R24 |
@@ -79,7 +80,8 @@ FUNCTION_APP = SERVICIO / "function_app.py"
 #: `SIGRID_TIP_RECLAMACION` por defecto (R5).
 TIP_POR_DEFECTO = 708
 
-#: Las claves de la respuesta 200 (R20), exactamente estas.
+#: Las claves de la respuesta 200 (R20), exactamente estas; más el bloque
+#: `volcado`, aditivo (R42, Bloque A4 bis: R20 no pierde ni cambia nada).
 CLAVES_DE_LA_RESPUESTA = {
     "obra",
     "leido_at_utc",
@@ -88,7 +90,14 @@ CLAVES_DE_LA_RESPUESTA = {
     "hallazgos",
     "incidencias",
     "resumen",
+    "volcado",
 }
+#: El bloque `volcado` (R42) y cada uno de sus `veredictos`; su contenido lo
+#: prueba `test_f065_veredicto.py`.
+CLAVES_DEL_VOLCADO = {"candidatas", "por_veredicto", "por_unidad", "veredictos"}
+CLAVES_DE_VEREDICTO = {"incidencia_id", "unidad_codigo", "estado", "veredicto", "sigrid_cods"}
+#: Las claves de `por_veredicto` y de cada unidad de `por_unidad` (R41).
+VALORES_DEL_VEREDICTO = {"va", "se_enlaza", "ya_existe", "choca"}
 CLAVES_DE_RECLAMACION = {
     "cod",
     "estado",
@@ -891,6 +900,10 @@ def test_f065_r22_las_claves_son_solo_las_de_r20_y_r33(mundo) -> None:
         | {t.value for t in TipoHallazgo}
         | {c.value for c in Criterio}
         | set(cuerpo["incidencias"])
+        | CLAVES_DEL_VOLCADO
+        | CLAVES_DE_VEREDICTO
+        | VALORES_DEL_VEREDICTO
+        | set(cuerpo["volcado"]["por_unidad"])
     )
     assert _todas_las_claves(cuerpo) <= permitidas
 

@@ -233,7 +233,7 @@
 > piezas de F-059: los tests de F-059 se ejecutan **sin cambiar ninguna
 > aserción** en cada tarea.
 
-- [ ] **T13**: tests RED del veredicto (`tests/test_f065_veredicto.py`): la
+- [x] **T13**: tests RED del veredicto (`tests/test_f065_veredicto.py`): la
   precedencia de R41 con los ejemplos de `design.md` §15.2 (E1 → `choca`, E1
   con la descripción de E2b → `ya_existe`, E3/E4 → `va`, E7 → `se_enlaza`,
   E12 sin veredicto; *enmienda del humano a S-3, 2026-10-28*: E7 con la

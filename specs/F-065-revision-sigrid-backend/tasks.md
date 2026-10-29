@@ -272,7 +272,7 @@
   tres entradas de `function_app.py` (`design.md` §15.6); y el doble vacío del
   lector en `tests/test_f059_volcado_http.py` y
   `tests/test_f059_pipeline_volcado.py`. | Verificación: los ficheros de T15 en verde y `python -m pytest tests/test_f059_volcado_http.py tests/test_f059_pipeline_volcado.py tests/test_f059_volcado_dominio.py tests/test_f059_alcance_cerrado.py` en verde, con el diff de esos dos ficheros de tests limitado al doble **y a las dos ampliaciones aditivas** de §15.6 (enmienda del líder del 2026-10-29) (traza en el informe)
-- [ ] **T17**: la guarda de alcance de T9 ampliada a §15.6: los ficheros de
+- [x] **T17**: la guarda de alcance de T9 ampliada a §15.6: los ficheros de
   F-059 que cambian, **solo** en las piezas declaradas; en los tests de
   F-059, ninguna aserción menos ni cambiada salvo las dos ampliaciones
   aditivas declaradas en §15.6 (solo ganan valores, no pierden ninguno); `infrastructure/sigrid/volcado.py`,

@@ -852,3 +852,327 @@ suite, no contra el «Tiempo total» del informe. Aquí el informe declaraba 326
 el recálculo puro) y la reejecución completa costó 248 s con un guion de 30 líneas. Propuesta: «si la campaña
 usó una suite reducida, el reviewer la reejecuta con esa suite salvo que pase de 15 min». Vale para cualquier
 proyecto: candidata a `arnes-base` si el humano la aprueba.
+
+## Review del Bloque A4 (T7, T8, T9) · 2026-10-29
+
+- **Veredicto:** CHANGES_REQUESTED, **solo por `init.sh`** (C-A4-1, para el líder). En el código y los tests
+  del bloque no he encontrado nada que corregir: ningún cambio para el implementer.
+- **Alcance de esta review:** `509ef57..cbe95da` (`d26060d`, `71ded50`, `d338de7`, `fb0ad71`, `ca66e3f`,
+  `cbe95da`), en el worktree `postventa-f065`, rama `feature/F-065-revision-sigrid-backend`. No he revisado el
+  A4 bis. No me he conectado a Sigrid, a la base ni a SharePoint, y no he tocado `features.json`, `BACKLOG.md` ni
+  `current.md`.
+- **Nivel de rigor:** `critico`, declarado en `features.json`. Exige fase RED, cobertura de lo cambiado ≥ 80 %,
+  mutación con cero supervivientes (o aceptación escrita del humano) y las verificaciones `MANUAL` con su comando.
+
+### `init.sh`
+
+`bash harness/init.sh`, tal cual, una vez, sobre `cbe95da`: **exit 1, en ROJO, por un test de tiempo** que no es
+de este bloque.
+
+- Servicio api: `1 failed, 5372 passed, 49 skipped in 907.98s`, parado por `-x` en
+  `test_f036_excel_lector.py::test_f036_r117_los_ficheros_de_la_review_3_se_rechazan_en_menos_de_un_segundo[formato-condicional]`:
+  **1,23 s frente al tope de 1,0 s**. Es el mismo tope de F-036 que cayó en la review del A2 (C-A2-4).
+  - El puesto estaba cargado: había otros seis worktrees vivos.
+  - Por mi parte, en los primeros minutos lancé la guarda T9 y `ruff`, y creé un worktree desechable.
+  - No lo he tocado.
+- Por ese `-x`, la `PUERTA COBERTURA` sale `[KO]` con **47,5 % (252/530)**: solo midió la parte de la suite que
+  llegó a correr.
+- Todo lo demás, en verde: arnés, `features.json`, `BACKLOG.md`, `compileall`, la raíz (115 passed), el front
+  (caché) y la rama. `ruff` da 79 avisos de deuda.
+
+Después, para saber qué hay detrás del rojo, he lanzado lo siguiente. **No sustituye a `init.sh`**:
+
+| Qué | Resultado |
+|---|---|
+| La suite entera del servicio, **sin `-x`**, con `coverage run -m pytest tests`, desde `services/postventa-api` (con el puesto ya libre de mis campañas) | **9639 passed, 261 skipped in 3678,29 s**: ningún fallo, ni siquiera el de tiempo |
+| `python -m harness.cobertura --base dev --config harness/rigor.json` sobre ese `coverage.json` (la misma puerta de `init.sh`) | **`PUERTA COBERTURA: 100.0% de 530 líneas cambiadas cubiertas (530/530, umbral 80%, nivel critico)`** |
+| `git status --porcelain` después | vacío |
+
+Eso también cierra la duda del implementer sobre el `N/A` que le dio la puerta: con la suite entera y lanzada
+como la lanza `init.sh`, **mide**, y da 100 %. Su `N/A` venía del `coverage.json` de suite reducida que usó él.
+
+### 1 · Lo que pidió mirar el líder
+
+**Errores.**
+- **409 con `truncated` o al techo, sin cruzar.** `mirar_sigrid` lanza `ReclamacionesSinVerificar` si
+  `llego_al_techo`, que ya combina `truncated` y el techo en el adaptador del A3. El borde lo traduce a
+  `{error, codigo: "reclamaciones_sin_verificar", filas}`. Lo fijan:
+  - `test_f065_r8_al_techo_409_reclamaciones_sin_verificar_con_las_filas`;
+  - `test_f065_r8_truncated_con_el_adaptador_de_verdad_es_409`;
+  - `test_f065_r8_al_techo_es_409_con_las_filas_y_sin_cruzar`, con `cruzar` sustituido por `prohibido`;
+  - `…con_cero_filas_y_la_marca_tambien_es_409`.
+- **503 si la pasarela falla o la respuesta viene mal formada.** `CatalogoNoDisponible`, sus dos configuraciones y
+  la base van a `_sin_sigrid_o_sin_base`, sin cambiar. **O-A3-2 está cerrado con un test HTTP:**
+  `test_f065_r8_o_a3_2_la_respuesta_que_no_dice_si_viene_cortada_es_503_y_no_409[sin-truncated|texto|cero]`,
+  con el **adaptador de verdad** y un `ClienteFalso`, comprueba:
+  - estado 503;
+  - el texto «no dice si viene cortada»;
+  - ningún `codigo` en el cuerpo;
+  - ningún secreto en el cuerpo.
+
+  Mi mutante RV8, que convierte la caída de Sigrid en `ReclamacionesSinVerificar`, lo matan 7 tests, entre ellos
+  esos tres.
+- Las demás mal formadas (columnas que faltan, enteros imposibles) son `CatalogoNoDisponible` en el adaptador. Eso
+  lo fijó el A3 (`test_f065_r8_*`, `test_f065_r40_*`). El borde las traduce igual
+  (`test_f065_r23_sin_sigrid_o_sin_base_503_con_el_cuerpo_de_siempre`). No hay un test HTTP por cada forma mal
+  formada, y no hace falta: el camino es uno solo.
+
+**Datos personales.**
+- **Los de R33 solo salen en el cuerpo pedido.** Lo fijan dos tests:
+  - `test_f065_r38_con_200_ningun_registro_lleva_un_valor_de_las_fichas`: los valores están en la respuesta y en
+    ningún registro;
+  - `test_f065_r38_con_error_…[techo|ambigua|sigrid|base]`: en ningún registro y en ningún cuerpo de error.
+- **Con el adaptador de verdad:** `test_f065_r38_ni_la_ruta_ni_el_adaptador_de_verdad_registran_nada_de_una_fila[entera|truncated|dos-obras|sin-truncated]`.
+- **Lo que mira el barrido:** `_secretos_de` recoge todos los valores de R6 y R33 de las filas, con `caplog` en
+  `DEBUG` y las trazas de excepción incluidas. Mis mutantes de fuga mueren todos:
+  - RV9: el cuerpo al log en `DEBUG`;
+  - RV16: el propietario en el mensaje del 409;
+  - RV17: las `obride` en `obra_ambigua`;
+  - RV18: un `cod` en la línea de R24.
+- **`no-store`.** Lo llevan el 200 (`test_f065_r35_la_respuesta_200_lleva_no_store`) y los errores 400, 409 ×3 y
+  503 (`test_f065_r35_las_de_error_tambien`). Ninguna otra ruta lo lleva, y eso tiene dos tests:
+  - `…ninguna_otra_ruta_lleva_no_store`, dinámico;
+  - `…el_sin_cache_solo_lo_usa_esta_ruta`, estático por AST: un solo `"no-store"` en `function_app.py`.
+
+  Mi RV10, el 503 sin `no-store`, muere.
+- **Nada guardado (R37).** Lo comprueban `test_f065_r37_*`: el doble sin escrituras, `open` y `Path` parcheados, y
+  un barrido AST con su control no ciego.
+- **Autenticación.** La ruta es `ANONYMOUS`, como las otras 24. Es el patrón deliberado de F-010: la protección la
+  ponen Easy Auth del backend enlazado y la regla `/api/*` `authenticated` de la Static Web App, fijada en
+  `services/postventa-front/tests/test_f010_config_swa.py`. La ruta cuelga de `/api/` y entra en la lista de
+  `test_f010_endpoints_protegidos.py`, con su párrafo en la cabecera de seguridad de `function_app.py`. Mi RV15
+  (`auth_level=FUNCTION` sin reescribir la nota) lo mata
+  `test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada`.
+
+**Salida.**
+- **`guardado_cod`** viaja en los ocho campos de cada hallazgo, `null` donde no toca. Lo fijan
+  `test_f065_r20_guardado_cod_solo_en_volcada_no_encontrada_y_codigo_distinto` y
+  `…los_codigos_de_cada_hallazgo_son_los_de_la_tabla`. Mi RV12, quitar la clave, muere.
+- **El orden de R18 en los `coincide`.** El borde no reordena: serializa `cruce.hallazgos` tal cual.
+  `test_f065_r21_los_coincide_de_una_incidencia_en_el_orden_de_r18` usa un juego en el que el código menor es el
+  más reciente, hay uno sin fecha, dos de la misma fecha y uno `CER` de fecha mayor que va después por severidad.
+  Mi RV13, que ordena por código ascendente dentro de cada grupo, muere por ese test.
+
+**Alcance.**
+- **La base de la guarda.** T9 usa `BASE_FIJA = "b863b46"`, la anotada en `impl_F-065.md` y ancestro de `HEAD`.
+  La he lanzado: **46 passed, ningún skip**.
+- **Lo de §9.3, intacto.** `INTOCABLES` recoge todo §9.3 y suma, por su cuenta, los dos puertos (`revision.py` y
+  `catalogo_obra.py`). `CARPETAS_INTOCABLES` cubre el DDL y el front. `RESPUESTAS_SIN_CAMBIOS` vigila las rutas y
+  los traductores de F-056, F-059 y F-060.
+- **Lo que cambió, frente a la base.** `git diff --stat 509ef57..cbe95da`:
+  - producción: solo los dos módulos nuevos de §9.1 y `errores.py` y `function_app.py` de §9.2;
+  - tests: los de F-065 y `test_f010_endpoints_protegidos.py`;
+  - nada más.
+- **Nada del A4 bis adelantado.** He buscado en todo el diff `veredict`, `choca`, `se_enlaza`, `ya_existe`,
+  `MotivoExclusion`, `unidades=`, `conflicto_sin_confirmar`, `PeticionDeEnsayo` y `ParDeCoincidencia`: cero
+  apariciones. `sigrid_bandeja.py` del dominio y todo `infrastructure/` siguen sin cambios en el bloque.
+
+### 2 · La mutación
+
+**Recálculo puro.** Con `harness.alcance.alcance_de_feature("F-065", base="509ef57")` sobre `HEAD`: **4 ficheros y
+561 líneas**. Con `generar_mutantes`: **19 mutantes**, 4 + 0 + 5 + 10 por fichero. Coinciden con el informe. Los
+tres supervivientes de la 1.ª pasada (`:52 frozen`, `:123 _atendida`, `:169 ensure_ascii`) existen como mutantes
+reales, con el mismo operador y el mismo texto.
+
+**Reejecución.** El «Tiempo total» declarado es 293,5 s, por debajo de 5 minutos, así que he reejecutado la campaña
+**entera**:
+- en un `git worktree` desechable de `cbe95da`, en mi scratchpad;
+- con `harness.mutacion.main` y la misma suite reducida y los mismos argumentos que declara la nota del
+  implementer;
+- con salida fuera de `progress/`.
+
+Resultado: **19 generados, 19 muertos, 0 supervivientes, 0 timeouts, 173,9 s, 1 worker**. Son los mismos totales.
+El worktree estaba limpio antes y después y ya está eliminado.
+
+**Coste por mutante.** 293,5 × 1 ÷ 19 = 15,4 s, en la línea de lo que tarda la suite reducida (≈ 26 s entera;
+con `-x` para antes). No es sospechosa.
+
+**¿Vale la suite reducida para esta mutación?** Sí.
+- Quitar tests solo puede **sumar** supervivientes. Un cero con la suite reducida es un cero con la entera, que
+  además ya he corrido en verde.
+- El alcance son las líneas nuevas de cuatro ficheros, y solo las ejecuta esta ruta:
+  - el pipeline lo importa solo el borde;
+  - el borde lo importa solo `function_app.py`;
+  - `ReclamacionesSinVerificar` y `revision_sigrid` solo se alcanzan por esa ruta.
+- Las cuatro piezas están dentro de la suite: los tres ficheros de T7 y el de F-010, que vigila el `auth_level` de
+  la ruta nueva.
+- Fuera queda la guarda T9. Mira el diff como texto y no mata mutantes de comportamiento, así que no cambia nada.
+
+**Mutantes a mano.** Hay **40 del implementer**, todos muertos. **Los míos**, en otra copia desechable, se juzgan
+**solo con los tests de F-065** (los tres ficheros de T7), sin `-x`. La excepción es RV15, que es de F-010 por
+diseño.
+
+| Id | Mutante | Resultado | Lo matan, entre otros |
+|---|---|---|---|
+| RV1 | **orden**: Sigrid se lee antes que la bandeja | muerto (10) | `r3_una_lectura_de_la_base_y_una_de_sigrid_en_ese_orden`, `r3_si_la_base_falla_no_se_lee_sigrid` |
+| RV2 | **orden**: el tope de la bandeja se mira después de leer Sigrid | muerto (2) | `r4_mas_de_diez_mil_es_409_con_el_recuento_y_sin_sigrid` |
+| RV3 | **orden**: se cruza antes de mirar el techo | muerto (3) | `r8_al_techo_es_409_con_las_filas_y_sin_cruzar` |
+| RV4 | **orden**: se cruza antes de mirar la obra ambigua | muerto (1) | `r9_dos_obras_es_obra_ambigua_sin_cruzar` |
+| RV5 | **orden**: obra ambigua antes que el techo | muerto (1) | `r8_el_techo_va_antes_que_la_obra_ambigua` |
+| RV6 | **orden**: la base se construye antes que Sigrid | muerto (6) | `r2_sigrid_se_construye_antes_que_la_base`, `r2_si_sigrid_no_se_construye_503_y_la_base_ni_se_construye[…]` |
+| RV7 | **orden**: la obra se valida después de construir Sigrid | muerto (7) | `r1_la_obra_que_no_vale_es_400_sin_construir_nada[…]` |
+| RV8 | O-A3-2: la caída de Sigrid se convierte en 409 | muerto (7) | `r8_o_a3_2_…_es_503_y_no_409[…]` |
+| RV9 | el cuerpo entero al log en `DEBUG` | muerto (3) | `r38_con_200_ningun_registro_lleva_un_valor_de_las_fichas` |
+| RV10 | el 503 sin `no-store` | muerto (1) | `r35_las_de_error_tambien[sigrid]` |
+| RV11 | la ficha gana un campo fuera de R33 (`dni`) | muerto (3) | `r22_las_claves_son_solo_las_de_r20_y_r33` |
+| RV12 | `guardado_cod` no viaja | muerto (2) | `r20_guardado_cod_solo_en_volcada_no_encontrada_y_codigo_distinto` |
+| RV13 | hallazgos por código ascendente dentro de su grupo | muerto (1) | `r21_los_coincide_de_una_incidencia_en_el_orden_de_r18` |
+| RV14 | las reclamaciones al revés | muerto (1) | `r21_las_reclamaciones_en_el_orden_del_dominio` |
+| RV15 | la ruta pasa a `FUNCTION` sin tocar la nota (suite de F-010) | muerto (1) | `test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada` |
+| RV16 | el mensaje del 409 del techo lleva el propietario de la 1.ª fila | muerto (2) | `r22_r40_los_errores_no_repiten_ninguna_fila`, `r38_con_error_…[techo]` |
+| RV17 | `obra_ambigua` nombra las `obride` | muerto (3) | `r9_dos_obras_409_obra_ambigua`, `r38_con_error_…[ambigua]` |
+| RV18 | la línea de R24 lleva el `cod` de la primera reclamación | muerto (4) | `r24_la_linea_no_lleva_ningun_texto_ni_codigo` |
+
+**18 de 18 muertos, todos por tests de la feature.** La regla 7 del protocolo (bajar la puerta un paso por cada
+colaborador) queda cubierta:
+- en el pipeline, la bandeja frente a Sigrid (RV1 y RV2) y el cruce frente al techo y la obra ambigua (RV3, RV4 y
+  RV5);
+- en el borde, la obra frente a Sigrid (RV7) y Sigrid frente a la base (RV6).
+
+Ninguno lo caza solo una suite vecina.
+
+Hubo una primera versión de RV16 («el aviso del 503 registra también `error.__dict__`») que sobrevivió. **La
+descarto: estaba mal diseñada por mí.** `CatalogoNoDisponible` solo guarda `motivo`, así que el mutante registraba
+dos veces lo mismo y no metía ningún dato nuevo. La sustituí por el RV16 de la tabla, que sí mete un dato de R33.
+No es un mutante del implementer ni un hueco de sus tests.
+
+### 3 · Las desviaciones y lo que el implementer elige donde la spec calla (para el líder y, si quiere, el humano)
+
+Ninguna cambia algo aprobado. Dos son de alcance, y el resto son contrato con F-064 que la spec no fija.
+
+- **D-A4-1 · `tests/test_f010_endpoints_protegidos.py`**, que §9.2 no nombra. Toda ruta nueva pasa por su cuenta,
+  como en F-019, F-036, F-056, F-059 y F-060, y T8 exige el servicio entero en verde.
+  - Cambian solo `ENDPOINTS` y la cuenta (24 → 25).
+  - La guarda T9 lo vigila: `AMPLIADOS`, sin perder aserciones, con su control no ciego.
+
+  Es correcta. Conviene que el líder lo anote en §9.2 al pasar por la spec.
+- **D-A4-2 · La guarda T9 da por declarados `harness/features.json`, `BACKLOG.md` y `specs/F-064-…/`**, que §9 no
+  nombra. Lo veo razonable: la memoria del arnés y las enmiendas de contrato con F-064 pasan por la rama. Que lo
+  sepa el humano.
+- **D-A4-3 · La semántica del `resumen`.** R20 da las claves y no su significado, y es lo que pintará F-064. El
+  implementer elige:
+  - `por_estado`, siempre con los **cinco** códigos de `EstadoSigrid`, `NPR` incluido. Los desconocidos van solo en
+    `estados_desconocidos`, y entre los dos suman `reclamaciones`.
+  - `emparejadas` cuenta **reclamaciones** con incidencia, no incidencias.
+  - `incidencias_con_conflicto` e `incidencias_con_aviso` cuentan incidencias **distintas**: una puede estar en las
+    dos. Los hallazgos sin incidencia (`referencia_desconocida`) no cuentan.
+  - `por_tipo` y `por_criterio` cuentan los hallazgos **que viajan**, ya con el tope de 10 de R18, y no el total
+    real. El total va en `incidencias[…].coincidencias_total`.
+
+  Las cuatro son sensatas y están en la cabecera del borde, pero son contrato. La que más puede sorprender es la
+  última: una incidencia con 12 `coincide` cuenta 10 en `por_tipo.coincide`. **Recomiendo llevarlas al humano o
+  anotarlas en R20 y en F-064 antes de su Bloque de página.**
+- **D-A4-4 · El cuerpo del 409 `reclamaciones_sin_verificar`** es `{error, codigo, filas}`. R8 solo dice «con el
+  número de filas»: el nombre `filas` es elección suya. Es lo mismo que `total` en `bandeja_demasiado_grande`.
+  Contrato con F-064.
+- **D-A4-5 · `sigrid_de_la_bandeja` gana `ahora=`**, una costura de test para `leido_at_utc` que la firma de §10.4
+  no trae. Es inocua.
+- **D-A4-6 · Más líneas de log de la ruta, además de la de R24.** `function_app.py` registra, con el patrón de las
+  demás rutas:
+  - `revision/sigrid no procede: reclamaciones_sin_verificar|obra_ambigua`;
+  - `revision/sigrid sin Sigrid o sin base: <motivo>`.
+
+  R24 pide «una línea `F-065 sigrid de la bandeja`», no «una línea en total», y R38 queda a salvo: el `motivo` no
+  lleva filas, lo fijan los tests con el adaptador de verdad y lo comprueban mis RV16 y RV17. Lo dejo dicho por si
+  alguien cuenta líneas en Application Insights (T-A15).
+
+### 4 · Trazabilidad requisito → test (lo de este bloque)
+
+| Requisito | Tests |
+|---|---|
+| R1 | `test_f065_r1_la_obra_que_no_vale_es_400_sin_construir_nada[…]`, `…la_obra_se_normaliza_como_en_f036`, `…cualquier_otro_parametro_se_ignora` |
+| R2 (orden y puertas en el borde) | `test_f065_r2_sigrid_se_construye_antes_que_la_base`, `…si_sigrid_no_se_construye_503_y_la_base_ni_se_construye[…]`, `…fuera_de_dev_y_pro_503_con_la_fabrica_de_verdad_y_sin_abrir_nada`, `…sin_configuracion_503_nombrando_las_variables_y_nunca_sus_valores`, `…si_la_base_no_se_construye_503` |
+| R3 | `test_f065_r3_*` (aplicación: orden, una y una, bandeja vacía, base caída sin Sigrid, el doble no deja hacer más) y `test_f065_r3_una_lectura_de_cada_por_peticion` (HTTP) |
+| R4 | `test_f065_r4_mas_de_diez_mil_es_409_con_el_recuento_y_sin_sigrid`, `…justo_diez_mil_no_es_demasiado`, `…bandeja_demasiado_grande_409_con_el_recuento_sin_sigrid` |
+| R5 (el `tip`) | `test_f065_r3_el_tipo_de_concepto_es_el_que_se_le_pasa`, `test_f065_r5_el_tipo_de_concepto_sale_de_la_configuracion` |
+| R6 (la fila al dominio) | `test_f065_r6_cada_campo_de_la_fila_pasa_a_la_reclamacion_y_la_ficha_es_la_misma` |
+| R8 | `test_f065_r8_*` (aplicación y HTTP, O-A3-2 incluido) |
+| R9 | `test_f065_r9_dos_obras_*`, `…muchas_filas_de_una_sola_obra_no_es_ambigua`, `…cero_filas_*`, `…ninguna_fila_es_200_con_las_listas_vacias` |
+| R10 / R19 (la aplicación usa el dominio) | `test_f065_r10_la_referencia_empareja_con_la_bandeja_de_la_obra`, `test_f065_r19_*` |
+| R20 | `test_f065_r20_*` (13 tests: claves, criterio, `leido_at_utc`, ficha de 19 campos, fechas, `incidencia_id`, hallazgos de 8 claves, `guardado_cod`, tabla de códigos, parecido, incidencias y vigentes, resumen) |
+| R21 | `test_f065_r21_las_reclamaciones_en_el_orden_del_dominio`, `…los_hallazgos_en_el_orden_del_dominio`, `…los_coincide_de_una_incidencia_en_el_orden_de_r18` |
+| R22 / R40 | `test_f065_r22_ni_oid_ni_correo_ni_ide_ni_obride`, `…las_claves_son_solo_las_de_r20_y_r33`, `test_f065_r22_r40_los_errores_no_repiten_ninguna_fila` |
+| R23 | `test_f065_r23_sin_sigrid_o_sin_base_503_con_el_cuerpo_de_siempre[…]` y los de R4, R8 y R9 |
+| R24 | `test_f065_r24_*` (línea con 200 y con error, tramos con `aplicacion` y `calculo`, recuentos, bytes también con acentos, `proceso_nuevo` propio, el del listado sin consumir, recién arrancado, sin textos ni códigos) |
+| R26 | `test_f065_r26_*` (HTTP y guarda: el listado y las acciones no construyen el lector, la ruta es otra y GET, las funciones de la base, la única ruta nueva) |
+| R27 / R28 | `test_f065_r27_*`, `test_f065_r28_*` (guarda T9, con sus controles no ciegos) |
+| R35 | `test_f065_r35_*` |
+| R37 / R38 / R39 | `test_f065_r37_*`, `test_f065_r38_*`, `test_f065_r39_*` |
+| §9.1–9.3 | `test_f065_s9_*`, `test_f065_s9_3_*`, `test_f065_la_rama_solo_toca_los_tests_ajenos_declarados`, `…ningun_test_ajeno_pierde_una_asercion`, `…la_cuenta_de_rutas_incluye_la_nueva` |
+
+### Checkpoints
+
+- [ ] **C1 · `bash harness/init.sh` no termina con exit 0** (arriba): un test de tiempo de F-036 por la carga, y la
+  puerta de cobertura en `[KO]` por el `-x`. Los ficheros del arnés están presentes. → **C-A4-1**.
+- [x] **C2.**
+  - Una sola feature `in_progress` (F-065), en su rama `feature/F-065-revision-sigrid-backend`.
+  - `current.md` y `history.md` no son de este bloque: no los toco, por encargo.
+- [x] **C3.**
+  - Hexagonal: el pipeline solo importa del dominio y de sus puertos; el borde compone con las fábricas de
+    `infrastructure` (su sitio) y serializa; `function_app.py` solo traduce; el error nuevo, en el dominio.
+  - Primera línea con la ruta en todos los ficheros tocados.
+  - Sin `print`, sin TODO, sin secretos: las cadenas «secreto» son datos inventados de los tests. Sin
+    dependencias nuevas.
+  - Estados por código (`EstadoSigrid`), ningún número de estado.
+  - Ningún PDF ni escaneado: el diff añade solo `.py` y `.md`.
+  - Los puntos de partes, firmas, archivo, cierre y reproceso son N/A: el bloque solo lee y no escribe en Sigrid,
+    en la base ni en SharePoint (R37, comprobado por test).
+- N/A **C3 bis** · El bloque no toca `docs/referencia/`.
+- [x] **C4.**
+  - Cada requisito del bloque tiene su test (§4), y todos pasan en la suite entera.
+  - Los tests no tocan red ni base: dobles, `ClienteFalso` y la guardia de `conftest.py`.
+  - Sin verificaciones `MANUAL` en este bloque: las de la ruta son de A7.
+- [x] **C4 bis** (`critico`).
+  - **`rigor`** declarado.
+  - **Fase RED** con la salida real de `d26060d` (`65 failed, 11 passed, 30 errors`, y explicadas las 11 que ya
+    pasaban). El RED de comportamiento, más allá del `ImportError`, lo dan los 40 mutantes a mano del implementer y
+    mis 18.
+  - **Cobertura**: la puerta, lanzada por mí sobre la suite entera, sale `100.0% (530/530)`. La de `init.sh` falta
+    por C-A4-1.
+  - **Mutación**: recalculada (561 líneas, 19 mutantes) y **reejecutada** (19/19, 0 supervivientes). El coste por
+    mutante es coherente.
+  - **«Evidencias»** con los cuatro números y el worker.
+  - La guarda por definiciones ve también las importaciones (`_resto_del_modulo`, con su control no ciego).
+  - Ningún N/A.
+- N/A **C4 ter** · No hay `harness/rutas_sensibles.json` en el repositorio.
+- [x] **C5.**
+  - T7, T8 y T9 `[x]`, con sus commits `F-065 T7: …`, `F-065 T8: …` (tres) y `F-065 T9: …`. El de cierre es un
+    informe.
+  - El árbol está limpio.
+  - `features.json` sigue en `in_progress`, que es lo correcto.
+
+### Cambios requeridos
+
+1. **C-A4-1 · (para el líder; no es del implementer).** `bash harness/init.sh` en verde de una pasada sobre
+   `cbe95da`, o sobre lo que haya encima si son solo informes, con el puesto más libre, y anotar el resultado aquí.
+   - Si vuelve a caer un `test_f036_r11x_…_menos_de_un_segundo`, es el tope de 1 s de F-036 frente a la carga, como
+     en C-A2-4. El remedio es lanzarlo con el puesto libre, no tocar el tope.
+   - Con eso en verde, **el Bloque A4 queda APROBADO** sin otra review: no hay nada más que cambiar.
+
+### Observaciones (no bloquean)
+
+- **O-A4-1 · El orden de las importaciones de `function_app.py`.** `ReclamacionesSinVerificar` va después de
+  `RemesaSinPdfUtilizable`. `ruff --select I001 --diff` lo marca, además del salto de línea que ya marcaba en la
+  base. Es el mismo caso que O-A3-1: el informe vuelve a decir «solo el I001 de siempre», y no es del todo así. Es
+  cosmético.
+- **O-A4-2 · Un fallo inesperado de la ruta sale sin `no-store`.** Una excepción que no está en la lista de
+  traducciones (un bug) la devuelve el runtime de Functions como 500, sin la cabecera. Ese 500 no lleva cuerpo con
+  datos, así que R35 no se incumple en la práctica. Si F-064 lo quiere a prueba de todo, un `except Exception` final
+  con `_sin_cache` lo cerraría. No lo pide la spec.
+- **O-A4-3 · Para el Bloque A5 (T10):** la ruta nueva ya es contrato expuesto. `azure-apps/postventa_incidencias.md`
+  y la fila de consumidores de `azure-apps/sigrid_api.md` van en ese bloque, como dice el propio informe.
+
+### Automejora (propuesta, no aplicada)
+
+Para `CHECKPOINTS.md` C1, o el protocolo del reviewer. Es la tercera review de F-065 en la que `init.sh` cae
+por un tope de 1 s de F-036 por la carga, y cada vez la salida es la misma: reejecutar entero cuando el puesto
+esté libre, una hora más.
+
+Propuesta: cuando el **único** fallo de `init.sh` sea un test marcado como de tiempo, el reviewer pueda:
+- reejecutar **ese test a solas** y **la parte de la suite que `-x` no llegó a correr**, sin `-x`;
+- lanzar la puerta de cobertura sobre la suite completa;
+- dar C1 por cumplido con esas tres trazas pegadas.
+
+Los topes de tiempo seguirían igual de exigentes y se dejaría de tratar la carga del puesto como un rojo del
+código. Para eso tendría que existir una marca explícita (por ejemplo `@pytest.mark.tiempo`) que diga qué tests son
+de tiempo. Vale para cualquier proyecto: candidata a `arnes-base` si el humano la aprueba.

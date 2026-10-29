@@ -16,7 +16,10 @@ barato y lo que no escribe, primero.
 
 - `ensayar`: las candidatas de la obra y la situación de cada pedida (base) →
   `seleccionar_para_ensayo` (si no queda ninguna, nada más: ni login, ni lote,
-  ni ensayo guardado) → el login de quien pide (F-009; la lectura de
+  ni ensayo guardado) → la **guarda de F-065** (`guarda_sigrid.py`: una lectura
+  de Sigrid de las unidades de lo que se manda, que excluye lo que ya existe y
+  lo que choca sin confirmar; si falla, nada más; si no deja nada, tampoco) →
+  el login de quien pide (F-009; la lectura de
   `dbo.usu`) → el lote con `commit: false` → `interpretar_respuesta` → un
   evento de modo `ensayo` por parte (R13) → la respuesta. Si la pasarela no da
   una respuesta que se entienda —o **un solo parte** vuelve sin respuesta—, el
@@ -64,8 +67,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from types import MappingProxyType
 from uuid import UUID, uuid4
 
 from domain.models.errores import (
@@ -115,6 +119,7 @@ from domain.models.volcado import (
     todos_sin_respuesta,
     validar_ensayo,
 )
+from domain.ports.reclamaciones_obra import ReclamacionesObraPort
 from domain.ports.revision import RevisionPort
 from domain.ports.usuarios_sigrid import RepositorioUsuariosSigridPort
 from domain.ports.volcado import (
@@ -124,6 +129,11 @@ from domain.ports.volcado import (
     VolcadoSigridPort,
 )
 
+from application.pipelines.guarda_sigrid import (
+    GuardaDelEnsayo,
+    aplicar_guarda_de_sigrid,
+    registrar_la_guarda,
+)
 from application.pipelines.paso_cierre import resolver_login_de_sigrid
 from application.pipelines.revision import candidatas_al_volcado
 
@@ -167,11 +177,18 @@ class AjustesDelVolcado:
 
 @dataclass(frozen=True)
 class PeticionDeEnsayo:
-    """`POST /api/volcado/ensayo`, ya validado por el borde (R9)."""
+    """`POST /api/volcado/ensayo`, ya validado por el borde (R9; R43 de F-065).
+
+    `conflictos_confirmados`: por incidencia, los códigos de Sigrid con los que
+    quien pide confirma que **no** es la misma (vacío si no confirma nada).
+    """
 
     obra_codigo: str
     quien: Quien
     incidencias: tuple[UUID, ...]
+    conflictos_confirmados: Mapping[UUID, frozenset[str]] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
 
 
 @dataclass(frozen=True)
@@ -194,7 +211,10 @@ class ParteMandado:
 
 @dataclass(frozen=True)
 class ResultadoDeEnsayo:
-    """Lo que devuelve el ensayo (R12). Sin nada que mandar, sin `ensayo_id`."""
+    """Lo que devuelve el ensayo (R12). Sin nada que mandar, sin `ensayo_id`.
+
+    `guarda`, lo que leyó la guarda de F-065 (R47); `None` si no leyó.
+    """
 
     obra_codigo: str
     ensayo_id: UUID | None
@@ -202,6 +222,7 @@ class ResultadoDeEnsayo:
     partes: tuple[ParteMandado, ...]
     excluidas: tuple[Excluida, ...]
     resumen: Mapping[str, int]
+    guarda: GuardaDelEnsayo | None = None
 
 
 @dataclass(frozen=True)
@@ -285,11 +306,18 @@ def ensayar(
     volcados: RepositorioVolcadoPort,
     usuarios: RepositorioUsuariosSigridPort,
     sigrid: VolcadoSigridPort,
+    reclamaciones: ReclamacionesObraPort,
+    tip: int,
     ajustes_volcado: AjustesDelVolcado,
     ahora: datetime,
     nuevo_id: Callable[[], UUID] = uuid4,
 ) -> ResultadoDeEnsayo:
-    """El dry-run de las incidencias pedidas, guardado (§10; R11–R14)."""
+    """El dry-run de las incidencias pedidas, guardado (§10; R11–R14).
+
+    Con la guarda de F-065 (R44–R48) entre la selección y el login:
+    `reclamaciones` y `tip` (`SIGRID_TIP_RECLAMACION`) no tienen valor por
+    defecto, porque la guarda no tiene interruptor (R46).
+    """
     _exigir_n(len(peticion.incidencias), ajustes_volcado)
     obra = peticion.obra_codigo
     candidatas = candidatas_al_volcado(obra, revision=revision)
@@ -297,7 +325,21 @@ def ensayar(
     seleccion = seleccionar_para_ensayo(
         peticion.incidencias, candidatas, situaciones, obra=obra
     )
+    guarda: GuardaDelEnsayo | None = None
+    if seleccion.mandadas:
+        guarda = aplicar_guarda_de_sigrid(
+            seleccion,
+            situaciones,
+            pedidas=peticion.incidencias,
+            reclamaciones=reclamaciones,
+            obra=obra,
+            tip=tip,
+            confirmados=peticion.conflictos_confirmados,
+            ahora=ahora,
+        )
+        seleccion = guarda.seleccion
     if not seleccion.mandadas:
+        registrar_la_guarda(guarda, llamada_id=None)
         log.info(
             "F-059 ensayo sin nada que mandar: obra=%s excluidas=%d",
             obra,
@@ -310,26 +352,33 @@ def ensayar(
             partes=(),
             excluidas=seleccion.excluidas,
             resumen=resumen_de((), seleccion.excluidas, modo=ModoVolcado.ENSAYO),
+            guarda=guarda,
         )
 
-    login = _login(usuarios, sigrid, peticion.quien, ahora)
-    partes = tuple(parte_de(c) for c in seleccion.mandadas)
-    respuesta = sigrid.ensayar(
-        cuerpo=cuerpo_de_lote(
-            partes, obra=obra, usu=login, commit=False, base=ajustes_volcado.base_datos
+    try:
+        login = _login(usuarios, sigrid, peticion.quien, ahora)
+        partes = tuple(parte_de(c) for c in seleccion.mandadas)
+        respuesta = sigrid.ensayar(
+            cuerpo=cuerpo_de_lote(
+                partes, obra=obra, usu=login, commit=False, base=ajustes_volcado.base_datos
+            )
         )
-    )
-    resultados = _resultados_del_ensayo(partes, respuesta, obra=obra)
+        resultados = _resultados_del_ensayo(partes, respuesta, obra=obra)
 
-    ensayo_id = nuevo_id()
-    volcados.guardar_ensayo(
-        ensayo_id=ensayo_id,
-        obra=obra,
-        resultados=resultados,
-        partes=partes,
-        quien=peticion.quien,
-        ahora=ahora,
-    )
+        ensayo_id = nuevo_id()
+        volcados.guardar_ensayo(
+            ensayo_id=ensayo_id,
+            obra=obra,
+            resultados=resultados,
+            partes=partes,
+            quien=peticion.quien,
+            ahora=ahora,
+        )
+    except BaseException:
+        # R48: una línea por lectura, también si el ensayo no llega a guardarse.
+        registrar_la_guarda(guarda, llamada_id=None)
+        raise
+    registrar_la_guarda(guarda, llamada_id=ensayo_id)
     resumen = resumen_de(resultados, seleccion.excluidas, modo=ModoVolcado.ENSAYO)
     _registrar(ModoVolcado.ENSAYO, obra, ensayo_id, resultados, seleccion.excluidas, resumen)
     return ResultadoDeEnsayo(
@@ -339,6 +388,7 @@ def ensayar(
         partes=tuple(ParteMandado(p, r) for p, r in zip(partes, resultados, strict=True)),
         excluidas=seleccion.excluidas,
         resumen=resumen,
+        guarda=guarda,
     )
 
 

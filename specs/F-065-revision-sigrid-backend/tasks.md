@@ -265,7 +265,7 @@
   sin códigos `RS` ni textos; y que un ensayo sin la clave nueva y sin nada que
   choque responde lo mismo que hoy más `sigrid` (R49). Con dobles: sin red,
   sin base. | Verificación: `python -m pytest tests/test_f065_guarda_ensayo.py tests/test_f065_consulta.py` en **rojo**, traza en el informe
-- [ ] **T16**: la guarda: `select_reclamaciones_de_las_unidades` y
+- [x] **T16**: la guarda: `select_reclamaciones_de_las_unidades` y
   `leer(…, unidades=)` (con `unidades=<cuántas>` en el log de R25),
   `application/pipelines/guarda_sigrid.py`, los dos valores de
   `MotivoExclusion`, `ensayar` y `PeticionDeEnsayo`, el borde del ensayo y las

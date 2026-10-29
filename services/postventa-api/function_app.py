@@ -1889,6 +1889,10 @@ CODIGOS_DEL_VOLCADO = {
     UsuarioSigridNoMapeado: "usuario_sigrid_no_mapeado",
     UsuarioSigridInexistente: "usuario_sigrid_inexistente",
     BandejaDemasiadoGrande: "bandeja_demasiado_grande",
+    # La guarda del ensayo de F-065 (R46).
+    CatalogoNoDisponible: "sigrid_no_disponible",
+    ReclamacionesSinVerificar: "reclamaciones_sin_verificar",
+    ObraAmbigua: "obra_ambigua",
 }
 
 #: El HTTP de cada uno; el del rechazo de la pasarela depende de su código.
@@ -1906,6 +1910,9 @@ HTTP_DEL_VOLCADO = {
     UsuarioSigridNoMapeado: 409,
     UsuarioSigridInexistente: 409,
     BandejaDemasiadoGrande: 409,
+    CatalogoNoDisponible: 503,
+    ReclamacionesSinVerificar: 409,
+    ObraAmbigua: 409,
 }
 
 #: Los dos de F-009 nombran el correo y el login en su motivo: aquí no viajan
@@ -1948,6 +1955,8 @@ def _error_del_volcado(que: str, error: Exception) -> func.HttpResponse:
         cuerpo["en_duda"] = [str(i) for i in error.en_duda]
     elif isinstance(error, BandejaDemasiadoGrande):
         cuerpo["total"] = error.total
+    elif isinstance(error, ReclamacionesSinVerificar):
+        cuerpo["filas"] = error.filas
     log.info("%s no procede: %s (%d)", que, codigo, estado)
     return _json(cuerpo, estado)
 
@@ -1984,15 +1993,20 @@ def volcado_ensayo(req: func.HttpRequest) -> func.HttpResponse:
 
     Solo traduce (§11):
 
-    - **200** · `{ensayo_id, obra, caduca_at_utc, resumen, partes, excluidas}`;
-    - **400** · `peticion_invalida`, antes de construir nada (R9);
+    - **200** · `{ensayo_id, obra, caduca_at_utc, resumen, partes, excluidas,
+      sigrid}` (`sigrid`, el bloque de la guarda de F-065, R47; `null` si no
+      leyó);
+    - **400** · `peticion_invalida`, antes de construir nada (R9; también un
+      `conflictos_confirmados` mal formado, R43 de F-065);
     - **409** · el login de Sigrid (`usuario_sigrid_no_mapeado`,
       `usuario_sigrid_inexistente`) o `volcado_rechazado_por_la_pasarela`, sin
-      guardar nada;
+      guardar nada; o la guarda de F-065 (`reclamaciones_sin_verificar`, con
+      `filas`, y `obra_ambigua`), sin login ni lote;
     - **502** · `ensayo_sin_respuesta`: la pasarela, o el login que no se puede
       verificar; es una lectura y repetirla es inocuo;
     - **503** · entorno, configuración, `N`, base, o un rechazo de la pasarela
-      que es configuración de su dueño.
+      que es configuración de su dueño; o `sigrid_no_disponible`, la lectura de
+      la guarda de F-065 (R46), sin login ni lote.
 
     No mira la ventana del volcado (D-4): no escribe en el ERP.
     """

@@ -625,7 +625,7 @@ def test_f065_r44_leer_por_unidades_es_un_post_a_sql_read_con_la_consulta_de_la_
 
     lectura = adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
 
-    sql, parametros = select_reclamaciones_de_las_unidades(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
+    sql, _ = select_reclamaciones_de_las_unidades(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
     assert lectura == LecturaCatalogo((fila_a_reclamacion_de_las_unidades(_fila_de_la_guarda()),), False)
     assert lectura.filas[0].ficha is None
     assert cliente.urls == [f"{BASE_URL}/api/sql/read"]

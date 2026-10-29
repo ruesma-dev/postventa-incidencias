@@ -52,10 +52,11 @@ from domain.models.sigrid_bandeja import (
     cruzar,
     veredictos,
 )
+from domain.ports.catalogo_obra import LecturaCatalogo
 from domain.ports.reclamaciones_obra import FilaReclamacionObra, ReclamacionesObraPort
 from domain.ports.revision import RevisionPort
 
-__all__ = ["VistaDeSigrid", "mirar_sigrid"]
+__all__ = ["VistaDeSigrid", "mirar_sigrid", "reclamaciones_de_la_lectura"]
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,24 @@ def mirar_sigrid(
         )
 
     lectura = reclamaciones.leer(codigo_obra=obra_codigo, tip=tip)
+    cruce = cruzar(situaciones, reclamaciones_de_la_lectura(lectura, obra_codigo=obra_codigo))
+    return VistaDeSigrid(
+        obra_codigo=obra_codigo,
+        situaciones=tuple(situaciones),
+        cruce=cruce,
+        veredictos=veredictos(situaciones, cruce),
+    )
+
+
+def reclamaciones_de_la_lectura(
+    lectura: LecturaCatalogo[FilaReclamacionObra], *, obra_codigo: str
+) -> list[ReclamacionSigrid]:
+    """Los pasos 3 y 4: la lectura, comprobada, como la ve el dominio (R8, R9).
+
+    `ReclamacionesSinVerificar` (409) si llegó al techo o vino `truncated`;
+    `ObraAmbigua` (409) si las filas son de más de una obra. Lo comparten la
+    ruta y la guarda del ensayo de F-059 (R44): las mismas comprobaciones.
+    """
     if lectura.llego_al_techo:
         raise ReclamacionesSinVerificar(
             f"Sigrid ha devuelto {len(lectura.filas)} reclamaciones de la obra "
@@ -108,14 +127,7 @@ def mirar_sigrid(
             f"las reclamaciones leídas son de {len(obras)} obras con el código "
             f"«{obra_codigo}» y el sistema no elige"
         )
-
-    cruce = cruzar(situaciones, [_reclamacion_de(fila) for fila in lectura.filas])
-    return VistaDeSigrid(
-        obra_codigo=obra_codigo,
-        situaciones=tuple(situaciones),
-        cruce=cruce,
-        veredictos=veredictos(situaciones, cruce),
-    )
+    return [_reclamacion_de(fila) for fila in lectura.filas]
 
 
 def _reclamacion_de(fila: FilaReclamacionObra) -> ReclamacionSigrid:

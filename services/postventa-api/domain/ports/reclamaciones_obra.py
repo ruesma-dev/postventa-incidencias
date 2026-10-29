@@ -36,6 +36,7 @@ si alguien la imprimiera, así que **ningún campo** sale en él: tampoco
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Protocol, runtime_checkable
@@ -80,7 +81,8 @@ class FilaReclamacionObra:
 
     `obra_ref` (`upv.obride`) es obligatoria y opaca: sirve para contar obras
     distintas (R9) y no sale de la aplicación. `cod` es obligatorio. Lo demás
-    puede venir a `None`.
+    puede venir a `None`. `ficha` es `None` **solo** en la lectura de la guarda
+    del ensayo, que no lee R33 (§15.2, R44).
     """
 
     obra_ref: str = field(repr=False)
@@ -95,15 +97,21 @@ class FilaReclamacionObra:
     ubicacion: str | None = field(repr=False)
     descripcion: str | None = field(repr=False)
     referencia: str | None = field(repr=False)
-    ficha: FichaReclamacion = field(repr=False)
+    ficha: FichaReclamacion | None = field(repr=False)
 
 
 @runtime_checkable
 class ReclamacionesObraPort(Protocol):
     """Quien sabe leer de Sigrid las reclamaciones de una obra. Solo lee."""
 
-    def leer(self, *, codigo_obra: str, tip: int) -> LecturaCatalogo[FilaReclamacionObra]:
+    def leer(
+        self, *, codigo_obra: str, tip: int, unidades: Sequence[str] | None = None
+    ) -> LecturaCatalogo[FilaReclamacionObra]:
         """Todas las reclamaciones de tipo `tip` de las obras con ese código.
+
+        Con `unidades` (la guarda del ensayo, R44), solo las de esas unidades
+        —de 1 a 50, comparadas tal cual— y **sin** la ficha de R33
+        (`ficha=None`); sin ellas, las de toda la obra con su ficha.
 
         El código se compara literal y recortado, ya normalizado (el filtro de
         las unidades de F-036). Devuelve todas las filas, con

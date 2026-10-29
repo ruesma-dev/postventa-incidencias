@@ -173,7 +173,8 @@ class ReclamacionSigrid:
     """Una reclamación de la obra, con los campos de R6 (sin `obride`).
 
     `estado` es el código de `conest`, tal cual: uno que no sea de los cinco
-    no da pares y se cuenta (R17). `ficha` es la de R33: el cruce no la mira.
+    no da pares y se cuenta (R17). `ficha` es la de R33: el cruce no la mira, y
+    en la lectura de la guarda del ensayo es `None` (§15.2).
     """
 
     cod: str
@@ -187,7 +188,7 @@ class ReclamacionSigrid:
     tipo_nombre: str | None
     descripcion: str | None
     referencia: str | None
-    ficha: FichaReclamacion = field(repr=False)
+    ficha: FichaReclamacion | None = field(repr=False)
 
 
 @dataclass(frozen=True)

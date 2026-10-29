@@ -38,7 +38,9 @@ heredado siga siendo lo que era—, sino `_leer_todas`, propio:
 
 Nada de una fila: ni textos, ni nombres, ni teléfonos, ni correos, ni la
 referencia, ni el código `RS`, ni `obra_ref`. El log dice la obra, cuántas
-filas, si llegó al techo, si vino `truncated` y lo que tardó, **y nada más**.
+filas, si llegó al techo, si vino `truncated`, lo que tardó y **cuántas**
+unidades se pidieron (`unidades=-` para toda la obra), **y nada más**: nunca
+cuáles (R44).
 Los errores dicen la operación y un motivo acotado; las filas mal formadas
 no se repiten (la regla del `_mapear` heredado).
 """
@@ -47,6 +49,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import httpx
@@ -65,8 +68,10 @@ from domain.ports.reclamaciones_obra import FilaReclamacionObra
 from infrastructure.sigrid.catalogo_obra import RUTA_LECTURA, AdaptadorCatalogoSigridApi
 from infrastructure.sigrid.cliente import ErrorDeSigrid, es_transitorio
 from infrastructure.sigrid.consultas_reclamaciones_obra import (
+    fila_a_reclamacion_de_las_unidades,
     fila_a_reclamacion_obra,
     select_reclamaciones_de_la_obra,
+    select_reclamaciones_de_las_unidades,
 )
 
 __all__ = [
@@ -89,25 +94,40 @@ class AdaptadorReclamacionesObraSigridApi(AdaptadorCatalogoSigridApi):
     se cruzan con la bandeja—: eso vive en la aplicación y en el dominio.
     """
 
-    def leer(self, *, codigo_obra: str, tip: int) -> LecturaCatalogo[FilaReclamacionObra]:
-        """Todas las reclamaciones de tipo `tip` de las obras con ese código (R5, R8)."""
+    def leer(
+        self, *, codigo_obra: str, tip: int, unidades: Sequence[str] | None = None
+    ) -> LecturaCatalogo[FilaReclamacionObra]:
+        """Todas las reclamaciones de tipo `tip` de las obras con ese código (R5, R8).
+
+        Con `unidades`, la lectura de la guarda del ensayo (R44): solo esas
+        unidades, sin la ficha de R33. Mismo techo, mismos errores.
+        """
         arranque = time.monotonic()
-        sql, parametros = select_reclamaciones_de_la_obra(codigo_obra=codigo_obra, tip=tip)
-        filas, truncada = self._leer_todas(sql, parametros)
+        mapeo: Callable[[Any], FilaReclamacionObra]
+        if unidades is None:
+            sql, parametros = select_reclamaciones_de_la_obra(codigo_obra=codigo_obra, tip=tip)
+            mapeo = fila_a_reclamacion_obra
+        else:
+            sql, parametros = select_reclamaciones_de_las_unidades(
+                codigo_obra=codigo_obra, tip=tip, unidades=unidades
+            )
+            mapeo = fila_a_reclamacion_de_las_unidades
+        filas, truncada = self._leer_todas(sql, parametros, mapeo)
         al_techo = len(filas) >= TOPE_RECLAMACIONES_OBRA
         log.info(
             "F-065 reclamaciones de la obra leídas en Sigrid: obra=%s filas=%d "
-            "al_techo=%s truncated=%s segundos=%.2f",
+            "al_techo=%s truncated=%s segundos=%.2f unidades=%s",
             codigo_obra,
             len(filas),
             al_techo,
             truncada,
             time.monotonic() - arranque,
+            "-" if unidades is None else len(unidades),
         )
         return LecturaCatalogo(filas, al_techo or truncada)
 
     def _leer_todas(
-        self, sql: str, parametros: tuple
+        self, sql: str, parametros: tuple, mapeo: Callable[[Any], FilaReclamacionObra]
     ) -> tuple[tuple[FilaReclamacionObra, ...], bool]:
         """Una consulta con el techo de la pasarela: las filas y si vino `truncated`."""
         cuerpo = {
@@ -135,7 +155,7 @@ class AdaptadorReclamacionesObraSigridApi(AdaptadorCatalogoSigridApi):
         truncada = datos.get("truncated")
         if not isinstance(truncada, bool):
             raise _fallo("la respuesta no dice si viene cortada")
-        return self._mapear(filas, fila_a_reclamacion_obra, OPERACION), truncada
+        return self._mapear(filas, mapeo, OPERACION), truncada
 
 
 def _fallo(motivo: str) -> CatalogoNoDisponible:

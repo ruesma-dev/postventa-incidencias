@@ -24,6 +24,16 @@ test lo compara con los dos.
 La medición T-A0 (2026-10-28, solo recuentos): 1.345 filas y menos de 1 s en
 la obra piloto, sin `truncated`; de ahí que no se lea por trozos (N-1).
 
+## La consulta de la guarda del ensayo (§15.5, R44)
+
+`SQL_RECLAMACIONES_DE_LAS_UNIDADES` — la misma lectura **solo de las unidades
+de lo que se va a mandar** y **sin** la lista de R33: las doce primeras
+columnas de R6, sin las cuatro uniones que solo sirven a R33 (`auxrcp`, el
+cliente y las dos personas). Es una **plantilla**: `__MARCADORES__` se cambia
+por tantos `?` como unidades (de 1 a 50, una sola vez cada una), y las
+unidades viajan como parámetros, tal cual y en el orden recibido. La misma
+plantilla la usa `infra/29_reclamaciones_obra_sigrid.ps1 -Unidades` (R70).
+
 ## El mapeo (§10.2, enmienda del 2026-10-28)
 
 - `obra_ref` y `cod`, obligatorios; lo demás puede ser `NULL`.
@@ -42,24 +52,39 @@ datos personales.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import date
 from typing import Any
 
-from domain.models.volcado import PREFIJO_REFERENCIA
+from domain.models.volcado import MAX_PARTES_POR_LLAMADA, PREFIJO_REFERENCIA
 from domain.ports.reclamaciones_obra import FichaReclamacion, FilaReclamacionObra
 
 __all__ = [
     "CAMPO_REFERENCIA",
+    "COLUMNAS_DE_LAS_UNIDADES",
     "COLUMNAS_RECLAMACION",
+    "MARCADORES",
+    "MAX_UNIDADES",
     "PATRON_REFERENCIA",
+    "SQL_RECLAMACIONES_DE_LAS_UNIDADES",
     "SQL_RECLAMACIONES_DE_LA_OBRA",
+    "fila_a_reclamacion_de_las_unidades",
     "fila_a_reclamacion_obra",
     "select_reclamaciones_de_la_obra",
+    "select_reclamaciones_de_las_unidades",
 ]
 
 #: Las columnas de cada fila de `SQL_RECLAMACIONES_DE_LA_OBRA`.
 COLUMNAS_RECLAMACION = 31
+
+#: Las columnas de cada fila de `SQL_RECLAMACIONES_DE_LAS_UNIDADES`: las de R6.
+COLUMNAS_DE_LAS_UNIDADES = 12
+
+#: El hueco de la plantilla de la guarda donde van los `?` de las unidades.
+MARCADORES = "__MARCADORES__"
+
+#: Como mucho, una unidad por parte de la llamada del ensayo (`N` ≤ 50).
+MAX_UNIDADES = MAX_PARTES_POR_LLAMADA
 
 #: El campo de `conext` donde la pasarela guarda la referencia de F-059
 #: (`azure-apps/sigrid_api.md` §8.9).
@@ -95,9 +120,56 @@ SQL_RECLAMACIONES_DE_LA_OBRA = (
 )
 
 
+#: Las reclamaciones de unas unidades de la obra, sin R33 (§15.5): la plantilla.
+SQL_RECLAMACIONES_DE_LAS_UNIDADES = (
+    "SELECT v.obride, c.cod, e.cod, c.fec, u.cod, a.cod, a.res, t.cod, t.res, r.resubi, c.res, p.valt\n"
+    "FROM dbo.rcp r\n"
+    "JOIN dbo.con c ON c.ide = r.ide\n"
+    "JOIN dbo.upv v ON v.ide = r.upvide\n"
+    "JOIN dbo.con u ON u.ide = v.ide\n"
+    "JOIN dbo.con o ON o.ide = v.obride\n"
+    "LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est\n"
+    "LEFT JOIN dbo.auxofc a ON a.ide = r.ofcide\n"
+    "LEFT JOIN dbo.auxtrcp t ON t.ide = r.trcpide\n"
+    "OUTER APPLY (SELECT TOP 1 x.valt FROM dbo.conext x\n"
+    "             WHERE x.conide = c.ide AND x.cod = ? AND x.valt LIKE ?\n"
+    "             ORDER BY x.ide) p\n"
+    f"WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ? AND u.cod IN ({MARCADORES})\n"
+    "ORDER BY c.cod"
+)
+
+
 def select_reclamaciones_de_la_obra(*, codigo_obra: str, tip: int) -> tuple[str, tuple]:
     """La lectura: `RCPCLI`, `PVI-%`, el tipo y el código de obra **ya normalizado**."""
     return SQL_RECLAMACIONES_DE_LA_OBRA, (CAMPO_REFERENCIA, PATRON_REFERENCIA, tip, codigo_obra)
+
+
+def select_reclamaciones_de_las_unidades(
+    *, codigo_obra: str, tip: int, unidades: Sequence[str]
+) -> tuple[str, tuple]:
+    """La lectura de la guarda (R44): un `?` por unidad, de 1 a 50 y sin repetir.
+
+    Las unidades van **tal cual** (R14: `u.cod` se compara sin recortar) y en
+    el orden recibido. Fuera de eso es un error de programación —la guarda
+    solo lee lo que va a mandar— y el mensaje no repite ninguna.
+    """
+    if not 1 <= len(unidades) <= MAX_UNIDADES:
+        raise ValueError(f"la lectura de la guarda lleva de 1 a {MAX_UNIDADES} unidades")
+    if len(set(unidades)) != len(unidades):
+        raise ValueError("la lectura de la guarda lleva cada unidad una sola vez")
+    sql = SQL_RECLAMACIONES_DE_LAS_UNIDADES.replace(MARCADORES, ", ".join(["?"] * len(unidades)))
+    return sql, (CAMPO_REFERENCIA, PATRON_REFERENCIA, tip, codigo_obra, *unidades)
+
+
+def fila_a_reclamacion_de_las_unidades(fila: Sequence[Any]) -> FilaReclamacionObra:
+    """Una fila de la guarda (12 columnas) al puerto, **sin ficha** (§15.2), o
+    `ValueError` sin la fila (R40). Los mismos recortes y obligatorios que
+    `fila_a_reclamacion_obra`; una fila de 31 columnas también es error."""
+    if not isinstance(fila, (list, tuple)) or len(fila) != COLUMNAS_DE_LAS_UNIDADES:
+        raise ValueError(
+            f"una fila de Sigrid sin las {COLUMNAS_DE_LAS_UNIDADES} columnas esperadas"
+        )
+    return _fila(fila, ficha=lambda: None)
 
 
 def fila_a_reclamacion_obra(fila: Sequence[Any]) -> FilaReclamacionObra:
@@ -111,11 +183,47 @@ def fila_a_reclamacion_obra(fila: Sequence[Any]) -> FilaReclamacionObra:
         raise ValueError(
             f"una fila de Sigrid sin las {COLUMNAS_RECLAMACION} columnas esperadas"
         )
+    # La ficha, después de los obligatorios (como siempre): primero el error de la fila.
+    return _fila(fila[:COLUMNAS_DE_LAS_UNIDADES], ficha=lambda: _ficha(fila[COLUMNAS_DE_LAS_UNIDADES:]))
+
+
+def _ficha(columnas: Sequence[Any]) -> FichaReclamacion:
+    """Las diecinueve columnas de R33."""
+    (
+        tex, motrcp, texurg, rcptip, fecpre, solrcp, clase, clase_nombre, tel, ele,
+        propietario, pr_nom, pr_tel, pr_tel2, pr_ele, pc_nom, pc_tel, pc_tel2, pc_ele,
+    ) = columnas  # fmt: skip
+    return FichaReclamacion(
+        descripcion_larga=_texto(tex),
+        motivo=_texto(motrcp),
+        urgencia=_texto(texurg),
+        forma_comunicacion=_entero(rcptip),
+        fecha_prevista=_fecha(fecpre),
+        solucion=_texto(solrcp),
+        clase_codigo=_codigo(clase),
+        clase_nombre=_texto(clase_nombre),
+        telefonos_avisos=_texto(tel),
+        correo_avisos=_texto(ele),
+        propietario=_texto(propietario),
+        reclama_nombre=_texto(pr_nom),
+        reclama_telefono=_texto(pr_tel),
+        reclama_telefono2=_texto(pr_tel2),
+        reclama_correo=_texto(pr_ele),
+        contacto_nombre=_texto(pc_nom),
+        contacto_telefono=_texto(pc_tel),
+        contacto_telefono2=_texto(pc_tel2),
+        contacto_correo=_texto(pc_ele),
+    )
+
+
+def _fila(
+    fila: Sequence[Any], *, ficha: Callable[[], FichaReclamacion | None]
+) -> FilaReclamacionObra:
+    """Las doce columnas de R6, comunes a las dos lecturas; la ficha, con lo que
+    dé `ficha()` **después** de comprobar la obra y el código."""
     (
         obride, cod, estado, fec, unidad, oficio, oficio_nombre, tipo, tipo_nombre,
         ubicacion, descripcion, referencia,
-        tex, motrcp, texurg, rcptip, fecpre, solrcp, clase, clase_nombre, tel, ele,
-        propietario, pr_nom, pr_tel, pr_tel2, pr_ele, pc_nom, pc_tel, pc_tel2, pc_ele,
     ) = fila  # fmt: skip
 
     obra_ref = _texto(obride)
@@ -138,27 +246,7 @@ def fila_a_reclamacion_obra(fila: Sequence[Any]) -> FilaReclamacionObra:
         ubicacion=_texto(ubicacion),
         descripcion=_texto(descripcion),
         referencia=_texto(referencia),
-        ficha=FichaReclamacion(
-            descripcion_larga=_texto(tex),
-            motivo=_texto(motrcp),
-            urgencia=_texto(texurg),
-            forma_comunicacion=_entero(rcptip),
-            fecha_prevista=_fecha(fecpre),
-            solucion=_texto(solrcp),
-            clase_codigo=_codigo(clase),
-            clase_nombre=_texto(clase_nombre),
-            telefonos_avisos=_texto(tel),
-            correo_avisos=_texto(ele),
-            propietario=_texto(propietario),
-            reclama_nombre=_texto(pr_nom),
-            reclama_telefono=_texto(pr_tel),
-            reclama_telefono2=_texto(pr_tel2),
-            reclama_correo=_texto(pr_ele),
-            contacto_nombre=_texto(pc_nom),
-            contacto_telefono=_texto(pc_tel),
-            contacto_telefono2=_texto(pc_tel2),
-            contacto_correo=_texto(pc_ele),
-        ),
+        ficha=ficha(),
     )
 
 

@@ -186,7 +186,12 @@ _T = TypeVar("_T")
 
 
 class MotivoExclusion(StrEnum):
-    """Por qué una incidencia pedida no se manda (R11, R18, R20)."""
+    """Por qué una incidencia pedida no se manda (R11, R18, R20).
+
+    Los dos últimos son de la guarda del ensayo de F-065 (R45): ya existe en
+    Sigrid, o choca con una reclamación abierta sin confirmarlo. No se guardan
+    (el `CHECK` de `16_volcados_sigrid.sql` no ve las exclusiones): sin DDL.
+    """
 
     NO_ES_DE_LA_BANDEJA = "no_es_de_la_bandeja"
     DE_OTRA_OBRA = "de_otra_obra"
@@ -195,6 +200,8 @@ class MotivoExclusion(StrEnum):
     HUELLA_NO_COINCIDE = "huella_no_coincide"
     FUERA_DEL_ENSAYO = "fuera_del_ensayo"
     REVISION_DESACTUALIZADA = "revision_desactualizada"
+    DUPLICADA_EN_SIGRID = "duplicada_en_sigrid"
+    CONFLICTO_SIN_CONFIRMAR = "conflicto_sin_confirmar"
 
 
 class MotivoEnsayoNoValido(StrEnum):

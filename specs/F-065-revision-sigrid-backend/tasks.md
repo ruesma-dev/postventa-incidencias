@@ -218,7 +218,7 @@
   `interface_adapters/api/sigrid_bandeja.py`, `ReclamacionesSinVerificar` en
   `errores.py`, la ruta y `_json_sin_cache` en `function_app.py` (con su
   párrafo de cabecera). | Verificación: los tres ficheros de T7 en verde y `python -m pytest` del servicio entero en verde
-- [ ] **T9**: la guarda de alcance (`tests/test_f065_alcance_cerrado.py`, base
+- [x] **T9**: la guarda de alcance (`tests/test_f065_alcance_cerrado.py`, base
   fija del tramo, como las de F-056/F-059/F-060): solo cambian los ficheros de
   `design.md` §9.1–9.2; lo de §9.3 intacto; ninguna variable, DDL ni
   dependencia nueva; ninguna pieza nueva nombra otra ruta de la pasarela que

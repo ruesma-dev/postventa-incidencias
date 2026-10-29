@@ -1364,3 +1364,368 @@ cambiado: 100 %.** La `PUERTA COBERTURA` de `init.sh`, del líder.
 | Cobertura de las líneas cambiadas | **100 %** (136/136 sentencias y 18/18 ramas de los tres módulos nuevos; `construir_reclamaciones_obra` entera), medida con `coverage`; la puerta de `init.sh`, pendiente del líder |
 | Mutantes | Herramienta: **58 generados, 58 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 326,6 s, sobre `883d7be` con el árbol limpio (suite reducida). A mano: **23, 23 muertos, 0 supervivientes** |
 | Tiempo de la suite | 2,29 s la de T5/T6 |
+
+## Bloque A4 · T7, T8 y T9 (2026-10-29)
+
+Encargo del líder: solo T7, T8 y T9 (la aplicación, el borde HTTP, la ruta y
+la guarda de alcance), sobre el Bloque A3 aprobado (`509ef57`). Con las dos
+observaciones de la review del A3: **O-A3-2** (el 503 de «la respuesta no dice
+si viene cortada» no puede acabar en 409 en el borde: fijado con un test HTTP)
+y **O-A3-1** (`fabrica.py` no se ha tocado en este bloque, así que sus
+importaciones siguen como estaban). Sin conectar a Sigrid, a la base ni a
+SharePoint; sin tocar `features.json`, `BACKLOG.md` ni `current.md`; sin
+empezar el Bloque A4 bis (veredicto, guarda del ensayo, NPR → `choca`).
+`init.sh` entero lo ejecuta el líder.
+
+### Commits
+
+| Commit | Tarea | Qué |
+|---|---|---|
+| `d26060d` | T7 | Los tests en RED: `test_f065_aplicacion.py`, `test_f065_http.py`, `test_f065_datos_personales.py`; T7 `[x]` |
+| `71ded50` | T8 | La aplicación, el borde, la ruta, `ReclamacionesSinVerificar`, la cuenta de rutas de F-010; T8 `[x]` |
+| `d338de7` | T9 | La guarda de alcance `test_f065_alcance_cerrado.py`; T9 `[x]` |
+| `fb0ad71` | T8 | Tres tests que matan los tres supervivientes de la 1.ª pasada de la herramienta |
+| `ca66e3f` | T8 | Dos tests que matan los dos supervivientes reales de los mutantes a mano (MA16, MA23) |
+| (el siguiente) | — | Este informe y `progress/mutacion_F-065_bloqueA4.md` |
+
+### Ficheros tocados
+
+- **Nuevos de producción**:
+  - `services/postventa-api/application/pipelines/sigrid_bandeja.py`:
+    `VistaDeSigrid` y `mirar_sigrid` (§10.3).
+  - `services/postventa-api/interface_adapters/api/sigrid_bandeja.py`:
+    `sigrid_de_la_bandeja`, `CAMPOS_DE_LA_FICHA` y la línea de R24.
+- **Modificados de producción**, solo añadiendo:
+  - `domain/models/errores.py`: `ReclamacionesSinVerificar(motivo, *, filas)`,
+    su bloque de sección y un párrafo de la cabecera.
+  - `function_app.py`: dos importaciones, `CACHE_CONTROL_SIN_CACHE`,
+    `_sin_cache`, `_json_sin_cache`, la ruta `revision_sigrid`, su entrada en
+    la lista de endpoints de la cabecera y su párrafo en la de seguridad
+    («Con él los anónimos son veinticinco»).
+- **Tests nuevos**: `tests/test_f065_aplicacion.py`, `tests/test_f065_http.py`,
+  `tests/test_f065_datos_personales.py` y `tests/test_f065_alcance_cerrado.py`.
+- **Test de otra feature**: `tests/test_f010_endpoints_protegidos.py`. Gana
+  `revision/sigrid` en `ENDPOINTS`, su comentario, y la cuenta pasa de 24 a 25
+  (ver Desviaciones).
+- `specs/F-065-revision-sigrid-backend/tasks.md`: T7, T8 y T9 `[x]`.
+- **Sin tocar** (lo comprueba T9 contra `b863b46`): `fabrica.py` en este
+  bloque, todo `revision.py` (modelo, pipeline y borde), el catálogo, todo el
+  volcado, la normalización, la plantilla, `tiempos.py`, `config/settings.py`,
+  `requirements*.txt`, los `.sql` y `services/postventa-front/`.
+
+### Decisiones de diseño
+
+- **El orden de `mirar_sigrid`** es el de §10.3, y lo fijan los tests de R3:
+  1. `listar(tope=10.000)`; si hay más, `contar` y `BandejaDemasiadoGrande`
+     **sin leer Sigrid**. 10.000 justas sí se leen.
+  2. Una sola lectura `leer(codigo_obra, tip)`.
+  3. `llego_al_techo` lanza `ReclamacionesSinVerificar` con las `filas`. Se
+     mira **antes** que la obra ambigua: si la lista viene cortada, ni siquiera
+     se sabe cuántas obras hay.
+  4. Más de un `obra_ref` lanza `ObraAmbigua`.
+  5. Se mapea a `ReclamacionSigrid` (`estado` = `estado_codigo`, la misma
+     `ficha`, **sin** `obra_ref`) y se llama a `cruzar`. `cruzar` se importa a
+     nivel de módulo para que un test lo sustituya por `prohibido` y demuestre
+     que no se cruza nada.
+  Ningún mensaje de error lleva una fila: solo la obra y los recuentos.
+- **O-A3-2.** El 503 sin `truncated` (ausente, texto o `0`) es un
+  `CatalogoNoDisponible` del adaptador, y el borde lo traduce con
+  `_sin_sigrid_o_sin_base`, como cualquier caída de Sigrid. Lo fija
+  `test_f065_r8_o_a3_2_la_respuesta_que_no_dice_si_viene_cortada_es_503_y_no_409`
+  con el **adaptador de verdad** y un `ClienteFalso`: 503, el texto «no dice
+  si viene cortada», sin `codigo` y sin ningún secreto del adaptador (el
+  `no-store` del 503 lo fija `test_f065_r35_las_de_error_tambien[sigrid]`).
+- **La composición del borde** (R2): obra normalizada → `construir_reclamaciones_obra`
+  → `construir_revision`. Con la obra inválida es 400 sin construir nada. Con
+  la fábrica de verdad en `local` es 503 sin llamar a `construir_cliente_http`.
+  Con la configuración incompleta es 503 nombrando las variables, no sus
+  valores. El `tip` sale de `obtener_ajustes().sigrid_tip_reclamacion`
+  también cuando los puertos llegan inyectados.
+- **`proceso_nuevo`** sale de un indicador propio del módulo (`_atendida` con un
+  `threading.Lock`), y **no** de `es_primera_peticion()` de F-060. Un test lo
+  comprueba: tras usar la ruta, el listado de F-060 sigue registrando
+  `proceso_nuevo=True`. `segundos_de_proceso()` sí se reutiliza.
+- **La línea de R24** se compone aquí, no con `Cronometro.linea()` (que dice
+  «F-060 tiempos del listado»), y en el mismo formato:
+  ```
+  F-065 sigrid de la bandeja: obra=… resultado=… total=… proceso_nuevo=… segundos_de_proceso=… <tramos> aplicacion=… calculo=… serializar=… reclamaciones=… evaluadas=… conflictos=… avisos=… bytes=…
+  ```
+  Los tramos son `construir.sigrid`, `construir.bandeja`, `bandeja.listar`,
+  `sigrid.leer` (con `Cronometro.medir`), `aplicacion`, `calculo` y
+  `serializar`.
+  - Con error, `resultado` es el nombre del tipo y los recuentos y `bytes` son
+    `-`. Con la obra inválida, `obra=-`.
+  - Va en un `finally`: exactamente una línea por petición.
+- **Los bytes** son `len(json.dumps(cuerpo, ensure_ascii=False).encode("utf-8"))`
+  dentro del tramo `serializar`, igual que serializa `_json`. Un test comprueba
+  que coinciden con el cuerpo de la respuesta. El precio es serializar dos
+  veces; con un cuerpo de cientos de KB es aceptable y mide lo que viaja.
+- **El cuerpo de R20.**
+  - Las claves se comprueban **exactas** en cada nivel. `guardado_cod` va en
+    todos los hallazgos (`null` donde no toca). `incidencia_id`, como texto o
+    `null`.
+  - La `ficha` lleva **exactamente** `CAMPOS_DE_LA_FICHA` (19), con las fechas
+    en ISO. Un test exige que las claves de la `ficha` sean exactamente los
+    campos de `FichaReclamacion`, así que un campo nuevo del puerto rompe el
+    test y obliga a decidir si viaja.
+  - `leido_at_utc` es ISO con microsegundos en UTC (`ahora=` como costura de
+    test).
+  - El orden de reclamaciones y hallazgos es el del dominio (R21). Los
+    `coincide` ya llegan en el orden de R18.
+- **El `resumen`.**
+  - `por_estado` lleva siempre los cinco códigos; los desconocidos van solo
+    en `estados_desconocidos`, y entre los dos suman `reclamaciones`.
+  - `emparejadas` cuenta las reclamaciones con incidencia.
+  - `incidencias_con_conflicto` e `incidencias_con_aviso` cuentan incidencias
+    **distintas** con algún hallazgo de esa severidad, así que una incidencia
+    puede estar en las dos.
+  - `por_tipo` y `por_criterio` cuentan los hallazgos que viajan, ya con el
+    tope de R18.
+- **`incidencias`**: solo las que tienen algún hallazgo, con su estado y sus
+  valores **vigentes** (`valores_vigentes`, `estado_de` de F-056 sin
+  cambiarlos) y `coincidencias_total`.
+- **La traducción de errores de la ruta** reutiliza sin cambiarlos
+  `_error_de_revision` (400 y 409 `bandeja_demasiado_grande` con el `total`),
+  `_rechazo_de_obra` (409 `obra_ambigua`) y `_sin_sigrid_o_sin_base` (503).
+  - Lo único nuevo es el 409 `reclamaciones_sin_verificar`, con
+    `{error, codigo, filas}`.
+  - **Todas** las respuestas, también las de error, llevan
+    `Cache-Control: no-store` (R35).
+  - Un test exige que ninguna otra ruta lo lleve y que `"no-store"` aparezca
+    una sola vez en `function_app.py`.
+- **R37** (nada guardado). Lo comprueban tres cosas:
+  - un test que parchea `open` y las escrituras de `Path` tras una llamada de
+    calentamiento;
+  - un barrido regex del código ejecutable (sin docstrings, por AST) de las
+    seis piezas de F-065;
+  - la regla de que de `persistencia` solo se importa `construir_revision`.
+- **R38/R39** (datos personales). Las fichas de los tests llevan datos
+  inventados («Ejemplo …», `@ejemplo.invalid`, `000 000 00n`). Ningún valor de
+  ninguna aparece en ningún registro, ni con los dobles ni con el adaptador de
+  verdad (entera, `truncated`, dos obras, sin `truncated`), ni con 200 ni con
+  error. Un barrido exige que los ficheros de F-065 (tests, spec, progress)
+  solo traigan correos `@ejemplo.invalid`, con un control que demuestra que
+  ve un correo real.
+- **Los helpers de test** viven en `test_f065_aplicacion.py` y los otros dos
+  los importan (patrón que ya hay en el repo), sin un `utiles_*.py` nuevo.
+
+### Desviaciones
+
+- **`tests/test_f010_endpoints_protegidos.py`**, que §9.2 no nombra. Toda ruta
+  nueva tiene que pasar por su cuenta de rutas anónimas, y T8 exige el servicio
+  entero en verde. Lo hicieron igual F-019, F-036, F-056, F-059 y F-060.
+  - Cambian **solo** `ENDPOINTS` (más `revision/sigrid` y un párrafo del
+    comentario) y la cuenta de
+    `test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay` (24 → 25). Ninguna
+    aserción se quita.
+  - La guarda T9 lo declara como única excepción y lo vigila: solo cambian
+    esas dos definiciones, ninguna aserción de la base se pierde, y la de la
+    cuenta conserva su número de aserciones.
+- **La guarda T9** declara además, como ficheros que la rama puede tocar, los
+  documentos de §9.2 que llegan en el Bloque A5 (`docs/ARCHITECTURE.md`,
+  `docs/INTEGRACION.md`), el script 29, `specs/F-065…`, `specs/F-064…`
+  (enmiendas de contrato), `progress/`, `features.json` y `BACKLOG.md`. El
+  Bloque A4 bis (T17) tendrá que ampliar `PIEZAS_DE_F065`, `INTOCABLES` y
+  `NUEVOS_DE_F065` con lo que toca del volcado (§15.6). Así lo dice la cabecera
+  de la guarda.
+
+### Fase RED (Bloque A4)
+
+Los tests de T7, escritos antes que el código (`d26060d`), lanzados desde
+`services/postventa-api`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_aplicacion.py tests/test_f065_http.py tests/test_f065_datos_personales.py -q --tb=line -p no:cacheprovider
+FFFF.FFFFFFFFFFFFFFEEEEEEEEEFFFFFEFFFFFFFFFFEEEFEEEEEEFEFEFEEFEEEFFFFEEF [ 67%]
+.FEFFFFF.FEFFFFF.....FFFFFFFFFF...                                       [100%]
+=================================== ERRORS ====================================
+_ ERROR at setup of test_f065_r1_la_obra_que_no_vale_es_400_sin_construir_nada[sin-obra] _
+E   ImportError: cannot import name 'sigrid_bandeja' from 'interface_adapters.api' (C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\interface_adapters\api\__init__.py)
+...
+C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_aplicacion.py:370: ImportError: cannot import name 'ReclamacionesSinVerificar' from 'domain.models.errores' (C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\domain\models\errores.py)
+...
+FAILED tests/test_f065_aplicacion.py::test_f065_r4_mas_de_diez_mil_es_409_con_el_recuento_y_sin_sigrid
+FAILED tests/test_f065_aplicacion.py::test_f065_r8_al_techo_es_409_con_las_filas_y_sin_cruzar
+FAILED tests/test_f065_aplicacion.py::test_f065_r8_el_techo_va_antes_que_la_obra_ambigua
+FAILED tests/test_f065_aplicacion.py::test_f065_r9_dos_obras_es_obra_ambigua_sin_cruzar
+FAILED tests/test_f065_http.py::test_f065_r8_truncated_con_el_adaptador_de_verdad_es_409
+FAILED tests/test_f065_http.py::test_f065_r8_o_a3_2_la_respuesta_que_no_dice_si_viene_cortada_es_503_y_no_409[sin-truncated]
+FAILED tests/test_f065_http.py::test_f065_r8_o_a3_2_la_respuesta_que_no_dice_si_viene_cortada_es_503_y_no_409[texto]
+FAILED tests/test_f065_http.py::test_f065_r8_o_a3_2_la_respuesta_que_no_dice_si_viene_cortada_es_503_y_no_409[cero]
+FAILED tests/test_f065_http.py::test_f065_r35_las_de_error_tambien[techo] - I...
+FAILED tests/test_f065_datos_personales.py::test_f065_r38_ni_la_ruta_ni_el_adaptador_de_verdad_registran_nada_de_una_fila[truncated]
+...
+65 failed, 11 passed, 30 errors in 4.32s
+```
+
+Las 11 que ya pasaban en RED lo hacen legítimamente:
+- los controles de que los detectores no son ciegos;
+- que el doble de la bandeja no deja hacer nada más;
+- que el listado y las acciones no construyen el lector de Sigrid (R26);
+- que ninguna otra ruta lleva `no-store`;
+- el barrido de R37 sobre las piezas que ya existían (dominio, puerto,
+  consulta y adaptador).
+
+**El RED de comportamiento, no solo de importación.** En RED casi todo falla
+por `ImportError`, que prueba que el test existía antes que el código pero no
+qué comportamiento caza. Esa parte la dan los mutantes a mano (abajo): cada
+requisito central tiene uno que lo rompe y su test lo mata, entre ellos:
+- el techo que no frena el cruce (MA4);
+- el techo después de la obra ambigua (MA6);
+- `reclamaciones_sin_verificar` como 503 (MA29);
+- `CatalogoNoDisponible` sin traducir, que es O-A3-2 (MA32);
+- `no-cache` en lugar de `no-store` (MA35);
+- el 200 sin `no-store` (MA36);
+- `proceso_nuevo` con el indicador del listado (MA12);
+- la base construida antes que Sigrid (MA11).
+
+T9 es una guarda y no tiene RED propio. Su prueba de que no es ciega: con tres
+violaciones sembradas a la vez en el árbol (un comentario en
+`interface_adapters/api/revision.py`, una función `_otra` en `function_app.py`
+y un `os.getenv` en el pipeline nuevo), revertidas después con `git checkout`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_alcance_cerrado.py -q --tb=no -p no:cacheprovider
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_s9_la_rama_solo_toca_los_ficheros_declarados
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_s9_en_cada_fichero_tocado_solo_cambia_lo_declarado[function_app.py]
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_s9_3_la_rama_no_toca_ningun_intocable
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_r28_el_codigo_de_f065_no_lee_el_entorno_ni_escribe_ni_guarda
+4 failed, 42 passed in 47.71s
+```
+
+Además, cada detector tiene su test «no es ciego» dentro de la guarda.
+
+### Tests (Bloque A4)
+
+Desde `services/postventa-api`, sobre `ca66e3f`:
+
+| Qué | Resultado |
+|---|---|
+| Los del bloque: `test_f065_aplicacion.py` (20), `test_f065_http.py` (67), `test_f065_datos_personales.py` (23), `test_f065_alcance_cerrado.py` (46) y `test_f010_endpoints_protegidos.py` (8) | **164 passed** en 26,20 s |
+| Todos los `test_f065_*.py` | **531 passed** en 47,04 s |
+| F-065, F-010 y **todas** las guardas de arquitectura, fábricas y alcance (`test_*arquitectura*`, `test_*fabrica*`, `test_*alcance_cerrado*`), sobre `fb0ad71` | **1105 passed, 234 skipped** en 420,39 s (los *skipped* son las guardas de diff de otras ramas) |
+| El servicio entero (`pytest` sin filtro), sobre `71ded50` (T8; después solo se han añadido tests) | **9589 passed, 365 skipped** en 1525,54 s |
+| `ruff check` de los ficheros nuevos y tocados | limpio salvo `I001` (la línea en blanco entre bloques de `import` que lleva todo el repositorio, igual que en A3) |
+
+### Mutación (Bloque A4)
+
+**Herramienta** (`progress/mutacion_F-065_bloqueA4.md`, con la nota del
+implementer sobre la suite reducida y quién importa lo mutado). Base
+`509ef57`, 4 ficheros y 561 líneas en alcance, 1 worker, en un `git worktree`
+desechable, porque muta en el sitio y la suite entera corría a la vez.
+
+- **1.ª pasada**, sobre `d338de7`: **19 generados, 16 muertos, 3
+  supervivientes**, 206,0 s. Los tres eran huecos reales:
+  - la vista se podía cambiar (`frozen=False`);
+  - nadie miraba el valor inicial del indicador propio;
+  - los bytes con `ensure_ascii=True` coincidían porque el cuerpo de los tests
+    era ASCII.
+  Los tres tests nuevos van en `fb0ad71`.
+- **2.ª pasada**, sobre `fb0ad71`: **19 generados, 19 muertos, 0
+  supervivientes, 0 timeouts**, 293,5 s. `ca66e3f` solo añade tests.
+
+**A mano: 40.** La herramienta solo genera 19 y no toca el orden, las
+cabeceras, los recuentos ni la traducción de cada error, que son lo que sostiene
+la ruta. Los mutantes a mano cubren eso. Script fuera del repo, en otro
+worktree desechable; misma suite reducida, sin `-x`.
+
+- **1.ª vuelta**, sobre `d338de7`: 36 muertos y **3 supervivientes**:
+  - MA14 (`ensure_ascii`), el mismo hueco de la herramienta;
+  - **MA16**: `por_estado` solo con los estados presentes. La obra de ejemplo
+    tiene los cinco, así que nadie lo veía;
+  - **MA23**: el `tip` fijo a 708. Todos los tests usaban el defecto.
+  Además, **MA18 salió mal formado** (dejaba un error de sintaxis y «moría»
+  por importación), así que se rehízo sustituyendo la línea entera. MA16 y
+  MA23 tienen su test en `ca66e3f`: el resumen con todas sus claves a cero y
+  `test_f065_r5_el_tipo_de_concepto_sale_de_la_configuracion`.
+- **Vuelta definitiva**, sobre `ca66e3f`, con el árbol limpio antes y después:
+  **40, 40 muertos, 0 supervivientes.**
+
+| Id | Mutante | Resultado (tests que fallan) | Uno de los que lo matan |
+|---|---|---|---|
+| MA1 | la bandeja de 10.000 justas ya es demasiado grande | muerto (1) | `r4_justo_diez_mil_no_es_demasiado` |
+| MA2 | el total del 409 sin contar (len de lo leido) | muerto (2) | `r4_bandeja_demasiado_grande_409_con_el_recuento_sin_sigrid` |
+| MA3 | Sigrid se lee antes de mirar el tamano de la bandeja | muerto (17) | `r1_la_obra_se_normaliza_como_en_f036` |
+| MA4 | el techo no frena el cruce | muerto (10) | `r22_r40_los_errores_no_repiten_ninguna_fila` |
+| MA5 | obra ambigua solo con tres obras | muerto (7) | `r22_r40_los_errores_no_repiten_ninguna_fila` |
+| MA6 | obra ambigua antes que el techo | muerto (2) | `r8_el_techo_va_antes_que_la_obra_ambigua` |
+| MA7 | el estado de la reclamacion es el tipo | muerto (12) | `r19_la_vista_lleva_la_bandeja_entera_y_el_cruce_del_dominio` |
+| MA8 | la referencia es la descripcion | muerto (11) | `r10_la_referencia_empareja_con_la_bandeja_de_la_obra` |
+| MA9 | el mensaje del techo con el cod de una fila | muerto (2) | `r22_r40_los_errores_no_repiten_ninguna_fila` |
+| MA10 | las filas del 409 son cero | muerto (3) | `r8_al_techo_409_reclamaciones_sin_verificar_con_las_filas` |
+| MA11 | se construye la base antes que Sigrid | muerto (6) | `r2_fuera_de_dev_y_pro_503_con_la_fabrica_de_verdad_y_sin_abrir_nada` |
+| MA12 | proceso_nuevo con el indicador del listado | muerto (2) | `r24_el_borde_no_llama_al_indicador_del_listado` |
+| MA13 | el indicador propio no se apaga | muerto (2) | `r24_proceso_nuevo_es_propio_y_no_toca_el_del_listado` |
+| MA14 | los bytes con ensure_ascii | muerto (1) | `r24_los_bytes_son_los_del_cuerpo_tambien_con_acentos` |
+| MA15 | la linea sin calculo | muerto (1) | `r24_una_linea_con_200_con_los_tramos_los_recuentos_y_los_bytes` |
+| MA16 | por_estado solo con los que hay | muerto (1) | `r9_ninguna_fila_es_200_con_las_listas_vacias` |
+| MA17 | emparejadas cuenta todas | muerto (1) | `r20_el_resumen` |
+| MA18 | incidencias con conflicto cuenta hallazgos | muerto (1) | `r20_el_resumen` |
+| MA19 | guardado_cod siempre null | muerto (1) | `r20_guardado_cod_solo_en_volcada_no_encontrada_y_codigo_distinto` |
+| MA20 | incidencias: toda la bandeja | muerto (1) | `r9_ninguna_fila_es_200_con_las_listas_vacias` |
+| MA21 | la fecha de la reclamacion en dd/mm/aaaa | muerto (2) | `r20_cada_reclamacion_con_sus_campos_y_su_ficha` |
+| MA22 | con error, resultado=200 | muerto (4) | `r24_una_linea_tambien_con_error_con_el_tipo` |
+| MA23 | el tipo de concepto fijo | muerto (1) | `r5_el_tipo_de_concepto_sale_de_la_configuracion` |
+| MA24 | obra=None con la obra invalida | muerto (1) | `r24_una_linea_tambien_con_error_con_el_tipo` |
+| MA25 | leido_at_utc sin la zona normalizada | muerto (1) | `r20_leido_at_utc_es_el_instante_de_la_lectura_en_utc` |
+| MA26 | la ficha sin un campo | muerto (3) | `r20_cada_reclamacion_con_sus_campos_y_su_ficha` |
+| MA27 | coincidencias_total por defecto 1 | muerto (1) | `r20_incidencias_solo_las_que_tienen_hallazgos_con_sus_vigentes` |
+| MA28 | el 400 sin no-store | muerto (1) | `r35_las_de_error_tambien` |
+| MA29 | reclamaciones_sin_verificar como 503 | muerto (3) | `r38_ni_la_ruta_ni_el_adaptador_de_verdad_registran_nada_de_una_fila` |
+| MA30 | reclamaciones_sin_verificar sin las filas | muerto (2) | `r8_al_techo_409_reclamaciones_sin_verificar_con_las_filas` |
+| MA31 | obra_ambigua como 422 | muerto (4) | `r35_las_de_error_tambien` |
+| MA32 | CatalogoNoDisponible sin traducir | muerto (10) | `r23_sin_sigrid_o_sin_base_503_con_el_cuerpo_de_siempre` |
+| MA33 | el 503 con otro texto | muerto (2) | `r23_sin_sigrid_o_sin_base_503_con_el_cuerpo_de_siempre` |
+| MA34 | bandeja demasiado grande como 413 | muerto (2) | `r35_las_de_error_tambien` |
+| MA35 | no-cache en vez de no-store | muerto (7) | `r35_el_sin_cache_solo_lo_usa_esta_ruta` |
+| MA36 | el 200 sin no-store | muerto (1) | `r35_la_respuesta_200_lleva_no_store` |
+| MA37 | la ruta acepta POST | muerto (1) | `r26_la_ruta_es_otra_funcion_y_get` |
+| MA38 | el error no guarda las filas | muerto (4) | `r8_al_techo_409_reclamaciones_sin_verificar_con_las_filas` |
+| MA39 | la ConfiguracionPgIncompleta sin traducir | muerto (1) | `r2_si_la_base_no_se_construye_503` |
+| MA40 | la obra sin normalizar | muerto (1) | `r1_la_obra_se_normaliza_como_en_f036` |
+
+### Cobertura (Bloque A4)
+
+Con `coverage run --branch -m pytest tests/test_f065_aplicacion.py tests/test_f065_http.py tests/test_f065_datos_personales.py tests/test_f010_endpoints_protegidos.py` (sobre `d338de7`; los commits siguientes solo añaden tests, así que la cobertura de lo cambiado no puede bajar):
+
+- `application/pipelines/sigrid_bandeja.py`: 28/28 sentencias y 6/6 ramas.
+- `interface_adapters/api/sigrid_bandeja.py`: 94/94 sentencias y 14/14 ramas.
+- `domain/models/errores.py`, a partir de la línea 1590 (la clase nueva): sin
+  ninguna línea sin cubrir. Lo que queda sin cubrir en ese fichero son errores
+  de otras features.
+- `function_app.py`, a partir de la 2010: las únicas líneas sin cubrir son la
+  2029 a la 2037, que son el `volcado_volcar` de F-059. De la 2042 en adelante
+  (la constante, `_sin_cache`, `_json_sin_cache` y `revision_sigrid`) no falta
+  ninguna línea ni ninguna rama.
+
+**Cobertura de lo cambiado: 100 %.** `python -m harness.cobertura --base 509ef57
+--cov <ese coverage.json> --raiz services/postventa-api` responde
+`PUERTA COBERTURA: N/A (F-065: las líneas cambiadas no contienen sentencias
+ejecutables)` con ese `coverage.json` de suite reducida (lanzado desde la raíz
+del worktree). No lo he investigado más, porque la medición a mano de arriba
+es directa. La puerta oficial es la de `init.sh`, que lanza el líder, y si
+vuelve a dar N/A con la suite entera merece mirarse.
+
+### Pendiente (Bloque A4)
+
+- `bash harness/init.sh` entero, con la puerta de cobertura (el líder), y la
+  **review del Bloque A4** (`tasks.md`: «Parar»).
+- **Bloque A4 bis**, sin empezar: el veredicto, la guarda del ensayo y
+  NPR → `choca`. Cuando llegue, T17 amplía la guarda de este bloque
+  (`PIEZAS_DE_F065`, `INTOCABLES`, `NUEVOS_DE_F065`) a lo que toque del volcado.
+- **Bloque A5 (T10)**: los documentos de §9.2, `azure-apps/postventa_incidencias.md`
+  y la fila de consumidores de `azure-apps/sigrid_api.md`, porque la API expone
+  una ruta nueva. En este bloque no se ha tocado ningún documento: no entraba
+  en T7–T9.
+- **T11**: la campaña de mutación de la feature entera.
+- Sin verificaciones MANUAL en este bloque. La ruta contra Sigrid de verdad
+  (volumen, tiempos y bytes de R29) es del despliegue, no de local.
+
+### Evidencias (Bloque A4)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | **164 passed** los del bloque en 26,20 s; **531 passed** todo F-065 en 47,04 s; **1105 passed, 234 skipped** con todas las guardas de arquitectura, fábricas y alcance en 420,39 s; servicio entero **9589 passed, 365 skipped** en 1525,54 s (sobre `71ded50`) |
+| Cobertura de las líneas cambiadas | **100 %**: el pipeline 28/28 sentencias y 6/6 ramas; el borde 94/94 y 14/14; la clase nueva de `errores.py` y la ruta con sus ayudantes de `function_app.py`, enteras. Medida con `coverage --branch`; la puerta de `init.sh` es del líder |
+| Mutantes | Herramienta: **19 generados, 19 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 293,5 s, sobre `fb0ad71` con el árbol limpio (suite reducida; la 1.ª pasada dio 3 supervivientes, cada uno con su test). A mano: **40, 40 muertos, 0 supervivientes**, sobre `ca66e3f` |
+| Tiempo de la suite | 26,20 s la del bloque; 1525,54 s la del servicio entero |

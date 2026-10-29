@@ -214,7 +214,7 @@
   de F-065 solo traen correos `@ejemplo.invalid` (R39); y que el listado, el
   historial, las acciones, la normalización y el volcado responden y registran
   igual (R26: sus tests sin tocar). | Verificación: `python -m pytest tests/test_f065_aplicacion.py tests/test_f065_http.py tests/test_f065_datos_personales.py` en **rojo**, traza en el informe
-- [ ] **T8**: `application/pipelines/sigrid_bandeja.py`,
+- [x] **T8**: `application/pipelines/sigrid_bandeja.py`,
   `interface_adapters/api/sigrid_bandeja.py`, `ReclamacionesSinVerificar` en
   `errores.py`, la ruta y `_json_sin_cache` en `function_app.py` (con su
   párrafo de cabecera). | Verificación: los tres ficheros de T7 en verde y `python -m pytest` del servicio entero en verde

@@ -118,6 +118,11 @@ FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 #: crea partes en el ERP de produccion tras su ventana `VOLCADO_HABILITADO`).
 #: Anonimos como los demas y por lo mismo; ninguna comprobacion cambia ni se
 #: quita, solo la cuenta.
+#:
+#: F-065 (T8) los lleva a **veinticinco** con `revision/sigrid` (GET: lee la
+#: base y Sigrid por `sql/read`, no escribe nada y responde con
+#: `Cache-Control: no-store`). Anonimo como los demas y por lo mismo; ninguna
+#: comprobacion cambia ni se quita, solo la cuenta.
 ENDPOINTS = (
     "health",
     "split",
@@ -140,6 +145,7 @@ ENDPOINTS = (
     "revision/historial",
     "revision/acciones",
     "revision/normalizar",
+    "revision/sigrid",
     "volcado",
     "volcado/ensayo",
     "volcado/volcar",
@@ -279,7 +285,7 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == len(ENDPOINTS) == 24
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 25
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]

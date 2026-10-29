@@ -157,6 +157,15 @@ Endpoints:
         (`sistema:normalizar_ubicacion`) por incidencia: **nada** en Sigrid.
         Por eso no depende de ninguna ventana de escritura.
 
+    GET /api/revision/sigrid
+        Las reclamaciones de Sigrid de **una** obra —todas, de cualquier estado
+        y fecha, con sus datos y los personales de la lista cerrada de R33—
+        cruzadas con su bandeja (F-065): con qué incidencia está emparejada
+        cada una por la referencia `PVI-`, y los conflictos y avisos. Aparte del
+        listado: si Sigrid falla, la bandeja sigue. Lee la base y Sigrid, solo
+        por `POST /api/sql/read`, y no escribe nada. Responde con
+        `Cache-Control: no-store`, y es la única ruta que lo lleva.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
@@ -288,6 +297,18 @@ ve la bandeja; nunca el `oid` ni el login de Sigrid. El panel solo lee la
 base. En el log, la obra, la llamada, los recuentos y, por parte, la
 referencia, el estado y los códigos. Con ellos los anónimos son veinticuatro.
 
+`GET /api/revision/sigrid` (F-065) es el que **más dato personal acumulado**
+devuelve: las reclamaciones de Sigrid de la obra entera con sus textos, el
+propietario y la persona que reclama y la de contacto, con sus teléfonos y
+correos (la lista cerrada de R33; nunca el DNI, las credenciales de i-Sigrid,
+direcciones ni ningún `ide`), a quien ya ve la bandeja (decisión del humano
+del 2026-10-21, Q-6 y N-3: para buscar y filtrar por propietario o teléfono).
+Sus cautelas: la lista cerrada, `Cache-Control: no-store` en todas sus
+respuestas, **nada** en la base ni en ningún fichero, y en el log solo la obra,
+el resultado, tiempos, recuentos y bytes. Su volumen: una lectura de la obra
+con el techo de la pasarela, que si llega o viene cortada responde 409 y no
+cruza nada. Con él los anónimos son veinticinco.
+
 **Descartado a propósito: exigir `x-ms-client-principal`.** Parece subir el
 listón y no lo sube —va sin firma, se fabrica— y encima de algo que ya protege
 la plataforma sólo consigue **confundir qué protege de verdad**: quien lo lea
@@ -367,6 +388,7 @@ from domain.models.errores import (
     ReclamacionNoLocalizada,
     ReferenciaNoConsta,
     RemesaSinPdfUtilizable,
+    ReclamacionesSinVerificar,
     RevisionDesactualizada,
     SinCambios,
     UbicacionNoDisponible,
@@ -402,6 +424,7 @@ from interface_adapters.api.revision import (
     historial_revision,
     listar_revision,
 )
+from interface_adapters.api.sigrid_bandeja import sigrid_de_la_bandeja
 from interface_adapters.api.split import trocear_remesa
 from interface_adapters.api.validar import validar as validar_parte_http
 from interface_adapters.api.volcado import (
@@ -2012,3 +2035,71 @@ def volcado_volcar(req: func.HttpRequest) -> func.HttpResponse:
     except ERRORES_DEL_VOLCADO as error:
         return _error_del_volcado("volcado/volcar", error)
     return _json(cuerpo, 200)
+
+
+# --------------------------------------------------------------------------
+# F-065 · las reclamaciones de Sigrid en la revisión (`design.md` §7, §8, §10.4)
+# --------------------------------------------------------------------------
+
+#: R35: la respuesta lleva datos personales de clientes (R33), y ningún
+#: navegador ni proxy debe guardarla.
+CACHE_CONTROL_SIN_CACHE = "no-store"
+
+
+def _sin_cache(respuesta: func.HttpResponse) -> func.HttpResponse:
+    """La misma respuesta con `Cache-Control: no-store` (R35)."""
+    respuesta.headers["Cache-Control"] = CACHE_CONTROL_SIN_CACHE
+    return respuesta
+
+
+def _json_sin_cache(cuerpo: dict, estado: int) -> func.HttpResponse:
+    """El `_json` de siempre más `Cache-Control: no-store` (R35). Solo para `revision/sigrid`."""
+    return _sin_cache(_json(cuerpo, estado))
+
+
+@app.route(route="revision/sigrid", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def revision_sigrid(req: func.HttpRequest) -> func.HttpResponse:
+    """Las reclamaciones de Sigrid de una obra cruzadas con su bandeja (F-065, R1–R24). Solo lee.
+
+    Solo traduce (R23), y **todas** sus respuestas, también las de error, con
+    `Cache-Control: no-store` (R35):
+
+    - **200** · `{obra, leido_at_utc, criterio, reclamaciones, hallazgos,
+      incidencias, resumen}` (R20);
+    - **400** · `peticion_invalida`: la obra no vale (R1), sin construir nada;
+    - **409** · `bandeja_demasiado_grande` (con el `total`, R4, sin leer
+      Sigrid), `reclamaciones_sin_verificar` (con las `filas`: la lectura llegó
+      al techo o vino `truncated`, R8, y no se cruza nada) u `obra_ambigua`
+      (R9);
+    - **503** · Sigrid (también la respuesta mal formada o que no dice si viene
+      cortada), su configuración, el entorno o la base, con el cuerpo de error
+      de siempre.
+
+    Ningún error repite una fila ni un texto de Sigrid (R22). La línea de la
+    petición la pone el handler (R24); aquí, al log, solo el código.
+    """
+    que = "revision/sigrid"
+    try:
+        cuerpo = sigrid_de_la_bandeja(req.params.get("obra"))
+    except (CodigoDeObraInvalido, PeticionDeRevisionInvalida) as error:
+        return _sin_cache(_error_de_revision(que, error, 400))
+    except BandejaDemasiadoGrande as error:
+        return _sin_cache(_error_de_revision(que, error, 409))
+    except ReclamacionesSinVerificar as error:
+        log.info("%s no procede: reclamaciones_sin_verificar", que)
+        return _json_sin_cache(
+            {"error": error.motivo, "codigo": "reclamaciones_sin_verificar", "filas": error.filas},
+            409,
+        )
+    except ObraAmbigua as error:
+        log.info("%s no procede: obra_ambigua", que)
+        return _sin_cache(_rechazo_de_obra(error, 409))
+    except (
+        CatalogoNoDisponible,
+        ConfiguracionSigridIncompleta,
+        ConfiguracionPgIncompleta,
+        PersistenciaNoDisponible,
+    ) as error:
+        log.warning("%s sin Sigrid o sin base: %s", que, error.motivo)
+        return _sin_cache(_sin_sigrid_o_sin_base("mirar las reclamaciones de Sigrid", error))
+    return _json_sin_cache(cuerpo, 200)

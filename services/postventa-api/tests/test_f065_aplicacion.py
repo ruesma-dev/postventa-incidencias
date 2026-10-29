@@ -264,7 +264,7 @@ def test_f065_r3_una_lectura_de_la_base_y_una_de_sigrid_en_ese_orden() -> None:
 
 
 def test_f065_r3_el_tipo_de_concepto_es_el_que_se_le_pasa() -> None:
-    llamadas, revision, lector = _mundo()
+    _, revision, lector = _mundo()
 
     _mirar(revision, lector, tip=999)
 

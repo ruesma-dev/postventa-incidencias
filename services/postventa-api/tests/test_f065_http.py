@@ -34,7 +34,7 @@ import json
 import logging
 import re
 from dataclasses import fields
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -954,7 +954,6 @@ def test_f065_r24_la_linea_no_lleva_ningun_texto_ni_codigo(mundo, caplog) -> Non
     _get()
 
     (linea,) = _lineas(caplog)
-    _, filas = obra_de_ejemplo()
     situaciones, _ = obra_de_ejemplo()
     prohibidos = {"RS2", "PVI-", "Cocina", "Patio", "Terraza", "Gotea", "Fuga", "Ejemplo", "@", CORREO}
     for s in situaciones:
@@ -978,7 +977,9 @@ def test_f065_r24_proceso_nuevo_es_propio_y_no_toca_el_del_listado(mundo, monkey
     nuevos = [_campos_de_la_linea(linea)["proceso_nuevo"] for linea in _lineas(caplog)]
     assert nuevos == ["True", "False"]
     # El indicador del listado sigue sin consumir: la próxima línea de F-060 dirá True.
+    from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
     from interface_adapters.api import revision as modulo_revision
+
     from tests.utiles_importacion import EquivalenciasEnMemoria
     from tests.utiles_revision import (
         CatalogoDeLaObra,
@@ -986,7 +987,6 @@ def test_f065_r24_proceso_nuevo_es_propio_y_no_toca_el_del_listado(mundo, monkey
         UbicacionesQueCuentan,
         incidencia,
     )
-    from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
 
     llamadas: list[str] = []
     modulo_revision.listar_revision(

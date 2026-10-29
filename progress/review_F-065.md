@@ -1488,3 +1488,10 @@ repositorio:
 
 La regla general vale para cualquier proyecto con guardas sobre `progress/`: «lo último que se commitea pasa por las
 guardas que lo leen». Si el humano la aprueba, es candidata a `arnes-base`.
+
+### C-A4b-1 · cerrado por el líder (2026-10-29)
+
+El GUID de los fixtures de `progress/impl_F-065.md` l. 1900 pasa a `UUID(int=1)` (`49bc8db`, `2c21cdf`);
+`test_f006_repo_sin_identificadores.py`, 48 passed. `bash harness/init.sh`, tal cual, una pasada sobre `2c21cdf`:
+**exit 0, «ENTORNO LISTO»**. **Primera mitad del Bloque A4 bis (T13, T14) APROBADA**, como dejó dicho el reviewer.
+Pendiente del humano: L-3 (estado desconocido o vacío de la emparejada: `se_enlaza` hoy, el líder recomienda `choca`).

@@ -11,6 +11,8 @@ y el recorte de los códigos). Módulo puro: aquí no hay red, ni base, ni IA.
 | las 31 columnas: las 12 de R6 y la lista cerrada de R33; ninguna prohibida | R6, R33 |
 | el mapeo: columnas exactas, `obra_ref` y `cod` obligatorios, `YYYYMMDD` a fecha, `0` a nulo, una fecha imposible es error **sin la fila** | R6, R33, R40 |
 | el recorte de `estado_codigo`, `cod`, `tipo_codigo` y `clase_codigo`; `unidad_codigo` y `oficio_codigo` **tal cual** | §10.2 (enmienda del 2026-10-28) |
+| la consulta de la guarda (`SQL_RECLAMACIONES_DE_LAS_UNIDADES`), carácter a carácter con §15.5 y con el script 29, de 1 a `N` marcadores, sin R33 | R44, R70 (T15) |
+| su mapeo: 12 columnas, `ficha` a `None`, los mismos recortes | R44, §15.2 (T15) |
 
 Datos inventados (R39): obra `9901`, unidades `9901.03VILLA n.`, códigos
 `RS26.09/…` de §5.4, «Ejemplo …», teléfonos `000 000 00n`, correos
@@ -21,7 +23,7 @@ Datos inventados (R39): obra `9901`, unidades `9901.03VILLA n.`, códigos
 from __future__ import annotations
 
 import re
-from dataclasses import FrozenInstanceError, fields
+from dataclasses import FrozenInstanceError, fields, replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -33,11 +35,17 @@ from domain.ports.reclamaciones_obra import FichaReclamacion, FilaReclamacionObr
 from infrastructure.sigrid.consultas_catalogo import SQL_UNIDADES_DE_LA_OBRA
 from infrastructure.sigrid.consultas_reclamaciones_obra import (
     CAMPO_REFERENCIA,
+    COLUMNAS_DE_LAS_UNIDADES,
     COLUMNAS_RECLAMACION,
+    MARCADORES,
+    MAX_UNIDADES,
     PATRON_REFERENCIA,
     SQL_RECLAMACIONES_DE_LA_OBRA,
+    SQL_RECLAMACIONES_DE_LAS_UNIDADES,
+    fila_a_reclamacion_de_las_unidades,
     fila_a_reclamacion_obra,
     select_reclamaciones_de_la_obra,
+    select_reclamaciones_de_las_unidades,
 )
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -554,3 +562,239 @@ def test_f065_r40_las_filas_son_inmutables() -> None:
         fila.cod = "RS26.09/0124"  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
         fila.ficha.propietario = None  # type: ignore[misc]
+
+
+# ==========================================================================
+# R44, R70 · la consulta de la guarda del ensayo (Bloque A4 bis, T15)
+# ==========================================================================
+
+#: `design.md` §15.5 con **una** unidad: las 12 columnas de R6, sin R33.
+SQL_DE_UNA_UNIDAD = (
+    "SELECT v.obride, c.cod, e.cod, c.fec, u.cod, a.cod, a.res, t.cod, t.res, r.resubi, c.res, p.valt\n"
+    "FROM dbo.rcp r\n"
+    "JOIN dbo.con c ON c.ide = r.ide\n"
+    "JOIN dbo.upv v ON v.ide = r.upvide\n"
+    "JOIN dbo.con u ON u.ide = v.ide\n"
+    "JOIN dbo.con o ON o.ide = v.obride\n"
+    "LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est\n"
+    "LEFT JOIN dbo.auxofc a ON a.ide = r.ofcide\n"
+    "LEFT JOIN dbo.auxtrcp t ON t.ide = r.trcpide\n"
+    "OUTER APPLY (SELECT TOP 1 x.valt FROM dbo.conext x\n"
+    "             WHERE x.conide = c.ide AND x.cod = ? AND x.valt LIKE ?\n"
+    "             ORDER BY x.ide) p\n"
+    "WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ? AND u.cod IN (?)\n"
+    "ORDER BY c.cod"
+)
+
+#: Las unidades de los ejemplos, con los blancos que trae el catálogo (tal cual).
+UNIDADES = ("9901.03VILLA 1.", "9901.03VILLA 2.  ", "9901.03VILLA 3.", "9901.03VILLA 4.", "9901.03VILLA 5.")
+
+
+def _con_marcadores(n: int) -> str:
+    """El texto de §15.5 con `n` marcadores en el `IN`, separados por coma y espacio."""
+    return SQL_DE_UNA_UNIDAD.replace("IN (?)", "IN (" + ", ".join(["?"] * n) + ")")
+
+
+def test_f065_r44_la_consulta_de_una_unidad_caracter_a_caracter() -> None:
+    sql, _ = select_reclamaciones_de_las_unidades(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES[:1])
+
+    assert sql == SQL_DE_UNA_UNIDAD
+
+
+def test_f065_r44_la_de_cinco_unidades_caracter_a_caracter() -> None:
+    sql, _ = select_reclamaciones_de_las_unidades(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
+
+    assert sql.splitlines()[-2] == "WHERE c.tip = ? AND LTRIM(RTRIM(o.cod)) = ? AND u.cod IN (?, ?, ?, ?, ?)"
+    assert sql == _con_marcadores(5)
+
+
+@pytest.mark.parametrize("n", [1, 2, 5, 49, 50])
+def test_f065_r44_de_uno_a_n_marcadores_uno_por_unidad(n: int) -> None:
+    unidades = tuple(f"9901.03VILLA {i}." for i in range(n))
+
+    sql, parametros = select_reclamaciones_de_las_unidades(codigo_obra=OBRA, tip=TIP, unidades=unidades)
+
+    assert sql == _con_marcadores(n)
+    assert parametros == ("RCPCLI", "PVI-%", TIP, OBRA, *unidades)
+    assert sql.count("?") == len(parametros) == 4 + n
+
+
+def test_f065_r44_la_plantilla_es_la_consulta_con_el_hueco_de_los_marcadores() -> None:
+    """La plantilla que comparte con el script 29: el `IN` con `__MARCADORES__`."""
+    assert MARCADORES == "__MARCADORES__"
+    assert SQL_RECLAMACIONES_DE_LAS_UNIDADES == SQL_DE_UNA_UNIDAD.replace("IN (?)", f"IN ({MARCADORES})")
+
+
+def _consulta_de_la_guarda_en_design() -> str:
+    """El bloque `sql` de §15.5, sin su comentario y con `?, …, ?` como hueco."""
+    lineas = DESIGN.read_text(encoding="utf-8").splitlines()
+    inicio = lineas.index("### 15.5 · Qué lee el ensayo, y su coste (S-5)")
+    apertura = lineas.index("```sql", inicio)
+    cierre = lineas.index("```", apertura + 1)
+    sin_comentario = [linea for linea in lineas[apertura + 1 : cierre] if not linea.startswith("--")]
+    return "\n".join(sin_comentario).replace("(?, …, ?)", f"({MARCADORES})")
+
+
+def test_f065_r44_la_consulta_es_la_de_design_15_5() -> None:
+    """El código y la spec dicen lo mismo: si uno cambia, este test lo cuenta."""
+    assert _consulta_de_la_guarda_en_design().startswith("SELECT v.obride")
+    assert SQL_RECLAMACIONES_DE_LAS_UNIDADES == _consulta_de_la_guarda_en_design()
+
+
+def _plantilla_del_script() -> str:
+    """El here-string `$SQL_RECLAMACIONES_DE_LAS_UNIDADES` del script 29, en LF."""
+    texto = SCRIPT.read_bytes().decode("ascii").replace("\r\n", "\n")
+    encontradas = re.findall(
+        r"^\$SQL_RECLAMACIONES_DE_LAS_UNIDADES = @'\n(.*?)\n'@", texto, flags=re.DOTALL | re.MULTILINE
+    )
+    assert len(encontradas) == 1, "el script 29 no tiene un único $SQL_RECLAMACIONES_DE_LAS_UNIDADES"
+    return encontradas[0]
+
+
+def test_f065_r70_la_plantilla_es_identica_a_la_del_script_29() -> None:
+    """R70: el script mide **la misma** consulta que lee la guarda."""
+    assert SQL_RECLAMACIONES_DE_LAS_UNIDADES == _plantilla_del_script()
+
+
+def test_f065_r44_las_doce_columnas_son_las_de_r6_sin_r33() -> None:
+    lista = SQL_RECLAMACIONES_DE_LAS_UNIDADES.split("SELECT ", 1)[1].split("\nFROM dbo.rcp r", 1)[0]
+
+    assert COLUMNAS_DE_LAS_UNIDADES == 12
+    assert tuple(c.strip() for c in lista.split(",")) == COLUMNAS_R6
+
+
+def test_f065_r44_mismas_uniones_que_la_obra_salvo_las_de_r33() -> None:
+    """Las líneas de la guarda son las de la obra sin las de R33, y el `IN` al final."""
+    obra = SQL_RECLAMACIONES_DE_LA_OBRA.splitlines()
+    guarda = SQL_RECLAMACIONES_DE_LAS_UNIDADES.splitlines()
+    de_r33 = ("dbo.auxrcp", "dbo.con cl", "dbo.per")
+    desde = obra.index("FROM dbo.rcp r")
+
+    assert guarda[1:-2] == [linea for linea in obra[desde:-2] if not any(r in linea for r in de_r33)]
+    assert guarda[-2] == obra[-2] + f" AND u.cod IN ({MARCADORES})"
+    assert guarda[-1] == obra[-1] == "ORDER BY c.cod"
+
+
+@pytest.mark.parametrize(
+    "vetado",
+    [r"\bdni\b", r"\besiglog\b", r"\besigpas\b", r"\bclamai\b", r"\bdir\w*", r"\bper\b", r"\bauxrcp\b",
+     r"\bcliide\b", r"\br\.tex\b", r"\br\.tel\b", r"\br\.ele\b", r"\bmotrcp\b", r"\bsolrcp\b",
+     r"\btexurg\b", r"\brcptip\b", r"\bfecpre\b", r"\.nom\b"],
+)  # fmt: skip
+def test_f065_r44_la_guarda_no_lee_ni_un_dato_personal(vetado: str) -> None:
+    """R44: sin los campos de R33 (ni ningún vetado de §8)."""
+    assert re.search(vetado, SQL_RECLAMACIONES_DE_LAS_UNIDADES) is None
+
+
+def test_f065_r44_el_detector_de_la_guarda_no_es_ciego() -> None:
+    for vetado in (r"\bper\b", r"\bmotrcp\b", r"\.nom\b", r"\br\.tel\b"):
+        assert re.search(vetado, SQL_RECLAMACIONES_DE_LA_OBRA) is not None
+
+
+@pytest.mark.parametrize("codigo", ["9901' OR 1=1 --", "0677"])
+def test_f065_r44_ningun_valor_en_el_texto(codigo: str) -> None:
+    """Todo por `?`: ni la obra, ni las unidades, ni el campo, ni el patrón."""
+    unidades = ("VILLA 15'; DROP TABLE dbo.rcp --", "Ejemplo Unidad")
+
+    sql, parametros = select_reclamaciones_de_las_unidades(codigo_obra=codigo, tip=TIP, unidades=unidades)
+
+    for prohibido in ("'", '"', "708", "RCPCLI", "PVI", "%", codigo, *unidades):
+        assert prohibido not in sql
+    assert parametros[3:] == (codigo, *unidades)
+
+
+def test_f065_r44_las_unidades_van_tal_cual_y_en_el_orden_recibido() -> None:
+    """Sin recortar (R14: `u.cod` se compara tal cual) ni reordenar: el orden lo pone la guarda."""
+    _, parametros = select_reclamaciones_de_las_unidades(
+        codigo_obra=OBRA, tip=TIP, unidades=("9901.03VILLA 2.  ", "  9901.03VILLA 1.")
+    )
+
+    assert parametros[4:] == ("9901.03VILLA 2.  ", "  9901.03VILLA 1.")
+
+
+@pytest.mark.parametrize(
+    "unidades", [(), tuple(f"U{i:02d}" for i in range(51))], ids=["ninguna", "cincuenta-y-una"]
+)
+def test_f065_r44_de_una_a_cincuenta_unidades_y_si_no_es_error_sin_valores(unidades: tuple[str, ...]) -> None:
+    """Sin unidades no hay consulta que tenga sentido; con más de 50 no cabe en
+    una llamada del ensayo (`N` ≤ 50). Error de programación, sin repetir nada."""
+    assert MAX_UNIDADES == 50
+    with pytest.raises(ValueError) as fallo:
+        select_reclamaciones_de_las_unidades(codigo_obra=OBRA, tip=TIP, unidades=unidades)
+
+    assert str(fallo.value) == "la lectura de la guarda lleva de 1 a 50 unidades"
+
+
+def test_f065_r44_justo_cincuenta_unidades_si() -> None:
+    sql, _ = select_reclamaciones_de_las_unidades(
+        codigo_obra=OBRA, tip=TIP, unidades=tuple(f"U{i:02d}" for i in range(50))
+    )
+
+    assert sql.count("?") == 54
+
+
+def test_f065_r44_unidades_repetidas_son_error_sin_repetirlas() -> None:
+    with pytest.raises(ValueError) as fallo:
+        select_reclamaciones_de_las_unidades(
+            codigo_obra=OBRA, tip=TIP, unidades=("Ejemplo U1", "Ejemplo U2", "Ejemplo U1")
+        )
+
+    assert str(fallo.value) == "la lectura de la guarda lleva cada unidad una sola vez"
+
+
+# --- el mapeo de la guarda: 12 columnas y sin ficha ------------------------
+
+
+def test_f065_r44_una_fila_de_la_guarda_al_puerto_sin_ficha() -> None:
+    """§15.2: `ficha` a `None` en la lectura de la guarda, que no lee R33."""
+    assert fila_a_reclamacion_de_las_unidades(FILA[:12]) == replace(FILA_ESPERADA, ficha=None)
+    assert fila_a_reclamacion_de_las_unidades(tuple(FILA[:12])) == replace(FILA_ESPERADA, ficha=None)
+
+
+def test_f065_r44_la_guarda_hace_los_mismos_recortes_que_la_obra() -> None:
+    fila = _con(i1=" RS26.09/0123 ", i2="PTE   ", i4="9901.03VILLA 1.  ", i5=" 0133", i7=" GAR ")[:12]
+
+    mapeada = fila_a_reclamacion_de_las_unidades(fila)
+
+    assert (mapeada.cod, mapeada.estado_codigo, mapeada.tipo_codigo) == ("RS26.09/0123", "PTE", "GAR")
+    assert (mapeada.unidad_codigo, mapeada.oficio_codigo) == ("9901.03VILLA 1.  ", " 0133")
+    assert mapeada.ficha is None
+
+
+@pytest.mark.parametrize(
+    ("cambio", "mensaje"),
+    [
+        ({"i0": None}, "una reclamación sin referencia de obra"),
+        ({"i0": "  "}, "una reclamación sin referencia de obra"),
+        ({"i1": "  "}, "una reclamación sin código"),
+        ({"i3": 20261345}, "una fecha de Sigrid que no es un entero YYYYMMDD válido"),
+    ],
+    ids=["sin-obra", "obra-en-blanco", "sin-codigo", "fecha-imposible"],
+)
+def test_f065_r44_la_guarda_exige_obra_codigo_y_una_fecha_valida(cambio: dict[str, Any], mensaje: str) -> None:
+    with pytest.raises(ValueError) as fallo:
+        fila_a_reclamacion_de_las_unidades(_con(**cambio)[:12])
+
+    assert str(fallo.value) == mensaje
+
+
+@pytest.mark.parametrize(
+    "fila",
+    [None, "x" * 12, FILA[:11], FILA[:13], FILA, {"cod": "RS26.09/0123"}, [], 12],
+    ids=["nula", "texto-de-12", "once", "trece", "treinta-y-una", "objeto", "vacia", "entero"],
+)
+def test_f065_r40_una_fila_de_la_guarda_mal_formada_no_se_repite(fila: Any) -> None:
+    """Con 31 columnas también es error: la guarda nunca recibe la ficha."""
+    with pytest.raises(ValueError) as fallo:
+        fila_a_reclamacion_de_las_unidades(fila)
+
+    assert str(fallo.value) == "una fila de Sigrid sin las 12 columnas esperadas"
+    for texto in TEXTOS_DE_LA_FILA:
+        assert texto not in str(fallo.value)
+
+
+def test_f065_r44_la_obra_sigue_dando_la_ficha_entera() -> None:
+    """O-A4b-3 / L-7: la ficha admite `None` solo en la lectura de la guarda; la
+    de la obra (la de la ruta) la sigue dando entera."""
+    assert fila_a_reclamacion_obra(FILA).ficha == FICHA_ESPERADA
+    assert FilaReclamacionObra("7001", "RS26.09/0123", *([None] * 11)).ficha is None

@@ -848,6 +848,23 @@ def test_f065_r70_la_consulta_de_la_guarda_es_la_de_design_con_una_y_con_cinco()
     assert _lo_que_manda_el_script_con(5) == SQL_DE_CINCO_UNIDADES
 
 
+@pytest.mark.parametrize("unidades", [1, 2, 3, 4, 5, 50])
+def test_f065_r70_el_script_manda_lo_mismo_que_la_funcion_de_la_guarda(unidades):
+    """T15 (lo que dejó dicho T2 bis): la comparación con
+    `select_reclamaciones_de_las_unidades`, la función que compone la lectura
+    de la guarda del ensayo. El script y el servicio mandan **el mismo texto**,
+    con el mismo número de marcadores."""
+    from infrastructure.sigrid.consultas_reclamaciones_obra import (
+        select_reclamaciones_de_las_unidades,
+    )
+
+    sql, _ = select_reclamaciones_de_las_unidades(
+        codigo_obra="9901", tip=708, unidades=tuple(f"U{n:02d}" for n in range(unidades))
+    )
+
+    assert _lo_que_manda_el_script_con(unidades) == sql
+
+
 def test_f065_r70_la_guarda_es_la_de_la_obra_sin_r33_y_con_el_filtro_de_unidades():
     """Mismas uniones que §3 salvo las de R33 (`auxrcp`, el propietario y las
     dos personas), las doce primeras columnas, y el `IN` al final del `WHERE`."""

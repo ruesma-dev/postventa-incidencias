@@ -248,7 +248,7 @@
 - [x] **T14**: `Veredicto`, `VeredictoDeVolcado`, `ParDeCoincidencia`,
   `Cruce.pares` y `veredictos` en `domain/models/sigrid_bandeja.py`, y el
   bloque `volcado` en el pipeline y el borde de la ruta (R41, R42). | Verificación: `python -m pytest tests/test_f065_veredicto.py tests/test_f065_dominio.py tests/test_f065_http.py` en verde
-- [ ] **T15**: tests RED de la guarda (`tests/test_f065_guarda_ensayo.py` y
+- [x] **T15**: tests RED de la guarda (`tests/test_f065_guarda_ensayo.py` y
   `tests/test_f065_consulta.py`): la consulta por unidades carácter a carácter
   (de 1 a `N` marcadores, sin R33, idéntica a la del script 29: T2 bis pasa a
   compararla con la función); el cuerpo de R43 (sin la clave, con lista vacía,

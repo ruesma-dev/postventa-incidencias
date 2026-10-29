@@ -20,6 +20,7 @@ Todo con el `ClienteFalso` de `tests/utiles_sigrid.py`: ninguna llamada real
 | el log: obra, filas, techo, `truncated` y segundos, **y nada más** | R25, R38 |
 | ningún error ni excepción lleva el contenido de una fila; el `repr` tampoco | R40 |
 | la fábrica: entorno → configuración, sin ventanas; nombra variables y nunca valores | R2 |
+| `leer(…, unidades=)`: la consulta de la guarda, las 12 columnas y `ficha` a `None`; el techo, `truncated` y los 503, los mismos; el log, con **cuántas** unidades | R44, R46, R25 (T15) |
 
 Datos inventados (R39): obra `9901`, «Ejemplo …», `000 000 00n`,
 `@ejemplo.invalid`; URL, clave y base inventadas.
@@ -49,7 +50,9 @@ from infrastructure.sigrid import reclamaciones_obra as modulo_adaptador
 from infrastructure.sigrid.catalogo_obra import AdaptadorCatalogoSigridApi
 from infrastructure.sigrid.consultas_reclamaciones_obra import (
     SQL_RECLAMACIONES_DE_LA_OBRA,
+    fila_a_reclamacion_de_las_unidades,
     fila_a_reclamacion_obra,
+    select_reclamaciones_de_las_unidades,
 )
 from infrastructure.sigrid.fabrica import construir_reclamaciones_obra
 from infrastructure.sigrid.reclamaciones_obra import AdaptadorReclamacionesObraSigridApi
@@ -401,7 +404,7 @@ def test_f065_r27_la_unica_ruta_que_nombra_es_sql_read() -> None:
 
 LINEA = re.compile(
     r"F-065 reclamaciones de la obra leídas en Sigrid: obra=(\S+) filas=(\d+) "
-    r"al_techo=(True|False) truncated=(True|False) segundos=(\d+\.\d\d)"
+    r"al_techo=(True|False) truncated=(True|False) segundos=(\d+\.\d\d) unidades=(-|\d+)"
 )
 
 
@@ -420,6 +423,8 @@ def test_f065_r25_r38_el_log_dice_obra_filas_techo_y_segundos_y_nada_mas(caplog)
     encontrada = LINEA.fullmatch(lineas[0])
     assert encontrada is not None, lineas[0]
     assert encontrada.groups()[:4] == (OBRA, "2", "False", "False")
+    # La de toda la obra (la de la ruta) no filtra unidades (T16, R25).
+    assert encontrada.group(6) == "-"
     _sin_secretos(_registros_de(caplog))
     for prohibido in (CLAVE, BASE_URL, BASE_DATOS, "RCPCLI", "PVI-"):
         assert prohibido not in _registros_de(caplog)
@@ -595,3 +600,112 @@ def test_f065_r2_la_fabrica_pasa_la_configuracion_al_adaptador(monkeypatch, capl
         "F-065 lector de las reclamaciones de la obra en Sigrid construido en el entorno pro"
     ]
     assert CLAVE not in _registros_de(caplog)
+
+
+# ==========================================================================
+# R44, R46, R25 · la lectura de la guarda: `leer(…, unidades=)` (T15)
+# ==========================================================================
+
+UNIDADES = ("9901.03VILLA 1.", "9901.03VILLA 2.  ")
+
+
+def _fila_de_la_guarda(cod: str = "RS26.09/0123") -> list[Any]:
+    """Una fila de §15.5: las 12 primeras columnas de `_fila`, sin R33."""
+    return _fila(cod)[:12]
+
+
+def _lectura_de_la_guarda(filas: list, *, truncada: Any = False) -> RespuestaFalsa:
+    cuerpo = cuerpo_de_lectura(COLUMNAS[:12], filas)
+    cuerpo["truncated"] = truncada
+    return RespuestaFalsa(200, cuerpo)
+
+
+def test_f065_r44_leer_por_unidades_es_un_post_a_sql_read_con_la_consulta_de_la_guarda() -> None:
+    adaptador, cliente = _adaptador(_lectura_de_la_guarda([_fila_de_la_guarda()]))
+
+    lectura = adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
+
+    sql, parametros = select_reclamaciones_de_las_unidades(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
+    assert lectura == LecturaCatalogo((fila_a_reclamacion_de_las_unidades(_fila_de_la_guarda()),), False)
+    assert lectura.filas[0].ficha is None
+    assert cliente.urls == [f"{BASE_URL}/api/sql/read"]
+    assert cliente.ultima().json == {
+        "database": BASE_DATOS,
+        "sql": sql,
+        "parameters": ["RCPCLI", "PVI-%", TIP, OBRA, *UNIDADES],
+        "max_rows": 500_000,
+    }
+    assert "IN (?, ?)" in cliente.ultima().json["sql"]
+
+
+def test_f065_r44_sin_unidades_es_la_lectura_de_toda_la_obra_de_siempre() -> None:
+    """`unidades=None` (el defecto) es la de la ruta: 31 columnas y la ficha entera."""
+    adaptador, cliente = _adaptador(_lectura([_fila()]), _lectura([_fila()]))
+
+    por_defecto = adaptador.leer(codigo_obra=OBRA, tip=TIP)
+    con_none = adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=None)
+
+    assert por_defecto == con_none == LecturaCatalogo((fila_a_reclamacion_obra(_fila()),), False)
+    assert por_defecto.filas[0].ficha is not None
+    assert [p.json["sql"] for p in cliente.peticiones] == [SQL_RECLAMACIONES_DE_LA_OBRA] * 2
+
+
+def test_f065_r44_la_guarda_no_admite_una_fila_con_la_ficha() -> None:
+    """Si la pasarela devolviera 31 columnas a la consulta de 12, es 503: no se
+    cuelan datos personales por un cambio de consulta."""
+    adaptador, _ = _adaptador(_lectura_de_la_guarda([_fila()]))
+
+    with pytest.raises(CatalogoNoDisponible) as fallo:
+        adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
+
+    assert fallo.value.motivo == (
+        "no se ha podido leer las reclamaciones de la obra en Sigrid: una fila no tiene la forma esperada"
+    )
+    _sin_secretos("".join(traceback.format_exception(fallo.value)))
+
+
+@pytest.mark.parametrize("filas", [3, 4])
+@pytest.mark.parametrize("truncada", [False, True], ids=["sin-marca", "truncada"])
+def test_f065_r46_la_guarda_al_techo_o_truncada_vuelve_al_techo(tope_de_tres, filas: int, truncada: bool) -> None:
+    adaptador, cliente = _adaptador(
+        _lectura_de_la_guarda([_fila_de_la_guarda(f"RS26.09/{i:04d}") for i in range(filas)], truncada=truncada)
+    )
+
+    lectura = adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
+
+    assert (len(lectura.filas), lectura.llego_al_techo) == (filas, True)
+    assert cliente.ultima().json["max_rows"] == 3
+
+
+def test_f065_r46_la_guarda_truncada_por_debajo_del_techo_es_al_techo() -> None:
+    adaptador, _ = _adaptador(_lectura_de_la_guarda([_fila_de_la_guarda()], truncada=True))
+
+    assert adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES).llego_al_techo is True
+
+
+@pytest.mark.parametrize(
+    "respuesta",
+    [RespuestaFalsa(503), RespuestaFalsa(200, {"ok": True, "rows": []}), RespuestaFalsa(400, {"error": "x"})],
+    ids=["caida", "sin-truncated", "definitivo"],
+)
+def test_f065_r46_la_guarda_que_falla_es_503_como_la_de_la_obra(respuesta: RespuestaFalsa) -> None:
+    adaptador, _ = _adaptador(respuesta, reintentos=1)
+
+    with pytest.raises(CatalogoNoDisponible):
+        adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
+
+
+def test_f065_r25_r38_el_log_de_la_guarda_dice_cuantas_unidades_y_no_cuales(caplog) -> None:
+    caplog.set_level(logging.DEBUG)
+    adaptador, _ = _adaptador(_lectura_de_la_guarda([_fila_de_la_guarda()]))
+
+    adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=UNIDADES)
+
+    (linea,) = _lineas_del_adaptador(caplog)
+    encontrada = LINEA.fullmatch(linea)
+    assert encontrada is not None, linea
+    assert encontrada.groups()[:4] == (OBRA, "1", "False", "False")
+    assert encontrada.group(6) == "2"
+    _sin_secretos(_registros_de(caplog))
+    for unidad in UNIDADES:
+        assert unidad.strip() not in _registros_de(caplog)

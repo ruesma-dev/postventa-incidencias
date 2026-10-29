@@ -1176,3 +1176,10 @@ Propuesta: cuando el **único** fallo de `init.sh` sea un test marcado como de t
 Los topes de tiempo seguirían igual de exigentes y se dejaría de tratar la carga del puesto como un rojo del
 código. Para eso tendría que existir una marca explícita (por ejemplo `@pytest.mark.tiempo`) que diga qué tests son
 de tiempo. Vale para cualquier proyecto: candidata a `arnes-base` si el humano la aprueba.
+
+### C-A4-1 · cerrado por el líder (2026-10-29)
+
+`bash harness/init.sh`, tal cual, una pasada sobre `6686858` (código de `cbe95da` más el informe): **exit 0,
+«ENTORNO LISTO»**. Raíz 115 passed; servicio api **9639 passed, 365 skipped in 3169,46 s**; `PUERTA COBERTURA: 100.0%
+de 530 líneas cambiadas cubiertas (530/530, umbral 80%, nivel critico)`. **Bloque A4 APROBADO**, como dejó dicho el
+reviewer. D-A4-3 y D-A4-4: el líder recomienda al humano dejarlas así y fijarlas en la spec de F-064.

@@ -2068,3 +2068,133 @@ encargo y la medición de arriba es directa. La puerta oficial es la de
 | Cobertura de las líneas cambiadas | **100 %** (63/63 sentencias y ninguna rama sin cubrir), con `coverage --branch`. La puerta de `harness.cobertura` da N/A con el json de la suite reducida (ver arriba); la de `init.sh` es del líder |
 | Mutantes | Herramienta: **7 generados, 7 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 103,0 s, sobre `af4b356` con el árbol limpio (suite reducida). A mano: **33, 33 muertos, 0 supervivientes**. MV18 sobrevivió en `af4b356` y lo mata `2ef038d` |
 | Tiempo de la suite | 13,41 s la de la verificación de T14; 103,61 s todo F-065 |
+
+## Bloque A4 bis · T15–T17: BLOQUEADO antes de escribir nada (2026-10-29)
+
+Encargo del líder: la segunda mitad del Bloque A4 bis, **solo T15, T16 y T17**,
+la guarda del ensayo. Lo he parado **antes de escribir ningún test ni nada de
+código**. La spec se contradice consigo misma en dos puntos, y no se pueden
+cumplir a la vez R47 y R11 (S-1), por un lado, y la regla de T16 y T17 sobre
+los tests de F-059, por otro. No he dejado nada a medias: el árbol solo cambia
+por esta sección. No he tocado `features.json`, `BACKLOG.md` ni `current.md`,
+como pedía el encargo: el motivo del bloqueo está aquí. Tampoco me he
+conectado a Sigrid, a la base ni a SharePoint.
+
+### La contradicción
+
+T16 exige en verde `test_f059_volcado_http.py`, `test_f059_pipeline_volcado.py`,
+`test_f059_volcado_dominio.py` y `test_f059_alcance_cerrado.py`. El diff de los
+dos primeros solo puede ser el doble del lector, y `test_f059_volcado_dominio.py`
+no aparece entre los que cambian. T17 añade: «en los dos tests de F-059,
+ninguna aserción menos ni cambiada». Además, `design.md` §15.6 y §15.8 solo
+prevén que se toquen esos dos ficheros. Dos aserciones de F-059, que hoy pasan,
+fijan exactamente lo que R47 y §15.6 mandan cambiar:
+
+1. **`tests/test_f059_volcado_dominio.py:1592`**,
+   `test_f059_r11_r18_los_motivos_de_exclusion`. Exige que
+   `[m.value for m in MotivoExclusion]` sea **exactamente** la lista de los
+   siete motivos de hoy. §15.6 manda añadir a `MotivoExclusion`
+   `DUPLICADA_EN_SIGRID` y `CONFLICTO_SIN_CONFIRMAR` (R45). En cuanto se añadan,
+   ese test falla. Y es un fichero que la spec no deja tocar.
+2. **`tests/test_f059_volcado_http.py:600`**,
+   `test_f059_r12_la_respuesta_del_ensayo`. Exige
+   `set(datos) == CLAVES_DEL_ENSAYO`, con las seis claves de R12 (línea 122).
+   R47 manda que la respuesta 200 lleve **siempre** el bloque `sigrid`: `null`
+   si la guarda no leyó, y un objeto si leyó. Ese test ensaya una incidencia,
+   así que la guarda lee (con el doble vacío) y la respuesta tiene siete
+   claves. Cambiar `CLAVES_DEL_ENSAYO` cambia lo que comprueba la aserción, y el
+   diff de ese fichero deja de ser «solo el doble».
+
+Línea base, sobre `e623caf` y desde `services/postventa-api`:
+
+```
+$ .venv/Scripts/python.exe -m pytest "tests/test_f059_volcado_dominio.py::test_f059_r11_r18_los_motivos_de_exclusion" "tests/test_f059_volcado_http.py::test_f059_r12_la_respuesta_del_ensayo" -q -p no:cacheprovider
+..                                                                       [100%]
+2 passed in 6.78s
+```
+
+No he encontrado otra aserción de F-059 que lo impida:
+- el orden de `llamadas` de `test_f059_s10_…` aguanta si el doble no anota nada;
+- ningún test cuenta las líneas de log;
+- `ResultadoDeEnsayo(OBRA, None, None, (), (), vacio)`, de
+  `test_f059_pipeline_volcado.py:1145`, aguanta si `guarda` va al final con
+  `None` por defecto;
+- las guardas de diff de `test_f059_alcance_cerrado.py` se saltan fuera de su
+  rama.
+
+### Por qué no lo resuelvo yo
+
+Las dos salidas que no cambian ningún test de F-059 se apartan de la spec
+aprobada:
+- **Los dos motivos en otro enumerado** (`Excluida.motivo: MotivoExclusion |
+  MotivoDeLaGuarda`). Dejaría verde el test 1, pero contradice §15.6 («**solo**
+  dos valores más en `MotivoExclusion`»).
+- **Quitar `sigrid` de la respuesta cuando no hay nada que choque.**
+  Contradice R47 (`sigrid: null` cuando no leyó; un objeto cuando leyó) y R49
+  («responde lo mismo que hoy **más `sigrid`**»).
+
+Para el test 2 no hay salida sin tocar el test. Cualquiera de las dos sería
+improvisar.
+
+### Propuesta (para que decida el humano)
+
+**(a) Recomendada.** Enmendar T16, T17 y §15.6 para declarar **dos ampliaciones
+aditivas** en tests de F-059. No se quita ninguna aserción ni ningún valor; las
+aserciones solo ganan lo que R45 y R47 añaden:
+- `test_f059_volcado_dominio.py::test_f059_r11_r18_los_motivos_de_exclusion`:
+  la lista gana, al final, `"duplicada_en_sigrid"` y `"conflicto_sin_confirmar"`.
+  Es la consecuencia directa de la enmienda de R11 que ya aprobó S-1 («dos
+  motivos de exclusión»).
+- `test_f059_volcado_http.py`: `CLAVES_DEL_ENSAYO` gana `"sigrid"`. Es el
+  «aditivo» de R47.
+
+La guarda de alcance de T17 los declararía como ampliados: solo ganan esos
+valores y no pierden ninguna aserción. Así lo hizo `test_f059_alcance_cerrado.py`
+con los tests de F-012/F-036/F-053, y `test_f065_alcance_cerrado.py` con
+`test_f065_http.py` en T13.
+
+**(b)** Los motivos en un enumerado aparte, y el test de las claves ampliado.
+Toca menos F-059 (`domain/models/volcado.py` no cambia), pero reescribe §15.6,
+y el test 2 sigue necesitando la ampliación de (a). No la recomiendo: dos
+enumerados de exclusión para el mismo campo complican F-040 sin ganar nada.
+
+### Lo que haré al retomarlo, salvo que el líder diga otra cosa
+
+Ninguno de estos puntos bloquea, porque la spec no los fija. Los dejo escritos
+para que la confirmación cubra también esto:
+1. **El orden de las `excluidas`** sigue siendo el pedido (la regla de
+   `Seleccion` de F-059). Para mezclar las de la selección con las de la guarda,
+   `aplicar_guarda_de_sigrid` recibe también las pedidas, en su orden. Su firma
+   en §15.6 no las nombra.
+2. **El cruce de la guarda** se hace con las situaciones de lo que se manda, en
+   el orden pedido (O-A4b-3), y no con la bandeja entera. El veredicto de una
+   candidata solo depende de su situación, de las reclamaciones de su unidad y
+   de las que llevan su `PVI-` (`propias`). Lo fijará un test: el veredicto del
+   ensayo es el mismo que el de la ruta con toda la obra (R49), con la excepción
+   escrita.
+3. **Las unidades que se leen** son los códigos **vigentes** de las situaciones
+   mandadas (`valores_vigentes`, lo mismo que indexa `cruzar`): distintos,
+   ordenados y tal cual, sin recortar, como compara `u.cod`.
+4. **`leido_at_utc`** del bloque `sigrid` es el `ahora` del ensayo. La guarda lo
+   recibe, porque su firma tampoco lo nombra.
+5. **La línea de R48** sale también si, después de la guarda, el login o el
+   lote fallan, con `llamada=-`: «una línea por lectura». Por eso `ensayar`
+   llama a la guarda y registra su línea al final, o con `-` si sale por error.
+6. **«Confirmaciones sobrantes»**: las entradas de `conflictos_confirmados` de
+   una incidencia que, en esta lectura, no es `choca`, contadas por incidencia.
+7. **El log de R25 del adaptador** gana `unidades=<n>`, y `unidades=-` en la
+   lectura de toda la obra (la de la ruta). En `test_f065_adaptador.py` (de
+   F-065) la expresión `LINEA` gana un grupo **al final**, así que los índices
+   de los grupos que ya se comprueban no cambian.
+8. **`ficha`** pasa a `FichaReclamacion | None` en `FilaReclamacionObra` y en
+   `ReclamacionSigrid`. La ruta sigue leyendo sin `unidades` (31 columnas, ficha
+   no nula). La guarda lee 12 columnas con `ficha=None`, con un mapeo propio. Un
+   test fija que `mirar_sigrid` no pasa `unidades` (O-A4b-3, L-7).
+9. **L-3** (el estado desconocido o vacío de la emparejada) no se toca.
+
+### Estado
+
+- T15, T16 y T17 siguen `[ ]`: no se ha escrito ningún test ni nada de código.
+- Mutación, cobertura y «Evidencias» de T15–T17: no aplican todavía, porque no
+  hay cambio que medir.
+- Lo único versionado es esta sección.

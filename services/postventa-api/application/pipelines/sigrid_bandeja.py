@@ -20,6 +20,9 @@ bandeja (`RevisionPort`, F-056, sin cambiarlo) y las reclamaciones de la obra
    `ObraAmbigua` (409), como el catálogo de F-036 (R9). Cero filas no es un
    error: se cruza igual, con la lista vacía.
 5. `cruzar` del dominio, con la bandeja **entera** de la obra.
+6. `veredictos` del dominio sobre ese cruce (R41, R42; Bloque A4 bis): el de
+   cada candidata, en el orden de la bandeja (R25 de F-056). Es la **misma**
+   función que usará el ensayo de F-059; aquí no se recalcula nada.
 
 Nada más: ninguna otra operación de ningún puerto, ninguna escritura y nada
 guardado entre peticiones (R28, R37). Si un puerto falla, su error sube tal
@@ -42,7 +45,13 @@ from domain.models.errores import (
     ReclamacionesSinVerificar,
 )
 from domain.models.revision import TOPE_LECTURA_OBRA, SituacionDeRevision
-from domain.models.sigrid_bandeja import Cruce, ReclamacionSigrid, cruzar
+from domain.models.sigrid_bandeja import (
+    Cruce,
+    ReclamacionSigrid,
+    VeredictoDeVolcado,
+    cruzar,
+    veredictos,
+)
 from domain.ports.reclamaciones_obra import FilaReclamacionObra, ReclamacionesObraPort
 from domain.ports.revision import RevisionPort
 
@@ -54,12 +63,14 @@ class VistaDeSigrid:
     """Lo que la ruta enseña: la bandeja leída y su cruce con Sigrid.
 
     `situaciones` es la bandeja entera de la obra (el borde saca de ahí los
-    vigentes de las incidencias con hallazgos); `cruce`, el del dominio.
+    vigentes de las incidencias con hallazgos); `cruce`, el del dominio;
+    `veredictos`, el de cada candidata, en el orden de `situaciones` (R41).
     """
 
     obra_codigo: str
     situaciones: tuple[SituacionDeRevision, ...]
     cruce: Cruce
+    veredictos: tuple[VeredictoDeVolcado, ...]
 
 
 def mirar_sigrid(
@@ -99,7 +110,12 @@ def mirar_sigrid(
         )
 
     cruce = cruzar(situaciones, [_reclamacion_de(fila) for fila in lectura.filas])
-    return VistaDeSigrid(obra_codigo=obra_codigo, situaciones=tuple(situaciones), cruce=cruce)
+    return VistaDeSigrid(
+        obra_codigo=obra_codigo,
+        situaciones=tuple(situaciones),
+        cruce=cruce,
+        veredictos=veredictos(situaciones, cruce),
+    )
 
 
 def _reclamacion_de(fila: FilaReclamacionObra) -> ReclamacionSigrid:

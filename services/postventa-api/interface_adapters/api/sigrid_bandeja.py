@@ -18,7 +18,7 @@ sin configuración falla nombrando las variables) y **después** la base.
 ## La respuesta (R20, R21, R22)
 
 `{obra, leido_at_utc, criterio, reclamaciones, hallazgos, incidencias,
-resumen}`. Las reclamaciones y los hallazgos van en el orden del cruce, que ya
+resumen, volcado}` (`volcado`, abajo). Las reclamaciones y los hallazgos van en el orden del cruce, que ya
 es el de R21 (los `coincide` de una incidencia, en el de R18). `guardado_cod`
 viaja en todos los hallazgos, `null` donde no toca (enmienda del 2026-10-28).
 La `ficha` de cada reclamación lleva **exactamente** la lista cerrada de R33,
@@ -32,6 +32,17 @@ e `incidencias_con_aviso`, las incidencias con **algún** hallazgo de esa
 severidad (una puede contar en las dos); `por_tipo` y `por_criterio`, sobre los
 hallazgos **que viajan** (con el tope de 10 `coincide` por incidencia de R18;
 el total real de cada una va en `incidencias[…].coincidencias_total`).
+
+## El bloque `volcado` (R42, Bloque A4 bis)
+
+Aditivo: lo de arriba no cambia. `{candidatas, por_veredicto, por_unidad,
+veredictos}`, con el veredicto de cada candidata que da el dominio
+(`VistaDeSigrid.veredictos`, R41), en el orden de la bandeja (R25 de F-056).
+Cada veredicto, con su `unidad_codigo` y su `estado` **vigentes** (los de lo
+aprobado) y **todos** sus `sigrid_cods`, sin el tope de 10 de los hallazgos.
+`por_veredicto` y cada unidad de `por_unidad` llevan siempre los cuatro
+veredictos, en el orden del enumerado; `por_unidad`, solo las unidades de las
+candidatas, por código. Es lo que enseña el paso (2) de «Registrar» (F-040).
 
 ## La línea de la ruta (R24, R38)
 
@@ -79,6 +90,7 @@ from domain.models.sigrid_bandeja import (
     ReclamacionSigrid,
     Severidad,
     TipoHallazgo,
+    Veredicto,
 )
 from domain.ports.reclamaciones_obra import ReclamacionesObraPort
 from domain.ports.revision import RevisionPort
@@ -236,6 +248,7 @@ def _cuerpo(vista: VistaDeSigrid, leido: datetime) -> dict[str, Any]:
         "hallazgos": [_hallazgo(h) for h in cruce.hallazgos],
         "incidencias": _incidencias(vista),
         "resumen": _resumen(vista),
+        "volcado": _volcado(vista),
     }
 
 
@@ -306,6 +319,37 @@ def _resumen(vista: VistaDeSigrid) -> dict[str, Any]:
         "por_tipo": {t.value: tipos[t] for t in TipoHallazgo},
         "por_criterio": {c.value: criterios[c] for c in Criterio},
     }
+
+
+def _volcado(vista: VistaDeSigrid) -> dict[str, Any]:
+    """El bloque de R42: las candidatas con su veredicto, en el orden de la bandeja."""
+    por_id = {s.incidencia.incidencia_id: s for s in vista.situaciones}
+    por_unidad: dict[str, Counter[Veredicto]] = {}
+    filas: list[dict[str, Any]] = []
+    for v in vista.veredictos:
+        situacion = por_id[v.incidencia_id]
+        unidad = valores_vigentes(situacion).unidad_codigo
+        por_unidad.setdefault(unidad, Counter())[v.veredicto] += 1
+        filas.append(
+            {
+                "incidencia_id": str(v.incidencia_id),
+                "unidad_codigo": unidad,
+                "estado": estado_de(situacion).value,
+                "veredicto": v.veredicto.value,
+                "sigrid_cods": list(v.sigrid_cods),
+            }
+        )
+    return {
+        "candidatas": len(vista.veredictos),
+        "por_veredicto": _por_veredicto(Counter(v.veredicto for v in vista.veredictos)),
+        "por_unidad": {u: _por_veredicto(por_unidad[u]) for u in sorted(por_unidad)},
+        "veredictos": filas,
+    }
+
+
+def _por_veredicto(cuentas: Counter[Veredicto]) -> dict[str, int]:
+    """Los cuatro veredictos siempre, en el orden del enumerado (R42)."""
+    return {v.value: cuentas[v] for v in Veredicto}
 
 
 def _con_severidad(hallazgos: tuple[Hallazgo, ...], severidad: Severidad) -> int:

@@ -12,14 +12,18 @@ R21 y R36. Toda la obra de Sigrid frente a toda la bandeja de la obra, en
   estado de Sigrid (R17), el tope de 10 por incidencia (R18) y su total;
 - el **parecido** de dos descripciones, Jaccard sobre palabras significativas
   (R36, N-2), sin IA ni distancia de edición;
-- el **orden** estable de las reclamaciones y de los hallazgos (R21).
+- el **orden** estable de las reclamaciones y de los hallazgos (R21);
+- el **veredicto** de cada candidata al volcado (`veredictos`, R41; §15.2),
+  sobre **todos** sus pares (`Cruce.pares`, sin el tope de R18), el mismo para
+  la ruta de F-065 y para el ensayo de F-059.
 
 El cruce es **por unidad** (§5.2): un índice por código de unidad deja cada
 incidencia frente a las decenas de reclamaciones de su unidad, no frente a los
 miles de la obra.
 
 Avisa, no bloquea (Q-4): nada de aquí decide si una incidencia se puede
-aprobar. Y no mira la ficha de R33: la lleva tal cual.
+aprobar; el veredicto solo dice qué pasaría al mandarla a Sigrid. Y no mira la
+ficha de R33: la lleva tal cual.
 
 Sin red, sin base de datos y sin reloj: las fechas son datos.
 """
@@ -40,6 +44,7 @@ from domain.models.plantilla_incidencias import normalizar_para_clave, plegar
 from domain.models.revision import (
     EstadoRevision,
     SituacionDeRevision,
+    es_candidata,
     estado_de,
     valores_vigentes,
 )
@@ -115,6 +120,19 @@ class TipoHallazgo(StrEnum):
     REFERENCIA_DESCONOCIDA = "referencia_desconocida"
 
 
+class Veredicto(StrEnum):
+    """Lo que pasaría al mandar una candidata a Sigrid (R41, §15.2).
+
+    En este orden, el de los recuentos de R42; la precedencia es otra (ver
+    `veredictos`).
+    """
+
+    VA = "va"
+    SE_ENLAZA = "se_enlaza"
+    YA_EXISTE = "ya_existe"
+    CHOCA = "choca"
+
+
 #: R16: las que se cruzan por los criterios; las `descartada` y las `volcada`, no.
 EVALUABLES = frozenset(
     {
@@ -134,6 +152,8 @@ _SEVERIDAD_DE_ESTADO: Mapping[str | None, Severidad] = MappingProxyType(
 _ESTADOS_CONOCIDOS = frozenset(estado.value for estado in EstadoSigrid)
 _ORDEN_DE_SEVERIDAD = {severidad: i for i, severidad in enumerate(Severidad)}
 _ORDEN_DE_TIPO = {tipo: i for i, tipo in enumerate(TipoHallazgo)}
+#: R41: `ya_existe` exige un par con **los dos** criterios.
+_LOS_DOS_CRITERIOS = frozenset(Criterio)
 
 #: Un UUID en su forma de 36 caracteres; las mayúsculas dan igual (R10).
 _PATRON_UUID = re.compile(
@@ -206,6 +226,36 @@ class Hallazgo:
 
 
 @dataclass(frozen=True)
+class ParDeCoincidencia:
+    """Un par de una incidencia evaluable con una reclamación de su unidad
+    (R14–R17), con lo que el veredicto necesita de él (§15.2).
+
+    `estado` es siempre uno de los cuatro que dan pares (`ABIERTAS` y
+    `CERRADAS`, R17).
+    """
+
+    sigrid_cod: str
+    estado: EstadoSigrid
+    criterios: tuple[Criterio, ...]
+    parecido: int | None
+    fecha: date | None
+
+
+@dataclass(frozen=True)
+class VeredictoDeVolcado:
+    """El veredicto de una candidata, con los códigos que lo deciden, en el
+    orden de R18 (R41)."""
+
+    incidencia_id: UUID
+    veredicto: Veredicto
+    sigrid_cods: tuple[str, ...]
+
+
+def _sin_pares() -> Mapping[UUID, tuple[ParDeCoincidencia, ...]]:
+    return MappingProxyType({})
+
+
+@dataclass(frozen=True)
 class Cruce:
     """El resultado de `cruzar`.
 
@@ -217,6 +267,10 @@ class Cruce:
     - `evaluadas`: cuántas incidencias se cruzaron por los criterios (R16).
     - `estados_desconocidos`: cuántas reclamaciones traen un estado que no es
       ninguno de los cinco, también sin estado (R17).
+    - `pares` (§15.2, Bloque A4 bis): **todos** los pares de cada incidencia
+      evaluable que tiene alguno, sin el tope de R18 (que es de la vista) y en
+      su orden; las mismas claves que `coincidencias_total`. Es lo que mira
+      `veredictos`.
     """
 
     reclamaciones: tuple[tuple[ReclamacionSigrid, UUID | None], ...]
@@ -224,6 +278,7 @@ class Cruce:
     coincidencias_total: Mapping[UUID, int]
     evaluadas: int
     estados_desconocidos: int
+    pares: Mapping[UUID, tuple[ParDeCoincidencia, ...]] = field(default_factory=_sin_pares)
 
 
 class _Texto(NamedTuple):
@@ -545,6 +600,7 @@ def cruzar(
     indice = _indice_por_unidad(reclamaciones)
     evaluadas = 0
     coincidencias_total: dict[UUID, int] = {}
+    todos_los_pares: dict[UUID, tuple[ParDeCoincidencia, ...]] = {}
     for incidencia_id, situacion in por_id.items():
         if estados[incidencia_id] not in EVALUABLES:
             continue
@@ -553,6 +609,7 @@ def cruzar(
         if pares:
             pares.sort(key=_orden_de_par, reverse=True)
             coincidencias_total[incidencia_id] = len(pares)
+            todos_los_pares[incidencia_id] = tuple(_par(c, h) for c, h in pares)
             # Cada `coincide` lleva su puesto en R18: así sale en ese orden (R21).
             hallazgos.extend(
                 _Ordenable(h, puesto)
@@ -567,4 +624,75 @@ def cruzar(
         coincidencias_total=MappingProxyType(coincidencias_total),
         evaluadas=evaluadas,
         estados_desconocidos=desconocidos,
+        pares=MappingProxyType(todos_los_pares),
     )
+
+
+def _par(candidata: _Candidata, hallazgo: Hallazgo) -> ParDeCoincidencia:
+    r = candidata.reclamacion
+    return ParDeCoincidencia(
+        sigrid_cod=r.cod,
+        # Solo dan pares los cuatro estados de `_SEVERIDAD_DE_ESTADO`.
+        estado=EstadoSigrid(r.estado),
+        criterios=hallazgo.criterios,
+        parecido=hallazgo.parecido,
+        fecha=r.fecha,
+    )
+
+
+# --------------------------------------------------------------------------
+# R41 · el veredicto de cada candidata al volcado
+# --------------------------------------------------------------------------
+
+
+def veredictos(
+    situaciones: Sequence[SituacionDeRevision], cruce: Cruce
+) -> tuple[VeredictoDeVolcado, ...]:
+    """El veredicto de cada candidata de `situaciones`, en su orden (R41, §15.2).
+
+    Solo las candidatas (`es_candidata`: `aprobada` o `en_duda`); las demás no
+    tienen veredicto. `cruce` es el de la bandeja entera (`cruzar`), y de él se
+    miran la reclamación emparejada de cada una (`Cruce.reclamaciones`) y
+    **todos** sus pares (`Cruce.pares`). La precedencia:
+
+    0. `choca` si la emparejada por `PVI-` (la de código mayor, R13 bis) está
+       en `NPR`, con solo su código (*enmienda del humano a S-3, 2026-10-28*);
+    1. `se_enlaza` si hay emparejada (y no está en `NPR`), con su código;
+    2. `ya_existe` si algún par tiene los dos criterios y una reclamación
+       abierta, con los códigos de esos pares;
+    3. `choca` si algún otro par es de conflicto, con los de todos ellos;
+    4. `va` en los demás casos, sin códigos.
+
+    Los códigos, en el orden de los pares, que es el de R18.
+    """
+    emparejadas = {
+        incidencia_id: r for r, incidencia_id in cruce.reclamaciones if incidencia_id is not None
+    }
+    resultado: list[VeredictoDeVolcado] = []
+    for situacion in situaciones:
+        if not es_candidata(situacion):
+            continue
+        incidencia_id = situacion.incidencia.incidencia_id
+        veredicto, codigos = _veredicto(
+            emparejadas.get(incidencia_id), cruce.pares.get(incidencia_id, ())
+        )
+        resultado.append(VeredictoDeVolcado(incidencia_id, veredicto, codigos))
+    return tuple(resultado)
+
+
+def _veredicto(
+    emparejada: ReclamacionSigrid | None, pares: tuple[ParDeCoincidencia, ...]
+) -> tuple[Veredicto, tuple[str, ...]]:
+    if emparejada is not None:
+        # La pasarela no puede crear otro parte con esa referencia (S-3): los
+        # pares no cambian lo que pasará al mandarla.
+        if emparejada.estado == EstadoSigrid.NPR:
+            return Veredicto.CHOCA, (emparejada.cod,)
+        return Veredicto.SE_ENLAZA, (emparejada.cod,)
+    abiertos = [p for p in pares if p.estado in ABIERTAS]
+    los_dos = tuple(p.sigrid_cod for p in abiertos if frozenset(p.criterios) == _LOS_DOS_CRITERIOS)
+    if los_dos:
+        return Veredicto.YA_EXISTE, los_dos
+    if abiertos:
+        return Veredicto.CHOCA, tuple(p.sigrid_cod for p in abiertos)
+    return Veredicto.VA, ()

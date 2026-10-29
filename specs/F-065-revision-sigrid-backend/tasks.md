@@ -245,7 +245,7 @@
   para un juego de fixtures, el veredicto con todas las reclamaciones de la
   obra es igual al de solo las de sus unidades, con el caso escrito de un
   `PVI-` en otra unidad. | Verificación: `python -m pytest tests/test_f065_veredicto.py` en **rojo**, traza en el informe
-- [ ] **T14**: `Veredicto`, `VeredictoDeVolcado`, `ParDeCoincidencia`,
+- [x] **T14**: `Veredicto`, `VeredictoDeVolcado`, `ParDeCoincidencia`,
   `Cruce.pares` y `veredictos` en `domain/models/sigrid_bandeja.py`, y el
   bloque `volcado` en el pipeline y el borde de la ruta (R41, R42). | Verificación: `python -m pytest tests/test_f065_veredicto.py tests/test_f065_dominio.py tests/test_f065_http.py` en verde
 - [ ] **T15**: tests RED de la guarda (`tests/test_f065_guarda_ensayo.py` y

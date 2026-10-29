@@ -196,7 +196,7 @@
 
 ## Bloque A4 · La aplicación, el borde y las rutas
 
-- [ ] **T7**: tests RED (`tests/test_f065_aplicacion.py`,
+- [x] **T7**: tests RED (`tests/test_f065_aplicacion.py`,
   `tests/test_f065_http.py`, `tests/test_f065_datos_personales.py`): en el
   listado, el orden de lecturas, **una** de la base y **como mucho una** de
   Sigrid (R3), 409 por la bandeja sin leer Sigrid (R4), 409 al techo sin

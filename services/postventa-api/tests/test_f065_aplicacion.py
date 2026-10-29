@@ -446,6 +446,17 @@ def test_f065_r9_cero_filas_es_una_vista_vacia_y_no_un_error() -> None:
 # ==========================================================================
 
 
+def test_f065_r19_la_vista_no_se_puede_cambiar_despues_de_cruzar() -> None:
+    """Lo que el borde serializa es lo que se cruzó: nadie lo reescribe por el camino."""
+    import dataclasses
+
+    _, revision, lector = _mundo(*obra_de_ejemplo())
+    vista = _mirar(revision, lector)
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        vista.situaciones = ()  # type: ignore[misc]
+
+
 def test_f065_r19_la_vista_lleva_la_bandeja_entera_y_el_cruce_del_dominio() -> None:
     situaciones, filas = obra_de_ejemplo()
     _, revision, lector = _mundo(situaciones, filas)

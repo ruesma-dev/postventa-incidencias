@@ -914,6 +914,37 @@ def test_f065_r24_una_linea_con_200_con_los_tramos_los_recuentos_y_los_bytes(mun
     assert list(campos)[-5:] == ["reclamaciones", "evaluadas", "conflictos", "avisos", "bytes"]
 
 
+def test_f065_r24_los_bytes_son_los_del_cuerpo_tambien_con_acentos(monkeypatch, caplog) -> None:
+    """Los bytes que viajan, en UTF-8: con `ensure_ascii` saldrían de más (precriba de mutación)."""
+    caplog.set_level(logging.INFO)
+    situaciones, filas = obra_de_ejemplo()
+    filas = (*filas, fila("RS26.09/0998", descripcion="Ejemplo de baño con grieta en el alféizar"))
+    _componer(monkeypatch, Mundo(situaciones, filas))
+
+    respuesta = _get()
+
+    cuerpo = respuesta.get_body()
+    assert "alféizar".encode() in cuerpo, "el cuerpo tiene que llevar algo que no sea ASCII"
+    (linea,) = _lineas(caplog)
+    assert _campos_de_la_linea(linea)["bytes"] == str(len(cuerpo))
+
+
+def test_f065_r24_un_proceso_recien_arrancado_dice_proceso_nuevo_true() -> None:
+    """El indicador propio empieza apagado: la primera petición del proceso es la nueva.
+
+    Con una copia **recién cargada** del módulo, como la de un proceso que arranca
+    (los demás tests ponen el indicador a mano y no verían su valor inicial).
+    """
+    import importlib.util
+
+    especificacion = importlib.util.find_spec("interface_adapters.api.sigrid_bandeja")
+    assert especificacion is not None and especificacion.loader is not None
+    recien_cargado = importlib.util.module_from_spec(especificacion)
+    especificacion.loader.exec_module(recien_cargado)
+
+    assert [recien_cargado._es_primera_de_sigrid() for _ in range(3)] == [True, False, False]
+
+
 @pytest.mark.parametrize(
     ("caso", "esperado"),
     [

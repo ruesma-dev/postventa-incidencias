@@ -856,7 +856,8 @@ obra > ≈ 10 s, guarda > ≈ 3 s.
 | `interface_adapters/api/sigrid_bandeja.py`, `application/pipelines/sigrid_bandeja.py` | (nuevos en esta ficha) el bloque `volcado` (R42) |
 | `infrastructure/sigrid/consultas_reclamaciones_obra.py`, `reclamaciones_obra.py`, `domain/ports/reclamaciones_obra.py` | (nuevos) la segunda consulta y `leer(..., unidades=None)`; el log de R25 gana `unidades=<cuántas>` |
 | `infra/29_reclamaciones_obra_sigrid.ps1` | (nuevo) `-Unidades` (R70) |
-| `tests/test_f059_volcado_http.py`, `tests/test_f059_pipeline_volcado.py` | **Solo** el doble del lector de reclamaciones (vacío) donde se construye el ensayo, para que sigan probando lo mismo; **ninguna aserción cambia**. Lo fija la guarda de alcance de F-065 |
+| `tests/test_f059_volcado_http.py`, `tests/test_f059_pipeline_volcado.py` | **Solo** el doble del lector de reclamaciones (vacío) donde se construye el ensayo, para que sigan probando lo mismo; **ninguna aserción cambia**, salvo la ampliación aditiva de abajo. Lo fija la guarda de alcance de F-065 |
+| `tests/test_f059_volcado_http.py` (`CLAVES_DEL_ENSAYO`), `tests/test_f059_volcado_dominio.py` (`test_f059_r11_r18_los_motivos_de_exclusion`) | **Ampliaciones aditivas** (enmienda del líder del 2026-10-29, por el bloqueo de T15–T17): `CLAVES_DEL_ENSAYO` gana `"sigrid"` (R47) y la lista de motivos gana, al final, `"duplicada_en_sigrid"` y `"conflicto_sin_confirmar"` (R45, S-1). No se quita ni se cambia ningún valor ni ninguna otra aserción; son la consecuencia directa de R45 y R47, ya aprobados |
 | `docs/ARCHITECTURE.md` (sección de F-059), `docs/INTEGRACION.md` §1 y §4, `azure-apps/postventa_incidencias.md` | El ensayo lee Sigrid una vez más, solo `sql/read`, sin datos personales |
 
 **Lo que NO se toca**: `infrastructure/sigrid/volcado.py` (el adaptador de

@@ -694,3 +694,161 @@ líneas cambiadas cubiertas (234/234, umbral 80%, nivel critico)`. Ningún test 
 **Aceptado por el humano el 2026-10-29** («acepto»): R4 es un mutante equivalente, por el motivo de §4 (la
 ordenación de Python es estable y los `coincide` entran ya en el orden de R18, así que el desempate por puesto no
 cambia ninguna salida). Con C-A2-3 y C-A2-4 cerrados, **Bloque A2 APROBADO**, como dejó dicho el reviewer.
+
+## Review del Bloque A3 (T5, T6) · 2026-10-29
+
+- **Veredicto:** **APPROVED**. Sin cambios requeridos. Tres decisiones del implementer donde la spec calla (§3), para que el líder las lleve al humano si lo ve oportuno; ninguna cambia nada aprobado.
+- **Alcance revisado:** `git diff 4246645..be4cc4f`: T5 `f82abfb`, T6 `883d7be`, informe `be4cc4f`. Tres módulos
+  nuevos (`domain/ports/reclamaciones_obra.py`, `infrastructure/sigrid/consultas_reclamaciones_obra.py`,
+  `infrastructure/sigrid/reclamaciones_obra.py`), 46 líneas **añadidas** a `infrastructure/sigrid/fabrica.py`, dos
+  ficheros de tests (183 tests) y dos casillas de `tasks.md`. Contrastado con R2, R5, R6, R8, R9, R14, R25, R27,
+  R33, R38 y R40, `design.md` §2, §3, §4, §8, §9 y §10.2 (con la enmienda del 2026-10-28), `docs/CONVENTIONS.md` y
+  `CHECKPOINTS.md`. Nada del Bloque A4 ni posterior.
+- **Nivel de rigor:** `critico`, declarado en `harness/features.json`. Exige: fase RED con la traza pegada,
+  cobertura ≥ 80 % de lo cambiado, campaña de mutación con cero supervivientes (también a mano) salvo justificación
+  escrita que acepte el humano, y «Evidencias» con los workers.
+- **No me he conectado** a Sigrid, a la base ni a SharePoint. Las mutaciones, en un `git worktree` desechable del
+  scratchpad sobre `be4cc4f` (ya borrado); `git status` del worktree de la feature, limpio antes y después.
+
+### `init.sh`
+
+`bash harness/init.sh`, tal cual, una pasada en el worktree sobre `be4cc4f`: **exit 0, «ENTORNO LISTO»**. Raíz 115 passed; servicio api **9481 passed, 365 skipped in 1879,49 s**; front en verde; `PUERTA COBERTURA: 100.0% de 377 líneas cambiadas cubiertas (377/377, umbral 80%, nivel critico)`. Ningún test de tiempo cayó (mis mutantes a mano corrieron a la vez, con la suite reducida). ruff: 78 avisos de deuda (no bloquea); de los seis ficheros del bloque, solo `I001`, en `fabrica.py` (ya lo tenía), `reclamaciones_obra.py` y los dos tests: el salto de línea entre `domain` y `infrastructure`/`tests`, que es el estilo del repositorio, más lo de O-A3-1.
+
+### 1 · Lo que pidió mirar el líder
+
+| Punto | Comprobación | Resultado |
+|---|---|---|
+| Solo `/api/sql/read` | El adaptador hereda `_un_intento` (`POST {base}{RUTA_LECTURA}`, `RUTA_LECTURA = "/api/sql/read"`) y no nombra otra ruta; no importa `escrituras`, `graficos` ni `volcado` | **[x]** |
+| La consulta = `design.md` §3 = script 29 | Comparación mía, independiente de los tests: el bloque `sql` de §3, el here-string `$SQL_RECLAMACIONES_DE_LA_OBRA` de `infra/29_…ps1` (ASCII, sin BOM, CRLF→LF) y `SQL_RECLAMACIONES_DE_LA_OBRA`: **idénticos** los tres; 4 marcadores `?`; ningún `dni`, `esiglog`, `esigpas`, `clamai`, `dir*` ni `per.tex` (el `r.tex` es `rcp.tex`, de R33) | **[x]** |
+| El recorte de T5 | `estado_codigo`, `cod`, `tipo_codigo`, `clase_codigo` con `_codigo` (strip; vacío → `None`; `cod` vacío → error sin la fila); `unidad_codigo` y `oficio_codigo` con `_texto`, igual que `fila_a_unidad_catalogo` / `fila_a_oficio_catalogo` de F-036 (comprobado en `consultas_catalogo.py`). Cada uno con su test; mis RV10–RV12 mueren | **[x]** |
+| `truncated`, techo y mal formada → error, nunca a medias (R8) | `llego_al_techo = filas ≥ tope or truncated`; `rows` que no es lista, `truncated` que no es booleano, no-JSON, no-objeto y cualquier fila mal formada → `CatalogoNoDisponible` (503), sin devolver nada; lo transitorio, con la política de F-036 | **[x]** |
+| Ningún dato personal en logs ni `repr` (R33, R38, R40) | Una línea de log con obra, filas, `al_techo`, `truncated` y segundos; nada con error. Todos los campos de las dos dataclasses con `repr=False`; los errores de fecha y de forma de comunicación, con mensaje fijo y `from None` | **[x]** |
+| Ningún secreto, host ni ID | Barrido del diff: ni URLs reales, ni IPs, ni GUID, ni correos fuera de `@ejemplo.invalid`; la clave solo viaja a la cabecera heredada | **[x]** |
+| La suite reducida de la mutación | Búsqueda de `reclamaciones_obra` / `construir_reclamaciones_obra` en todo el worktree: solo los tres módulos entre sí, `fabrica.py`, `domain/models/sigrid_bandeja.py` (bajo `TYPE_CHECKING`, no se ejecuta) y los dos ficheros de T5 (`test_f012_scripts_infra.py` solo coincide por el nombre de otro script). Y un mutante que muere con un subconjunto muere con la suite entera: la reducida solo podría esconder supervivientes, y no hay ninguno | **válida** |
+
+### 2 · La mutación
+
+| Comprobación | Resultado |
+|---|---|
+| Alcance recalculado (`alcance_de_feature("F-065", base="4246645", rama="883d7be")`) | 4 ficheros, **516** líneas (115 + 208 + 46 + 147), como el informe |
+| Mutantes recalculados (`generar_mutantes`, puro) | **58** (booleano 35, lógico 8, `not` 7, entero 4, comparación 3, aritmético 1; `fabrica.py` 0), como el informe |
+| **Los 58 reejecutados** por mí, con `aplicar_mutante` y la misma suite reducida, en la copia desechable | **58 muertos, 0 supervivientes**, 247,9 s |
+| Coste por mutante del informe (326,6 s × 1 ÷ 58) | 5,6 s, con una suite de 2,3 s más el arranque del intérprete: cuadra |
+
+El «Tiempo total» del informe pasa de 5 minutos, así que el protocolo me dejaba en el recálculo puro; como con la
+suite reducida es barato, la he reejecutado de todos modos. **Campaña con la suite entera del servicio, no
+reejecutada** (la suite tarda ~1 h): por el argumento de la tabla de §1, no cambia el cero.
+
+Con cero supervivientes no hay nada que muestrear. `fabrica.py` no da mutantes de la herramienta (lo añadido no
+tiene operadores): lo cubren los mutantes a mano del implementer (MA19–MA21) y mis RV1–RV2.
+
+**Mutantes a mano propios** (20, distintos de los MA1–MA23 del implementer o en otra forma), cada uno contra los
+dos ficheros de T5 enteros, sin `-x`. **Todos los caza un test de la propia feature**:
+
+| Id | Mutación | Resultado | Lo caza |
+|---|---|---|---|
+| RV1 | fábrica: configuración antes que entorno | muerto (3) | `r2_la_fabrica_se_niega_fuera_de_dev_y_pro_antes_que_la_configuracion` |
+| RV2 | fábrica: sin su puerta de entorno (queda la del constructor, después de la configuración) | muerto (5) | `r2_la_fabrica_fuera_de_entorno_no_construye_nada`, `…antes_que_la_configuracion` |
+| RV3 | `truncated` tolerante como F-036 (`bool(datos.get(...))`) | muerto (4) | `r8_r40_una_respuesta_mal_formada…` |
+| RV4 | `llego_al_techo` sin `truncated` | muerto (3) | `r8_truncated_por_debajo_del_techo_es_al_techo_y_no_503` |
+| RV5 | techo con `>` | muerto (3) | `r8_con_el_techo_o_mas…`, `r25_el_log_distingue…` |
+| RV6 | sin reintentos (`stop_after_attempt(1)`) | muerto (11) | los de reintento de R8 |
+| RV7 | el log con un campo más | muerto (5) | los tres de R25/R38 |
+| RV8 | un `log.debug` con el propietario de la primera fila | muerto (1) | `r25_r38_el_log_dice_obra_filas_techo_y_segundos_y_nada_mas` |
+| RV9 | el error de «sin filas» con el JSON dentro | muerto (2) | `r8_r40_una_respuesta_mal_formada…` |
+| RV10 / RV11 | la unidad / el oficio recortados | muertos (6 y 6) | `r14_la_unidad_y_el_oficio_van_tal_cual…` |
+| RV12 | la clase sin recortar | muerto (4) | `r6_el_tipo_y_la_clase_se_recortan…` |
+| RV13 | `rcptip` `0` → `None` | muerto (1) | `r33_la_forma_de_comunicacion_es_un_entero_tal_cual` |
+| RV14 / RV15 | correo del que reclama con el del contacto / `tel2` con `tel` | muertos (2 y 2) | `r6_r33_una_fila_completa_al_puerto`, `r6_una_tupla_vale_como_una_lista` |
+| RV16 | `fecha_prevista` desde `con.fec` | muerto (15) | `r6_r33_una_fila_completa…`, `r40_una_fecha_imposible…` |
+| RV17 | un espacio de más al final del SQL | muerto (3) | los tres de «carácter a carácter» (literal, §3, script 29) |
+| RV18 | `obra_ref` de solo blancos aceptada | muerto (1) | `r9_obra_ref_es_obligatoria` |
+| RV19 | el error de «sin código» con la fila | muerto (4) | `r6_el_codigo_es_obligatorio_y_sin_la_fila`, `r8_r40_…` |
+| RV20 | `reclama_telefono` en el `repr` | muerto (1) | `r40_la_fila_y_la_ficha_no_imprimen…` |
+
+**El orden (regla 7 del protocolo).** El orden central del bloque es el de R2: entorno → configuración en la
+fábrica, y el constructor que se niega sin abrir conexión. RV1 y RV2 bajan la puerta un paso por cada colaborador
+que precede y la suite de la feature se pone en rojo; el «sin abrir conexión» lo fijan los dos tests de R2 del
+constructor con un espía de `construir_cliente_http`. El orden «Sigrid antes que la base» es del Bloque A4.
+
+### 3 · Decisiones del implementer que la spec no fija (para el líder y, si quiere, el humano)
+
+Ninguna cambia nada aprobado. Las tres eligen donde la spec calla; las doy por buenas, pero las señalo:
+
+- **D-A3-1 · `truncated` que no es booleano (ausente, `null`, `"false"`, `0`) → 503.** R8 dice «mal formada → 503»
+  sin decir si un `truncated` ausente lo es. El catálogo de F-036 lo trata como `False`. La lectura del
+  implementer es la prudente (es la única señal de que la lista está entera, y R8 prohíbe cruzar a medias), y el
+  contrato de la pasarela (`azure-apps/sigrid_api.md` §6.1, leído hoy) dice que la respuesta **siempre** trae
+  `truncated`. El único riesgo: si una versión futura de la pasarela lo omitiera, esta ruta daría 503 siempre
+  mientras el catálogo seguiría funcionando. Me parece la elección correcta; es una línea si se prefiere la otra.
+- **D-A3-2 · `rcptip` (`forma_comunicacion`) `0` se queda `0`.** El «`0` a nulo» de T5 va con «`YYYYMMDD` a fecha», y
+  §6.6 de la pasarela lo dice de las **fechas**; `rcptip` es «Entero» en `sigrid_tablas.md`. Lectura coherente. Si
+  en Sigrid el `0` significa «sin forma», quien tiene que saberlo es F-064 (la página), no este bloque.
+- **D-A3-3 · `_leer_todas` en vez de «su propio `_leer`»** (§2). No sobrescribe el `_leer` heredado, así que
+  `leer_unidades` y `leer_oficios` siguen siendo los del catálogo para quien los llamara sobre esta clase. Mismo
+  diseño con otro nombre; mejor que sobrescribir.
+- *(Menor, sin decisión)* **Todo** con `repr=False`, también `obra_ref` y `cod`: §10.2 pide «textos con
+  `repr=False`» y que `obra_ref` «nunca sale»; ir a todos es más estricto, no distinto.
+
+### 4 · Trazabilidad requisito → test (lo de este bloque)
+
+| Requisito | Tests |
+|---|---|
+| R2 (adaptador y fábrica) | `test_f065_r2_el_adaptador_se_niega_fuera_de_dev_y_pro_sin_abrir_conexion`, `…en_dev_y_pro_se_construye_sin_abrir_conexion_hasta_leer`, `…la_fabrica_se_niega_fuera_de_dev_y_pro_antes_que_la_configuracion`, `…la_fabrica_fuera_de_entorno_no_construye_nada`, `…la_fabrica_nombra_lo_que_falta_y_ningun_valor`, `…la_fabrica_no_mira_ninguna_ventana_de_escritura`, `…la_fabrica_pasa_la_configuracion_al_adaptador` |
+| R5 | `test_f065_r5_el_filtro_de_obra_es_el_de_las_unidades_de_f036`, `…todos_los_estados_y_todas_las_fechas…`, `…los_parametros_en_el_orden_de_los_marcadores`, `…el_tipo_viaja…`, `…la_referencia_es_la_de_f059`, `…ningun_literal_en_el_texto` |
+| R6 / R33 | `test_f065_r6_la_consulta_caracter_a_caracter`, `…es_la_de_design_3`, `test_f065_r29_…identica_a_la_del_script_29`, `test_f065_r6_r33_las_treinta_y_una_columnas…`, `test_f065_r33_la_consulta_no_nombra_nada_vetado` (con control no ciego), `…ningun_ide_sale…`, el mapeo `test_f065_r6_r33_*` |
+| R8 | `test_f065_r8_*` (cuerpo y `max_rows`, techo, `truncated` por debajo, reintentos, definitivos, mal formada) |
+| R9 (lo del mapeo) | `test_f065_r9_obra_ref_es_obligatoria`, `…va_tal_cual`, `…cero_filas_es_una_lectura_vacia…` |
+| R12 / R17 / R14 (el recorte de §10.2) | `test_f065_r12_el_codigo_se_recorta`, `test_f065_r17_el_estado_se_recorta…`, `test_f065_r6_el_tipo_y_la_clase_se_recortan…`, `test_f065_r14_la_unidad_y_el_oficio_van_tal_cual…`, `test_f065_r14_los_nombres_y_los_textos_van_tal_cual` |
+| R25 / R38 | `test_f065_r25_r38_el_log_dice…`, `test_f065_r25_el_log_distingue_el_techo_de_truncated`, `…registra_la_duracion…`, `test_f065_r38_r40_con_error_nada_de_la_respuesta_llega_al_log` (con control no ciego) |
+| R27 | `test_f065_r27_ninguna_pieza_nueva_importa_las_escrituras`, `…la_unica_ruta_que_nombra_es_sql_read`, `test_f065_r2_r27_el_adaptador_solo_lee…` |
+| R40 | `test_f065_r40_*` (fechas y forma imposibles sin la fila, fila mal formada, `repr` de fila, ficha y lectura, inmutables) |
+
+R2 «antes que el repositorio», R3, R4, el 409 de R8 y el `obra_ambigua` de R9 son de la aplicación (Bloque A4).
+
+### Checkpoints
+
+- [x] C1 · `bash harness/init.sh` en verde (arriba). Ficheros del arnés presentes.
+- [x] C2 · Una sola `in_progress` (F-065); rama `feature/F-065-revision-sigrid-backend`; `current.md` y `history.md`
+  no son de este bloque (no los toco, por encargo).
+- [x] C3 · Hexagonal: el puerto solo importa del dominio; el SQL y el adaptador en `infrastructure/sigrid/`; el
+  adaptador importa del dominio `TOPE_RECLAMACIONES_OBRA` y `CatalogoNoDisponible`. Primera línea con la ruta en los
+  seis ficheros. Sin `print`, sin TODO, sin secretos, sin dependencias nuevas. El estado se lee por código contra
+  `conest`. Ningún PDF ni escaneado añadido (`git diff --diff-filter=A`: solo `.py` y `.md`). Los puntos de
+  partes, firmas, archivo y cierre, N/A: este bloque solo lee reclamaciones de Sigrid y no escribe nada.
+- N/A C3 bis · No toca `docs/referencia/`.
+- [x] C4 · Cada requisito del bloque con su test (tabla de §4); unit tests sin red (el `ClienteFalso` y la guardia
+  de `conftest.py`); sin verificaciones `MANUAL` en este bloque.
+- [x] C4 bis · `rigor` `critico` declarado. Fase RED con la salida real: el `ModuleNotFoundError` de `f82abfb` y,
+  para el requisito central del recorte, la traza de 11 fallos rompiéndolo en una copia. Cobertura: `[OK]` 100 %
+  (377/377). Mutación: informe de la herramienta, recalculado (516 líneas, 58 mutantes) y **reejecutado** (58/58);
+  0 supervivientes también a mano (23 del implementer, 20 míos, todos cazados por tests de la feature).
+  «Evidencias» con los cuatro números y el worker. Ningún N/A.
+- N/A C4 ter · Ninguna ruta sensible declarada toca este bloque (no hay prompt, schema ni migración; el SQL de
+  Sigrid está fijado por test carácter a carácter).
+- [x] C5 · T5 y T6 `[x]`, commits `F-065 T5: …` y `F-065 T6: …`; árbol limpio. `features.json` sigue en
+  `in_progress` (correcto: la feature no ha terminado).
+
+### Observaciones (no bloquean)
+
+- **O-A3-1 · Orden de importaciones en `fabrica.py`.** La nueva
+  `from domain.ports.reclamaciones_obra import ReclamacionesObraPort` (línea 94) va antes de
+  `from domain.ports.grafico import GraficoPort`: `ruff --select I001 --diff` lo marca además del salto de línea
+  entre bloques que ya marcaba antes (ese sí es el estilo del repositorio). El informe dice que es «el mismo» I001
+  de antes; no del todo. Cosmético, `CONVENTIONS.md` no lo exige: se puede ordenar en A4 si se toca el fichero.
+- **O-A3-2 · Para A4**: con D-A3-1, el borde no debe convertir el 503 de «no dice si viene cortada» en un 409; es
+  503 (R8, «mal formada»). Conviene un test HTTP que lo fije.
+
+### Cambios requeridos
+
+Ninguno. **Bloque A3 APROBADO.** Para el líder: D-A3-1 a D-A3-3 (§3), por si quiere llevarlas al humano, y
+O-A3-1/O-A3-2 para el encargo del Bloque A4.
+
+### Automejora (propuesta, no aplicada)
+
+En el protocolo del reviewer, regla de los 5 minutos: cuando la campaña se lanzó con una **suite reducida
+justificada** (como en A2 y A3), el umbral debería medirse contra lo que costaría reejecutarla con esa misma
+suite, no contra el «Tiempo total» del informe. Aquí el informe declaraba 326 s (más de 5 min, que me dejaba en
+el recálculo puro) y la reejecución completa costó 248 s con un guion de 30 líneas. Propuesta: «si la campaña
+usó una suite reducida, el reviewer la reejecuta con esa suite salvo que pase de 15 min». Vale para cualquier
+proyecto: candidata a `arnes-base` si el humano la aprueba.

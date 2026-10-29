@@ -1094,3 +1094,273 @@ es la cobertura de lo cambiado. La `PUERTA COBERTURA` de `init.sh`, del líder.
 | Cobertura de las líneas cambiadas | **100 %** (234/234 sentencias, 66/66 ramas) del módulo, medida con `coverage`; la puerta de `init.sh`, pendiente del líder |
 | Mutantes | Herramienta: **50 generados, 50 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 178,7 s, sobre `d3f94c8` con el árbol limpio (suite reducida). A mano: **27, 27 muertos, 0 supervivientes** (M12, muerto) |
 | Tiempo de la suite | 4,53 s la de F-065 (el test de coste, 3,50 s) |
+
+## Bloque A3 · T5 y T6 (2026-10-29)
+
+Encargo del líder: solo T5 y T6 (la consulta, el puerto, el adaptador de
+lectura y la fábrica), sobre la base aprobada del Bloque A2 (`4246645`). Sin
+conectar a Sigrid, a la base ni a SharePoint; sin tocar `features.json`,
+`BACKLOG.md` ni `current.md`; sin empezar el Bloque A4. `init.sh` entero lo
+ejecuta el líder.
+
+### Commits
+
+| Commit | Tarea | Qué |
+|---|---|---|
+| `f82abfb` | T5 | Los tests en RED: `tests/test_f065_consulta.py` y `tests/test_f065_adaptador.py`; T5 `[x]` |
+| `883d7be` | T6 | El puerto, la consulta, el adaptador y `construir_reclamaciones_obra`; T6 `[x]` |
+| (el siguiente) | — | Este informe y `progress/mutacion_F-065_bloqueA3.md` |
+
+### Ficheros tocados
+
+- **Nuevos**: `services/postventa-api/domain/ports/reclamaciones_obra.py`
+  (`FichaReclamacion`, `FilaReclamacionObra`, `ReclamacionesObraPort`);
+  `services/postventa-api/infrastructure/sigrid/consultas_reclamaciones_obra.py`
+  (`SQL_RECLAMACIONES_DE_LA_OBRA`, `CAMPO_REFERENCIA`, `PATRON_REFERENCIA`,
+  `COLUMNAS_RECLAMACION`, `select_reclamaciones_de_la_obra`,
+  `fila_a_reclamacion_obra`);
+  `services/postventa-api/infrastructure/sigrid/reclamaciones_obra.py`
+  (`AdaptadorReclamacionesObraSigridApi`); y los dos ficheros de tests.
+- **Modificado**: `services/postventa-api/infrastructure/sigrid/fabrica.py`:
+  solo se **añade** `construir_reclamaciones_obra`, su entrada en `__all__`,
+  dos importaciones y un párrafo de enmienda en la cabecera (46 líneas, todas
+  nuevas; ninguna fábrica existente cambia).
+- `specs/F-065-revision-sigrid-backend/tasks.md`: T5 y T6 `[x]`.
+- **Sin tocar** (comprobado con `git diff 4246645`): `catalogo_obra.py`,
+  `ubicaciones_validas.py`, `consultas_catalogo.py`, todo `domain/models/`
+  (también `sigrid_bandeja.py`), `tests/test_f036_adaptador_catalogo.py` y
+  `tests/test_f056_ubicaciones.py`.
+
+### Decisiones de diseño
+
+- **La consulta** es la de `design.md` §3 carácter a carácter, con saltos LF.
+  Tres tests la fijan: contra un literal en el test, contra el bloque `sql` de
+  §3 leído de `design.md`, y contra el here-string
+  `$SQL_RECLAMACIONES_DE_LA_OBRA` del script 29 (CRLF pasado a LF, que es lo
+  que el script manda por `ConvertTo-SqlConLf`). El test del script ya la
+  comparaba con §3
+  (`test_f065_r29_la_consulta_de_la_obra_es_la_de_design_caracter_a_caracter`);
+  con el nuevo, código = spec = script. `test_f065_scripts_infra.py` no se toca.
+- **Los parámetros**: `RCPCLI` (`CAMPO_REFERENCIA`), `PVI-%` (compuesto con
+  `PREFIJO_REFERENCIA` del dominio de F-059, para que el prefijo tenga un solo
+  dueño), el `tip` que pasa quien lee y la obra. El adaptador **no** lleva el
+  tipo en el constructor: lo pide `leer(..., tip=)`, como dice el puerto de
+  §10.2.
+- **El adaptador hereda** `AdaptadorCatalogoSigridApi` sin tocarlo y usa sus
+  `_un_intento`, `_mapear`, `_cabeceras` y `_cliente_http`. Su lectura propia
+  se llama **`_leer_todas`** y no `_leer`: así no sobrescribe el `_leer` del
+  catálogo, y los métodos heredados (`leer_unidades`, `leer_oficios`) siguen
+  siendo exactamente lo que eran. `design.md` §2 dice «compone su propio
+  `_leer`»: es el mismo diseño con otro nombre, por eso. La política de
+  `tenacity` se compone igual que en el catálogo (`es_transitorio`,
+  `wait_exponential`, `stop_after_attempt(self._reintentos)`), y `_fallo` es
+  propio del módulo y da el mismo `CatalogoNoDisponible` con la misma forma
+  (§2, conciliado).
+- **El techo**: `max_rows` = `TOPE_RECLAMACIONES_OBRA` (500.000, importado del
+  dominio). `llego_al_techo` = filas ≥ tope **o** `truncated`: un `truncated`
+  por debajo del tope **no** es el 503 de F-036, es «al techo» y la aplicación
+  dará 409 (A4).
+- **`truncated` que no es booleano** (ausente, `null`, `"false"`, `0`) es
+  **503** «la respuesta no dice si viene cortada». Lectura mía de R8
+  («respuesta mal formada → 503»): `truncated` es la única señal de que la
+  lista está entera, y darla por buena sin ella podría cruzar conflictos a
+  medias. El catálogo trata la ausencia como `False`; aquí no. La pasarela
+  siempre lo manda (`sigrid_api.md` §6.1). Si el reviewer prefiere la
+  tolerancia del catálogo, es una línea y un caso del test.
+- **El log** (R25, R38): una línea `F-065 reclamaciones de la obra leídas en
+  Sigrid: obra=… filas=… al_techo=… truncated=… segundos=…`. `al_techo` es
+  «filas ≥ tope» y `truncated` lo que dijo la pasarela, por separado (R25:
+  «si llegó al techo o vino `truncated`»); la lectura devuelve la `o` de los
+  dos. Con error no se registra nada (como F-036 y F-056).
+- **El mapeo** (§10.2): `obra_ref` tal cual y obligatoria (no vacía tras
+  recortar, como `FilaUnidadCatalogo`); `cod` recortado y obligatorio
+  («una reclamación sin código»); `estado_codigo`, `tipo_codigo` y
+  `clase_codigo` recortados, `None` si quedan vacíos; `unidad_codigo` y
+  `oficio_codigo` **tal cual** (también un código de solo blancos se queda
+  como llega), con su test; nombres y textos tal cual. Lo que no es `None` se
+  pasa a `str`, como el catálogo.
+- **Las fechas** (`con.fec`, `rcp.fecpre`): solo un `int` que no sea `bool`;
+  `0` y `NULL` son `None`; una fecha imposible, un texto, un `float` o un
+  `bool` son `ValueError` con un mensaje fijo, **sin el valor y sin causa**
+  (`from None`, para que la traza tampoco lleve el error de `date`).
+- **`forma_comunicacion`** (`rcp.rcptip`, «Entero» en `sigrid_tablas.md`): un
+  entero tal cual, **también el `0`**. El «`0` a nulo» de T5 lo leo de las
+  fechas (va junto a «`YYYYMMDD` a fecha»); `rcptip` es un código, y su `0`
+  puede ser una opción. Lo que no es entero es `ValueError` sin el valor.
+- **El `repr`** (R40): **todos** los campos de `FilaReclamacionObra` y de
+  `FichaReclamacion` con `repr=False`, también `cod` (un código `RS` no va a
+  ningún log, T-A15) y `obra_ref`. El `repr` es `FilaReclamacionObra()`.
+- **La fábrica**: entorno → configuración, como
+  `construir_ubicaciones_validas`; sin ninguna ventana; log `F-065 lector de
+  las reclamaciones de la obra en Sigrid construido en el entorno …`.
+
+### Desviaciones
+
+Ninguna respecto a la spec. Las dos lecturas que he tenido que concretar
+(`truncated` no booleano → 503, y `rcptip` `0` tal cual) y el nombre
+`_leer_todas` están arriba, justificadas, para la review.
+
+### Fase RED (Bloque A3)
+
+Los tests de T5 escritos antes que el código (`f82abfb`), desde
+`services/postventa-api`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_consulta.py tests/test_f065_adaptador.py -q --tb=short -p no:cacheprovider
+=================================== ERRORS ====================================
+________________ ERROR collecting tests/test_f065_consulta.py _________________
+ImportError while importing test module 'C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_consulta.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f065_consulta.py:32: in <module>
+    from domain.ports.reclamaciones_obra import FichaReclamacion, FilaReclamacionObra
+E   ModuleNotFoundError: No module named 'domain.ports.reclamaciones_obra'
+________________ ERROR collecting tests/test_f065_adaptador.py ________________
+ImportError while importing test module 'C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\tests\test_f065_adaptador.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f065_adaptador.py:45: in <module>
+    from domain.ports.reclamaciones_obra import ReclamacionesObraPort
+E   ModuleNotFoundError: No module named 'domain.ports.reclamaciones_obra'
+=========================== short test summary info ===========================
+ERROR tests/test_f065_consulta.py
+ERROR tests/test_f065_adaptador.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!
+2 errors in 2.19s
+```
+
+Como el RED de módulos nuevos es una importación que falla, el de **los
+requisitos centrales** se demuestra también con el código ya escrito,
+quitándolo: en una copia desechable sobre `883d7be`, con el estado **sin
+recortar** y la unidad **recortada** a la vez (`_codigo(estado)` →
+`_texto(estado)`, `_texto(unidad)` → `_codigo(unidad)`):
+
+```
+$ python -m pytest tests/test_f065_consulta.py -q --tb=line -p no:cacheprovider -k "estado_se_recorta or unidad_y_el_oficio"
+E   AssertionError: assert None == ''
+     +  where None = FilaReclamacionObra().unidad_codigo
+...\tests\test_f065_consulta.py:506: AssertionError: assert None == ''
+=========================== short test summary info ===========================
+FAILED tests/test_f065_consulta.py::test_f065_r17_el_estado_se_recorta_y_el_vacio_es_nulo[relleno]
+FAILED tests/test_f065_consulta.py::test_f065_r17_el_estado_se_recorta_y_el_vacio_es_nulo[blanco-delante]
+FAILED tests/test_f065_consulta.py::test_f065_r17_el_estado_se_recorta_y_el_vacio_es_nulo[los-dos-lados]
+FAILED tests/test_f065_consulta.py::test_f065_r17_el_estado_se_recorta_y_el_vacio_es_nulo[solo-blancos]
+FAILED tests/test_f065_consulta.py::test_f065_r17_el_estado_se_recorta_y_el_vacio_es_nulo[vacio]
+FAILED tests/test_f065_consulta.py::test_f065_r14_la_unidad_y_el_oficio_van_tal_cual_como_el_catalogo_de_f036[relleno]
+FAILED tests/test_f065_consulta.py::test_f065_r14_la_unidad_y_el_oficio_van_tal_cual_como_el_catalogo_de_f036[blanco-delante]
+FAILED tests/test_f065_consulta.py::test_f065_r14_la_unidad_y_el_oficio_van_tal_cual_como_el_catalogo_de_f036[oficio-relleno]
+FAILED tests/test_f065_consulta.py::test_f065_r14_la_unidad_y_el_oficio_van_tal_cual_como_el_catalogo_de_f036[oficio-blanco-delante]
+FAILED tests/test_f065_consulta.py::test_f065_r14_la_unidad_y_el_oficio_van_tal_cual_como_el_catalogo_de_f036[solo-blancos]
+FAILED tests/test_f065_consulta.py::test_f065_r14_la_unidad_y_el_oficio_van_tal_cual_como_el_catalogo_de_f036[vacio]
+11 failed, 2 passed, 97 deselected in 2.44s
+```
+
+(Las dos que pasan son los casos limpio y nulo del estado, que no dependen
+del recorte.) Los demás requisitos centrales, con los mutantes a mano de
+abajo: `truncated` como en F-036 (MA8), `max_rows` del catálogo (MA9), el
+`_leer` heredado (MA11), las puertas de la fábrica (MA19–MA21).
+
+Verde tras T6:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_consulta.py tests/test_f065_adaptador.py -q -p no:cacheprovider
+183 passed in 2.29s
+```
+
+### Tests (Bloque A3)
+
+| Suite | Resultado |
+|---|---|
+| `tests/test_f065_consulta.py` + `tests/test_f065_adaptador.py` (T5/T6) | **183 passed** en 2,29 s |
+| T6: `tests/test_f036_adaptador_catalogo.py` y `tests/test_f056_ubicaciones.py`, sin cambios | en verde (dentro de las dos de abajo) |
+| F-065 (los cuatro ficheros) + F-036/F-056 de T6 + las guardas de F-006 (`tests/test_f006_*.py`) | **791 passed** en 54,97 s |
+| Lo anterior más todas las guardas de arquitectura, fábricas, alcance cerrado (F-031…F-060) y logs/repo sin datos personales | **1359 passed, 234 skipped** en 245,38 s |
+
+`ruff check` (0.16.3) de los seis ficheros: solo `I001` (orden de
+importaciones), el mismo que ya dan con esta configuración `fabrica.py`,
+`ubicaciones_validas.py`, `test_f056_ubicaciones.py` y `test_f065_dominio.py`
+(el estilo del repositorio: `domain`/`infrastructure` y `tests` en bloques
+aparte). Ningún otro aviso.
+
+### Mutación (Bloque A3)
+
+**Herramienta**: `progress/mutacion_F-065_bloqueA3.md`, con `--base 4246645`,
+sobre `883d7be` con el árbol limpio, suite reducida a los dos ficheros de T5
+(la nota de su cabecera dice quién importa lo mutado y por qué vale).
+Alcance: 516 líneas (los tres módulos nuevos enteros y las 46 nuevas de
+`fabrica.py`).
+
+| Generados | Muertos | Supervivientes | Timeouts | Tiempo | Workers |
+|---|---|---|---|---|---|
+| **58** | **58** | **0** | 0 | **326,6 s** | 1 |
+
+**A mano** (lo que la herramienta no muta), cada uno contra los dos ficheros
+de T5 enteros, sin `-x`, en un `git worktree` desechable del scratchpad sobre
+`883d7be` (ya borrado), con `PYTHONDONTWRITEBYTECODE=1`:
+
+| Id | Mutación | Resultado | Lo caza |
+|---|---|---|---|
+| MA1 | el estado sin recortar | muerto (5) | `r17_el_estado_se_recorta_y_el_vacio_es_nulo` |
+| MA2 | el `cod` sin recortar | muerto (3) | `r12_el_codigo_se_recorta` |
+| MA3 | el tipo sin recortar | muerto (4) | `r6_el_tipo_y_la_clase_se_recortan…` |
+| MA4 | la clase sin recortar | muerto (4) | `r6_el_tipo_y_la_clase_se_recortan…` |
+| MA5 | la unidad recortada | muerto (6) | `r14_la_unidad_y_el_oficio_van_tal_cual…` |
+| MA6 | el oficio recortado | muerto (6) | `r14_la_unidad_y_el_oficio_van_tal_cual…` |
+| MA7 | un código vacío se queda `""` y no `None` | muerto (7) | `r17_…`, `r6_el_codigo_es_obligatorio…`, `r6_el_tipo_y_la_clase…`, `r8_r40_…mal_formada…` |
+| MA8 | `truncated` no cuenta como techo (como F-036) | muerto (3) | `r8_truncated_por_debajo_del_techo_es_al_techo_y_no_503` |
+| MA9 | `max_rows` 1.000 | muerto (5) | `r8_leer_es_un_post…`, `r8_con_el_techo_o_mas…` |
+| MA10 | sin `truncated` se da por entera | muerto (4) | `r8_r40_…mal_formada…` (los cuatro de `truncated`) |
+| MA11 | el `_leer` heredado (1.000 filas, 503 por debajo) | muerto (14) | `r8_leer_es_un_post…`, `r8_con_el_techo…`, `r25_el_log_distingue…`, `r8_r40_…` |
+| MA12 | la fecha `0` no es nula | muerto (1) | `r6_r33_las_fechas_yyyymmdd_y_el_cero_es_nulo` |
+| MA13 | la fecha imposible con la causa de `date` | muerto (16) | `r40_una_fecha_imposible_es_error_sin_la_fila` |
+| MA14 | un `bool` vale como entero | muerto (3) | `r40_una_fecha_imposible…`, `r40_una_forma_de_comunicacion…` |
+| MA15 | la fecha imposible con el valor en el mensaje | muerto (16) | `r40_una_fecha_imposible…` |
+| MA16 | `cod` en el `repr` | muerto (2) | `r40_la_fila_y_la_ficha_no_imprimen…`, `r40_la_lectura_no_imprime…` |
+| MA17 | `propietario` en el `repr` | muerto (1) | `r40_la_fila_y_la_ficha_no_imprimen…` |
+| MA18 | el log con la unidad de la primera fila | muerto (5) | los tres de R25/R38 |
+| MA19 | la fábrica sin la puerta del entorno | muerto (5) | `r2_la_fabrica_se_niega…`, `r2_la_fabrica_fuera_de_entorno…` |
+| MA20 | la fábrica con las puertas al revés | muerto (3) | `r2_la_fabrica_se_niega_fuera_de_dev_y_pro_antes_que_la_configuracion` |
+| MA21 | la fábrica mira `CIERRE_HABILITADO` | muerto (4) | `r2_la_fabrica_no_mira_ninguna_ventana…` y dos más |
+| MA22 | el tipo y la obra intercambiados | muerto (5) | `r5_los_parametros_en_el_orden…`, `r5_el_tipo_viaja…`, `r8_leer_es_un_post…` |
+| MA23 | `obra_ref` recortada | muerto (1) | `r9_obra_ref_va_tal_cual` |
+
+**23 a mano, 23 muertos, 0 supervivientes.**
+
+### Cobertura (Bloque A3)
+
+`coverage run --branch -m pytest tests/test_f065_consulta.py tests/test_f065_adaptador.py`:
+`domain/ports/reclamaciones_obra.py` 45/45; `consultas_reclamaciones_obra.py`
+49/49 sentencias y 14/14 ramas; `reclamaciones_obra.py` 42/42 y 4/4; en
+`fabrica.py`, las líneas sin cubrir son todas de las **otras** fábricas
+(163–171, 203–210, 233–240, 264–271, 294–301, 351–356, 368–379, 386,
+408–411); `construir_reclamaciones_obra` (311–342), entera. **Cobertura de lo
+cambiado: 100 %.** La `PUERTA COBERTURA` de `init.sh`, del líder.
+
+### Pendiente (Bloque A3)
+
+- `bash harness/init.sh` entero (el líder) y la **review del Bloque A3**
+  (`tasks.md`: «Parar»).
+- La mutación con el comando oficial (suite entera), si la quieren con la
+  máquina libre.
+- Para el Bloque A4, sin tocar aquí: `mirar_sigrid` pasa de
+  `FilaReclamacionObra` a `ReclamacionSigrid` (`estado_codigo` → `estado`) y
+  cuenta las obras por `obra_ref`; `llego_al_techo` → 409
+  `ReclamacionesSinVerificar`; el borde construye con
+  `construir_reclamaciones_obra` antes que la base (R2) y pasa
+  `ajustes.sigrid_tip_reclamacion` como `tip`.
+- Sin verificaciones MANUAL en este bloque.
+
+### Evidencias (Bloque A3)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | **183 passed** (T5/T6) en 2,29 s; **791 passed** con el resto de F-065, F-036/F-056 de T6 y las guardas de F-006 en 54,97 s; **1359 passed, 234 skipped** con todas las guardas de arquitectura, fábricas y alcance en 245,38 s. Suite entera: la lanza el líder con `init.sh` |
+| Cobertura de las líneas cambiadas | **100 %** (136/136 sentencias y 18/18 ramas de los tres módulos nuevos; `construir_reclamaciones_obra` entera), medida con `coverage`; la puerta de `init.sh`, pendiente del líder |
+| Mutantes | Herramienta: **58 generados, 58 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 326,6 s, sobre `883d7be` con el árbol limpio (suite reducida). A mano: **23, 23 muertos, 0 supervivientes** |
+| Tiempo de la suite | 2,29 s la de T5/T6 |

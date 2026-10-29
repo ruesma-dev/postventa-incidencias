@@ -166,7 +166,7 @@
 
 ## Bloque A3 · Las consultas y el adaptador
 
-- [ ] **T5**: tests RED (`tests/test_f065_consulta.py`,
+- [x] **T5**: tests RED (`tests/test_f065_consulta.py`,
   `tests/test_f065_adaptador.py`): el SQL carácter a carácter e **idéntico** al
   del script 29; los parámetros en orden; las columnas de R6 y la lista cerrada
   de R33, y ninguna prohibida (`dni`, `esiglog`, `esigpas`, `clamai`,

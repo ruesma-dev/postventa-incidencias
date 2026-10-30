@@ -2555,3 +2555,227 @@ líneas. La puerta de `init.sh` la lanza el líder.
 | Cobertura de las líneas cambiadas | **100 %** (175/175 sentencias, ninguna rama sin cubrir). `PUERTA COBERTURA: 100.0% de 175 líneas cambiadas cubiertas (175/175, umbral 80%, nivel critico)` |
 | Mutantes | Herramienta: 1.ª ronda **51 evaluados, 48 muertos, 3 supervivientes, 0 timeouts** en 2097,5 s; 2.ª ronda, sobre `f461380`, **51 evaluados, 51 muertos, 0 supervivientes, 0 timeouts**. A mano: **76, 76 muertos, 0 supervivientes** (6 sobrevivieron en `5db4d74` y los mata `f461380`) |
 | Tiempo de la suite | 15,11 s la de la verificación de T15/T16; 117,83 s todo F-065 y F-059 salvo los de alcance |
+
+## T17 bis (2026-10-30)
+
+Encargo del líder: **solo T17 bis**, la decisión del humano sobre L-3 (R41,
+regla 0, enmienda del 2026-10-29 en `3530d12`). Si la emparejada de una
+candidata tiene un estado que no es ninguno de los cinco, o no tiene estado, el
+veredicto es `choca`, con solo su código, igual que con `NPR`. Trabajo hecho
+sobre `3530d12`, rigor `critico`.
+
+No me he conectado a Sigrid, a la base ni a SharePoint. No he tocado
+`features.json`, `BACKLOG.md` ni `current.md`. No he empezado el Bloque A5.
+`init.sh` entero lo lanza el líder.
+
+### Commits
+
+| Commit | Qué |
+|---|---|
+| `2778c29` | Tests en RED, en `test_f065_veredicto.py` y `test_f065_guarda_ensayo.py` |
+| `554038c` | El código, en `domain/models/sigrid_bandeja.py`, y T17 bis `[x]` en `tasks.md` |
+| (el siguiente) | Este informe y `progress/mutacion_F-065_T17bis.md` |
+
+### Ficheros tocados
+
+- **Producción**: `services/postventa-api/domain/models/sigrid_bandeja.py`, un
+  fichero nuevo de F-065.
+  - `_ENLAZABLES = ABIERTAS | CERRADAS`: los cuatro estados en los que la
+    emparejada se enlaza.
+  - En `_veredicto`, la emparejada da `se_enlaza` si su estado está en
+    `_ENLAZABLES`, y si no, `choca` con su código. Antes solo daba `choca` con
+    `== NPR`.
+  - El docstring de `veredictos` (reglas 0 y 1) dice lo mismo que la enmienda.
+- **Tests**:
+  - `tests/test_f065_veredicto.py`:
+    - `test_f065_r41_e7_emparejada_y_no_anulada_se_enlaza` pierde los casos
+      `XYZ` y `None`, que eran justo la lectura que la enmienda cambia. Ahora
+      se parametriza con `SAT`, `PTE`, `TER` y `CER`. Ver «Desviaciones».
+    - Seis tests nuevos `l3`, cinco del dominio y uno de la ruta. La tabla de
+      la cabecera gana una fila.
+  - `tests/test_f065_guarda_ensayo.py`: tres tests nuevos `l3`, y la fila de
+    R45 de la cabecera lo menciona.
+- `specs/F-065-revision-sigrid-backend/tasks.md`: T17 bis `[x]`.
+- **Sin tocar**:
+  - la guarda (`guarda_sigrid.py`), el pipeline, el borde y la consulta:
+    consumen el veredicto, y un `choca` más no les cambia nada;
+  - ningún fichero ni test de F-059 ni de otra feature.
+
+### Decisiones de diseño
+
+- **«Desconocido» es lo que no está entre los cinco códigos tal cual**, igual
+  que en R17 (`_ESTADOS_CONOCIDOS`, `test_f065_r17_estado_desconocido_…`). El
+  dominio no recorta ni pasa a mayúsculas: `"sat"`, `" SAT"` y `""` también
+  son `choca`. En la lectura real, el adaptador ya recorta `estado_codigo`, así
+  que `"SAT "` de Sigrid llega como `SAT`. Lo fijan los mutantes ML8 y ML9.
+- **La regla 1 se escribe en positivo**: se enlaza si el estado está en `PTE`,
+  `SAT`, `TER` o `CER`, y todo lo demás cae en la regla 0. Así lo dice la
+  enmienda («`se_enlaza` si tiene una reclamación emparejada por `PVI-` en
+  PTE, SAT, TER o CER»). Además, un estado nuevo que aparezca en Sigrid sale
+  `choca` sin tocar el código, porque si no se sabe, lo mira una persona.
+- **Solo cuenta la emparejada**, la de código mayor (R13 bis), como con `NPR`.
+  Una menor desconocida no cambia nada; una mayor desconocida da `choca` con
+  su código. Lo fija `test_f065_r41_l3_solo_cuenta_el_estado_de_la_mayor`.
+- **Una reclamación desconocida sin `PVI-` sigue sin contar** (E5, R17): no da
+  pares y la incidencia `va`. L-3 solo toca la emparejada. Lo fija
+  `test_f065_r41_l3_sin_referencia_un_estado_desconocido_sigue_sin_contar`.
+- **La guarda del ensayo no cambia**: ya excluye todo `choca` sin confirmar
+  como `conflicto_sin_confirmar` con el primer código sin confirmar (R45). Con
+  la regla 0, ese código es el de la emparejada. Los tres tests nuevos lo
+  comprueban de punta a punta:
+  - sin confirmar, se excluye, y si es lo único que había no hay lote;
+  - mezclada con una `se_enlaza`, solo esa se manda;
+  - confirmada, se manda con `confirmada=True`.
+
+### Desviaciones
+
+- **Un test anterior cambia su parametrización.**
+  `test_f065_r41_e7_emparejada_y_no_anulada_se_enlaza` (T13, `36d10b5`)
+  esperaba `se_enlaza` con `XYZ` y con `None`. Era la lectura anterior a la
+  enmienda, la que el humano ha corregido. Quito esos dos casos y no quito
+  ninguna aserción. Los mismos casos ahora esperan `choca` en
+  `test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo`.
+  Es un test de F-065, y la guarda de alcance lo admite (patrón
+  `test_f065_*.py`).
+- Nada más.
+
+### Fase RED (T17 bis)
+
+Contra el árbol de `2778c29` (los tests de T17 bis sobre el código de
+`3530d12`), desde `services/postventa-api`. Los identificadores de la traza ya
+salen truncados por pytest; son `UUID(int=1)` y `UUID(int=2)`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_veredicto.py tests/test_f065_guarda_ensayo.py -q --tb=line -p no:cacheprovider
+E   AssertionError: assert (<Veredicto.S...26.10/0080',)) == (<Veredicto.C...26.10/0080',))     (x20: el dominio da SE_ENLAZA y se espera CHOCA)
+E   AssertionError: assert {'va': 0, 'se...0, 'choca': 0} == {'va': 0, 'se...0, 'choca': 1}       (x2: la ruta, R42)
+E   AssertionError: assert [] == [(UUID('00000...S26.10/0080')]                                  (x2: la guarda no la excluye)
+E   AssertionError: assert [UUID('000000...00000000002')] == [UUID('000000...00000000002')]       (x2: la guarda manda la 1 además de la 2)
+E   AssertionError: assert [(UUID('00000...80',), False)] == [(UUID('00000...080',), True)]       (x2: confirmada, sale se_enlaza y no choca)
+...
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[XYZ-aprobada]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[XYZ-en_duda]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[sat-aprobada]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[sat-en_duda]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[ SAT-aprobada]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[ SAT-en_duda]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[-aprobada]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[-en_duda]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[None-aprobada]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[None-en_duda]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_desconocida_choca_tambien_con_un_ya_existe_por_criterios[XYZ]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_desconocida_choca_tambien_con_un_ya_existe_por_criterios[sat]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_desconocida_choca_tambien_con_un_ya_existe_por_criterios[ SAT]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_desconocida_choca_tambien_con_un_ya_existe_por_criterios[]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_la_desconocida_choca_tambien_con_un_ya_existe_por_criterios[None]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_solo_cuenta_el_estado_de_la_mayor[XYZ]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_solo_cuenta_el_estado_de_la_mayor[sat]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_solo_cuenta_el_estado_de_la_mayor[ SAT]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_solo_cuenta_el_estado_de_la_mayor[]
+FAILED tests/test_f065_veredicto.py::test_f065_r41_l3_solo_cuenta_el_estado_de_la_mayor[None]
+FAILED tests/test_f065_veredicto.py::test_f065_r42_l3_la_emparejada_con_un_estado_desconocido_choca_en_la_ruta[XYZ]
+FAILED tests/test_f065_veredicto.py::test_f065_r42_l3_la_emparejada_con_un_estado_desconocido_choca_en_la_ruta[None]
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_l3_la_emparejada_desconocida_sin_confirmar_se_excluye_con_su_codigo[XYZ]
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_l3_la_emparejada_desconocida_sin_confirmar_se_excluye_con_su_codigo[None]
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_l3_la_desconocida_se_excluye_y_la_enlazable_se_manda[XYZ]
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_l3_la_desconocida_se_excluye_y_la_enlazable_se_manda[None]
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_l3_la_emparejada_desconocida_confirmada_se_manda[XYZ]
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_l3_la_emparejada_desconocida_confirmada_se_manda[None]
+28 failed, 152 passed in 8.49s
+```
+
+Los 152 que pasan incluyen tres cosas:
+- `test_f065_r41_l3_los_cinco_conocidos_dan_lo_mismo_que_antes`, los cinco
+  casos: los cinco estados conocidos no cambian, y por eso pasa ya en RED;
+- `test_f065_r41_l3_sin_referencia_un_estado_desconocido_sigue_sin_contar`,
+  que fija lo que L-3 no toca;
+- el test E7 recortado a los cuatro estados enlazables.
+
+**En verde**, sobre `554038c`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_veredicto.py tests/test_f065_guarda_ensayo.py -q -p no:cacheprovider
+180 passed in 8.62s
+```
+
+### Tests (T17 bis)
+
+Desde `services/postventa-api`, sobre `554038c`:
+
+| Qué | Resultado |
+|---|---|
+| La verificación de T17 bis: `test_f065_veredicto.py` y `test_f065_guarda_ensayo.py` | **180 passed** en 8,62 s |
+| Todos los `test_f065_*.py` y `test_f059_*.py` salvo los de alcance | **1655 passed** en 126,06 s |
+| `test_f065_alcance_cerrado.py` y `test_f006_repo_sin_identificadores.py` | **143 passed** en 250,61 s |
+| Las demás guardas: `test_*arquitectura*`, `test_*alcance_cerrado*` (sin el de F-065), `test_*fabrica*` y `test_f010_endpoints_protegidos.py` | **576 passed, 234 skipped** en 448,52 s. Los *skipped* son las guardas de diff de otras ramas |
+| `test_f006_repo_sin_identificadores.py` antes del commit de este informe | ver «Evidencias» |
+| `ruff check` del dominio y de los dos tests | Limpio, salvo el `I001` de siempre en los dos tests, que ya estaba en `3530d12` |
+
+### Mutación (T17 bis)
+
+**Herramienta** (`progress/mutacion_F-065_T17bis.md`, con la nota del
+implementer). Se lanzó con `--base cca4883`, sobre `554038c`, en un worktree
+desechable, con 1 worker y la suite reducida a los seis ficheros que importan
+lo mutado. Alcance: 1 fichero y 14 líneas. Resultado: **0 generados, 0
+muertos, 0 supervivientes, 0 timeouts** en 0,1 s. No es un fallo de la
+campaña: en las cuatro líneas ejecutables solo hay `in` y `|` entre
+conjuntos, y la herramienta no tiene operadores para eso (solo muta
+comparaciones, aritmética y `and`/`or`).
+
+**A mano: 15**, sobre la regla nueva. Los lanzó un script fuera del repo, en
+el mismo worktree desechable, con la misma suite reducida y sin `-x`. El
+script sustituye el texto exacto, comprueba que aparece una sola vez y
+restaura el fichero byte a byte. El worktree quedó limpio y se borró.
+Resultado: **15 de 15 muertos, 0 supervivientes.**
+
+| Id | Mutante | Resultado (tests que fallan) | Uno de los que lo matan |
+|---|---|---|---|
+| ML1 | el código de antes: solo `NPR` choca | muerto (28) | `r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo[XYZ-aprobada]` |
+| ML2 | las ramas al revés (`not in`) | muerto (63) | `r41_e7_emparejada_y_no_anulada_se_enlaza[SAT-aprobada]` |
+| ML3 | `NPR` entre las enlazables | muerto (10) | `r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo[aprobada]` |
+| ML4 | solo las abiertas se enlazan | muerto (6) | `r41_e7_emparejada_y_no_anulada_se_enlaza[TER-aprobada]` |
+| ML5 | solo las cerradas se enlazan | muerto (29) | `r41_e7_emparejada_y_no_anulada_se_enlaza[SAT-aprobada]` |
+| ML6 | sin estado (`None`) se enlaza | muerto (8) | `r41_l3_…_choca_con_solo_su_codigo[None-aprobada]` |
+| ML7 | vacío o sin estado se enlaza (`or not estado`) | muerto (12) | `r41_l3_…_choca_con_solo_su_codigo[-aprobada]` |
+| ML8 | el estado recortado antes de comparar | muerto (4) | `r41_l3_…_choca_con_solo_su_codigo[ SAT-aprobada]` |
+| ML9 | el estado en mayúsculas antes de comparar | muerto (4) | `r41_l3_…_choca_con_solo_su_codigo[sat-aprobada]` |
+| ML10 | la desconocida cae a las reglas 2 a 4, como si no hubiera emparejada | muerto (28) | `r41_l3_…_choca_con_solo_su_codigo[XYZ-aprobada]` |
+| ML11 | la regla 0 da `va` sin códigos | muerto (38) | `r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo[aprobada]` |
+| ML12 | la regla 0 da `ya_existe` | muerto (38) | `r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo[aprobada]` |
+| ML13 | la regla 0 con los códigos de los pares además | muerto (9) | `r41_s3_la_emparejada_en_npr_choca_tambien_con_un_ya_existe_por_criterios` |
+| ML14 | la regla 0 sin códigos | muerto (38) | `r41_s3_e7_con_la_emparejada_en_npr_choca_con_solo_su_codigo[aprobada]` |
+| ML15 | todo lo que no es `NPR` se enlaza, salvo sin estado | muerto (20) | `r41_l3_…_choca_con_solo_su_codigo[XYZ-aprobada]` |
+
+### Cobertura (T17 bis)
+
+Medida con `coverage run --branch` sobre `554038c`, con la suite reducida
+(**435 passed** en 49,91 s) y el fichero de datos fuera del árbol.
+`domain/models/sigrid_bandeja.py`: 283 sentencias, 78 ramas, **100 %**. La
+puerta oficial, con el json copiado dentro del servicio solo mientras corría y
+borrado después (`git status` limpio):
+
+```
+$ services/postventa-api/.venv/Scripts/python.exe -m harness.cobertura --base cca4883 --cov cov_t17bis_tmp.json
+PUERTA COBERTURA: 100.0% de 4 líneas cambiadas cubiertas (4/4, umbral 80%, nivel critico)
+```
+
+### Pendiente (T17 bis)
+
+- `bash harness/init.sh` entero (el líder).
+- **La review del Bloque A4 bis** (T13 a T17 bis).
+- **El Bloque A5**, sin empezar. Cuando se haga, los documentos tienen que
+  decir que una emparejada con un estado desconocido o vacío da `choca` y
+  pide confirmación.
+- **Para F-040**: no cambia ninguna forma. Lo único que cambia es que una
+  emparejada en un estado que no es ninguno de los cinco, o sin estado, sale
+  en el bloque `volcado` como `choca` y no como `se_enlaza`.
+- Sin verificaciones MANUAL.
+
+### Evidencias (T17 bis)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | **180 passed** la verificación de T17 bis, en 8,62 s; **1655 passed** todo F-065 y F-059 salvo los de alcance, en 126,06 s; **143 passed** la guarda de alcance de F-065 más F-006, en 250,61 s; **576 passed, 234 skipped** las demás guardas de arquitectura, alcance y fábricas más F-010, en 448,52 s |
+| Cobertura de las líneas cambiadas | **100 %**. `PUERTA COBERTURA: 100.0% de 4 líneas cambiadas cubiertas (4/4, umbral 80%, nivel critico)` |
+| Mutantes | Herramienta: **0 generados, 0 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 0,1 s, porque no tiene operadores para `in` ni `|`. A mano: **15 de 15 muertos, 0 supervivientes** |
+| Tiempo de la suite | 8,62 s la de la verificación de T17 bis; 126,06 s todo F-065 y F-059 salvo los de alcance |

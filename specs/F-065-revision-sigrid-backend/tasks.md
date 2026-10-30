@@ -290,7 +290,7 @@
 
 ## Bloque A5 · Los documentos
 
-- [ ] **T10**: tests (`tests/test_f065_documentacion.py`) y los documentos de
+- [x] **T10**: tests (`tests/test_f065_documentacion.py`) y los documentos de
   R30: `docs/ARCHITECTURE.md`, `docs/INTEGRACION.md`,
   `azure-apps/postventa_incidencias.md` y la fila de consumidores de
   `azure-apps/sigrid_api.md` (los de `azure-apps/` con su propio commit local

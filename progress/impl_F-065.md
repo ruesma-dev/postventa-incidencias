@@ -2442,7 +2442,7 @@ a byte; el árbol queda limpio después.
 | MG28 | registrar sin guarda escribe | muerto (2) | `r48_registrar_sin_guarda_no_escribe_nada` |
 | MG29 | sin la defensa de «nada que mandar» | muerto (1) | `r44_la_guarda_exige_algo_que_mandar` |
 | ME1 | la guarda no se llama | muerto (43) | `r44_el_borde_construye_la_pasarela_el_lector_y_despues_la_base` |
-| ME2 | la guarda después del login | muerto (2, nivel F-059) | `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` |
+| ME2 | el login, llamado dos veces (no mueve la guarda; el mutante de la guarda tras el login es O1 de `progress/review_F-065.md`, muerto por 18) | muerto (2, nivel F-059) | `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` |
 | ME3 | la selección de la guarda no se usa | muerto (12) | `r45_choca_sin_confirmar_se_excluye_con_su_primer_codigo` |
 | ME4 | las confirmaciones no llegan a la guarda | muerto (10) | `r45_choca_confirmada_se_manda` |
 | ME5 | sin línea si no queda nada | muerto (1) | `r48_sin_ensayo_guardado_la_llamada_es_un_guion` |
@@ -2779,3 +2779,93 @@ PUERTA COBERTURA: 100.0% de 4 líneas cambiadas cubiertas (4/4, umbral 80%, nive
 | Cobertura de las líneas cambiadas | **100 %**. `PUERTA COBERTURA: 100.0% de 4 líneas cambiadas cubiertas (4/4, umbral 80%, nivel critico)` |
 | Mutantes | Herramienta: **0 generados, 0 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 0,1 s, porque no tiene operadores para `in` ni `|`. A mano: **15 de 15 muertos, 0 supervivientes** |
 | Tiempo de la suite | 8,62 s la de la verificación de T17 bis; 126,06 s todo F-065 y F-059 salvo los de alcance |
+
+## Bloque A5 · T10 (2026-10-30)
+
+Encargo del líder: **solo T10**, con O-A4b-4, O-A4b-5 y O-A4b-6. Trabajo hecho
+sobre `cdb395e`, rigor `critico`. No me he conectado a Sigrid, a la base ni a
+SharePoint. No he tocado `features.json`, `BACKLOG.md` ni `current.md`. T11 sin
+empezar. `init.sh` lo lanza el líder.
+
+### Dos cosas para decidir (leer primero)
+
+1. **La tabla de §8 de `INTEGRACION.md` y su cuenta NO recogen la ruta nueva.**
+   Añadir una fila a la tabla lleva a 25, y eso exige ampliar `NUMERALES` de
+   `test_f012_documentacion.py` y cambiar el literal «Los veinticuatro quedan en
+   nivel» en `test_f019`, `test_f053`, `test_f056`, `test_f059` y `test_f060`
+   `_documentacion.py`. Ninguno está en `design.md` §9.2 ni §15.6, y
+   `test_f065_la_rama_solo_toca_los_tests_ajenos_declarados` lo prohíbe; cada
+   vez anterior lo decidió el líder o el humano (F-059: F-1 (a); F-060: T20).
+   R30 y T10 no piden §8, así que no lo he decidido yo: la ruta va en un
+   **recuadro tras la cuenta**, que dice que son veinticinco y que la tabla y la
+   cuenta aún no la recogen. Es verdad, pero **provisional y feo**. Si se quiere
+   la fila, hacen falta esos seis tests, ampliar `AMPLIADOS` y
+   `ASERCIONES_QUE_CAMBIAN` de `test_f065_alcance_cerrado.py`, y cambiar
+   `test_f065_r30_la_seccion_ocho_declara_la_ruta_fuera_de_la_cuenta`.
+2. **La fila de consumidores de `sigrid_api.md` entró en un commit ajeno.** Otra
+   sesión editaba ese fichero a la vez (F-018 de `sigrid-api`, sin confirmar
+   cuando empecé) y, con mi fila ya en el árbol, confirmó el fichero entero en
+   `7662895` («sigrid-api: F-018 desplegada…»). La fila es correcta y está en
+   `master`, pero con ese mensaje. No he reescrito ese commit: es de otra sesión.
+   Mi commit de `azure-apps`, `34c2c83`, trae solo `postventa_incidencias.md` y
+   lo dice en su mensaje.
+
+### Ficheros tocados
+
+- `services/postventa-api/tests/test_f065_documentacion.py` (nuevo).
+- `docs/INTEGRACION.md`: cabecera; §1 (fila de `sigrid-api`, «la cuarta lectura»
+  y «la guarda del ensayo»); §4 «Las de F-065: ninguna»; §6 dos filas; §7
+  enmienda y quinta superficie; §8 recuadro, fila del ensayo y fila de «Qué NO
+  está desplegado»; §9.
+- `docs/ARCHITECTURE.md`: «La guarda del ensayo (F-065)» dentro de la sección de
+  F-059, la sección nueva tras ella y la fila de `sigrid-api`.
+- `azure-apps/postventa_incidencias.md` (las mismas secciones, idénticas: lo
+  fija un test; cabecera propia) y `azure-apps/sigrid_api.md` §10 (fila nueva).
+- `services/postventa-api/domain/models/sigrid_bandeja.py`: **solo** los
+  docstrings de `cruzar` y `veredictos` (O-A4b-5).
+- `progress/impl_F-065.md`: la fila ME2 (O-A4b-4), que describe lo que se lanzó
+  y remite a O1 de la review. `specs/…/tasks.md`: T10 `[x]`.
+
+### Decisiones
+
+- **Más secciones que las de R30** (§6, §7, §8 y §9): R30 pide decir que hay
+  datos personales y dónde no van, y §7 es su sitio; el resto es lo que han
+  hecho F-056, F-059 y F-060. Ningún fichero fuera de los declarados.
+- **§6, el techo**: la spec de la pasarela dice «tope» y no si recorta o rechaza
+  un `max_rows` mayor, así que la fila da los dos casos (409 si viene cortada,
+  503 si no la acepta). No lo he comprobado contra la pasarela.
+- **La copia se edita con el mismo texto** que `INTEGRACION.md`, aunque dice que
+  se refresca desde allí: difieren en otras partes y no se puede sobrescribir.
+  Lleva «pendiente de publicar»: describe una rama, no lo desplegado.
+- **Los tests de `azure-apps`** se saltan si el repositorio no está, como
+  `test_f051_documentacion.py`, y comprueban `azure-apps` en su estado actual:
+  un cambio allí puede poner rojo este test.
+- El literal «sin desplegar» se evita en la cabecera: lo prohíbe un test de F-060.
+
+### Fase RED
+
+El literal `940afa9` deja los tests en rojo, con los documentos sin tocar:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_documentacion.py -q --tb=line -p no:cacheprovider
+....FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF                         [100%]
+E   AssertionError: assert 'Fecha: 2026-10-30.' in '<!-- docs/INTEGRACION.md --> # Integración con el ecosistema · postventa-incidencias Origen: este reposito
+E   AssertionError: la fila no dice «Desde F-065»
+E   AssertionError: no se encuentra la sección «### Con F-065 · la cuarta lectura: las reclamaciones de la obra»
+FAILED tests/test_f065_documentacion.py::test_f065_r30_la_copia_de_azure_apps_lleva_las_secciones_identicas[### Las de F-065: ninguna]
+FAILED tests/test_f065_documentacion.py::test_f065_r30_la_fila_de_consumidores_de_sigrid_api_gana_la_lectura
+44 failed, 4 passed in 1.72s
+```
+
+Los cuatro verdes son los controles que leen código y los que cazan correos y
+códigos `RS`, que no dependen de los documentos.
+
+### Pendiente
+
+- `bash harness/init.sh` (el líder) y **la review del Bloque A5**.
+- La decisión de §8 (arriba).
+- T11. Este bloque añade solo tests, docstrings y Markdown: ninguna línea
+  ejecutable de producción.
+- Sin verificaciones MANUAL nuevas. Al publicar, la cabecera de los documentos,
+  la fila de «Qué NO está desplegado» y la de consumidores deben dejar de decir
+  «pendiente de publicar».

@@ -592,10 +592,13 @@ def cruzar(
     situaciones: Sequence[SituacionDeRevision],
     reclamaciones: Sequence[ReclamacionSigrid],
 ) -> Cruce:
-    """La bandeja de la obra frente a todas sus reclamaciones de Sigrid (R10–R18, R21).
+    """Las incidencias de la obra frente a sus reclamaciones de Sigrid (R10–R18, R21).
 
-    `situaciones` es la bandeja entera de la obra (para emparejar hace falta
-    toda); `reclamaciones`, todas las de la obra, de cualquier estado y fecha.
+    En la ruta, `situaciones` es la bandeja entera de la obra y `reclamaciones`,
+    todas las de la obra, de cualquier estado y fecha. En la guarda del ensayo
+    (R44), `situaciones` es solo lo que se va a mandar y `reclamaciones`, las de
+    sus unidades: el veredicto de cada una solo depende de sus referencias y sus
+    pares, así que es el mismo (R49).
     """
     por_id = {s.incidencia.incidencia_id: s for s in situaciones}
     estados = {incidencia_id: estado_de(s) for incidencia_id, s in por_id.items()}
@@ -656,7 +659,8 @@ def veredictos(
     """El veredicto de cada candidata de `situaciones`, en su orden (R41, §15.2).
 
     Solo las candidatas (`es_candidata`: `aprobada` o `en_duda`); las demás no
-    tienen veredicto. `cruce` es el de la bandeja entera (`cruzar`), y de él se
+    tienen veredicto. `cruce` es el de `cruzar` sobre las mismas `situaciones`
+    (la bandeja entera en la ruta; lo que se manda en la guarda), y de él se
     miran la reclamación emparejada de cada una (`Cruce.reclamaciones`) y
     **todos** sus pares (`Cruce.pares`). La precedencia:
 

@@ -309,7 +309,7 @@
   justificación (`critico`: cero sin la aceptación escrita del humano), y
   «Evidencias» con los cuatro números y los workers. |
   Verificación: `python -m harness.mutacion --feature F-065 --base <base fija>` → `progress/mutacion_F-065.md`
-- [ ] **T12**: ejecutar `bash harness/init.sh` en verde (**el líder**, P-4). |
+- [x] **T12**: ejecutar `bash harness/init.sh` en verde (**el líder**, P-4). |
   Verificación: `bash harness/init.sh`
 
 **Parar. Review final de F-065.**

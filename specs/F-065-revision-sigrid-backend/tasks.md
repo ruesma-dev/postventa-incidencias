@@ -279,6 +279,13 @@
   la persistencia del volcado, `volcar` y `panel_de_volcado` intactos; sin
   DDL ni variables. | Verificación: `python -m pytest tests/test_f065_alcance_cerrado.py` en verde
 
+- [ ] **T17 bis** *(nuevo, 2026-10-29: decisión del humano sobre L-3)*: en el
+  veredicto (R41, regla 0), una emparejada con un estado que no es ninguno de
+  los cinco o vacío da `choca`, con solo su código, como la de `NPR`. Tests RED
+  primero (estado desconocido, `None`, y que los cinco conocidos no cambian), y
+  que la guarda del ensayo la excluye como `conflicto_sin_confirmar` sin
+  confirmación. | Verificación: `python -m pytest tests/test_f065_veredicto.py tests/test_f065_guarda_ensayo.py` en verde
+
 **Parar. Review del Bloque A4 bis.**
 
 ## Bloque A5 · Los documentos

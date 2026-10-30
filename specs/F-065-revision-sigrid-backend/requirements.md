@@ -472,6 +472,14 @@ orden de R18: la emparejada en `se_enlaza`; las de los dos criterios en
 > las suyas (no la mayor) esté en `NPR` no cambia el veredicto, como en R12.
 > La regla 1 se lee entonces «`se_enlaza` si tiene una reclamación emparejada
 > por `PVI-` **que no está en `NPR`**».
+>
+> *Enmienda del 2026-10-29: **decisión del humano sobre L-3*** (review de la
+> primera mitad del Bloque A4 bis). La regla 0 vale igual SI el estado de la
+> emparejada **no es ninguno de los cinco conocidos o viene vacío** (`None`):
+> el veredicto es **`choca`**, con el mismo código (solo el de la emparejada) y
+> la misma confirmación explícita. Si no se sabe en qué estado está el parte,
+> lo mira una persona. La regla 1 se lee entonces «`se_enlaza` si tiene una
+> reclamación emparejada por `PVI-` **en PTE, SAT, TER o CER**».
 
 **R42.** *(S-9.)* CUANDO la ruta de R1 responde 200, la respuesta debe llevar
 además un bloque **`volcado`** —aditivo: R20 no pierde ni cambia nada—:

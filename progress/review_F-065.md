@@ -2121,3 +2121,11 @@ debajo, como hizo con C-A2-4 y C-A4-1.
 - A `CHECKPOINTS.md` C4: añadir «la entrada de la feature en `current.md` refleja el último bloque cerrado». Aquí la
   lista MANUAL de `current.md` se quedó en el primer bloque durante seis bloques sin que ninguna review de bloque lo
   viera, porque C4 solo se recorre entero al final.
+
+### C-A6-1 hecho (líder, 2026-10-30)
+
+La entrada de F-065 en `progress/current.md` refleja ya el estado real (Bloques A1 a A6 aprobados, mutación 182/182,
+`init.sh` en verde a `0a8e303`, cobertura 100 %) y lista T-A11 a T-A18 con su comando y su criterio, copiados de
+`tasks.md` l. 319–381, con T-A18 sujeta a la autorización expresa del humano y la nota O-A6-2 en T-A11. Solo
+documentación: sin cambios en `services/` ni en los tests. Según la propia review, pasa a **APPROVED**. O-A6-1 (podar
+`current.md`) y la automejora de C4 quedan para un trabajo aparte.

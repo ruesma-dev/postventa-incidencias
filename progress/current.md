@@ -1,19 +1,37 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-065 · `in_progress` · 2026-10-28 · Bloque A1 hecho (script 29), en re-review tras C-A1-1; esperando T-A0 del humano
+> ## F-065 · `in_progress` · 2026-10-30 · Bloques A1 a A6 hechos y APROBADOS; siguiente: Bloque A7 (humano)
 > Decisión del humano (2026-10-28): el botón «Registrar» de F-040 sincroniza con Sigrid antes de registrar (filosofía de
 > dedicación: leer lo que ya hay y no duplicar). Ese cruce es F-065, que va primero. Rama `feature/F-065-revision-sigrid-backend`
-> desde `dev` `f7f63da` en el worktree `postventa-f065` (venv por unión; front sacado en LF salvo los `.ps1`). S-1 a S-9
-> aprobadas por el humano (`b863b46`). **El estado del backlog se lleva en esta rama mientras F-065 esté en curso.**
-> Bloque A1 (T1, T2, T2 bis): `infra/29_reclamaciones_obra_sigrid.ps1`, solo lectura. Review: CHANGES_REQUESTED por C-A1-1
-> (faltaba un test de parámetros malos antes de leer); corregido en `4fa1b61` sin tocar el script.
-> **MANUAL (humano, solo lectura), antes del Bloque A2:** T-A0 y T-A0 bis, desde la raíz del worktree, con la raíz de la
-> pasarela y la base en la sesión (`$env:SIGRID_API_BASE_URL`, `$env:SIGRID_BASE_DATOS`):
-> `powershell -ExecutionPolicy Bypass -File infra\29_reclamaciones_obra_sigrid.ps1 -CodigoObra 0626` (una vez);
-> `... -CodigoObra 0677` (tres veces); `... -CodigoObra 0677 -Unidades '<u1>'` (tres veces);
-> `... -CodigoObra 0677 -Unidades '<u1>','<u2>','<u3>','<u4>','<u5>'` (tres veces). Umbrales: obra > ≈ 10 s o guarda > ≈ 3 s
-> → volver al humano antes de A2 / A4 bis. Detalle en `progress/impl_F-065.md` «Órdenes para el humano».
+> desde `dev` `f7f63da` en el worktree `postventa-f065`. S-1 a S-9 aprobadas por el humano (`b863b46`). **El estado del
+> backlog se lleva en esta rama mientras F-065 esté en curso.**
+> Hecho: T-A0/T-A0 bis medidos por el humano; T1–T12 `[x]`. Mutación final 182/182 muertos (`progress/mutacion_F-065.md`,
+> único equivalente R4, aceptado por el humano); `init.sh` en verde a `0a8e303` (cobertura 100 %, 755/755). Review final
+> en `progress/review_F-065.md`. `azure-apps` con `34c2c83` y `074b6c0` locales, sin push.
+> **Pendiente, Bloque A7 (MANUAL, humano; solo lectura salvo T-A18).** Comandos y criterio de «pasa» completos en
+> `specs/F-065-revision-sigrid-backend/tasks.md` l. 319–381:
+> - **T-A11**: el líder hace el merge normal a `dev` desde un worktree aparte; el humano publica el backend desde un
+>   worktree limpio de `dev`: `git worktree add --detach ..\postventa-publicar dev`;
+>   `powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_backend.ps1`;
+>   `git worktree remove ..\postventa-publicar`. Sin DDL. Anotar el commit publicado. Vuelta atrás: publicar el anterior.
+>   Tras publicar: cambiar «pendiente de publicar» en `azure-apps/postventa_incidencias.md` (O-A6-2).
+> - **T-A12 (antes)**: script 29 de la 0677 y la 0626, y en la consola del front publicado
+>   `fetch('/api/revision?obra=0677')` → `d.resumen`. Solo recuentos.
+> - **T-A13**: `fetch('/api/revision/sigrid?obra=0677')` → `resumen`, y en la 0626 `resumen`, emparejadas y hallazgos.
+>   Pasa si cuadra con T-A12; `RS26.10/0074` emparejada sin `volcada_no_encontrada`; `RS26.09/0439` con
+>   `referencia_desconocida`.
+> - **T-A14**: en la 0626, status y `cache-control` (pasa con `200 no-store`), nombres de campo de la `ficha` con su
+>   recuento (sin valores); `obra=%25%25` da `400`.
+> - **T-A15**: diez cargas de la 0677; en Application Insights, `traces` de la última hora con `F-065` o
+>   `F-060 tiempos del listado`: p50 y máximo, `sigrid.leer` y bytes; ninguna línea con texto, nombre, teléfono, correo,
+>   referencia, código `RS` ni `oid`.
+> - **T-A16 (después)**: repetir T-A12; mismos recuentos salvo actividad de Posventa.
+> - **T-A17**: `fetch('/api/revision/sigrid?obra=0677')` → `volcado.candidatas`, `por_veredicto`, `por_unidad`. Pasa si
+>   `candidatas` = `aprobadas + en_duda` de `GET /api/volcado?obra=0677` y la suma de `por_unidad` = `por_veredicto`.
+> - **T-A18 (solo con autorización expresa del humano para esa acción)**: un ensayo (`commit: false`) en la 0626 de una
+>   incidencia `choca`, sin confirmar (`conflicto_sin_confirmar`, `ensayo_id: null`) y confirmada (`previsto`); en
+>   Application Insights `F-065 guarda del ensayo` y la duración, sin códigos `RS` ni texto.
 
 > ## F-040 · `blocked` (espera a F-065) · 2026-10-28 · spec conciliada, decisiones C-1..C-6 contestadas
 > Spec conciliada con `dev` en `b86e876` (worktree `postventa-f040`). Humano, 2026-10-28: C-2 el volcado de la VILLA 15 no es

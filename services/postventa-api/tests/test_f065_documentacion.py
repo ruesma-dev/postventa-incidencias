@@ -46,8 +46,9 @@ import re
 from pathlib import Path
 
 import pytest
-from domain.models.sigrid_bandeja import Veredicto
+from domain.models.sigrid_bandeja import Veredicto, cruzar
 from domain.models.volcado import MotivoExclusion
+from infrastructure.sigrid.consultas_reclamaciones_obra import SQL_RECLAMACIONES_DE_LAS_UNIDADES
 
 from tests.test_f005_integracion_sin_secretos import hallazgos
 
@@ -162,7 +163,7 @@ def test_f065_t10_los_controles_leen_algo_del_codigo():
 
 
 @pytest.mark.parametrize(
-    "texto", ("Escríbele a alguien@ejemplo.invalid si falla.", "persona.apellido@empresa.es")
+    "texto", ("Escríbele a alguien@ejemplo.invalid si falla.", "persona.apellido@ejemplo.invalid")
 )
 def test_f065_t10_el_control_de_correos_caza(texto):
     assert CORREO.search(texto)
@@ -279,7 +280,7 @@ def test_f065_o6_la_guarda_que_lee_y_cuando(indice):
         "lee Sigrid una vez más",
         "solo sql/read",
         "por unidades",
-        "sin datos personales",
+        "sin la ficha",
         "después de la selección",
         "antes del login",
         "conflictos_confirmados",
@@ -309,6 +310,54 @@ def test_f065_o6_la_regla_de_la_emparejada(indice):
         "confirmación explícita",
     ):
         assert texto in seccion, f"la regla no dice «{texto}»"
+
+
+@pytest.mark.parametrize("indice", (0, 1), ids=("integracion", "arquitectura"))
+def test_f065_c2_la_excepcion_de_r49(indice):
+    """La función es la misma y la lectura no: F-040 no puede darlas por iguales."""
+    _, seccion = _textos_de_la_guarda()[indice]
+
+    for texto in (
+        "La función es la misma y la lectura no",
+        "una referencia PVI- en otra unidad",
+        "el bloque volcado de la ruta y la guarda pueden diferir",
+        "referencia_en_conflicto",
+    ):
+        assert texto in seccion, f"la excepción no dice «{texto}»"
+
+
+def test_f065_c2_el_docstring_de_cruzar_dice_la_excepcion():
+    doc = " ".join((cruzar.__doc__ or "").split())
+
+    assert "así que es el mismo" not in doc
+    for texto in ("salvo una referencia `PVI-` en otra unidad", "R49", "referencia_en_conflicto"):
+        assert texto in doc, f"el docstring no dice «{texto}»"
+
+
+def test_f065_c3_la_guarda_lee_textos_y_el_codigo_lo_confirma():
+    """Lo que el documento dice que lee la guarda es lo que pide su consulta."""
+    for columna in ("c.res", "r.resubi"):
+        assert columna in SQL_RECLAMACIONES_DE_LAS_UNIDADES
+    assert "dbo.per" not in SQL_RECLAMACIONES_DE_LAS_UNIDADES
+    assert "r.tex" not in SQL_RECLAMACIONES_DE_LAS_UNIDADES
+
+    siete = _normal(_integracion("## 7 · Datos personales"))
+    assert "La guarda del ensayo no lee ninguno" not in siete
+    for seccion in (siete, _normal(_integracion(TITULO_DE_LA_GUARDA))):
+        for texto in ("con.res", "rcp.resubi", "memoria de la petición"):
+            assert texto in seccion, f"no dice «{texto}»"
+    assert "sin datos personales" not in _integracion(TITULO_DE_LA_GUARDA)
+    assert "sin datos personales" not in _seccion(_leer(ARQUITECTURA), "## Volcado a Sigrid (F-059)")
+    assert "sin datos personales" not in _fila(_leer(ARQUITECTURA), "| `sigrid-api` |")
+
+
+def test_f065_c5_el_codigo_de_cada_motivo():
+    """`duplicada_en_sigrid`, su primer código; `conflicto_sin_confirmar`, el primero sin confirmar."""
+    seccion = _normal(_integracion(TITULO_DE_LA_GUARDA))
+
+    assert "con su primer código en sigrid_cod" not in seccion
+    assert "en duplicada_en_sigrid, el primero de su veredicto" in seccion
+    assert "en conflicto_sin_confirmar, el primero sin confirmar" in seccion
 
 
 def test_f065_o6_cada_veredicto_se_nombra():
@@ -345,8 +394,32 @@ def test_f065_r30_la_seccion_cuatro_dice_que_no_hay_variables_nuevas():
 def test_f065_r30_la_seccion_seis_dice_que_se_rompe():
     seis = _normal(_integracion("## 6 · Qué se rompe si alguien toca algo"))
 
-    for texto in ("MAX_ALLOWED_ROWS", "(F-065)", "reclamaciones_sin_verificar", "no se ensaya"):
+    for texto in ("MAX_ALLOWED_ROWS", "(F-065)", "no se ensaya"):
         assert texto in seis, f"§6 no dice «{texto}»"
+
+
+def test_f065_c4_bajar_el_tope_de_la_pasarela_da_503_en_todas_las_obras():
+    """La pasarela **rechaza** un `max_rows` mayor que su tope: nunca es un 409.
+
+    Que el 400 de la pasarela acaba en 503 lo fija contra el código
+    `test_f065_r8_un_max_rows_rechazado_es_503_y_no_llega_al_techo`.
+    """
+    seis = _integracion("## 6 · Qué se rompe si alguien toca algo")
+    fila = _normal(_fila(seis, "| Baja `MAX_ALLOWED_ROWS` de `sql/read`"))
+
+    for texto in ("por debajo de 500.000", "todas las obras", "503", "sigrid_no_disponible", "rechaza"):
+        assert texto in fila, f"la fila no dice «{texto}»"
+    assert "409" not in fila
+    assert "reclamaciones_sin_verificar" not in fila
+
+
+def test_f065_c4_si_la_pasarela_cae_lo_que_sigue_y_lo_que_no():
+    seis = _integracion("## 6 · Qué se rompe si alguien toca algo")
+    fila = _normal(_fila(seis, "| La pasarela `sigrid-api` cae o no responde (**F-065**) |"))
+
+    assert "la revisión de la base siguen" not in fila
+    for texto in ("Siguen el panel, descartar, recuperar y el historial", "el listado de revisión, editar y aprobar"):
+        assert texto in fila, f"la fila no dice «{texto}»"
 
 
 def test_f065_r30_la_seccion_siete_dice_donde_se_ensenan_y_donde_no_van():
@@ -482,6 +555,41 @@ sin_azure_apps = pytest.mark.skipif(
 def test_f065_r30_la_copia_de_azure_apps_lleva_las_secciones_identicas(titulo):
     """`postventa_incidencias.md` es copia de `INTEGRACION.md`: sin divergir."""
     assert _seccion(_leer(COPIA), titulo) == _integracion(titulo)
+
+
+@sin_azure_apps
+@pytest.mark.parametrize(
+    "principio",
+    (
+        "| Baja `MAX_ALLOWED_ROWS` de `sql/read`",
+        "| La pasarela `sigrid-api` cae o no responde (**F-065**) |",
+        "| El volcado a Sigrid |",
+    ),
+)
+def test_f065_c4_c6_las_filas_de_la_copia_son_las_de_integracion(principio):
+    assert _fila(_leer(COPIA), principio) == _fila(_leer(INTEGRACION), principio)
+
+
+@sin_azure_apps
+def test_f065_c3_la_copia_y_la_fila_de_consumidores_dicen_que_lee_la_guarda():
+    copia = _normal(_leer(COPIA).split("## 1 ·")[0])
+    assert "sin datos personales" not in copia
+    assert "sin la ficha" in copia
+
+    consumidores = _seccion(_leer(PASARELA), "## 10. Consumidores de la API")
+    fila = _normal(next(f for f in consumidores.splitlines() if "(F-065;" in f))
+    assert "sin datos personales" not in fila
+    for texto in ("sin la ficha", "con.res", "rcp.resubi"):
+        assert texto in fila, f"la fila no dice «{texto}»"
+
+
+@sin_azure_apps
+def test_f065_la_fila_de_f059_en_consumidores_dice_que_ya_escribio():
+    consumidores = _seccion(_leer(PASARELA), "## 10. Consumidores de la API")
+    fila = _normal(next(f for f in consumidores.splitlines() if "(F-059 backend;" in f))
+
+    assert "su primera escritura, pendiente" not in fila
+    assert "2026-10-19" in fila
 
 
 @sin_azure_apps

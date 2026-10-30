@@ -297,6 +297,19 @@ def test_f065_r8_un_definitivo_no_se_reintenta(codigo: int) -> None:
     assert len(cliente.peticiones) == 1
 
 
+@pytest.mark.parametrize("unidades", [None, ("VILLA 01",)], ids=["la-obra", "la-guarda"])
+def test_f065_r8_un_max_rows_rechazado_es_503_y_no_llega_al_techo(unidades: Any) -> None:
+    """Si la pasarela baja `MAX_ALLOWED_ROWS` por debajo de lo que pedimos,
+    rechaza la petición con un 400, en **todas** las obras: es 503, nunca el 409
+    del techo. Lo que dice `docs/INTEGRACION.md` §6 (C-A5-4)."""
+    adaptador, cliente = _adaptador(RespuestaFalsa(400, {"error": "max_rows no puede superar 1000."}))
+
+    with pytest.raises(CatalogoNoDisponible):
+        adaptador.leer(codigo_obra=OBRA, tip=TIP, unidades=unidades)
+
+    assert len(cliente.peticiones) == 1
+
+
 @pytest.mark.parametrize(
     ("respuesta", "motivo"),
     [

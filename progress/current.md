@@ -1,7 +1,63 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-038 · `in_progress` · 2026-10-20 · paso 1: poner la spec al día con `dev`
+> ## F-065 · `in_progress` · 2026-10-30 · Bloques A1 a A6 hechos y APROBADOS; siguiente: Bloque A7 (humano)
+> Decisión del humano (2026-10-28): el botón «Registrar» de F-040 sincroniza con Sigrid antes de registrar (filosofía de
+> dedicación: leer lo que ya hay y no duplicar). Ese cruce es F-065, que va primero. Rama `feature/F-065-revision-sigrid-backend`
+> desde `dev` `f7f63da` en el worktree `postventa-f065`. S-1 a S-9 aprobadas por el humano (`b863b46`). **El estado del
+> backlog se lleva en esta rama mientras F-065 esté en curso.**
+> Hecho: T-A0/T-A0 bis medidos por el humano; T1–T12 `[x]`. Mutación final 182/182 muertos (`progress/mutacion_F-065.md`,
+> único equivalente R4, aceptado por el humano); `init.sh` en verde a `0a8e303` (cobertura 100 %, 755/755). Review final
+> en `progress/review_F-065.md`. `azure-apps` con `34c2c83` y `074b6c0` locales, sin push.
+> **Pendiente, Bloque A7 (MANUAL, humano; solo lectura salvo T-A18).** Comandos y criterio de «pasa» completos en
+> `specs/F-065-revision-sigrid-backend/tasks.md` l. 319–381:
+> - **T-A11**: el líder hace el merge normal a `dev` desde un worktree aparte; el humano publica el backend desde un
+>   worktree limpio de `dev`: `git worktree add --detach ..\postventa-publicar dev`;
+>   `powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_backend.ps1`;
+>   `git worktree remove ..\postventa-publicar`. Sin DDL. Anotar el commit publicado. Vuelta atrás: publicar el anterior.
+>   Tras publicar: cambiar «pendiente de publicar» en `azure-apps/postventa_incidencias.md` (O-A6-2).
+> - **T-A12 (antes)**: script 29 de la 0677 y la 0626, y en la consola del front publicado
+>   `fetch('/api/revision?obra=0677')` → `d.resumen`. Solo recuentos.
+> - **T-A13**: `fetch('/api/revision/sigrid?obra=0677')` → `resumen`, y en la 0626 `resumen`, emparejadas y hallazgos.
+>   Pasa si cuadra con T-A12; `RS26.10/0074` emparejada sin `volcada_no_encontrada`; `RS26.09/0439` con
+>   `referencia_desconocida`.
+> - **T-A14**: en la 0626, status y `cache-control` (pasa con `200 no-store`), nombres de campo de la `ficha` con su
+>   recuento (sin valores); `obra=%25%25` da `400`.
+> - **T-A15**: diez cargas de la 0677; en Application Insights, `traces` de la última hora con `F-065` o
+>   `F-060 tiempos del listado`: p50 y máximo, `sigrid.leer` y bytes; ninguna línea con texto, nombre, teléfono, correo,
+>   referencia, código `RS` ni `oid`.
+> - **T-A16 (después)**: repetir T-A12; mismos recuentos salvo actividad de Posventa.
+> - **T-A17**: `fetch('/api/revision/sigrid?obra=0677')` → `volcado.candidatas`, `por_veredicto`, `por_unidad`. Pasa si
+>   `candidatas` = `aprobadas + en_duda` de `GET /api/volcado?obra=0677` y la suma de `por_unidad` = `por_veredicto`.
+> - **T-A18 (solo con autorización expresa del humano para esa acción)**: un ensayo (`commit: false`) en la 0626 de una
+>   incidencia `choca`, sin confirmar (`conflicto_sin_confirmar`, `ensayo_id: null`) y confirmada (`previsto`); en
+>   Application Insights `F-065 guarda del ensayo` y la duración, sin códigos `RS` ni texto.
+
+> ## F-040 · `blocked` (espera a F-065) · 2026-10-28 · spec conciliada, decisiones C-1..C-6 contestadas
+> Spec conciliada con `dev` en `b86e876` (worktree `postventa-f040`). Humano, 2026-10-28: C-2 el volcado de la VILLA 15 no es
+> tarea de la ficha; C-4 botón «Registrar» que sincroniza con Sigrid (F-065) antes de ensayar y volcar; el resto como recomendó
+> el spec-author. El spec-author aplica esas respuestas en la rama de F-040. Se retoma al cerrar F-065: Bloque 1 (implementer).
+
+> ## F-066 · `blocked` (aparcada, sin fallo) · 2026-10-27 · espera a que termine F-040
+> **Aparcada por el humano el 2026-10-27** para hacer F-040. Bloque 1 y T3 hechos y APROBADOS (lote versionado
+> `config/mudanza_f066.yaml`, 358 + 10). **Bloque 2 (T4–T6)** implementado en la rama F-066 (`57a3eb0`..`38d1c73`),
+> mutación 27/27 muertos (`progress/mutacion_F-066_bloque2.md`), **sin review**: al retomar, el implementer cierra su
+> informe si no lo dejó, review del Bloque 2 y después Bloque 3. La rama F-066 está en la carpeta principal.
+>
+> Mudanza a Posventa de los 358 partes de la 0677 archivados en IT, y archivado sin cierre de los 10 que quedaron sin
+> archivar (6 aptos; 4 no aptos, tras aprobarlos una persona). Clasificación en solo lectura y decisiones del humano en
+> `progress/explore_mudanza_IT.md` y en la ficha. Rama `feature/F-066-mudanza-posventa` desde `dev` `f7f63da`, en la
+> carpeta principal (el worktree `postventa-f066` se retiró el 2026-10-27: no tenía los venv). El estado del backlog
+> se llevó en esa rama hasta el 2026-10-27. Grupo A (T30) cuando el humano quiera. T0: el «F-038 `done`»
+> queda dispensado por el humano (2026-10-26: «Aparcar F-038 y empezar F-066»).
+
+
+> ## F-038 · `blocked` (aparcada, sin fallo) · 2026-10-26 · espera T7 del humano
+> **Aparcada por decisión del humano el 2026-10-26** para empezar F-066 (máximo una `in_progress`). No hay ningún
+> fallo: solo espera **T7** (MANUAL del humano, comandos abajo). T6 está **hecha** (2026-10-21, `4dc8c54`). Con T7
+> hecha, se retoma con T8–T11 y F-066 pasa a `blocked` o ya está cerrada.
+
+> ### F-038 · histórico · 2026-10-20 · paso 1: poner la spec al día con `dev`
 > **Pendientes MANUAL del humano (C-B1f-10, review final del Bloque 1)**, con su comando exacto; el detalle de cada
 > paso está en `specs/F-038-bandeja-revision/tasks.md`, Bloques 2 y 3. Precondición: review final del Bloque 1 APPROVED
 > y `bash harness/init.sh` en verde (el líder).

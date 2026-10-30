@@ -12,9 +12,12 @@ costura de test: la suite prueba el borde entero sin Sigrid ni base.
 
 - El ensayo: un objeto con **exactamente** `obra`, `usuario_oid`,
   `usuario_correo` e `incidencias` (ni `commit`, ni `confirmado`, ni ninguna
-  otra); la obra como F-036; el `oid` y el correo como F-056 (`validar_quien`,
-  que rechaza también el actor del sistema de F-060); y de 1 a `N` UUID
-  distintos.
+  otra), y **opcionalmente** `conflictos_confirmados` (R43 de F-065: una lista
+  de objetos con exactamente `incidencia_id`, que está en `incidencias` y no
+  se repite, y `sigrid_cods`, de 1 a 50 códigos `RS<aa>.<mm>/<4 cifras>`
+  distintos); la obra como F-036; el `oid` y el correo como F-056
+  (`validar_quien`, que rechaza también el actor del sistema de F-060); y de 1
+  a `N` UUID distintos.
 - El volcado: lo mismo con `ensayo_id` (un UUID), `confirmado` (el booleano
   `true` de JSON, y nada más) e `incidencias` de objetos con **exactamente**
   `incidencia_id` (UUID, distintos) y `revision_id` (entero ≥ 1).
@@ -28,7 +31,8 @@ ningún adaptador. Si `N` no es un entero de 1 a 50, lo dirá la fábrica (503).
 
 Primero la pasarela, cuyas puertas no abren ninguna conexión: el ensayo con
 `construir_ensayador` (entorno → configuración → `N`; **sin** la ventana,
-D-4) y el volcado con `construir_volcador` (entorno → `VOLCADO_HABILITADO` →
+D-4) y, después, el lector de las reclamaciones de la guarda de F-065
+(`construir_reclamaciones_obra`, §15.7), y el volcado con `construir_volcador` (entorno → `VOLCADO_HABILITADO` →
 configuración → `N`). Solo después la base. El panel no construye la pasarela:
 no lee Sigrid; valida `N` (lo devuelve) y construye solo la revisión.
 
@@ -36,7 +40,8 @@ no lee Sigrid; valida `N` (lo devuelve) y construye solo la revisión.
 
 Las de §11. El ensayo, sin los `cod`/`ide` provisionales ni las `filas` del
 preview (D-13, R34); su `envio` es el parte **tal cual se mandó**
-(`cuerpo_de_parte`, R12). El objeto `volcado` de R4 (`volcado_de`) lo usa
+(`cuerpo_de_parte`, R12), y el bloque `sigrid` de la guarda (R47 de F-065:
+solo códigos y veredictos, ni un texto de Sigrid). El objeto `volcado` de R4 (`volcado_de`) lo usa
 también la fila de la revisión (`interface_adapters/api/revision.py`, F-2
 (a)): el **correo** de quien volcó, nunca el `oid`. El `ultimo_volcado` del
 panel es ese objeto **sin** el correo: `actor_correo` solo lo devuelve la
@@ -55,6 +60,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from application.pipelines.guarda_sigrid import GuardaDelEnsayo
 from application.pipelines.volcado import (
     AjustesDelVolcado,
     ParteMandado,
@@ -80,6 +86,7 @@ from domain.models.situacion_volcado import (
 )
 from domain.models.volcado import (
     MAX_PARTES_POR_LLAMADA,
+    PATRON_COD_PARTE,
     ClaseDeCodigoDeLote,
     Excluida,
     PedidaAlVolcado,
@@ -92,10 +99,15 @@ from infrastructure.persistencia.fabrica import (
     construir_revision,
     construir_volcados,
 )
-from infrastructure.sigrid.fabrica import construir_ensayador, construir_volcador
+from infrastructure.sigrid.fabrica import (
+    construir_ensayador,
+    construir_reclamaciones_obra,
+    construir_volcador,
+)
 
 __all__ = [
     "construir_ensayador",
+    "construir_reclamaciones_obra",
     "construir_repositorio",
     "construir_revision",
     "construir_volcador",
@@ -111,6 +123,10 @@ __all__ = [
 log = logging.getLogger(__name__)
 
 _CLAVES_DEL_ENSAYO = frozenset({"obra", "usuario_oid", "usuario_correo", "incidencias"})
+#: La clave opcional del ensayo (R43 de F-065) y la forma de cada elemento.
+_CONFIRMADOS = "conflictos_confirmados"
+_CLAVES_DE_CONFIRMACION = frozenset({"incidencia_id", "sigrid_cods"})
+_MAX_CODIGOS_CONFIRMADOS = 50
 _CLAVES_DEL_VOLCADO = frozenset(
     {"obra", "ensayo_id", "usuario_oid", "usuario_correo", "confirmado", "incidencias"}
 )
@@ -213,26 +229,43 @@ def _sin_correo(volcado: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def ensayar_volcado(cuerpo: Any) -> dict[str, Any]:
-    """El ensayo (R9–R14): el cuerpo, las puertas, la base y la pasarela."""
-    datos = _objeto(
-        cuerpo,
-        _CLAVES_DEL_ENSAYO,
-        "el cuerpo del ensayo es un objeto JSON con exactamente 'obra', "
-        "'usuario_oid', 'usuario_correo' e 'incidencias'",
-    )
+    """El ensayo (R9–R14): el cuerpo, las puertas, la base y la pasarela.
+
+    Con la guarda de F-065 (R43–R47): la clave opcional `conflictos_confirmados`,
+    el lector de las reclamaciones **después** de la pasarela y **antes** de
+    la base, y el bloque `sigrid` en la respuesta.
+    """
+    if not isinstance(cuerpo, dict) or not (
+        _CLAVES_DEL_ENSAYO <= set(cuerpo) <= _CLAVES_DEL_ENSAYO | {_CONFIRMADOS}
+    ):
+        raise CuerpoDeVolcadoInvalido(
+            "el cuerpo del ensayo es un objeto JSON con exactamente 'obra', "
+            "'usuario_oid', 'usuario_correo' e 'incidencias', y si acaso "
+            "'conflictos_confirmados'"
+        )
+    datos = cuerpo
     obra = _obra(datos["obra"])
     quien = _quien(datos["usuario_oid"], datos["usuario_correo"])
     incidencias = _incidencias(datos["incidencias"])
+    confirmados = _confirmados(datos.get(_CONFIRMADOS, []), incidencias)
     ajustes = obtener_ajustes()
     _exigir_tope(len(incidencias), ajustes)
 
     sigrid = construir_ensayador(ajustes)
+    reclamaciones = construir_reclamaciones_obra(ajustes)
     resultado = ensayar(
-        PeticionDeEnsayo(obra_codigo=obra, quien=quien, incidencias=incidencias),
+        PeticionDeEnsayo(
+            obra_codigo=obra,
+            quien=quien,
+            incidencias=incidencias,
+            conflictos_confirmados=confirmados,
+        ),
         revision=construir_revision(ajustes),
         volcados=construir_volcados(ajustes),
         usuarios=construir_repositorio(ajustes),
         sigrid=sigrid,
+        reclamaciones=reclamaciones,
+        tip=ajustes.sigrid_tip_reclamacion,
         ajustes_volcado=_ajustes_del_volcado(ajustes),
         ahora=datetime.now(UTC),
     )
@@ -245,6 +278,26 @@ def ensayar_volcado(cuerpo: Any) -> dict[str, Any]:
         "resumen": dict(resultado.resumen),
         "partes": [_parte_del_ensayo(p) for p in resultado.partes],
         "excluidas": [_excluida(e) for e in resultado.excluidas],
+        "sigrid": _sigrid_de(resultado.guarda),
+    }
+
+
+def _sigrid_de(guarda: GuardaDelEnsayo | None) -> dict[str, Any] | None:
+    """El bloque de R47: cuándo leyó, cuántas y el veredicto de cada una; o `None`."""
+    if guarda is None:
+        return None
+    return {
+        "leido_at_utc": _instante(guarda.leido_at_utc),
+        "reclamaciones_leidas": guarda.reclamaciones_leidas,
+        "veredictos": [
+            {
+                "incidencia_id": str(v.incidencia_id),
+                "veredicto": v.veredicto.value,
+                "sigrid_cods": list(v.sigrid_cods),
+                "confirmada": v.confirmada,
+            }
+            for v in guarda.veredictos
+        ],
     }
 
 
@@ -403,6 +456,52 @@ def _pedidas(crudo: Any) -> tuple[PedidaAlVolcado, ...]:
         )
     _exigir_distintas([p.incidencia_id for p in pedidas])
     return tuple(pedidas)
+
+
+def _confirmados(crudo: Any, incidencias: tuple[UUID, ...]) -> dict[UUID, frozenset[str]]:
+    """`conflictos_confirmados` (R43 de F-065), o `CuerpoDeVolcadoInvalido` sin
+    repetir nada: una lista; cada elemento, con exactamente `incidencia_id` (de
+    las pedidas, una vez) y `sigrid_cods` (de 1 a 50 códigos `RS…` distintos).
+    Como mucho una por incidencia pedida, y por tanto como mucho `N`."""
+    if not isinstance(crudo, list):
+        raise CuerpoDeVolcadoInvalido(
+            "'conflictos_confirmados' es una lista de objetos con 'incidencia_id' y 'sigrid_cods'"
+        )
+    pedidas = set(incidencias)
+    confirmados: dict[UUID, frozenset[str]] = {}
+    for elemento in crudo:
+        if not isinstance(elemento, dict) or set(elemento) != _CLAVES_DE_CONFIRMACION:
+            raise CuerpoDeVolcadoInvalido(
+                "cada elemento de 'conflictos_confirmados' es un objeto con exactamente "
+                "'incidencia_id' y 'sigrid_cods'"
+            )
+        incidencia_id = _uuid(
+            elemento["incidencia_id"], "'incidencia_id' no es el UUID de una incidencia"
+        )
+        if incidencia_id not in pedidas:
+            raise CuerpoDeVolcadoInvalido(
+                "cada 'incidencia_id' de 'conflictos_confirmados' es una de las 'incidencias'"
+            )
+        if incidencia_id in confirmados:
+            raise CuerpoDeVolcadoInvalido(
+                "'conflictos_confirmados' lleva cada incidencia una sola vez"
+            )
+        confirmados[incidencia_id] = _codigos_confirmados(elemento["sigrid_cods"])
+    return confirmados
+
+
+def _codigos_confirmados(crudo: Any) -> frozenset[str]:
+    if (
+        not isinstance(crudo, list)
+        or not 1 <= len(crudo) <= _MAX_CODIGOS_CONFIRMADOS
+        or any(not isinstance(c, str) or PATRON_COD_PARTE.fullmatch(c) is None for c in crudo)
+        or len(set(crudo)) != len(crudo)
+    ):
+        raise CuerpoDeVolcadoInvalido(
+            f"'sigrid_cods' es una lista de 1 a {_MAX_CODIGOS_CONFIRMADOS} códigos de Sigrid "
+            "distintos, con la forma RS<aa>.<mm>/<4 cifras>"
+        )
+    return frozenset(crudo)
 
 
 def _exigir_distintas(ids: Any) -> None:

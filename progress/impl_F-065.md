@@ -2844,7 +2844,7 @@ empezar. `init.sh` lo lanza el líder.
 
 ### Fase RED
 
-El literal `940afa9` deja los tests en rojo, con los documentos sin tocar:
+Los tests, en `940afa9`, en rojo con los documentos sin tocar:
 
 ```
 $ .venv/Scripts/python.exe -m pytest tests/test_f065_documentacion.py -q --tb=line -p no:cacheprovider
@@ -2869,3 +2869,14 @@ códigos `RS`, que no dependen de los documentos.
 - Sin verificaciones MANUAL nuevas. Al publicar, la cabecera de los documentos,
   la fila de «Qué NO está desplegado» y la de consumidores deben dejar de decir
   «pendiente de publicar».
+
+### Evidencias (T10)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Sobre `a2799e8`, árbol limpio: **824 passed, 205 skipped, 0 failed**, en 286,30 s: `test_f065_documentacion.py` (48), `test_f065_alcance_cerrado.py`, `test_f006_repo_sin_identificadores.py`, `test_f005_integracion_sin_secretos.py`, las guardas de alcance de F-056, F-059 y F-060 y todos los `*_documentacion.py`. Los skip son los controles del diff de esas guardas, que solo corren en su propia rama (comprobado en F-056 y F-059). `tests/test_alcance_excluidos.py` y `tests/test_f035_placeholders_vivos.py`, de la raíz: **37 passed**, antes de los dos últimos retoques de texto. `ruff`, limpio en los dos `.py` tocados |
+| Cobertura de las líneas cambiadas | **No medida**: ninguna línea ejecutable cambiada (docstrings y Markdown). La puerta la da `init.sh` (el líder) |
+| Mutantes | **No lanzada**: sin código ejecutable que mutar; la campaña es T11 |
+| Tiempo de la suite | 286,30 s la batería de arriba; la suite entera no se ha ejecutado (la lanza el líder) |
+
+Sin GUID literales en este informe, ni hosts ni IP en lo versionado (los barridos de arriba, en verde).

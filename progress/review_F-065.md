@@ -1495,3 +1495,204 @@ El GUID de los fixtures de `progress/impl_F-065.md` l. 1900 pasa a `UUID(int=1)`
 `test_f006_repo_sin_identificadores.py`, 48 passed. `bash harness/init.sh`, tal cual, una pasada sobre `2c21cdf`:
 **exit 0, «ENTORNO LISTO»**. **Primera mitad del Bloque A4 bis (T13, T14) APROBADA**, como dejó dicho el reviewer.
 Pendiente del humano: L-3 (estado desconocido o vacío de la emparejada: `se_enlaza` hoy, el líder recomienda `choca`).
+
+## Review del Bloque A4 bis, segunda mitad (T15, T16, T17, T17 bis) · 2026-10-30
+
+- **Veredicto:** APPROVED. `init.sh` en verde. No pido ningún cambio en el código ni en los tests. Dejo tres observaciones que no bloquean y seis lecturas para el líder.
+- **Alcance de esta review:** `e623caf..150bd7a`, en el worktree `postventa-f065`, rama
+  `feature/F-065-revision-sigrid-backend`. Commits de código `ea75495`..`cca4883` y `2778c29`..`150bd7a`; de spec del
+  líder, `7a50ac0` y `3530d12`. No me he conectado a Sigrid, a la base ni a SharePoint. No he tocado `features.json`,
+  `BACKLOG.md` ni `current.md`.
+- **Nivel de rigor:** `critico`, declarado en `features.json`. Exige fase RED con la salida real, cobertura de lo
+  cambiado ≥ 80 %, mutación con cero supervivientes y la sección «Evidencias». Aplica además la regla de orden.
+- **Interrupción:** la sesión se cortó a mitad de la review. Se perdieron la primera pasada de `init.sh` (iba por el
+  48 %) y el resto de mis mutantes. La copia desechable quedó con un mutante aplicado (nunca el árbol de trabajo): la
+  restauré, repetí desde el mutante interrumpido, la borré y lancé `init.sh` otra vez, una vez. El mutante G4
+  interrumpido salió marcado como muerto con 0 fallos; ese resultado no cuenta, y el de abajo es el de la repetición.
+
+### `init.sh`
+
+`bash harness/init.sh`, tal cual, una pasada completa sobre `150bd7a`: **exit 0, «ENTORNO LISTO»**.
+
+- Servicio api: **9944 passed, 365 skipped in 3178,81 s**. Ningún test de tiempo cayó por la carga.
+- `PUERTA COBERTURA: 100.0% de 755 líneas cambiadas cubiertas (755/755, umbral 80%, nivel critico)`.
+- Raíz: 115 passed. Front: verde por caché. Rama correcta.
+- `ruff`: 81 avisos de deuda, no bloquea.
+- `git status` limpio después.
+
+### 1 · Contra la spec
+
+| Punto | Código | Comprobado |
+|---|---|---|
+| R43, la clave opcional | `_confirmados` y `_codigos_confirmados`, validados antes de `obtener_ajustes` | 400 sin construir nada; `confirmado` y `commit` siguen siendo 400; `fullmatch`; de 1 a 50 distintos, con el borde 50 probado |
+| R44, solo las unidades enviadas | `sorted({c.valores.unidad_codigo ...})` de `seleccion.mandadas` | `candidata.valores` es `ultima.valores`, lo mismo que `valores_vigentes`, así que lo leído es lo que cruza el dominio |
+| R44, §15.5, sin datos personales | `SQL_RECLAMACIONES_DE_LAS_UNIDADES`, 12 columnas | El texto coincide con §15.5; marcadores `?`, sin interpolar; una fila de 31 columnas es error (503) |
+| R45, exclusiones | `aplicar_guarda_de_sigrid` | `ya_existe` → `duplicada_en_sigrid`, sin confirmación posible; `choca` sin confirmar → `conflicto_sin_confirmar` con el primer código sin confirmar, también `NPR` y estado desconocido; `se_enlaza` y `va` se mandan |
+| R46, sin lectura válida no hay ensayo | La guarda va antes del `try` del login | 503 `sigrid_no_disponible`, 409 `reclamaciones_sin_verificar` con `filas`, 409 `obra_ambigua`; sin login, lote ni guardado |
+| R47 y R48 | `_sigrid_de`, `registrar_la_guarda` | Bloque aditivo, `null` sin lectura; las líneas solo llevan cuentas |
+| R49 | Sin diff en `volcar`, `panel_de_volcado`, `infrastructure/sigrid/volcado.py`, persistencia, DDL ni `config/` | Los tres errores nuevos de `function_app.py` no los lanza ni `volcar` ni el panel: `construir_volcador` y `construir_ensayador` usan `exigir_entorno_con_volcado` (`VolcadoDeshabilitado`), y el login convierte sus fallos en `EnsayoSinRespuesta` |
+| R41, L-3 | `_ENLAZABLES = ABIERTAS \| CERRADAS` | La regla 1 en positivo, como dice la enmienda; lo demás, regla 0 con solo su código |
+| R70 | Script 29 contra la función de la guarda | `test_f065_scripts_infra.py`, con 1 a 5 y con 50 unidades |
+| R71 | MANUAL | La medición previa consta (T-A0 bis); queda la de tras publicar, que es del humano |
+
+S-1 a S-9: todas según lo aprobado. S-1, ensayo ampliado y `volcar` igual; S-2, cuatro veredictos; S-3 con sus dos
+enmiendas; S-4, por incidencia y con códigos; S-5, solo unidades; S-6, `volcar` no relee; S-7, sin DDL, solo log;
+S-8, sin interruptor (`reclamaciones` y `tip` no tienen valor por defecto); S-9, de T14.
+
+**O-A4b-3, cerrada.**
+- `ficha`: la ruta sigue con `fila_a_reclamacion_obra`, 31 columnas y `_ficha` siempre. `None` solo sale de
+  `fila_a_reclamacion_de_las_unidades`, y el adaptador elige por `unidades is None`.
+- Orden de R47: `veredictos` recibe `de_lo_mandado`, en el orden pedido; lo fija un espía.
+
+**Los tests de F-059.** El diff son los dos dobles vacíos con su paso a `ensayar` y las dos ampliaciones declaradas.
+Ninguna aserción menos, comprobado leyendo el diff.
+
+**Las suites reducidas son válidas.** Quitar tests solo puede sumar supervivientes. Guarda: los 16 ficheros cubren
+quién importa o ejercita lo mutado, y fuera quedan las guardas que leen texto y `tests_bbdd/`. T17 bis: la herramienta
+no generó ningún mutante, así que su suite no decide nada, y los 15 a mano van con los seis ficheros que importan el
+dominio.
+
+### 2 · Las lecturas y desviaciones del implementer
+
+Ninguna cambia algo aprobado. Las señalo para que decidas si van al humano. Yo las dejaría todas.
+
+| # | Lectura | ¿La spec lo dice? | Valoración |
+|---|---|---|---|
+| L-8 | La guarda cruza **solo lo mandado**, no la bandeja entera | §15.6 pasa `situaciones`; el docstring de `cruzar` y el de `veredictos` hablan de la bandeja entera | Equivalente. El veredicto de X solo depende de sus propias referencias y pares: `_pares_de` solo salta las `propias` de X, y una incidencia ausente solo cambia hallazgos de aviso. Los docstrings quedan algo inexactos (O-A4b-5) |
+| L-9 | `leido_at_utc` es el `ahora` del ensayo, no el instante de la lectura | No | Diferencia de segundos, y coincide con `caduca_at_utc`. Contrato con F-040 |
+| L-10 | «Está en `incidencias`» (R43) se lee como una de las pedidas en el cuerpo | Ambiguo, pero R43 valida antes de construir adaptadores, así que no puede ser la tabla | Correcta |
+| L-11 | Las confirmaciones de lo excluido antes por F-059 cuentan como sobrantes | R45 solo nombra las que «ya no chocan» | Razonable: no pasaron por la guarda y no decidieron nada |
+| L-12 | La línea de R48 sale también si login, lote o guardado fallan tras la guarda (`llamada=-`) | «Una línea por lectura» | Correcta |
+| L-13 | «Desconocido» es no ser uno de los cinco **tal cual**: `sat` y ` SAT` dan `choca` en el dominio | La enmienda dice «ninguno de los cinco»; R17 ya compara así | Correcta; el adaptador ya recorta el estado |
+
+Desviaciones declaradas, aceptadas:
+- `pedidas` y `ahora` en la firma: anunciadas en el bloqueo y necesarias para R45 y R47.
+- Las tres entradas de error: son las de §15.3.
+- `test_f065_r41_e7_...` pierde `XYZ` y `None`: esos casos fijaban la lectura que el humano corrigió, y pasan a esperar
+  `choca` en un test nuevo. No es una aserción perdida.
+
+### 3 · La mutación
+
+**Guarda (`mutacion_F-065_bloqueA4bis_guarda.md`).** Recálculo puro con `e623caf..f461380`: **10 ficheros, 609 líneas,
+51 mutantes**, coincide. Los tres supervivientes de la 1.ª ronda existen como mutantes reales con su operador y texto
+(`guarda_sigrid.py:62` y `:76`; `<=` → `<` en `volcado.py:496`). **Campaña no reejecutada: 24996,2 s según el informe**
+(≈ 417 min, y 2097,5 s la 1.ª ronda). Para compensar, he repetido a mano esos tres, y mueren (H1 a H3).
+
+**T17 bis (`mutacion_F-065_T17bis.md`).** 0,1 s, así que **reejecutada entera** con la salida en el scratchpad: 1
+fichero, 14 líneas, 0 mutantes, los mismos totales; `git status` limpio. **Prueba de control del cero:** el
+generador da **54 mutantes** sobre `sigrid_bandeja.py` entero, luego funciona. El cero es legítimo: las líneas
+cambiadas solo tienen `in` y `|`.
+
+**A mano: 25 míos**, en una copia desechable, sin `-x` y solo con tests de F-065. **25 muertos, 0 supervivientes,
+todos por un test de la propia feature.**
+
+| Mutante | Fallan | Uno que lo mata |
+|---|---|---|
+| O1 la guarda tras el login | 18 | `r44_seleccion_sigrid_login_y_lote_en_ese_orden` |
+| O2 la guarda tras el lote | 18 | ídem |
+| O3 la guarda tras guardar el ensayo | 19 | ídem |
+| O4 el lector tras la base | 2 | `r44_el_borde_construye_la_pasarela_el_lector_y_despues_la_base` |
+| O5 el lector antes de la pasarela | 1 | ídem |
+| O6 la validación de la clave tras construir | 21 | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada[no-lista]` |
+| G1 `se_enlaza` se excluye | 5 | `r45_l3_la_desconocida_se_excluye_y_la_enlazable_se_manda[XYZ]` |
+| G2 `ya_existe` confirmable | 4 | `r45_ya_existe_se_excluye_como_duplicada_con_su_primer_codigo` |
+| G3 `choca` con el primer código aunque esté confirmado | 1 | `r45_la_confirmacion_parcial_excluye_...` |
+| G4 sin comprobar `truncated` ni obras | 6 | `r46_sin_lectura_valida_...[al-techo-o-truncated]` |
+| G5 la guarda lee toda la obra | 3 | `r44_lee_solo_las_unidades_...` |
+| G6 duplicada sin `sigrid_cod` | 3 | `r45_ya_existe_se_excluye_...` |
+| G7 cruce vacío | 28 | ídem |
+| G8 sin nada tras la guarda, se ensaya igual | 11 | ídem |
+| L1 solo `NPR` choca | 28 | `r41_l3_...[XYZ-aprobada]` |
+| L2 `None` se enlaza | 8 | `r41_l3_...[None-aprobada]` |
+| C1 la guarda mapea con ficha | 8 | `r44_leer_por_unidades_es_un_post_a_sql_read_...` |
+| C2 unidades interpoladas | 11 | `r44_la_consulta_de_una_unidad_caracter_a_caracter` |
+| C3 sin filtro de unidades | 11 | ídem |
+| B1 `obra_ambigua` como 503 | 2 | `r46_los_errores_de_la_guarda_...[dos-obras]` |
+| B2 confirmación de una no pedida | 1 | `r43_cada_confirmacion_invalida_...[incidencia-que-no-se-pide]` |
+| H1, H2 sin `frozen` | 1 y 1 | `r47_lo_que_deja_la_guarda_no_se_puede_cambiar` |
+| H3 tope de 50 excluido | 1 | `r43_cincuenta_codigos_distintos_...` |
+| E1 sin línea si falla tras la guarda | 1 | `r48_si_el_ensayo_falla_despues_...` |
+
+**Regla de orden (punto 7).** Aplicada: la puerta se ha bajado por debajo de cada colaborador que precede (login, lote
+y guardado), y las tres veces la suite se pone en rojo con tests de F-065, sin depender de F-059.
+
+**ME2 está mal etiquetado (O-A4b-4).** La tabla del informe dice «la guarda después del login, muerto a nivel F-059».
+En su script, ese mutante **duplica la llamada al login** y no mueve la guarda. Por eso solo lo veían dos tests de
+F-059. La evidencia del informe no prueba lo que dice; O1 sí lo prueba, y el hueco no existe.
+
+### 4 · Fase RED y «Evidencias»
+
+- **RED:** salida real en las dos entregas: el `ImportError` de T15, el RED de comportamiento con la guarda
+  desactivada (7 fallos), el de T17 y el de T17 bis (28 failed, 152 passed).
+- **Evidencias:** los cuatro números y los workers, en las dos secciones. Cobertura de lo cambiado, 100 % (175/175 y
+  4/4). El informe declara los relojes no comparables por suspensión del equipo.
+
+### Checkpoints
+
+**C1 · Arnés completo y en verde**
+- [x] `init.sh` con exit 0.
+- [x] Existen los ficheros del arnés.
+
+**C2 · Estado coherente**
+- [x] Una sola feature `in_progress` y rama correcta.
+- [x] `current.md` y `history.md`: no son de esta mitad y no los he tocado.
+
+**C3 · Arquitectura y convenciones**
+- [x] Hexagonal: el veredicto en el dominio; la guarda en la aplicación, con el puerto; la consulta en infraestructura; la validación y la serialización en el borde.
+- [x] Primera línea con la ruta en todos los ficheros tocados, sin `print` ni TODO, sin secretos.
+- [x] La unidad de trabajo es la incidencia.
+- [x] Sin estados numéricos de Sigrid; el tipo sale de los ajustes.
+- [x] Ningún parte ni PDF en git.
+- N/A · Archivar, lo manuscrito, «firmado no es conforme» y reprocesar sin duplicar: esta mitad no toca partes escaneados ni la ingesta.
+
+**C3 bis · Documentos de fuera.** N/A: no entra ningún documento externo.
+
+**C4 · Verificación real**
+- [x] R43 a R49 y R70 cubiertos, y L-3.
+- [x] Sin red ni base: dobles en memoria.
+- N/A · `MANUAL`: esta mitad no añade ninguna; la R71 de tras publicar es del humano, después del despliegue.
+
+**C4 bis · Rigor**
+- [x] `rigor: critico` declarado.
+- [x] Fase RED con la salida real.
+- [x] Cobertura: la puerta de `init.sh` en `[OK]`, 100 % (755/755).
+- [x] Mutación: informes de la herramienta, recalculados y sin superviviente `PENDIENTE`.
+- [x] Muertos: T17 bis reejecutada; la guarda, no (24996,2 s), dicho arriba, con los tres supervivientes repetidos a mano.
+- [x] Prueba de control del cero: 54 mutantes con el fichero entero.
+- [x] Regla de orden aplicada.
+- [x] Cero supervivientes a mano, en los 25 míos.
+- [x] «Evidencias» con los cuatro números.
+- [x] Ningún N/A sin justificar.
+
+**C4 ter · Rutas sensibles.** N/A: no existe `harness/rutas_sensibles.json`.
+
+**C5 · Cierre**
+- [x] T15, T16, T17 y T17 bis `[x]`, con commits `F-065 T15: …`, `T16`, `T17` y `T17 bis`. T10 a T12 siguen `[ ]`, como toca.
+- [x] Sin temporales sin trackear; mi copia desechable, eliminada.
+- [x] `features.json`: F-065 `in_progress`, su estado real.
+
+### Cobertura · requisito → test
+
+| Requisito | Tests |
+|---|---|
+| R43 | `r43_cada_confirmacion_invalida_...`, `r43_commit_confirmado_y_otras_...`, `r43_sin_la_clave_o_con_la_lista_vacia_...`, `r43_cincuenta_codigos_...`, `r43_r45_la_confirmacion_viaja_...` |
+| R44 | `r44_seleccion_sigrid_login_y_lote_en_ese_orden`, `r44_si_la_seleccion_no_deja_nada_...`, `r44_lee_solo_las_unidades_...`, `r44_las_unidades_son_las_vigentes_...`, `r44_veredictos_con_las_situaciones_...`, `r44_el_borde_construye_...`, y los `r44_` de consulta y adaptador |
+| R45 | `r45_ya_existe_...`, `r45_choca_...`, `r45_la_confirmacion_parcial_...`, `r45_la_que_aparecio_despues_...`, `r45_la_emparejada_en_npr_...`, `r45_se_enlaza_y_va_...`, `r45_mezcla_...`, `r45_si_tras_la_guarda_no_queda_nada_...` |
+| R41 con L-3 | `r41_l3_...` (cinco), `r42_l3_...`, `r45_l3_...` (tres) |
+| R46 | `r46_sin_lectura_valida_...`, `r46_al_techo_...`, `r46_la_obra_ambigua_...`, `r46_cero_filas_...`, `r46_sin_entorno_...`, `r46_los_errores_de_la_guarda_...`, `r46_la_guarda_no_tiene_interruptor` |
+| R47 | `r47_el_bloque_sigrid_...`, `r47_sin_lectura_...`, `r47_la_confirmada_...`, `r47_leido_at_utc_...`, `r47_la_guarda_dice_...`, `r47_los_codigos_...` |
+| R48 | `r48_una_linea_...`, `r48_sin_ensayo_guardado_...`, `r48_si_el_ensayo_falla_...`, `r48_sin_lectura_...`, `r48_la_duracion_...`, `r48_ningun_codigo_rs_...` |
+| R49 | `r49_sin_la_clave_...`, `r49_el_veredicto_del_ensayo_es_el_de_la_ruta_...`, `r49_la_guarda_cruza_sin_ficha`, y la guarda de alcance T17 |
+| R70 | `r70_el_script_manda_lo_mismo_que_la_funcion_de_la_guarda` |
+
+### Cambios requeridos
+
+Ninguno.
+
+### Observaciones (no bloquean)
+
+- **O-A4b-4 · ME2 mal etiquetado.** En `progress/impl_F-065.md`, la fila ME2 describe un mutante que no es el que se
+  lanzó. Basta con corregir la fila o citar O1 de esta review.
+- **O-A4b-5 · Docstrings.** `cruzar` y `veredictos` dicen que reciben la bandeja entera; la guarda les pasa solo lo
+  mandado. El resultado es el mismo (L-8), pero el texto ya no es exacto.
+- **O-A4b-6 · Bloque A5.** Los documentos tienen que recoger la guarda, los tres códigos nuevos y L-3.

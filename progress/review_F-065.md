@@ -1911,3 +1911,213 @@ por caché, **PUERTA COBERTURA 100,0 %** (755/755 líneas cambiadas, umbral 80 %
 `feature/F-065-revision-sigrid-backend`. Los dos intentos previos cayeron solo por tests de tiempo de F-036
 (`r115`: 1,36 s con tope 1 s; `r118`: 11,4 s con tope 10 s) con 40–50 procesos Python de otros proyectos en la
 máquina; aislados, los 128 tests de tiempo de F-036 pasan. Condición del veredicto cumplida: **Bloque A5 APPROVED**.
+
+## Review final de F-065 (Bloque A6 y la feature entera) · 2026-10-30
+
+- **Veredicto:** **CHANGES_REQUESTED**, por **un único** hallazgo documental del líder (C-A6-1, `progress/current.md`).
+  El código, los tests, la mutación y la cobertura están **aprobados**: lo que pido no exige tocar `services/`, ni
+  relanzar la campaña, ni volver a pasar `init.sh`.
+- **Nivel de rigor:** `critico`, declarado en `harness/features.json`. Exige fase RED, cobertura ≥ 80 % de las líneas
+  cambiadas, una campaña de mutación con cero supervivientes salvo aceptación escrita del humano, y las verificaciones
+  `MANUAL (humano)` listadas con su comando exacto.
+- **Alcance:** `git diff f7f63da..0a8e303` (52 ficheros) y los commits locales `34c2c83` y `074b6c0` de `azure-apps`.
+  Sin conexión a Sigrid, a la base ni a SharePoint. **No he ejecutado `bash harness/init.sh`**, por orden del líder.
+
+### `init.sh` (lo pasó el líder, T12)
+
+He leído la salida del líder a `0a8e303`: exit 0, «ENTORNO LISTO». Raíz: 115 passed. Servicio api: en verde por caché
+(el árbol de `services/` no ha cambiado desde el verde del cierre del A5, 10006 passed / 365 skipped; lo he comprobado
+con `git diff --stat 4f4416c..HEAD`, que solo toca `progress/` y `tasks.md`). Front: en verde por caché. **`PUERTA
+COBERTURA: 100.0% de 755 líneas cambiadas cubiertas (755/755, umbral 80%, nivel critico)`**. Rama correcta.
+
+### 1 · La campaña final (T11)
+
+**Recálculo puro e independiente** (`harness.alcance.alcance_de_feature("F-065", base="f7f63da")` y
+`harness.mutacion.generar_mutantes` fichero a fichero, sin ejecutar nada): **13 ficheros, 2411 líneas, 182 mutantes**.
+Coincide con el informe en el alcance, en cada fichero y en el total (14 / 4 / 1 / 0 / 54 / 0 / 34 / 8 / 28 / 0 / 6 /
+12 / 21). La campaña se lanzó sobre `4f4416c`, y de ahí a HEAD no cambia `services/`: el código mutado es el de HEAD.
+
+**Campaña no reejecutada: 1784,9 s (29,7 min) según el informe**, más de 5 min. Coste por mutante:
+1784,9 × 1 ÷ 182 = **9,8 s**, con la suite reducida en 44,4 s y `-x`. Es coherente: con `-x`, un mutante muerto para
+en el primer fallo, y en mi muestra caen en 3–6 s. No es sospechosa.
+
+**Los muertos, comprobados a mano en una muestra.** Lo hice en una copia desechable en el scratchpad (`git worktree
+--detach` de HEAD), sin `-x` y solo con tests de F-065. Después la eliminé, y `git status` quedó limpio. Elegí
+mutantes que **no** estaban en las campañas de bloque anteriores:
+
+| Mutante (de la herramienta) | Resultado | Un test de F-065 que lo mata |
+|---|---|---|
+| `function_app.py:2119` `200` → `201` | 13 fallos | `test_f065_r1_la_obra_se_normaliza_como_en_f036` |
+| `ports/reclamaciones_obra.py:69` `reclama_telefono` con `repr=True` | 1 fallo | `test_f065_r40_la_fila_y_la_ficha_no_imprimen_ningun_valor_en_su_repr` |
+| `api/sigrid_bandeja.py:356` `and` → `or` | 1 fallo | `test_f065_r20_el_resumen` |
+| `api/volcado.py:239` `<=` → `<` | 11 fallos | `test_f065_r43_sin_la_clave_o_con_la_lista_vacia_se_ensaya[sin-la-clave]` |
+
+Los 4 mueren, todos por tests de la propia feature.
+
+**La suite reducida es suficiente.** He buscado en `tests/` quién importa cada uno de los 13 módulos. Todo módulo con
+mutantes tiene dentro de los 20 ficheros sus tests de F-065, y los de F-059 que lo tocan. Lo que queda fuera:
+- las guardas de alcance, que leen el diff y el texto y no ven un mutante sin commit;
+- los tests que solo importan `errores.py` por otras excepciones (`errores.py` no tiene mutantes);
+- los tests HTTP de otras features sobre `function_app.py`, cuyas líneas mutadas son solo las de las rutas nuevas
+  de F-065.
+
+El argumento del implementer también es correcto: si un subconjunto de la suite mata un mutante, la suite entera
+también lo mata. Reducir la suite solo puede dar supervivientes de más, nunca de menos.
+
+**No exijo el comando oficial con la suite entera.** Hay 0 supervivientes y 0 timeouts, el alcance y el número de
+mutantes están recalculados, y la muestra la matan tests de la feature. Con eso, la suite entera no puede cambiar el
+resultado: solo costaría horas con la máquina cargada.
+
+**Equivalentes:** la herramienta no da ninguno. El único de la feature es R4 (a mano, Bloque A2), aceptado por escrito
+por el humano (C-A2-3). La regla de orden (punto 7) se aplicó en los Bloques A3, A4 y A4 bis (RV1–RV7, O1–O6), y el
+código no ha cambiado desde entonces.
+
+### 2 · Tareas
+
+En `[x]`: T1, T2, T2 bis, T-A0, T-A0 bis, T3, T4, T4 bis, T5 a T17, T17 bis, T11 y T12. Cada tarea de agente tiene su
+commit `F-065 Tn: …` (T1 1, T2 1, T2 bis 4, T3 1, T4 2, T4 bis 4, T5 1, T6 1, T7 1, T8 3, T9 1, T10 4, T11 1, T12 1,
+T13 1, T14 2, T15 1, T16 3, T17 1, T17 bis 2). T-A0 y T-A0 bis son del humano, y su resultado entró en `16453b5`. El
+Bloque A7 (T-A11 a T-A18) es MANUAL del humano y queda fuera de esta review, como dice el encargo.
+
+### 3 · Secretos, identificadores y datos personales
+
+He barrido **todas las líneas añadidas** de `f7f63da..HEAD` con estos patrones:
+- GUID (`[0-9a-f]{8}-…-[0-9a-f]{12}`) e IPv4;
+- correos;
+- hosts de Azure (`azurewebsites`, `database.windows`, `postgres.database.azure`, `sharepoint.com`, `vault.azure`);
+- asignaciones a `password`, `secret`, `api_key`, `token`, `connectionstring`, `AccountKey` o `sig=`;
+- DNI (`[0-9]{8}[A-Z]`) y móviles (`[6789][0-9]{8}`).
+
+Resultado:
+- GUID, IPv4, hosts, DNI y teléfonos: **ninguno**.
+- Correos: solo `@ejemplo.invalid`, un dominio reservado y ficticio.
+- Claves: solo `SIGRID_API_KEY="clave-de-mentira-para-el-test"`, en dos tests.
+- Ningún PDF, ofimática, imagen ni fichero de `muestras/` en el `git log --diff-filter=A` de la rama.
+
+El mismo barrido sobre `34c2c83~1..074b6c0` de `azure-apps` sale limpio.
+
+### 4 · Documentos y `azure-apps`
+
+- `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` están al día. Los fija `test_f065_documentacion.py`, aprobado en el
+  A5 y en verde en el `init.sh` de T12.
+- `azure-apps`: `34c2c83` toca `postventa_incidencias.md`, y `074b6c0` ese mismo documento y dos filas de
+  `postventa-incidencias` en `sigrid_api.md` §10. Solo tocan lo de este proyecto. El repositorio **no tiene ningún
+  remoto** (`git remote -v` sale vacío), así que no hay nada empujado. Árbol limpio. El documento dice «pendiente de
+  publicar», que es lo cierto hoy. **Después de T-A11** habrá que quitarlo (ver O-A6-2).
+
+### Checkpoints
+
+**C1 · Arnés completo y en verde**
+- [x] `init.sh` con exit 0 a `0a8e303` (salida del líder, leída).
+- [x] Existen los ficheros del arnés (los comprueba ese mismo `init.sh`).
+
+**C2 · Estado coherente**
+- [x] Una sola feature `in_progress` (F-065).
+- [x] Rama `feature/F-065-revision-sigrid-backend`.
+- [ ] **`progress/current.md` no describe la sesión activa.** La entrada de F-065 sigue diciendo «Bloque A1 hecho
+  (script 29), en re-review tras C-A1-1; esperando T-A0 del humano» (l. 3–13). Con A1 a A6 hechos y aprobados, ese ya
+  no es el estado. Ver **C-A6-1**.
+- N/A · Resumen en `history.md`: F-065 no está `done`. Se escribe al cerrarla, después del Bloque A7.
+
+**C3 · Arquitectura y convenciones**
+- [x] Hexagonal:
+  - el dominio (`sigrid_bandeja.py` y el puerto) solo usa la librería estándar y `domain`;
+  - la aplicación habla con el puerto;
+  - las consultas y el adaptador están en `infrastructure/sigrid/`;
+  - la validación y la serialización, en `interface_adapters/api/`.
+- [x] Primera línea con la ruta en **todos** los `.py` y `.ps1` añadidos o modificados (comprobado fichero a fichero).
+- [x] Sin `print`, `breakpoint`, `pdb`, TODO ni FIXME en las líneas añadidas de `services/`, y sin secretos (§3). Sin
+  dependencias nuevas: no cambia ningún `requirements*.txt` ni `pyproject`. ruff: 6 avisos `I001` en los ficheros de
+  la rama. Es el estilo de importaciones del repositorio, ya visto en el A3, y no bloquea.
+- [x] La unidad de trabajo es la incidencia: el cruce y la guarda razonan por incidencia y por reclamación.
+- [x] No se cierra ni se escribe nada en Sigrid: la ruta y la guarda solo usan `sql/read`. El ensayo sigue en
+  `commit: false`, y la guarda solo **quita** candidatas.
+- N/A · Lo manuscrito y «firmado no es conforme»: la feature no toca partes escaneados, ni la extracción ni la firma.
+- N/A · «Reprocesar no duplica» (hash del PDF): la feature no ingiere partes. Lo que sí hace, no duplicar en Sigrid
+  lo que ya está, es justo la guarda de R45, cubierta por `r45_ya_existe_…`.
+- [x] Sin estados numéricos de Sigrid: el cruce se hace contra `conest` por `tip`/`est` y se compara por código de
+  estado. El tipo de concepto sale de los ajustes (`r5_el_tipo_de_concepto_sale_de_la_configuracion`).
+- [x] Ningún parte ni PDF en git (`git log --diff-filter=A` de la rama, §3).
+
+**C3 bis · Documentos de fuera.** N/A: la rama no toca `docs/referencia/` (`git diff --stat` vacío en esa carpeta).
+
+**C4 · Verificación real**
+- [x] Trazabilidad: todos los requisitos vivos tienen tests `test_f065_rN_*` en verde (lista en la tabla de abajo).
+  R7, R32 y R34 están retirados en la spec (Q-2 y N-3). R31 y R71 son `MANUAL (humano)`, del Bloque A7; la parte
+  «antes» de R71 se midió en T-A0 bis.
+- [x] Sin red ni base: dobles en memoria; `tests_bbdd/` no se toca.
+- [ ] **Las `MANUAL (humano)` no están en `progress/current.md`.** T-A11 a T-A18 tienen su comando exacto en
+  `tasks.md` (l. 317–381), pero `current.md` solo lista T-A0 y T-A0 bis, que ya se hicieron. Ver **C-A6-1**.
+
+**C4 bis · Rigor**
+- [x] `rigor: critico` declarado.
+- [x] Fase RED con la salida real en cada bloque (A1–A5, T17 bis), revisada bloque a bloque.
+- [x] Cobertura: `[OK]`, 100 % (755/755).
+- [x] Mutación: `progress/mutacion_F-065.md` lo genera la herramienta, y el alcance y el nº de mutantes están
+  recalculados (§1).
+- [x] Muertos: la campaña no se reejecutó (29,7 min, dicho arriba). En su lugar repetí a mano 4 mutantes de la
+  herramienta, y los 4 los matan tests de F-065.
+- [x] Coste por mutante: 9,8 s con 1 worker. No es sospechoso.
+- [x] Cero supervivientes. El único equivalente (R4, a mano) tiene la aceptación escrita del humano (C-A2-3).
+- [x] «Evidencias» de T11 con los cuatro números y los workers (1).
+- N/A · Guarda por definiciones: en este bloque ningún fichero pasa de «no se toca» a una guarda por definiciones. La
+  ampliación de §15.6 (T17) ya se revisó en el A4 bis.
+- [x] Ningún N/A sin motivo escrito.
+
+**C4 ter · Rutas sensibles.** N/A: no existe `harness/rutas_sensibles.json`.
+
+**C5 · Cierre**
+- [x] `tasks.md`: todas las tareas de agente en `[x]`, cada una con su commit `F-065 Tn:` (§2). El Bloque A7 es MANUAL
+  del humano y, según la propia `tasks.md`, va después de esta review.
+- [x] Sin temporales ni artefactos sin trackear: `git status --porcelain` sale vacío y mi copia desechable está
+  eliminada (`git worktree list` ya no la muestra).
+- [x] `features.json`: F-065 en `in_progress`, que es su estado real hasta que pase el Bloque A7.
+
+### Cobertura · requisito → test (feature entera)
+
+| Requisito | Tests (prefijo `test_f065_`) |
+|---|---|
+| R1–R6, R8–R9 (ruta, puertas, una lectura de cada, tope, techo, obra ambigua) | `r1_*`, `r2_*`, `r3_*`, `r4_*`, `r5_*`, `r6_*`, `r8_*`, `r9_*` en `http`, `aplicacion`, `consulta`, `adaptador` |
+| R10–R19 (emparejado PVI-, criterios del cruce, severidad, R18) | `r10_*` a `r19_*` en `dominio` |
+| R20–R28 (respuesta, resumen, orden, no-store, logs) | `r20_el_resumen`, `r21_*`, `r22_*` a `r28_*` en `http`, `dominio`, `datos_personales` |
+| R29 (script 29) | `r29_*` en `scripts_infra` |
+| R30 (documentos) | `r30_*` en `documentacion` |
+| R33, R35–R40 (ficha, datos personales solo en esta ruta, `repr` sin valores) | `r33_*`, `r35_*` a `r40_*` en `consulta`, `adaptador`, `datos_personales`, `http` |
+| R41–R42 (veredicto y bloque volcado), con L-3 | `r41_*`, `r42_*` en `veredicto` |
+| R43–R49 (la guarda del ensayo) | `r43_*` a `r49_*` en `guarda_ensayo`, `veredicto`, `consulta`, `adaptador` |
+| R70 (`-Unidades`, misma consulta que la guarda) | `r70_*` en `scripts_infra`, `consulta` |
+| R31, R71 | `MANUAL (humano)`, Bloque A7 (T-A12 a T-A18) |
+| R7, R32, R34 | Retirados en la spec |
+
+### Cambios requeridos
+
+**C-A6-1 · (líder) `progress/current.md`, entrada de F-065 (l. 3–13).** Se quedó en el Bloque A1 («esperando T-A0
+del humano») y no lista las verificaciones que quedan. Hay que sustituirla por el estado real y lo pendiente:
+1. Estado: Bloques A1 a A6 hechos y aprobados (mutación final 182/182, cobertura 100 % 755/755, `init.sh` en verde a
+   `0a8e303`). Siguiente paso: el Bloque A7, del humano.
+2. **T-A11 a T-A18**, cada una con su comando exacto y su criterio de «pasa», copiados de
+   `specs/F-065-revision-sigrid-backend/tasks.md` l. 319–381:
+   - T-A11: el despliegue desde un worktree limpio de `dev`;
+   - T-A12, T-A13, T-A14 y T-A17: los `fetch`;
+   - T-A15: la consulta de Application Insights;
+   - T-A16: repetir T-A12;
+   - T-A18: con la nota de que necesita la autorización expresa del humano para esa acción.
+
+Es solo documentación: no cambia `services/` ni los tests, así que **no** hace falta relanzar ni la campaña ni
+`init.sh` completo. Con C-A6-1 hecho, esta review pasa a APPROVED sin más: basta con que el líder lo anote aquí
+debajo, como hizo con C-A2-4 y C-A4-1.
+
+### Observaciones (no bloquean)
+
+- **O-A6-1 · `current.md` arrastra unas 5000 líneas de otras sesiones** (F-009, F-034, F-051…, ya cerradas). Es
+  deuda de antes de F-065 (5132 líneas en `f7f63da`), pero choca con C2 («solo la sesión activa»). Propongo al líder
+  podarlo en un trabajo aparte y llevar lo cerrado a `history.md`.
+- **O-A6-2 · `azure-apps` tras publicar.** `postventa_incidencias.md` dice «pendiente de publicar». Cuando T-A11
+  despliegue, hay que cambiarlo y anotar el commit publicado, en ese mismo trabajo (regla de mantenimiento).
+- **O-A5-1 y O-A5-2** siguen abiertas, como las dejó la re-review del A5.
+
+### Automejora (propuesta, no aplicada)
+
+- A `CHECKPOINTS.md` C4: añadir «la entrada de la feature en `current.md` refleja el último bloque cerrado». Aquí la
+  lista MANUAL de `current.md` se quedó en el primer bloque durante seis bloques sin que ninguna review de bloque lo
+  viera, porque C4 solo se recorre entero al final.

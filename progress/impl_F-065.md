@@ -2069,132 +2069,489 @@ encargo y la medición de arriba es directa. La puerta oficial es la de
 | Mutantes | Herramienta: **7 generados, 7 muertos, 0 supervivientes, 0 timeouts**, 1 worker, 103,0 s, sobre `af4b356` con el árbol limpio (suite reducida). A mano: **33, 33 muertos, 0 supervivientes**. MV18 sobrevivió en `af4b356` y lo mata `2ef038d` |
 | Tiempo de la suite | 13,41 s la de la verificación de T14; 103,61 s todo F-065 |
 
-## Bloque A4 bis · T15–T17: BLOQUEADO antes de escribir nada (2026-10-29)
+## Bloque A4 bis · T15–T17 (2026-10-29)
 
-Encargo del líder: la segunda mitad del Bloque A4 bis, **solo T15, T16 y T17**,
-la guarda del ensayo. Lo he parado **antes de escribir ningún test ni nada de
-código**. La spec se contradice consigo misma en dos puntos, y no se pueden
-cumplir a la vez R47 y R11 (S-1), por un lado, y la regla de T16 y T17 sobre
-los tests de F-059, por otro. No he dejado nada a medias: el árbol solo cambia
-por esta sección. No he tocado `features.json`, `BACKLOG.md` ni `current.md`,
-como pedía el encargo: el motivo del bloqueo está aquí. Tampoco me he
-conectado a Sigrid, a la base ni a SharePoint.
+Encargo del líder: la **segunda mitad** del Bloque A4 bis, **solo T15, T16 y
+T17**, la guarda del ensayo del volcado. Se desbloqueó con la opción (a) de la
+sección de bloqueo que sustituye esta: la spec quedó enmendada en `7a50ac0`
+con dos ampliaciones aditivas de tests de F-059. Trabajo hecho sobre
+`e623caf`, rigor `critico`.
 
-### La contradicción
+No me he conectado a Sigrid, a la base ni a SharePoint. No he tocado
+`features.json`, `BACKLOG.md` ni `current.md`. No he empezado el Bloque A5
+(documentación) ni he tocado L-3. `init.sh` entero lo lanza el líder.
 
-T16 exige en verde `test_f059_volcado_http.py`, `test_f059_pipeline_volcado.py`,
-`test_f059_volcado_dominio.py` y `test_f059_alcance_cerrado.py`. El diff de los
-dos primeros solo puede ser el doble del lector, y `test_f059_volcado_dominio.py`
-no aparece entre los que cambian. T17 añade: «en los dos tests de F-059,
-ninguna aserción menos ni cambiada». Además, `design.md` §15.6 y §15.8 solo
-prevén que se toquen esos dos ficheros. Dos aserciones de F-059, que hoy pasan,
-fijan exactamente lo que R47 y §15.6 mandan cambiar:
+### Commits
 
-1. **`tests/test_f059_volcado_dominio.py:1592`**,
-   `test_f059_r11_r18_los_motivos_de_exclusion`. Exige que
-   `[m.value for m in MotivoExclusion]` sea **exactamente** la lista de los
-   siete motivos de hoy. §15.6 manda añadir a `MotivoExclusion`
-   `DUPLICADA_EN_SIGRID` y `CONFLICTO_SIN_CONFIRMAR` (R45). En cuanto se añadan,
-   ese test falla. Y es un fichero que la spec no deja tocar.
-2. **`tests/test_f059_volcado_http.py:600`**,
-   `test_f059_r12_la_respuesta_del_ensayo`. Exige
-   `set(datos) == CLAVES_DEL_ENSAYO`, con las seis claves de R12 (línea 122).
-   R47 manda que la respuesta 200 lleve **siempre** el bloque `sigrid`: `null`
-   si la guarda no leyó, y un objeto si leyó. Ese test ensaya una incidencia,
-   así que la guarda lee (con el doble vacío) y la respuesta tiene siete
-   claves. Cambiar `CLAVES_DEL_ENSAYO` cambia lo que comprueba la aserción, y el
-   diff de ese fichero deja de ser «solo el doble».
+| Commit | Tarea | Qué |
+|---|---|---|
+| `ea75495` | T15 | Tests en RED: `tests/test_f065_guarda_ensayo.py` (nuevo) y los bloques de la guarda en `test_f065_consulta.py`, `test_f065_adaptador.py` y `test_f065_scripts_infra.py`; T15 `[x]` |
+| `addc1de` | T16 | La guarda: la consulta por unidades, `leer(…, unidades=)`, `guarda_sigrid.py`, los dos motivos, `ensayar`, el borde, `function_app.py`, el doble del lector y las dos ampliaciones en los tests de F-059; T16 `[x]` |
+| `2c1e366` | T17 | La guarda de alcance ampliada a §15.6; T17 `[x]` |
+| `5db4d74` | T16 | Precriba de mutación: el tipo de la reclamación con otro valor que el de por defecto (709) |
+| `f461380` | T16 | Tests que matan los supervivientes de la mutación (herramienta y a mano) |
+| (el siguiente) | — | Este informe y `progress/mutacion_F-065_bloqueA4bis_guarda.md` |
 
-Línea base, sobre `e623caf` y desde `services/postventa-api`:
+### Ficheros tocados
+
+Todos bajo `services/postventa-api/`, salvo la spec.
+
+- **Producción nueva de F-065**:
+  - `application/pipelines/guarda_sigrid.py` (nuevo, 223 líneas):
+    - `VeredictoDeLaGuarda` y `GuardaDelEnsayo`, los dos inmutables;
+    - `aplicar_guarda_de_sigrid`;
+    - `registrar_la_guarda`, que escribe la línea de R48.
+  - `infrastructure/sigrid/consultas_reclamaciones_obra.py`:
+    - `SQL_RECLAMACIONES_DE_LAS_UNIDADES` (las 12 columnas de R6, sin las
+      uniones de R33, con `u.cod IN (…)` al final del `WHERE`);
+    - `select_reclamaciones_de_las_unidades`, de 1 a 50 unidades distintas;
+    - `fila_a_reclamacion_de_las_unidades`, que exige exactamente 12
+      columnas y deja `ficha=None`;
+    - `_fila` y `_ficha`, comunes a las dos lecturas, con la ficha calculada
+      **después** de la obra y el código.
+  - `infrastructure/sigrid/reclamaciones_obra.py`: `leer(…, unidades=None)`
+    elige consulta y mapeo; el log de R25 gana `unidades=<n>` (`-` en la de
+    toda la obra).
+  - `domain/ports/reclamaciones_obra.py`: `leer` gana `unidades`, y
+    `FilaReclamacionObra.ficha` admite `None`.
+  - `domain/models/sigrid_bandeja.py`: `ReclamacionSigrid.ficha` admite
+    `None`.
+  - `application/pipelines/sigrid_bandeja.py`: `reclamaciones_de_la_lectura`
+    (el techo, `truncated` y la obra ambigua), que ahora comparten la ruta y la
+    guarda.
+- **Producción de F-059, solo en las piezas declaradas en §15.6** (lo fija
+  T17):
+  - `domain/models/volcado.py`: `MotivoExclusion` gana, al final,
+    `DUPLICADA_EN_SIGRID` y `CONFLICTO_SIN_CONFIRMAR`.
+  - `application/pipelines/volcado.py`:
+    - `PeticionDeEnsayo.conflictos_confirmados`, vacío por defecto;
+    - `ResultadoDeEnsayo.guarda`, `None` por defecto;
+    - `ensayar` gana `reclamaciones` y `tip` y llama a la guarda entre la
+      selección y el login.
+  - `interface_adapters/api/volcado.py`:
+    - la clave opcional `conflictos_confirmados` del cuerpo, validada
+      **antes** de construir nada;
+    - el orden de construcción: pasarela, lector y base;
+    - el bloque `sigrid` de la respuesta.
+  - `function_app.py`: las tres entradas de error del volcado
+    (`sigrid_no_disponible` 503, `reclamaciones_sin_verificar` 409 con
+    `filas`, `obra_ambigua` 409) y el docstring de `volcado_ensayo`.
+- **Tests de F-065**:
+  - `tests/test_f065_guarda_ensayo.py`: nuevo, 59 funciones y 86 casos.
+  - `tests/test_f065_consulta.py`: la consulta por unidades, carácter a
+    carácter, y su mapeo.
+  - `tests/test_f065_adaptador.py`: `leer(…, unidades=)`, el log y los errores.
+  - `tests/test_f065_scripts_infra.py`: el script 29 manda lo mismo que
+    `select_reclamaciones_de_las_unidades`, con 1 a 5 y con 50 unidades (lo
+    que T2 bis dejó dicho).
+  - `tests/test_f065_alcance_cerrado.py`: la guarda de alcance ampliada (T17).
+- **Tests de F-059**, solo lo que permiten §15.6 y la enmienda `7a50ac0`:
+  - `tests/test_f059_pipeline_volcado.py`: el doble vacío
+    `SinReclamacionesEnSigrid` y su paso a `ensayar` (`reclamaciones=`,
+    `tip=708`).
+  - `tests/test_f059_volcado_http.py`: el mismo doble, que entra por
+    `construir_reclamaciones_obra`, y `CLAVES_DEL_ENSAYO` gana `"sigrid"`.
+  - `tests/test_f059_volcado_dominio.py`: la lista de motivos gana, al final,
+    `"duplicada_en_sigrid"` y `"conflicto_sin_confirmar"`. Son las dos líneas
+    del diff.
+- `specs/F-065-revision-sigrid-backend/tasks.md`: T15, T16 y T17 `[x]`.
+- **Sin tocar**: `infrastructure/sigrid/volcado.py`, la persistencia del
+  volcado, `volcar`, `panel_de_volcado`, ningún DDL ni ninguna variable de
+  entorno, `revision.py`, L-3. Lo fija T17.
+
+### Decisiones de diseño
+
+- **El orden del ensayo**: selección, guarda (un `sql/read` por unidades),
+  login, lote y guardado. Si la guarda no deja nada que mandar, no hay login
+  ni lote: es el «nada que mandar» de F-059, con el bloque `sigrid` relleno.
+  Si la lectura falla, no hay login ni lote, y el error sale con su código
+  (503 o 409).
+- **Las unidades que se leen** son `valores.unidad_codigo` de las candidatas
+  **mandadas**: distintas, ordenadas y tal cual, sin recortar, porque así
+  compara `u.cod`. Son los vigentes, porque la candidata es la de la misma
+  revisión con la huella intacta.
+- **El cruce de la guarda** se hace con las situaciones de lo mandado, en el
+  orden pedido (R47 y O-A4b-3), y no con la bandeja entera. Lo fijan un espía (los ids
+  que ve `veredictos` son `[3, 1, 2]` con `4` en la bandeja sin aprobar) y el
+  test de R49 de la guarda contra la ruta.
+- **Los veredictos**: `ya_existe` se excluye como `duplicada_en_sigrid` con el
+  primer código (R18). `choca` se manda solo si **todos** sus códigos están
+  confirmados, y entonces sale con `confirmada=True`. Si falta alguno, se
+  excluye como `conflicto_sin_confirmar` con el primer código sin confirmar.
+  `va` y `se_enlaza` se mandan.
+- **Las excluidas** quedan en el orden pedido, mezclando las de la selección
+  de F-059 con las de la guarda. Por eso `aplicar_guarda_de_sigrid` recibe
+  también `pedidas`, como anuncié en la sección de bloqueo.
+- **Las confirmaciones sobrantes** son las de una incidencia que no es `choca`
+  en esta lectura, y también las de una incidencia que no pasó por la guarda
+  (excluida antes por F-059). Se cuentan en la línea de R48 y no son error.
+- **La línea de R48** sale una vez por lectura válida:
+  - con la llamada guardada, si el ensayo termina;
+  - con `llamada=-`, si no queda nada que mandar o si el login, el lote o el
+    guardado fallan después de la guarda (`try/except BaseException` que
+    registra y relanza).
+  - Si la lectura falla, no hay línea de la guarda (ya escribe la suya el
+    adaptador).
+  - Lleva solo cuentas, nunca códigos, textos, unidades ni personas. Por cada
+    confirmada hay otra línea con la llamada, el id de la incidencia y el
+    número de códigos.
+- **`leido_at_utc`** es el `ahora` del ensayo, el mismo que `caduca_at_utc`, y
+  sale con `_instante` de F-059: en UTC, con microsegundos y `+00:00`.
+- **El borde** valida `conflictos_confirmados` antes de `obtener_ajustes`, así
+  que lo que no vale es 400 sin construir ningún adaptador (R43). Cada código
+  pasa `PATRON_COD_PARTE.fullmatch`, de 1 a 50 por incidencia y sin repetir.
+  El tope `_MAX_CODIGOS_CONFIRMADOS = 50` es una constante local del borde.
+- **`ficha` admite `None`**, pero solo en la lectura de la guarda: la ruta
+  sigue leyendo 31 columnas con la ficha entera. Una fila de la guarda con 31
+  columnas es error, y el adaptador lo convierte en 503: así no se cuelan
+  datos personales si cambia la consulta.
+- **`_fila` recibe la ficha como función** (`ficha=lambda: …`) para que el
+  orden de los errores siga siendo el de siempre: primero la obra y el código,
+  después la ficha.
+
+### Desviaciones
+
+- **`aplicar_guarda_de_sigrid` gana `pedidas` y `ahora`**, que la firma de
+  §15.6 no nombra. Están anunciadas en los puntos 1 y 4 de la sección de
+  bloqueo, que el líder confirmó al desbloquear.
+- **`CODIGOS_DEL_VOLCADO` y `HTTP_DEL_VOLCADO` ganan los tres tipos de la
+  guarda.** Son las «tres entradas de `function_app.py`» de T16. El panel y
+  `volcar` nunca lanzan esos tipos, así que para ellos no cambia nada.
+- **Las dos ampliaciones aditivas de F-059** son las de la enmienda
+  `7a50ac0`. Ninguna aserción de F-059 pierde nada, y T17 lo comprueba
+  aserción por aserción.
+- Nada más.
+
+### Fase RED (T15)
+
+**1. Recolección**, contra el árbol de `e623caf` con solo los tests de T15,
+desde `services/postventa-api`:
 
 ```
-$ .venv/Scripts/python.exe -m pytest "tests/test_f059_volcado_dominio.py::test_f059_r11_r18_los_motivos_de_exclusion" "tests/test_f059_volcado_http.py::test_f059_r12_la_respuesta_del_ensayo" -q -p no:cacheprovider
-..                                                                       [100%]
-2 passed in 6.78s
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_guarda_ensayo.py tests/test_f065_consulta.py tests/test_f065_adaptador.py tests/test_f065_scripts_infra.py -q -p no:cacheprovider
+=================================== ERRORS ====================================
+______________ ERROR collecting tests/test_f065_guarda_ensayo.py ______________
+...
+tests\test_f065_guarda_ensayo.py:37: in <module>
+    from application.pipelines import guarda_sigrid
+E   ImportError: cannot import name 'guarda_sigrid' from 'application.pipelines' (C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\application\pipelines\__init__.py)
+________________ ERROR collecting tests/test_f065_consulta.py _________________
+...
+tests\test_f065_consulta.py:36: in <module>
+    from infrastructure.sigrid.consultas_reclamaciones_obra import (
+E   ImportError: cannot import name 'COLUMNAS_DE_LAS_UNIDADES' from 'infrastructure.sigrid.consultas_reclamaciones_obra' (C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\infrastructure\sigrid\consultas_reclamaciones_obra.py)
+________________ ERROR collecting tests/test_f065_adaptador.py ________________
+...
+tests\test_f065_adaptador.py:51: in <module>
+    from infrastructure.sigrid.consultas_reclamaciones_obra import (
+E   ImportError: cannot import name 'fila_a_reclamacion_de_las_unidades' from 'infrastructure.sigrid.consultas_reclamaciones_obra' (C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\infrastructure\sigrid\consultas_reclamaciones_obra.py)
+=========================== short test summary info ===========================
+ERROR tests/test_f065_guarda_ensayo.py
+ERROR tests/test_f065_consulta.py
+ERROR tests/test_f065_adaptador.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!
+3 errors in 4.99s
 ```
 
-No he encontrado otra aserción de F-059 que lo impida:
-- el orden de `llamadas` de `test_f059_s10_…` aguanta si el doble no anota nada;
-- ningún test cuenta las líneas de log;
-- `ResultadoDeEnsayo(OBRA, None, None, (), (), vacio)`, de
-  `test_f059_pipeline_volcado.py:1145`, aguanta si `guarda` va al final con
-  `None` por defecto;
-- las guardas de diff de `test_f059_alcance_cerrado.py` se saltan fuera de su
-  rama.
+**2. El script 29 contra la función**, el único test de
+`test_f065_scripts_infra.py` que lo importa dentro del cuerpo:
 
-### Por qué no lo resuelvo yo
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_scripts_infra.py -q -p no:cacheprovider -k "manda_lo_mismo"
+E       ImportError: cannot import name 'select_reclamaciones_de_las_unidades' from 'infrastructure.sigrid.consultas_reclamaciones_obra' (C:\Users\pgris\PycharmProjects\postventa-f065\services\postventa-api\infrastructure\sigrid\consultas_reclamaciones_obra.py)
 
-Las dos salidas que no cambian ningún test de F-059 se apartan de la spec
-aprobada:
-- **Los dos motivos en otro enumerado** (`Excluida.motivo: MotivoExclusion |
-  MotivoDeLaGuarda`). Dejaría verde el test 1, pero contradice §15.6 («**solo**
-  dos valores más en `MotivoExclusion`»).
-- **Quitar `sigrid` de la respuesta cuando no hay nada que choque.**
-  Contradice R47 (`sigrid: null` cuando no leyó; un objeto cuando leyó) y R49
-  («responde lo mismo que hoy **más `sigrid`**»).
+tests\test_f065_scripts_infra.py:857: ImportError
+=========================== short test summary info ===========================
+FAILED tests/test_f065_scripts_infra.py::test_f065_r70_el_script_manda_lo_mismo_que_la_funcion_de_la_guarda[1]
+FAILED tests/test_f065_scripts_infra.py::test_f065_r70_el_script_manda_lo_mismo_que_la_funcion_de_la_guarda[2]
+FAILED tests/test_f065_scripts_infra.py::test_f065_r70_el_script_manda_lo_mismo_que_la_funcion_de_la_guarda[3]
+FAILED tests/test_f065_scripts_infra.py::test_f065_r70_el_script_manda_lo_mismo_que_la_funcion_de_la_guarda[4]
+FAILED tests/test_f065_scripts_infra.py::test_f065_r70_el_script_manda_lo_mismo_que_la_funcion_de_la_guarda[5]
+FAILED tests/test_f065_scripts_infra.py::test_f065_r70_el_script_manda_lo_mismo_que_la_funcion_de_la_guarda[50]
+6 failed, 47 deselected in 3.19s
+```
 
-Para el test 2 no hay salida sin tocar el test. Cualquiera de las dos sería
-improvisar.
+**3. El RED de comportamiento.** Un `ImportError` solo prueba que el test es
+anterior al código. Para ver que los requisitos centrales (R44 el orden, R45
+los dos motivos, R46 sin lectura válida no hay ensayo) los cazan los tests, ya
+con T16 escrito, **desactivé temporalmente** la llamada a la guarda en
+`ensayar`: `if seleccion.mandadas:` pasó a `if False and seleccion.mandadas:`.
+Lancé los tests centrales y restauré el fichero desde una copia, sin
+versionarlo. Las `UUID(...)` completas de la traza las he sustituido por
+`UUID(int=1)`, por la regla de `progress/`:
 
-### Propuesta (para que decida el humano)
+```
+$ .venv/Scripts/python.exe -m pytest "tests/test_f065_guarda_ensayo.py::test_f065_r44_seleccion_sigrid_login_y_lote_en_ese_orden" "tests/test_f065_guarda_ensayo.py::test_f065_r45_ya_existe_se_excluye_como_duplicada_con_su_primer_codigo" "tests/test_f065_guarda_ensayo.py::test_f065_r45_la_confirmacion_parcial_excluye_con_el_primer_codigo_sin_confirmar" "tests/test_f065_guarda_ensayo.py::test_f065_r45_la_emparejada_en_npr_sin_confirmar_se_excluye_con_su_codigo" "tests/test_f065_guarda_ensayo.py::test_f065_r46_sin_lectura_valida_no_hay_login_ni_lote_ni_ensayo" -q -p no:cacheprovider
+FFFFFFF                                                                  [100%]
+>       assert llamadas.count("sigrid.reclamaciones") == 1
+E       AssertionError: assert 0 == 1
+E        +  where 0 = <built-in method count of list object at 0x000002229A33E380>('sigrid.reclamaciones')
+E        +    where <built-in method count of list object at 0x000002229A33E380> = ['revision.aprobadas', 'revision.situacion', 'revision.situacion', 'usuarios.resolver_login', 'sigrid.ensayar', 'volcados.guardar_ensayo'].count
+...
+>       assert _excluidas(resultado) == [(ID(1), MX.DUPLICADA_EN_SIGRID, "RS26.09/0130")]
+E       AssertionError: assert [] == [(UUID('00000...S26.09/0130')]
+E         Right contains one more item: (UUID(int=1), <MotivoExclusion.DUPLICADA_EN_SIGRID: 'duplicada_en_sigrid'>, 'RS26.09/0130')
+...
+>       assert _excluidas(resultado) == [(ID(1), MX.CONFLICTO_SIN_CONFIRMAR, "RS26.09/0124")]
+E       AssertionError: assert [] == [(UUID('00000...S26.09/0124')]
+E         Right contains one more item: (UUID(int=1), <MotivoExclusion.CONFLICTO_SIN_CONFIRMAR: 'conflicto_sin_confirmar'>, 'RS26.09/0124')
+...
+>       assert _excluidas(resultado) == [(ID(1), MX.CONFLICTO_SIN_CONFIRMAR, "RS26.10/0080")]
+E       AssertionError: assert [] == [(UUID('00000...S26.10/0080')]
+E         Right contains one more item: (UUID(int=1), <MotivoExclusion.CONFLICTO_SIN_CONFIRMAR: 'conflicto_sin_confirmar'>, 'RS26.10/0080')
+...
+>       with pytest.raises(error):
+E       Failed: DID NOT RAISE CatalogoNoDisponible
+...
+E       Failed: DID NOT RAISE ReclamacionesSinVerificar
+...
+E       Failed: DID NOT RAISE ObraAmbigua
+=========================== short test summary info ===========================
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r44_seleccion_sigrid_login_y_lote_en_ese_orden
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_ya_existe_se_excluye_como_duplicada_con_su_primer_codigo
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_la_confirmacion_parcial_excluye_con_el_primer_codigo_sin_confirmar
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r45_la_emparejada_en_npr_sin_confirmar_se_excluye_con_su_codigo
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r46_sin_lectura_valida_no_hay_login_ni_lote_ni_ensayo[sigrid-caida]
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r46_sin_lectura_valida_no_hay_login_ni_lote_ni_ensayo[al-techo-o-truncated]
+FAILED tests/test_f065_guarda_ensayo.py::test_f065_r46_sin_lectura_valida_no_hay_login_ni_lote_ni_ensayo[dos-obras]
+7 failed in 7.73s
+```
 
-**(a) Recomendada.** Enmendar T16, T17 y §15.6 para declarar **dos ampliaciones
-aditivas** en tests de F-059. No se quita ninguna aserción ni ningún valor; las
-aserciones solo ganan lo que R45 y R47 añaden:
-- `test_f059_volcado_dominio.py::test_f059_r11_r18_los_motivos_de_exclusion`:
-  la lista gana, al final, `"duplicada_en_sigrid"` y `"conflicto_sin_confirmar"`.
-  Es la consecuencia directa de la enmienda de R11 que ya aprobó S-1 («dos
-  motivos de exclusión»).
-- `test_f059_volcado_http.py`: `CLAVES_DEL_ENSAYO` gana `"sigrid"`. Es el
-  «aditivo» de R47.
+**4. El RED de T17.** Con la producción de T16 ya escrita y la guarda de
+alcance todavía sin ampliar, la guarda de T9 caza todo lo que T16 toca fuera
+de lo que ella declaraba:
 
-La guarda de alcance de T17 los declararía como ampliados: solo ganan esos
-valores y no pierden ninguna aserción. Así lo hizo `test_f059_alcance_cerrado.py`
-con los tests de F-012/F-036/F-053, y `test_f065_alcance_cerrado.py` con
-`test_f065_http.py` en T13.
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_alcance_cerrado.py -q -p no:cacheprovider
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_s9_la_rama_solo_toca_los_ficheros_declarados
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_s9_en_cada_fichero_tocado_solo_cambia_lo_declarado[function_app.py]
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_s9_3_la_rama_no_toca_ningun_intocable
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_r26_las_funciones_que_responden_son_las_de_la_base[_error_del_volcado]
+FAILED tests/test_f065_alcance_cerrado.py::test_f065_la_rama_solo_toca_los_tests_ajenos_declarados
+5 failed, 41 passed in 79.27s
+```
 
-**(b)** Los motivos en un enumerado aparte, y el test de las claves ampliado.
-Toca menos F-059 (`domain/models/volcado.py` no cambia), pero reescribe §15.6,
-y el test 2 sigue necesitando la ampliación de (a). No la recomiendo: dos
-enumerados de exclusión para el mismo campo complican F-040 sin ganar nada.
+**5. En verde**: ver «Tests».
 
-### Lo que haré al retomarlo, salvo que el líder diga otra cosa
+### Tests (T15–T17)
 
-Ninguno de estos puntos bloquea, porque la spec no los fija. Los dejo escritos
-para que la confirmación cubra también esto:
-1. **El orden de las `excluidas`** sigue siendo el pedido (la regla de
-   `Seleccion` de F-059). Para mezclar las de la selección con las de la guarda,
-   `aplicar_guarda_de_sigrid` recibe también las pedidas, en su orden. Su firma
-   en §15.6 no las nombra.
-2. **El cruce de la guarda** se hace con las situaciones de lo que se manda, en
-   el orden pedido (O-A4b-3), y no con la bandeja entera. El veredicto de una
-   candidata solo depende de su situación, de las reclamaciones de su unidad y
-   de las que llevan su `PVI-` (`propias`). Lo fijará un test: el veredicto del
-   ensayo es el mismo que el de la ruta con toda la obra (R49), con la excepción
-   escrita.
-3. **Las unidades que se leen** son los códigos **vigentes** de las situaciones
-   mandadas (`valores_vigentes`, lo mismo que indexa `cruzar`): distintos,
-   ordenados y tal cual, sin recortar, como compara `u.cod`.
-4. **`leido_at_utc`** del bloque `sigrid` es el `ahora` del ensayo. La guarda lo
-   recibe, porque su firma tampoco lo nombra.
-5. **La línea de R48** sale también si, después de la guarda, el login o el
-   lote fallan, con `llamada=-`: «una línea por lectura». Por eso `ensayar`
-   llama a la guarda y registra su línea al final, o con `-` si sale por error.
-6. **«Confirmaciones sobrantes»**: las entradas de `conflictos_confirmados` de
-   una incidencia que, en esta lectura, no es `choca`, contadas por incidencia.
-7. **El log de R25 del adaptador** gana `unidades=<n>`, y `unidades=-` en la
-   lectura de toda la obra (la de la ruta). En `test_f065_adaptador.py` (de
-   F-065) la expresión `LINEA` gana un grupo **al final**, así que los índices
-   de los grupos que ya se comprueban no cambian.
-8. **`ficha`** pasa a `FichaReclamacion | None` en `FilaReclamacionObra` y en
-   `ReclamacionSigrid`. La ruta sigue leyendo sin `unidades` (31 columnas, ficha
-   no nula). La guarda lee 12 columnas con `ficha=None`, con un mapeo propio. Un
-   test fija que `mirar_sigrid` no pasa `unidades` (O-A4b-3, L-7).
-9. **L-3** (el estado desconocido o vacío de la emparejada) no se toca.
+Desde `services/postventa-api`:
 
-### Estado
+| Qué | Sobre | Resultado |
+|---|---|---|
+| La verificación de T15/T16: `test_f065_guarda_ensayo.py`, `test_f065_consulta.py` y `test_f065_adaptador.py` | `f461380` | **338 passed** en 15,11 s |
+| La verificación de T16 en F-059: `test_f059_volcado_http.py`, `test_f059_pipeline_volcado.py`, `test_f059_volcado_dominio.py` y `test_f059_alcance_cerrado.py` | `addc1de` | **494 passed, 132 skipped** en 182,57 s. Los *skipped* son las guardas de diff de la rama de F-059 |
+| La verificación de T17: `test_f065_alcance_cerrado.py` | `2c1e366` | **95 passed** en 136,51 s |
+| Todos los `test_f065_*.py` y `test_f059_*.py` salvo los de alcance | `f461380` | **1625 passed** en 117,83 s |
+| Las guardas: `test_*arquitectura*`, `test_*alcance_cerrado*`, `test_*fabrica*`, `test_f010_endpoints_protegidos.py` y `test_f006_repo_sin_identificadores.py` | `f461380` | **719 passed, 234 skipped**. Los *skipped* son las guardas de diff de otras ramas. El reloj marca 24097,68 s, pero no es comparable: corrió a la vez que la 2.ª ronda de mutación y el equipo parece haber estado suspendido por la noche. Sobre `5db4d74`, sin esa competencia, la misma selección dio 719 passed y 234 skipped en 676,06 s |
+| `test_f006_repo_sin_identificadores.py` antes de cada commit | `f461380` y el del informe | **48 passed** |
+| `ruff check` de lo tocado | `f461380` | Limpio salvo el `I001` de siempre |
 
-- T15, T16 y T17 siguen `[ ]`: no se ha escrito ningún test ni nada de código.
-- Mutación, cobertura y «Evidencias» de T15–T17: no aplican todavía, porque no
-  hay cambio que medir.
-- Lo único versionado es esta sección.
+El diff de los dos tests de F-059 que construyen el ensayo es el doble del
+lector y, en `test_f059_volcado_http.py`, la clave `"sigrid"`. El de
+`test_f059_volcado_dominio.py` son las dos líneas de los motivos. Lo
+comprueban, sobre el árbol, tres tests nuevos de T17:
+- `test_f065_a4bis_la_lista_de_motivos_de_f059_solo_gana_los_dos_al_final`;
+- `test_f065_a4bis_las_claves_del_ensayo_de_f059_solo_ganan_sigrid`;
+- `test_f065_a4bis_el_doble_del_lector_es_lo_unico_que_gana_el_ensayo_de_f059`.
+
+No he lanzado `init.sh` ni el servicio entero, como pedía el encargo.
+
+### Mutación (T15–T17)
+
+**Herramienta** (`progress/mutacion_F-065_bloqueA4bis_guarda.md`, con la nota
+del implementer). `--base e623caf`, 10 ficheros y 609 líneas en alcance, 1
+worker, en un `git worktree` desechable, con el árbol limpio antes y después.
+La suite está reducida a los 16 ficheros que importan lo mutado o lo ejercitan
+(la búsqueda está en la nota).
+- **1.ª ronda**, sobre `2c1e366`: **51 evaluados, 48 muertos, 3
+  supervivientes, 0 timeouts**, en 2097,5 s. Los tres:
+  - `guarda_sigrid.py:62` y `:76`, el `frozen=True` de `VeredictoDeLaGuarda`
+    y de `GuardaDelEnsayo`. Era un hueco real: nada comprobaba que lo que deja
+    la guarda no se pueda cambiar. Lo mata
+    `test_f065_r47_lo_que_deja_la_guarda_no_se_puede_cambiar`
+    (`FrozenInstanceError` en los dos).
+  - `interface_adapters/api/volcado.py:496`, `<=` por `<` en el tope de 50
+    códigos. Era un hueco real: `cods-51` probaba el lado de fuera, pero no
+    el borde. Lo mata
+    `test_f065_r43_cincuenta_codigos_distintos_es_el_maximo_que_se_admite`.
+- **2.ª ronda**, sobre `f461380`: **51 evaluados, 51 muertos, 0 supervivientes, 0 timeouts**. El reloj marca 24996,2 s, pero tampoco es comparable con los 2097,5 s de la 1.ª ronda: corrió a la vez que las guardas y con el equipo suspendido una parte de la noche (de 18:18 a 01:15). El informe versionado es el de esta ronda; los supervivientes de la 1.ª y su análisis están en su nota.
+
+**A mano: 76.** Atacan lo que sostiene R43 a R48: qué unidades se leen, el
+cruce, cada veredicto y su código, las confirmaciones, el orden de las
+excluidas, la línea de R48, el orden del ensayo, el borde, los errores, la
+consulta y el adaptador. Los lanza un script fuera del repo, en un worktree
+desechable, por niveles (primero los tests de F-065 que miran lo mutado y,
+si sobrevive, los de F-059 que lo ejercitan) y sin `-x`. El script sustituye
+el texto exacto, comprueba que aparece una sola vez y restaura el fichero byte
+a byte; el árbol queda limpio después.
+- **1.ª vuelta**, 73 mutantes sobre `5db4d74`: 67 muertos y **6
+  supervivientes**, los seis huecos reales y ninguno equivalente:
+  - MG5, el cruce con toda la bandeja pedida y no solo con lo mandado. Con
+    toda la bandeja, los veredictos de más no los consulta nadie, y en los
+    fixtures ninguna incidencia de fuera cambiaba el cruce de las mandadas.
+    Pero lo decidido (O-A4b-3, punto 2 de la sección de bloqueo) es cruzar
+    solo lo mandado, en el orden pedido. Ahora el espía mira qué situaciones recibe `veredictos`, con una
+    incidencia en la bandeja sin aprobar.
+  - MG17, las confirmaciones de una incidencia que no pasó por la guarda no
+    contaban como sobrantes.
+  - MG27, una línea más con los códigos confirmados: el test de R48 solo
+    miraba las líneas que empiezan por «F-065 guarda». Ahora mira **todo** lo
+    que escribe el logger del módulo.
+  - MB18, `leido_at_utc` sin pasar a UTC: el reloj de los tests ya daba UTC.
+    Ahora un reloj con `+02:00`.
+  - MC7, la ficha leída antes que la obra y el código: ningún test tenía a la
+    vez la fila sin obra y la ficha mal.
+  - MA3, `if not unidades` en vez de `if unidades is None`, que con `()`
+    leería toda la obra.
+- **2.ª vuelta**, sobre `f461380`: los 6 supervivientes y los 3 de la
+  herramienta (HT1 a HT3), **9 de 9 muertos**. Los otros 67 no hace falta
+  repetirlos: `f461380` solo añade tests y aserciones, y eso solo puede matar
+  más.
+- Resultado: **76, 76 muertos, 0 supervivientes.**
+
+| Id | Mutante | Resultado (tests que fallan) | Uno de los que lo matan |
+|---|---|---|---|
+| MG1 | las unidades sin ordenar | muerto (1) | `r44_lee_solo_las_unidades_de_lo_que_se_manda_una_vez_cada_una` |
+| MG2 | las unidades de toda la bandeja pedida | muerto (1) | `r44_lee_solo_las_unidades_de_lo_que_se_manda_una_vez_cada_una` |
+| MG3 | las unidades repetidas | muerto (2) | `r44_lee_solo_las_unidades_de_lo_que_se_manda_una_vez_cada_una` |
+| MG4 | sin las comprobaciones de la lectura (techo y obras) | muerto (6) | `r46_al_techo_lleva_las_filas_y_no_se_cruza_nada` |
+| MG5 | el cruce con toda la bandeja pedida | superviviente en `5db4d74`; **muerto (1)** en `f461380` | `r44_veredictos_con_las_situaciones_en_el_orden_pedido` |
+| MG6 | los veredictos con las situaciones ordenadas por id | muerto (1) | `r44_veredictos_con_las_situaciones_en_el_orden_pedido` |
+| MG7 | `ya_existe` con el último código | muerto (1) | `r45_ya_existe_se_excluye_como_duplicada_con_su_primer_codigo` |
+| MG8 | `ya_existe` se manda | muerto (6) | `r45_lo_mandado_se_ensaya_y_se_guarda_como_siempre` |
+| MG9 | `choca` sin confirmar se manda | muerto (8) | `r45_choca_sin_confirmar_se_excluye_con_su_primer_codigo` |
+| MG10 | `choca` con el último código sin confirmar | muerto (1) | `r45_la_confirmacion_parcial_excluye_con_el_primer_codigo_sin_confirmar` |
+| MG11 | `choca` con el primer código aunque esté confirmado | muerto (1) | `r45_la_confirmacion_parcial_excluye_con_el_primer_codigo_sin_confirmar` |
+| MG12 | basta confirmar uno (`any` por `all`) | muerto (2) | `r45_la_confirmacion_parcial_excluye_con_el_primer_codigo_sin_confirmar` |
+| MG13 | la confirmación de otra incidencia vale | muerto (1) | `r48_una_linea_por_lectura_con_sus_cuentas` |
+| MG14 | `confirmada` siempre `False` | muerto (5) | `r45_choca_confirmada_se_manda` |
+| MG15 | `se_enlaza` y `va` se excluyen | muerto (9) | `r43_sin_la_clave_o_con_la_lista_vacia_se_ensaya` |
+| MG16 | sobrantes cuenta todas las confirmaciones | muerto (2) | `r45_confirmar_de_mas_no_estorba` |
+| MG17 | sobrantes sin las de incidencias que no pasaron por la guarda | superviviente en `5db4d74`; **muerto (1)** en `f461380` | `r45_la_confirmacion_de_una_que_no_paso_por_la_guarda_tambien_sobra` |
+| MG18 | las excluidas: primero la selección y después la guarda | muerto (1) | `r45_mezcla_en_el_orden_pedido` |
+| MG19 | `leido_at_utc` con otro instante | muerto (2) | `r44_el_instante_de_la_lectura_es_el_del_ensayo` |
+| MG20 | `reclamaciones_leidas` con las unidades | muerto (4) | `r46_cero_filas_no_es_un_error` |
+| MG21 | los segundos incluyen el cruce | muerto (1) | `r48_la_duracion_es_la_de_la_lectura` |
+| MG22 | los segundos sumando | muerto (2) | `r48_la_duracion_es_la_de_la_lectura` |
+| MG23 | la línea: llamada siempre `-` | muerto (1) | `r48_una_linea_por_lectura_con_sus_cuentas` |
+| MG24 | la línea: `choca` cuenta como `va` | muerto (1) | `r48_una_linea_por_lectura_con_sus_cuentas` |
+| MG25 | la línea: las excluidas de cualquier motivo | muerto (1) | `r48_una_linea_por_lectura_con_sus_cuentas` |
+| MG26 | la línea: las confirmadas cuentan todas las `choca` | muerto (1) | `r48_una_linea_por_lectura_con_sus_cuentas` |
+| MG27 | la línea de cada confirmada con los códigos | superviviente en `5db4d74`; **muerto (1)** en `f461380` | `r48_ningun_codigo_rs_ni_texto_ni_unidad_ni_persona` |
+| MG28 | registrar sin guarda escribe | muerto (2) | `r48_registrar_sin_guarda_no_escribe_nada` |
+| MG29 | sin la defensa de «nada que mandar» | muerto (1) | `r44_la_guarda_exige_algo_que_mandar` |
+| ME1 | la guarda no se llama | muerto (43) | `r44_el_borde_construye_la_pasarela_el_lector_y_despues_la_base` |
+| ME2 | la guarda después del login | muerto (2, nivel F-059) | `test_f059_s10_el_ensayo_va_base_login_ensayo_y_base` |
+| ME3 | la selección de la guarda no se usa | muerto (12) | `r45_choca_sin_confirmar_se_excluye_con_su_primer_codigo` |
+| ME4 | las confirmaciones no llegan a la guarda | muerto (10) | `r45_choca_confirmada_se_manda` |
+| ME5 | sin línea si no queda nada | muerto (1) | `r48_sin_ensayo_guardado_la_llamada_es_un_guion` |
+| ME6 | sin línea si el ensayo falla | muerto (1) | `r48_si_el_ensayo_falla_despues_de_la_guarda_tambien_queda_su_linea` |
+| ME7 | la línea sin la llamada guardada | muerto (1) | `r48_una_linea_por_lectura_con_sus_cuentas` |
+| ME8 | el resultado sin la guarda (nada que mandar) | muerto (4) | `r45_la_emparejada_en_npr_sin_confirmar_se_excluye_con_su_codigo` |
+| ME9 | el resultado sin la guarda (ensayado) | muerto (13) | `r45_choca_confirmada_se_manda` |
+| ME10 | el tipo de la petición no llega a la guarda | muerto (2) | `r44_el_tipo_de_la_lectura_es_el_que_recibe_el_ensayo` |
+| MB1 | la clave opcional se rechaza | muerto (3) | `r43_sin_la_clave_o_con_la_lista_vacia_se_ensaya` |
+| MB2 | cualquier clave de más vale | muerto (3) | `r43_commit_confirmado_y_otras_siguen_siendo_400_con_la_clave_nueva` |
+| MB3 | `conflictos_confirmados` nulo vale como vacío | muerto (1) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB4 | el elemento con claves de más vale | muerto (1) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB5 | una incidencia que no se pide vale | muerto (1) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB6 | una incidencia repetida vale | muerto (1) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB7 | 51 códigos valen | muerto (1) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB8 | la lista vacía de códigos vale | muerto (1) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB9 | el código con `search` y no `fullmatch` | muerto (2) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB10 | los códigos repetidos valen | muerto (1) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB11 | la validación de la clave después de construir | muerto (21) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MB12 | el lector antes que la pasarela | muerto (1) | `r44_el_borde_construye_la_pasarela_el_lector_y_despues_la_base` |
+| MB13 | el lector después de la base | muerto (2) | `r46_sin_entorno_para_el_lector_es_503_antes_de_la_base` |
+| MB14 | el tipo fijo | muerto (1) | `r44_el_tipo_de_la_guarda_es_el_de_los_ajustes` |
+| MB15 | las confirmaciones no llegan al pipeline | muerto (2) | `r47_la_confirmada_en_el_bloque` |
+| MB16 | sin el bloque `sigrid` | muerto (4) | `r47_el_bloque_sigrid_y_las_claves_de_r12_sin_cambios` |
+| MB17 | el bloque `sigrid` con `confirmada` siempre `false` | muerto (1) | `r47_la_confirmada_en_el_bloque` |
+| MB18 | el bloque con `leido_at_utc` sin normalizar | superviviente en `5db4d74`; **muerto (1)** en `f461380` | `r47_leido_at_utc_en_utc_con_microsegundos_como_caduca_at_utc` |
+| MB19 | el bloque sin lectura como objeto vacío | muerto (1) | `r47_sin_lectura_el_bloque_es_null` |
+| MB20 | el mensaje repite la incidencia | muerto (1) | `r43_cada_confirmacion_invalida_es_400_sin_construir_nada` |
+| MF1 | `sigrid_no_disponible` como 502 | muerto (3) | `r46_los_errores_de_la_guarda_con_su_http_y_sin_ensayo` |
+| MF2 | `reclamaciones_sin_verificar` sin `filas` | muerto (1) | `r46_los_errores_de_la_guarda_con_su_http_y_sin_ensayo` |
+| MF3 | `obra_ambigua` con el código del catálogo | muerto (2) | `r47_los_codigos_de_la_guarda_en_function_app` |
+| MC1 | las unidades sin límite superior | muerto (1) | `r44_de_una_a_cincuenta_unidades_y_si_no_es_error_sin_valores` |
+| MC2 | sin unidades vale | muerto (1) | `r44_de_una_a_cincuenta_unidades_y_si_no_es_error_sin_valores` |
+| MC3 | las unidades repetidas valen | muerto (1) | `r44_unidades_repetidas_son_error_sin_repetirlas` |
+| MC4 | las unidades recortadas | muerto (2) | `r44_las_unidades_van_tal_cual_y_en_el_orden_recibido` |
+| MC5 | los marcadores sin espacio | muerto (11) | `r44_la_de_cinco_unidades_caracter_a_caracter` |
+| MC6 | la fila de la guarda de 31 columnas vale | muerto (2) | `r40_una_fila_de_la_guarda_mal_formada_no_se_repite` |
+| MC7 | la ficha antes de los obligatorios | superviviente en `5db4d74`; **muerto (4)** en `f461380` | `r40_la_obra_y_el_codigo_se_miran_antes_que_la_ficha` |
+| MA1 | con unidades, el mapeo de la obra | muerto (8) | `r44_la_guarda_no_admite_una_fila_con_la_ficha` |
+| MA2 | el log con las unidades siempre `-` | muerto (1) | `r25_r38_el_log_de_la_guarda_dice_cuantas_unidades_y_no_cuales` |
+| MA3 | `unidades=()` lee toda la obra | superviviente en `5db4d74`; **muerto (1)** en `f461380` | `r44_una_lista_vacia_de_unidades_es_error_y_no_la_obra_entera` |
+| MS1 | la ruta sin la comprobación de la lectura | muerto (5) | `r8_al_techo_es_409_con_las_filas_y_sin_cruzar` |
+| HT1 | `VeredictoDeLaGuarda` sin `frozen` (superviviente de la herramienta) | **muerto (1)** en `f461380` | `r47_lo_que_deja_la_guarda_no_se_puede_cambiar` |
+| HT2 | `GuardaDelEnsayo` sin `frozen` (superviviente de la herramienta) | **muerto (1)** en `f461380` | `r47_lo_que_deja_la_guarda_no_se_puede_cambiar` |
+| HT3 | el tope de 50 códigos excluido (superviviente de la herramienta) | **muerto (1)** en `f461380` | `r43_cincuenta_codigos_distintos_es_el_maximo_que_se_admite` |
+
+### Cobertura (T15–T17)
+
+Medida con `coverage run --branch` sobre `2c1e366`, con todos los
+`test_f065_*.py` y `test_f059_*.py` salvo los de alcance (**1614 passed** en
+119,42 s), y el fichero de datos fuera del árbol. Desde `5db4d74` solo cambian
+tests, así que las líneas de producción medidas son las mismas.
+
+**Cobertura de lo cambiado: 100 %, 175 de 175 sentencias** (las líneas
+añadidas del diff `e623caf..HEAD` que son sentencias ejecutables), y ninguna
+rama sin cubrir:
+
+| Fichero | Sentencias cambiadas cubiertas |
+|---|---|
+| `application/pipelines/guarda_sigrid.py` | 75/75 |
+| `application/pipelines/sigrid_bandeja.py` | 6/6 |
+| `application/pipelines/volcado.py` | 22/22 |
+| `domain/models/sigrid_bandeja.py` | 1/1 |
+| `domain/models/volcado.py` | 2/2 |
+| `domain/ports/reclamaciones_obra.py` | 3/3 |
+| `function_app.py` | 2/2 |
+| `infrastructure/sigrid/consultas_reclamaciones_obra.py` | 22/22 |
+| `infrastructure/sigrid/reclamaciones_obra.py` | 9/9 |
+| `interface_adapters/api/volcado.py` | 33/33 |
+
+La puerta oficial también responde. En el A4 y en T13–T14 daba N/A, y con el
+json fuera del servicio daba 0,0 %. Esta vez copié el json **dentro** del
+servicio, lancé la puerta desde la raíz del repositorio con su nombre y lo
+borré después (`git status` limpio):
+
+```
+$ services/postventa-api/.venv/Scripts/python.exe -m harness.cobertura --base e623caf --cov cov_guarda_tmp.json
+PUERTA COBERTURA: 100.0% de 175 líneas cambiadas cubiertas (175/175, umbral 80%, nivel critico)
+```
+
+Así que el N/A y el 0,0 % de antes salían de dónde estaba el json, no de las
+líneas. La puerta de `init.sh` la lanza el líder.
+
+### Pendiente (T15–T17)
+
+- `bash harness/init.sh` entero (el líder).
+- **La review del Bloque A4 bis** (T13 a T17), que `tasks.md` pide antes del
+  A5.
+- **El Bloque A5** (documentación), sin empezar, como pedía el encargo:
+  - `docs/ARCHITECTURE.md`, sección de F-059;
+  - `docs/INTEGRACION.md` §1 y §4;
+  - `azure-apps/postventa_incidencias.md`.
+
+  Tienen que decir que el ensayo lee Sigrid una vez más, solo con `sql/read` y
+  sin datos personales, y que hay tres códigos de error nuevos en el ensayo.
+- **Para F-040** (el front del volcado):
+  - la clave opcional `conflictos_confirmados` del cuerpo;
+  - los dos motivos nuevos de `excluidas`;
+  - el bloque `sigrid` (`null` si no leyó);
+  - los códigos `sigrid_no_disponible` (503), `reclamaciones_sin_verificar`
+    (409, con `filas`) y `obra_ambigua` (409).
+- **L-3** sigue como estaba.
+- Sin verificaciones MANUAL en esta mitad, aparte de la R71 que ya constaba.
+
+### Evidencias (T15–T17)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | **338 passed** la verificación de T15/T16 (guarda, consulta, adaptador), en 15,11 s; **1625 passed** todo F-065 y F-059 salvo los de alcance, en 117,83 s; **95 passed** la guarda de alcance de F-065, en 136,51 s; **719 passed, 234 skipped** las guardas de arquitectura, alcance y fábricas más F-010 y F-006; **494 passed, 132 skipped** los cuatro de F-059 de T16, en 182,57 s |
+| Cobertura de las líneas cambiadas | **100 %** (175/175 sentencias, ninguna rama sin cubrir). `PUERTA COBERTURA: 100.0% de 175 líneas cambiadas cubiertas (175/175, umbral 80%, nivel critico)` |
+| Mutantes | Herramienta: 1.ª ronda **51 evaluados, 48 muertos, 3 supervivientes, 0 timeouts** en 2097,5 s; 2.ª ronda, sobre `f461380`, **51 evaluados, 51 muertos, 0 supervivientes, 0 timeouts**. A mano: **76, 76 muertos, 0 supervivientes** (6 sobrevivieron en `5db4d74` y los mata `f461380`) |
+| Tiempo de la suite | 15,11 s la de la verificación de T15/T16; 117,83 s todo F-065 y F-059 salvo los de alcance |

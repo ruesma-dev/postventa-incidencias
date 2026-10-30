@@ -1696,3 +1696,170 @@ Ninguno.
 - **O-A4b-5 · Docstrings.** `cruzar` y `veredictos` dicen que reciben la bandeja entera; la guarda les pasa solo lo
   mandado. El resultado es el mismo (L-8), pero el texto ya no es exacto.
 - **O-A4b-6 · Bloque A5.** Los documentos tienen que recoger la guarda, los tres códigos nuevos y L-3.
+
+## Review del Bloque A5 (T10) · 2026-10-30
+
+- **Veredicto:** **CHANGES_REQUESTED**. `init.sh` en **rojo** por un test de este bloque, y varias afirmaciones de los
+  documentos no coinciden con el código (C-A5-1 a C-A5-6).
+- **Alcance de esta review:** `cdb395e..a838ccc` (`940afa9`, `a2799e8`, `a838ccc`) en el worktree `postventa-f065`, y
+  `34c2c83` de `azure-apps`. No me he conectado a Sigrid, a la base ni a SharePoint. No he tocado `features.json`,
+  `BACKLOG.md` ni `current.md`. Del repositorio `sigrid-api` solo he leído código.
+- **Nivel de rigor:** `critico`, declarado en `features.json`. Exige fase RED con la salida real, la sección
+  «Evidencias» y, para el código, cobertura y mutación. Este bloque no cambia líneas ejecutables de producción
+  (comprobado abajo), así que la campaña de mutación se queda para T11.
+
+### `init.sh`
+
+`bash harness/init.sh`, tal cual, una vez, sobre `a838ccc`: **exit 1, `[KO] servicio api: pytest en rojo`**.
+
+```
+FAILED tests/test_f065_datos_personales.py::test_f065_r39_los_ficheros_de_f065_solo_traen_correos_inventados
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 9492 passed, 261 skipped in 3073.35s (0:51:13)
+```
+
+**No es un test de tiempo ni la carga del puesto.** Repetido aislado, sale lo mismo (1 failed, 22 passed). El informe
+no lo vio porque su batería no incluía ese fichero y declara que la suite entera no se lanzó. Al parar en el primer
+fallo, **los tests que faltaban y la puerta de cobertura no se han ejecutado**.
+
+### 1 · Lo que pidió mirar el líder
+
+| Punto | Resultado |
+|---|---|
+| La ruta `GET /api/revision/sigrid` | Bien: 25 rutas `@app.route`, las claves de `_cuerpo`, 400/409/503 y `no-store` en todas las salidas, también las de error. Matiz en O-A5-1 |
+| La guarda | Bien el orden (selección, guarda, login, lote) y las 12 columnas sin `ficha`. Salvo C-A5-2 y C-A5-3 |
+| Los tres códigos nuevos | Bien: `sigrid_no_disponible` 503, `reclamaciones_sin_verificar` 409 con `filas`, `obra_ambigua` 409 |
+| Los dos motivos | Bien, salvo «su primer código» (C-A5-5) |
+| La regla de enlace | Bien: `_ENLAZABLES` son PTE, SAT, TER y CER; NPR, desconocido o vacío dan `choca` con solo su código, también con otras coincidencias |
+| Los datos personales | Dónde se enseñan y la lista cerrada, bien, contrastados con el SQL. **Mal** que la guarda «no lee ninguno» (C-A5-3) |
+| `azure-apps`, «pendiente de publicar» | Lo dicen la cabecera, las secciones, la fila de §8 y la de consumidores (`sigrid_api.md` l. 1672). Enlaza y no duplica `sigrid_api.md`. Fallan §6 (C-A5-4) y una fila vieja de F-059 (C-A5-6) |
+| El commit de `azure-apps` | `34c2c83` toca solo `postventa_incidencias.md`, y todo su diff es de F-065. La fila de consumidores entró en `7662895`, de otra sesión: contenido correcto, y el mensaje de `34c2c83` lo dice |
+| Secretos, IDs, IP | Barrido de las líneas añadidas aquí y en `34c2c83` (GUID, IPv4, hosts de Azure, SharePoint, correos, códigos `RS`): ningún dato real, solo literales de control del test. Uno de ellos es C-A5-1 |
+| `cruzar` y `veredictos`, solo docstring | **Comprobado por AST**: `cdb395e` y `HEAD` son idénticos sin docstrings. Pero el docstring nuevo es falso (C-A5-2) |
+| O-A4b-4 | Cerrada: la fila ME2 (l. 2445) describe lo que se lanzó y remite a O1 |
+| O-A4b-5 | **No cerrada**: C-A5-2 |
+| O-A4b-6 | Cerrada: guarda, tres códigos y regla de la emparejada están en los documentos |
+
+### 2 · Verificación del bloque
+
+En una copia desechable del scratchpad, ya borrada; `git status` limpio.
+
+- **RED reproducida:** el test con los documentos anteriores, aquí y en `azure-apps`: **44 failed, 4 passed**, lo mismo
+  que la traza del informe.
+- **Mutantes a mano sobre los documentos: 8 de 8 muertos**, por tests de `test_f065_documentacion.py`: la fila de
+  `ya_existe` que pasa a «Se manda», un motivo, la regla de enlace, «Nunca se leen `per.dni`», `no-store`,
+  `obra_ambigua`, uno en la copia de `azure-apps` y otro en `ARCHITECTURE.md`. Los tests cazan que falte un literal;
+  **no** comprueban que lo escrito sea cierto, y por eso C-A5-2 a C-A5-6 pasan en verde.
+- **Mutación con la herramienta:** N/A en este bloque: ninguna línea ejecutable de producción (AST idéntico; el resto es
+  Markdown y un test). La campaña es T11.
+
+### Checkpoints
+
+**C1 · Arnés completo y en verde**
+- [ ] `init.sh` con exit 0: rojo, C-A5-1.
+- [x] Existen los ficheros del arnés.
+
+**C2 · Estado coherente**
+- [x] Una sola feature `in_progress` y rama correcta.
+- [x] `current.md` y `history.md`: no son de este bloque y no los he tocado.
+
+**C3 · Arquitectura y convenciones**
+- [x] Primera línea con la ruta en el test nuevo; sin `print` ni TODO; sin secretos.
+- N/A · Hexagonal y las reglas de código: ninguna línea ejecutable de producción cambiada (AST idéntico).
+
+**C3 bis · Documentos de fuera.** N/A: no entra ningún documento externo.
+
+**C4 · Verificación real**
+- [ ] R30 y O-A4b-6 con documentos fieles al código: C-A5-2 a C-A5-6.
+- [x] Sin red ni base en los tests.
+- N/A · `MANUAL`: este bloque no añade ninguna.
+
+**C4 bis · Rigor**
+- [x] `rigor: critico` declarado.
+- [x] Fase RED con la salida real, y reproducida.
+- [ ] Cobertura: la línea `PUERTA COBERTURA` no ha llegado a salir, por el rojo.
+- N/A · Mutación: sin líneas ejecutables en este bloque; la campaña es T11.
+- [x] «Evidencias» con los cuatro números; declara que la suite entera no se lanzó.
+- N/A · Regla de orden: el bloque no mueve ninguna puerta.
+- [x] Ningún N/A sin justificar.
+
+**C4 ter · Rutas sensibles.** N/A: no existe `harness/rutas_sensibles.json`.
+
+**C5 · Cierre**
+- [ ] T10 está `[x]` con sus commits `F-065 T10: …`, pero con `init.sh` en rojo.
+- [x] Sin temporales sin trackear; mi copia, eliminada.
+- [x] `features.json`: F-065 `in_progress`, su estado real.
+
+### Cobertura · requisito → test
+
+| Requisito | Tests |
+|---|---|
+| R30 `INTEGRACION.md` | `r30_la_cabecera_...`, `r30_la_cuarta_lectura_...` (tres), `r30_la_seccion_cuatro/seis/siete/ocho/nueve_...`, `r30_la_fila_del_ensayo_...` |
+| R30 `ARCHITECTURE.md` | `r30_la_seccion_...`, `r30_la_fila_de_sigrid_api_de_arquitectura_...` |
+| R30 `azure-apps` | `r30_la_copia_de_azure_apps_...` (tres) y `r30_la_fila_de_consumidores_...` |
+| O-A4b-6 | `o6_...` (cinco) |
+
+### Cambios requeridos
+
+1. **C-A5-1 · `init.sh` en rojo.** `services/postventa-api/tests/test_f065_documentacion.py` l. 165: el segundo literal
+   del `parametrize` es un correo de dominio `empresa.es`, y
+   `test_f065_r39_los_ficheros_de_f065_solo_traen_correos_inventados` (`tests/test_f065_datos_personales.py` l. 283)
+   solo admite `DOMINIO_FICTICIO`. Usa ese dominio, sin perder que el control de correos caza una forma con punto en
+   el nombre. Lanza la suite entera antes de entregar. Ojo: ese test barre también `progress/*F-065*`, así que tampoco
+   se puede citar el literal en el informe.
+
+2. **C-A5-2 · El docstring de `cruzar` dice algo falso, y cita R49** (`domain/models/sigrid_bandeja.py` l. 599–601): «el
+   veredicto de cada una solo depende de sus referencias y sus pares, así que es el mismo (R49)». R49 escribe una
+   excepción, y `test_f065_r49_la_excepcion_escrita_una_pvi_en_otra_unidad` la fija con dos casos: la única `PVI-` en
+   otra unidad da `se_enlaza` en la ruta y `va` en la guarda; la mayor, en otra unidad y anulada, da `choca` en la ruta
+   y `se_enlaza` en la guarda. **O-A4b-5 sigue abierta hasta corregirlo.** La excepción falta también en
+   `INTEGRACION.md` §1 («El veredicto», «calculado por la misma función»), en `ARCHITECTURE.md` («La guarda del
+   ensayo») y en la copia de `azure-apps`. Hay que decir que la función es la misma y la lectura no, y que ese caso lo
+   para la pasarela con `referencia_en_conflicto` (`design.md` §15.5). Si no, quien diseñe F-040 dará por iguales el
+   bloque `volcado` y la guarda.
+
+3. **C-A5-3 · §7, «La guarda del ensayo no lee ninguno»** (`INTEGRACION.md` y copia). La misma enmienda enumera como
+   datos personales «los textos libres de la reclamación», y `SQL_RECLAMACIONES_DE_LAS_UNIDADES` lee `c.res` y
+   `r.resubi`, texto libre de Sigrid que el cruce necesita. Es cierto que no lee la `ficha`, nombres, teléfonos ni
+   correos, y que esos textos no salen en la respuesta del ensayo ni en su log (`_sigrid_de`, `registrar_la_guarda`).
+   Dilo así: qué lee, para qué, y que se queda en la memoria de la petición. Mismo matiz en §1 y en la fila de
+   `sigrid_api.md`. R44 usa la expresión en el sentido de R33: el código no tiene defecto.
+
+4. **C-A5-4 · §6, las dos filas de F-065** (`INTEGRACION.md` y copia):
+   - **Baja `MAX_ALLOWED_ROWS`.** El informe avisa de que no se comprobó, y es incorrecta. `sigrid-api` **rechaza** un
+     `max_rows` mayor que su tope (`infrastructure/security/sql_query_guard.py` l. 96; 400 en `function_app.py`
+     l. 97–102), y nuestro adaptador lo da como 503. Bajarlo de 500.000 rompe la ruta **y el ensayo de todas las
+     obras**, con 503, tengan las reclamaciones que tengan; nunca da 409. Corrige la condición y el efecto: es lo que
+     necesita saber el dueño de la pasarela.
+   - **La pasarela cae.** «El panel y la revisión de la base siguen» contradice la fila de F-056 de encima: el listado,
+     editar y aprobar responden 503. Siguen el panel, descartar, recuperar y el historial.
+
+5. **C-A5-5 · «con su primer código en `sigrid_cod`»** (`INTEGRACION.md` §1 y copia). Vale para `duplicada_en_sigrid`.
+   En `conflicto_sin_confirmar` es el **primero sin confirmar** (`guarda_sigrid.py` l. 141–145). Es contrato con F-040.
+
+6. **C-A5-6 · Fila vieja en `azure-apps/postventa_incidencias.md` l. 2120.** «El volcado a Sigrid» dice «no está
+   desplegada», y su propia cabecera y `INTEGRACION.md` l. 1911 dicen que se desplegó el 2026-10-17. No es de F-065,
+   pero esta revisión refresca el documento. Copia la fila de `INTEGRACION.md`.
+
+Los cambios de `azure-apps` van en commit propio de ese repositorio, sin arrastrar cambios ajenos.
+
+### Para el líder
+
+- **§8, la tabla y la cuenta.** Sigue pendiente la decisión que plantea el implementer. El recuadro es veraz (25 rutas,
+  contadas), y ampliar la tabla exige tocar seis tests ajenos que el alcance no declara. No bloquea.
+- **`sigrid_api.md` l. 1671** dice «su primera escritura, pendiente (T25)», y T25 se hizo el 2026-10-19. Es de F-059; se
+  puede arreglar de paso.
+
+### Observaciones (no bloquean)
+
+- **O-A5-1 · El recuadro de §8** describe `volcado` como «el recuento por veredicto»; trae además `por_unidad` y los
+  veredictos con sus códigos. El docstring de `revision_sigrid` (`function_app.py` l. 2081) tampoco lista `volcado`.
+- **O-A5-2 · «Una línea `F-065 guarda del ensayo` por lectura»:** hay además una por cada conflicto confirmado, y la del
+  adaptador (`F-065 reclamaciones de la obra leídas en Sigrid`). Ninguna lleva datos de una fila.
+
+### Automejora (propuesta, no aplicada)
+
+- A `implementer.md`: si un bloque añade un fichero `test_*`, lanzar al menos todos los `test_<feature>_*.py`, porque
+  las guardas de la feature barren también sus ficheros nuevos. Aquí el rojo apareció a los 51 minutos de la review.
+- A `CHECKPOINTS.md`: lo que un documento afirme del comportamiento de **otro** servicio se comprueba contra su código,
+  o el propio documento dice «sin comprobar», no solo el informe.

@@ -1863,3 +1863,43 @@ Los cambios de `azure-apps` van en commit propio de ese repositorio, sin arrastr
   las guardas de la feature barren también sus ficheros nuevos. Aquí el rojo apareció a los 51 minutos de la review.
 - A `CHECKPOINTS.md`: lo que un documento afirme del comportamiento de **otro** servicio se comprueba contra su código,
   o el propio documento dice «sin comprobar», no solo el informe.
+
+## Re-review del Bloque A5, tras C-A5-1 a C-A5-6 · 2026-10-30
+
+- **Veredicto:** **APPROVED, condicionado a que `bash harness/init.sh` salga en verde.** Esa condición no la he
+  comprobado yo: **no he ejecutado `init.sh`**, por orden del líder (equipo cargado, el test de tiempo de F-036 cae). Si
+  `init.sh` sale en rojo por algo que no sea ese test de tiempo, este veredicto no vale.
+- **Alcance:** `2d8387d..9ec8f51` (`f937dd3`, `cf2190a`, `9ec8f51`) y `074b6c0` de `azure-apps`. Sin conexión a
+  Sigrid, a la base ni a SharePoint. No he tocado `features.json`, `BACKLOG.md` ni `current.md`.
+
+### Cada corrección, contra el código
+
+| # | Corrección | Comprobado |
+|---|---|---|
+| C-A5-1 | El correo del test pasa a `DOMINIO_FICTICIO`, y conserva la forma con punto | `test_f065_datos_personales.py`, en verde dentro de la batería de abajo |
+| C-A5-2 | Docstring de `cruzar` y la excepción de R49 en `INTEGRACION.md` §1, `ARCHITECTURE.md` y la copia | Los dos casos coinciden con `test_f065_r49_la_excepcion_escrita_una_pvi_en_otra_unidad`. «Con más de una» `PVI-`, `referencia_en_conflicto`: lo dice `sigrid_api.md` l. 1326. **AST de `sigrid_bandeja.py` idéntico** a `cdb395e` sin docstrings. **O-A4b-5, cerrada** |
+| C-A5-3 | «sin la `ficha`» y los dos textos `con.res` y `rcp.resubi`, en memoria de la petición | Coincide con `SQL_RECLAMACIONES_DE_LAS_UNIDADES`. Que no salen en la respuesta ni en el log lo confirman `_sigrid_de` y `registrar_la_guarda`. Corregido en §1, §7, `ARCHITECTURE.md` (sección y fila), la cabecera de la copia y la fila de consumidores |
+| C-A5-4 | §6: tope bajado da 400 de la pasarela, 503 en todas las obras, nunca 409 | Coincide con `sql_query_guard.py` l. 96 y con `_leer_todas` (`ErrorDeSigrid` → `CatalogoNoDisponible`). El test nuevo `test_f065_r8_un_max_rows_rechazado_es_503_...` lo fija para la ruta y para la guarda. La fila «pasarela cae» ya no contradice la de F-056 |
+| C-A5-5 | Código de cada motivo | Coincide con `guarda_sigrid.py` l. 135–145 |
+| C-A5-6 | Fila de F-059 en la copia | Idéntica a la de `INTEGRACION.md`, y la fija un test |
+| Para el líder | `sigrid_api.md` l. 1671, la primera escritura de F-059 | Corregida en `074b6c0` |
+
+`074b6c0` toca solo `postventa_incidencias.md` y dos filas de `postventa-incidencias` en `sigrid_api.md`: ningún
+cambio ajeno. `azure-apps` queda con el árbol limpio. El barrido de las líneas añadidas (GUID, IPv4, hosts, correos
+reales) sale limpio. El único código `RS` que aparece en el diff de `sigrid_api.md` ya estaba antes en esa fila.
+
+### Tests
+
+Batería pedida por el líder, 31 ficheros: todos los `test_f065_*`, todos los `*_documentacion.py`,
+`test_f065_datos_personales.py`, `test_f005_integracion_sin_secretos.py` y `test_f006_repo_sin_identificadores.py`:
+**1541 passed in 255,54 s**, 0 fallos. Después, `git status` limpio.
+
+### Checkpoints que cambian
+
+- C1 `init.sh`: **pendiente**, lo lanza el líder. Es la condición del veredicto.
+- C4 · R30 y O-A4b-6 con documentos fieles al código: [x].
+- C4 bis · Cobertura: pendiente de la línea `PUERTA COBERTURA` del mismo `init.sh`. Este bloque solo cambia docstrings
+  y un test.
+- C5 · T10 `[x]`: [x], sujeto a esa misma condición.
+
+O-A5-1 y O-A5-2 siguen abiertas, y no bloquean. La decisión de §8 sigue siendo del líder.

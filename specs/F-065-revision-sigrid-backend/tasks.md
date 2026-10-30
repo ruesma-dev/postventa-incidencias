@@ -279,7 +279,7 @@
   la persistencia del volcado, `volcar` y `panel_de_volcado` intactos; sin
   DDL ni variables. | Verificación: `python -m pytest tests/test_f065_alcance_cerrado.py` en verde
 
-- [ ] **T17 bis** *(nuevo, 2026-10-29: decisión del humano sobre L-3)*: en el
+- [x] **T17 bis** *(nuevo, 2026-10-29: decisión del humano sobre L-3)*: en el
   veredicto (R41, regla 0), una emparejada con un estado que no es ninguno de
   los cinco o vacío da `choca`, con solo su código, como la de `NPR`. Tests RED
   primero (estado desconocido, `None`, y que los cinco conocidos no cambian), y

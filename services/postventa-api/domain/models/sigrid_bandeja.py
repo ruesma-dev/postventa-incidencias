@@ -70,6 +70,10 @@ ABIERTAS = frozenset({EstadoSigrid.SAT, EstadoSigrid.PTE})
 #: Cerradas: una coincidencia con ellas es un **aviso**, una reincidencia, de
 #: cualquier fecha (R17, Q-2).
 CERRADAS = frozenset({EstadoSigrid.TER, EstadoSigrid.CER})
+#: Los cuatro estados en los que una emparejada **se enlaza** (R41, regla 1).
+#: En `NPR` (enmienda del humano a S-3), en uno que no es ninguno de los cinco
+#: o sin estado (decisión del humano sobre L-3), la emparejada **choca**.
+_ENLAZABLES = ABIERTAS | CERRADAS
 
 #: N-1: el `MAX_ALLOWED_ROWS` de la pasarela desplegada (R8).
 TOPE_RECLAMACIONES_OBRA = 500_000
@@ -657,8 +661,12 @@ def veredictos(
     **todos** sus pares (`Cruce.pares`). La precedencia:
 
     0. `choca` si la emparejada por `PVI-` (la de código mayor, R13 bis) está
-       en `NPR`, con solo su código (*enmienda del humano a S-3, 2026-10-28*);
-    1. `se_enlaza` si hay emparejada (y no está en `NPR`), con su código;
+       en `NPR` (*enmienda del humano a S-3, 2026-10-28*) o en un estado que no
+       es ninguno de los cinco, también sin estado (*decisión del humano sobre
+       L-3, 2026-10-29*: si no se sabe, lo mira una persona), con solo su
+       código;
+    1. `se_enlaza` si hay emparejada en `PTE`, `SAT`, `TER` o `CER`, con su
+       código;
     2. `ya_existe` si algún par tiene los dos criterios y una reclamación
        abierta, con los códigos de esos pares;
     3. `choca` si algún otro par es de conflicto, con los de todos ellos;
@@ -687,9 +695,10 @@ def _veredicto(
     if emparejada is not None:
         # La pasarela no puede crear otro parte con esa referencia (S-3): los
         # pares no cambian lo que pasará al mandarla.
-        if emparejada.estado == EstadoSigrid.NPR:
-            return Veredicto.CHOCA, (emparejada.cod,)
-        return Veredicto.SE_ENLAZA, (emparejada.cod,)
+        if emparejada.estado in _ENLAZABLES:
+            return Veredicto.SE_ENLAZA, (emparejada.cod,)
+        # Regla 0: anulada (`NPR`) o en un estado que no se sabe (L-3).
+        return Veredicto.CHOCA, (emparejada.cod,)
     abiertos = [p for p in pares if p.estado in ABIERTAS]
     los_dos = tuple(p.sigrid_cod for p in abiertos if frozenset(p.criterios) == _LOS_DOS_CRITERIOS)
     if los_dos:

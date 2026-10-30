@@ -305,7 +305,7 @@
 
 ## Bloque A6 · Mutación y verde
 
-- [ ] **T11**: la campaña de mutación, cada superviviente con su test o su
+- [x] **T11**: la campaña de mutación, cada superviviente con su test o su
   justificación (`critico`: cero sin la aceptación escrita del humano), y
   «Evidencias» con los cuatro números y los workers. |
   Verificación: `python -m harness.mutacion --feature F-065 --base <base fija>` → `progress/mutacion_F-065.md`

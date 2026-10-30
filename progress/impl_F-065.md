@@ -3006,3 +3006,62 @@ El test es `test_f036_excel_lector.py::test_f036_r117_los_ficheros_de_la_review_
 | Cobertura de las líneas cambiadas | Sin dato válido: 45,0 % (340/755) con la suite cortada. No cambia ninguna línea ejecutable: solo un docstring, tests y Markdown |
 | Mutantes | N/A: sin código ejecutable que mutar; la campaña es T11 |
 | Tiempo de la suite | 949–1120 s con la suite cortada; 8,49 s la batería de F-065 |
+
+## Bloque A6 · T11, campaña final de mutación (2026-10-30)
+
+Solo T11. T12 (`bash harness/init.sh`) es del líder y **no** se ha ejecutado.
+
+### Qué se hizo
+
+- Campaña sobre **toda la feature**: `--base f7f63da` (merge-base con `dev`),
+  13 ficheros y 2411 líneas de producción en alcance. Informe en
+  `progress/mutacion_F-065.md`.
+- Igual que en los bloques anteriores (la review lo aceptó): en un `git
+  worktree` desechable (`--detach`) de `4f4416c`, con el árbol limpio antes y
+  después y `git diff` vacío al terminar. Es `harness.mutacion.main(...)` con
+  un `EjecutorPytest` **en serie** (`--workers 1`, `--timeout 900`), con el
+  intérprete del venv de `services/postventa-api` y una **suite reducida de
+  20 ficheros**: los 16 de la campaña de la guarda (A4 bis), más
+  `test_f065_documentacion.py`, `test_f059_fabrica.py`,
+  `test_f009_fabrica.py` y `test_f010_endpoints_protegidos.py`, que cubren lo
+  que el alcance completo añade (`fabrica.py`, las rutas de `function_app.py`
+  y `errores.py`). La lista y cómo se eligió están en la nota de cabecera del
+  informe. La suite reducida sin mutar: 1571 passed en 44,38 s.
+- No se han tocado ni el código ni los tests: no había nada que matar.
+- El envoltorio está fuera del repo, en el scratchpad de la sesión. Su
+  contenido está en la nota del informe.
+
+### Resultado
+
+**182 generados, 182 muertos, 0 supervivientes, 0 timeouts**, en 1784,9 s
+con 1 worker. Por fichero (generados): `guarda_sigrid` 14, pipeline
+`sigrid_bandeja` 4, pipeline `volcado` 1, modelo `sigrid_bandeja` 54, puerto
+34, `function_app` 8, consulta 28, adaptador 6, borde `sigrid_bandeja` 12 y
+borde `volcado` 21. `errores.py`, el modelo `volcado` y `fabrica.py` no
+generan mutantes: sus líneas nuevas no tienen operadores mutables.
+
+### Equivalentes
+
+**Ninguno nuevo** que aceptar. El único equivalente de la feature sigue siendo
+**R4** de `domain/models/sigrid_bandeja.py`, un mutante hecho a mano en el
+Bloque A2 (`_Ordenable(h, 0)`), **ya aceptado por escrito por el humano el
+2026-10-29** (`review_F-065.md`, C-A2-3). La herramienta no lo genera.
+
+### Pendiente
+
+- T12: `bash harness/init.sh` en verde (el líder).
+- El comando oficial tal cual (`python -m harness.mutacion --feature F-065
+  --base f7f63da`, con la suite entera y 8 workers), cuando la máquina esté
+  libre, si el reviewer lo exige.
+
+### Evidencias (T11)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Suite reducida (20 ficheros) sin mutar: **1571 passed**, en 44,38 s. La suite entera no se ha ejecutado (T12, el líder) |
+| Cobertura de las líneas cambiadas | No medida aquí: la puerta la da `init.sh` (T12). En el cierre del A5, 100 % |
+| Mutantes | **182 generados, 182 muertos, 0 supervivientes, 0 equivalentes** de la herramienta (más R4, el equivalente a mano ya aceptado). 0 timeouts. **Workers: 1** (en serie), `--timeout 900` |
+| Tiempo de la suite | 44,38 s la suite reducida; la campaña, 1784,9 s |
+
+Sin GUID literales, hosts, IP ni secretos en lo escrito. Nada contra Sigrid ni
+la red.

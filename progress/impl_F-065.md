@@ -2880,3 +2880,129 @@ códigos `RS`, que no dependen de los documentos.
 | Tiempo de la suite | 286,30 s la batería de arriba; la suite entera no se ha ejecutado (la lanza el líder) |
 
 Sin GUID literales en este informe, ni hosts ni IP en lo versionado (los barridos de arriba, en verde).
+
+## Bloque A5 · Corrección C-A5-1 a C-A5-6 (2026-10-30)
+
+Encargo del líder: los seis cambios de «Review del Bloque A5», más la fila de
+F-059 en `sigrid_api.md` §10. No me he conectado a Sigrid, a la base ni a
+SharePoint. No he tocado `features.json`, `BACKLOG.md` ni `current.md`. T11 sin
+empezar. §8 se queda como estaba, y los seis tests ajenos, sin tocar.
+
+### Commits
+
+- `f937dd3` · los tests en RED (abajo).
+- `cf2190a` · `INTEGRACION.md`, `ARCHITECTURE.md`, el docstring de `cruzar`
+  (solo texto) y el ajuste de un literal del test de §7.
+- `azure-apps` `074b6c0` (rama `master`, sin push): solo `postventa_incidencias.md`
+  y `sigrid_api.md`. Antes de tocarlos, `git status` limpio y nada en el índice;
+  no lleva cambios de otras sesiones.
+
+### Qué cambia, contrastado con el código
+
+- **C-A5-1.** El segundo literal del control de correos usa el dominio ficticio
+  de R39, con punto en el nombre, y sigue cazando esa forma. En `progress/` no
+  se cita el literal.
+- **C-A5-2.** El docstring de `cruzar`, `INTEGRACION.md` §1, `ARCHITECTURE.md`
+  y la copia dicen ahora que **la función es la misma y la lectura no**, con los
+  dos casos de `test_f065_r49_la_excepcion_escrita_una_pvi_en_otra_unidad`:
+  - la única `PVI-` en otra unidad: `se_enlaza` en la ruta y `va` en la guarda;
+  - la mayor, en otra unidad y anulada: `choca` en la ruta y `se_enlaza` en la
+    guarda.
+
+  Ese caso lo para la pasarela con `referencia_en_conflicto`. El AST de `cruzar`
+  no cambia.
+- **C-A5-3.** La guarda «no lee la `ficha`», pero sí lee `con.res` y
+  `rcp.resubi` (`SQL_RECLAMACIONES_DE_LAS_UNIDADES`, sin `dbo.per` ni `r.tex`).
+  Los dos se quedan en la memoria de la petición: no salen en `_sigrid_de` ni en
+  `registrar_la_guarda`. Cambian §1, §7, `ARCHITECTURE.md`, la cabecera de la
+  copia y la fila de consumidores.
+- **C-A5-4.** Contrastado con el código de `sigrid-api`, solo leyéndolo:
+  - `sql_query_guard.py` rechaza `max_rows` > `max_allowed_rows`, y `sql/read`
+    responde 400;
+  - nuestro adaptador traduce ese 400 a `CatalogoNoDisponible` (503), sin
+    reintentar;
+  - la fila de §6 dice ahora 503 en **todas** las obras (`sigrid_no_disponible`
+    en el ensayo), y nunca 409;
+  - la fila «la pasarela cae» dice ahora que siguen el panel, descartar,
+    recuperar y el historial, y que el listado, editar y aprobar responden 503.
+- **C-A5-5.** `duplicada_en_sigrid` lleva el primer código de su veredicto;
+  `conflicto_sin_confirmar`, el primero **sin confirmar** (`sin_confirmar[0]`
+  en `guarda_sigrid.py`).
+- **C-A5-6.** En la copia, la fila «El volcado a Sigrid» es la de
+  `INTEGRACION.md`: desplegada el 2026-10-17 y verificada el 2026-10-19.
+- **`sigrid_api.md` §10, F-059.** Dice ahora que la primera escritura se hizo el
+  2026-10-19 (T25: un parte de prueba en la 0626, anulado después).
+
+### Tests nuevos
+
+- `test_f065_documentacion.py`:
+  - `c2_la_excepcion_de_r49` (integración y arquitectura);
+  - `c2_el_docstring_de_cruzar_dice_la_excepcion`;
+  - `c3_la_guarda_lee_textos_y_el_codigo_lo_confirma`, que lee la consulta;
+  - `c5_el_codigo_de_cada_motivo`;
+  - `c4_bajar_el_tope_de_la_pasarela_da_503_en_todas_las_obras`, sin 409;
+  - `c4_si_la_pasarela_cae_lo_que_sigue_y_lo_que_no`;
+  - `c4_c6_las_filas_de_la_copia_son_las_de_integracion`, tres filas;
+  - `c3_la_copia_y_la_fila_de_consumidores_dicen_que_lee_la_guarda`;
+  - `la_fila_de_f059_en_consumidores_dice_que_ya_escribio`.
+- `test_f065_adaptador.py`: `r8_un_max_rows_rechazado_es_503_y_no_llega_al_techo`,
+  para la obra y para la guarda. Fija contra el código que el 400 de la pasarela
+  da 503. Pasaba ya en el RED, porque el código era correcto: lo falso era el
+  documento.
+
+### Fase RED
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f065_documentacion.py tests/test_f065_adaptador.py tests/test_f065_datos_personales.py -q --tb=no -p no:cacheprovider
+FAILED tests/test_f065_documentacion.py::test_f065_o6_la_guarda_que_lee_y_cuando[arquitectura]
+FAILED tests/test_f065_documentacion.py::test_f065_c2_la_excepcion_de_r49[integracion]
+FAILED tests/test_f065_documentacion.py::test_f065_c2_la_excepcion_de_r49[arquitectura]
+FAILED tests/test_f065_documentacion.py::test_f065_c2_el_docstring_de_cruzar_dice_la_excepcion
+FAILED tests/test_f065_documentacion.py::test_f065_c3_la_guarda_lee_textos_y_el_codigo_lo_confirma
+FAILED tests/test_f065_documentacion.py::test_f065_c5_el_codigo_de_cada_motivo
+FAILED tests/test_f065_documentacion.py::test_f065_c4_bajar_el_tope_de_la_pasarela_da_503_en_todas_las_obras
+FAILED tests/test_f065_documentacion.py::test_f065_c4_si_la_pasarela_cae_lo_que_sigue_y_lo_que_no
+FAILED tests/test_f065_documentacion.py::test_f065_c4_c6_las_filas_de_la_copia_son_las_de_integracion[| El volcado a Sigrid |]
+FAILED tests/test_f065_documentacion.py::test_f065_c3_la_copia_y_la_fila_de_consumidores_dicen_que_lee_la_guarda
+FAILED tests/test_f065_documentacion.py::test_f065_la_fila_de_f059_en_consumidores_dice_que_ya_escribio
+11 failed, 160 passed in 5.20s
+```
+
+En verde tras `cf2190a`, con los mismos ficheros más `test_f065_veredicto.py`:
+**259 passed**, en 8,49 s. Entre ellos va
+`test_f065_r39_los_ficheros_de_f065_solo_traen_correos_inventados`.
+
+### `init.sh`: EN ROJO, solo por un test de tiempo de F-036, por carga
+
+Tres ejecuciones de `bash harness/init.sh`, tal cual, sobre `cf2190a`. Las tres
+dan **exit 1**, y siempre por el **mismo test**:
+
+| Ejecución | Parámetro que cae | Medido / tope | Suite |
+|---|---|---|---|
+| 1 | `[formato-condicional]` | 1,045 s / 1,0 s | 1 failed, 5373 passed, 49 skipped, 1091,59 s |
+| 2 | `[combinado]` | 1,114 s / 1,0 s | 1 failed, 5371 passed, 49 skipped, 949,23 s |
+| 3 | `[combinado]` | 1,430 s / 1,0 s | 1 failed, 5371 passed, 49 skipped, 1119,82 s |
+
+El test es `test_f036_excel_lector.py::test_f036_r117_los_ficheros_de_la_review_3_se_rechazan_en_menos_de_un_segundo`.
+
+- **Es la carga del equipo, no este bloque.** F-065 no ha tocado ni ese test ni
+  su código: `git diff b863b46` de `test_f036_excel_lector.py` y de
+  `infrastructure/documentos/` sale vacío. Aislado (`-k r117`), pasa las dos
+  veces: **63 passed**, en 122 s y 138 s. Durante las ejecuciones había **38
+  procesos de Python** de otras sesiones en el equipo.
+- **Por eso la cobertura sale baja.** La suite tiene `-x` y para en ese fallo,
+  así que el resto de tests del servicio no corre. La puerta da `PUERTA
+  COBERTURA: 45.0% de 755 líneas cambiadas cubiertas (340/755, umbral 80%,
+  nivel critico)`: es la cobertura de una suite cortada al 52 %, no un hueco.
+  En el A4 bis, la misma puerta dio 100 % (755/755). Front, arnés y rama, `[OK]`.
+- **Qué hace falta.** Relanzar `init.sh` con el equipo descargado. No he cambiado
+  el tope del test, porque es de F-036: lo decide el líder.
+
+### Evidencias (corrección del A5)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | **259 passed** (F-065: documentos, adaptador, datos personales y veredicto), en 8,49 s. `init.sh`: 5371–5373 passed y 1 failed por tiempo, cortado por `-x` |
+| Cobertura de las líneas cambiadas | Sin dato válido: 45,0 % (340/755) con la suite cortada. No cambia ninguna línea ejecutable: solo un docstring, tests y Markdown |
+| Mutantes | N/A: sin código ejecutable que mutar; la campaña es T11 |
+| Tiempo de la suite | 949–1120 s con la suite cortada; 8,49 s la batería de F-065 |

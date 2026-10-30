@@ -434,7 +434,7 @@ def test_f065_r30_la_seccion_siete_dice_donde_se_ensenan_y_donde_no_van():
         "per.esigpas",
         "per.clamai",
         "No se guardan",
-        "La guarda del ensayo no lee ninguno",
+        "La guarda del ensayo no lee la ficha",
     ):
         assert texto in siete, f"§7 no dice «{texto}»"
 

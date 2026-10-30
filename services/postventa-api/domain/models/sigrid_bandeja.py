@@ -597,8 +597,9 @@ def cruzar(
     En la ruta, `situaciones` es la bandeja entera de la obra y `reclamaciones`,
     todas las de la obra, de cualquier estado y fecha. En la guarda del ensayo
     (R44), `situaciones` es solo lo que se va a mandar y `reclamaciones`, las de
-    sus unidades: el veredicto de cada una solo depende de sus referencias y sus
-    pares, así que es el mismo (R49).
+    sus unidades. El veredicto sale igual salvo una referencia `PVI-` en otra
+    unidad, que la guarda no ve: ese caso lo para la pasarela con
+    `referencia_en_conflicto` (R49).
     """
     por_id = {s.incidencia.incidencia_id: s for s in situaciones}
     estados = {incidencia_id: estado_de(s) for incidencia_id, s in por_id.items()}

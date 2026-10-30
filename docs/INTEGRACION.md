@@ -283,7 +283,8 @@ y un test lo fija carácter a carácter; se mide en seco, solo con recuentos, co
 `specs/F-065-revision-sigrid-backend/`.
 
 **Para el dueño de `sigrid-api`**: F-065 **no pide ningún cambio**; depende de
-que `sql/read` siga sirviendo 500.000 filas por petición (§6).
+que `sql/read` siga aceptando `max_rows` 500.000: por debajo, la pasarela rechaza
+la petición, y es 503 en todas las obras (§6).
 
 ### Con F-065 · la guarda del ensayo
 
@@ -294,8 +295,11 @@ botón «Registrar» de F-040. `sigrid-api` no cambia, y su idempotencia por `PV
 sigue siendo la última defensa.
 
 - **Qué lee.** Una lectura, **solo `sql/read`**, **por unidades** (las de lo que se va a
-  mandar, de 1 a 50, cada una por marcador) y **sin datos personales**: las
-  columnas de la cuarta lectura sin la `ficha`, y con el mismo techo.
+  mandar, de 1 a 50, cada una por marcador) y **sin la `ficha`**: ni
+  nombres, ni teléfonos, ni correos. Sí lee dos textos libres de Sigrid,
+  `con.res` y `rcp.resubi`, porque el cruce los compara: se quedan en la
+  **memoria de la petición**, y no salen ni en la respuesta del ensayo ni en su
+  log. Con el mismo techo.
 - **Cuándo.** Va **después de la selección** de F-059 y **antes del login** de
   Sigrid y del lote; si la selección no deja nada que mandar, no lee. Con la
   lectura del login y el lote, son tres llamadas a la pasarela por ensayo.
@@ -309,6 +313,13 @@ sigue siendo la última defensa.
   | `choca` | La emparejada no se puede enlazar, o hay otro conflicto | Se excluye con `conflicto_sin_confirmar` si falta confirmar alguno de sus códigos |
   | `va` | Todo lo demás, también con avisos de reincidencia | Se manda |
 
+- **La función es la misma y la lectura no.** La ruta lee toda la obra, y la
+  guarda solo las unidades de lo que se manda; así que **el bloque `volcado` de
+  la ruta y la guarda pueden diferir** en un caso: **una referencia `PVI-` en
+  otra unidad**. Si es la única, la ruta da `se_enlaza` y la guarda, `va`; si es
+  la de código mayor y está anulada, la ruta da `choca` y la guarda, `se_enlaza`.
+  Ese caso lo para la pasarela: con otra UPV, o con más de una, el parte vuelve `rechazado`
+  con `referencia_en_conflicto`.
 - **La regla de la emparejada.** La emparejada **solo se enlaza en PTE, SAT, TER
   o CER**; **en NPR, con un estado desconocido o vacío da `choca`**, con solo su
   código, y exige la **confirmación explícita**, aunque tenga además otras
@@ -319,8 +330,9 @@ sigue siendo la última defensa.
   se puede confirmar. Una confirmación mal formada es 400 antes de construir
   nada. **La confirmación no se guarda** en la base: consta en el log.
 - **Los dos motivos de exclusión nuevos**, `duplicada_en_sigrid` y
-  `conflicto_sin_confirmar`, salen en las `excluidas` de siempre, con su primer
-  código en `sigrid_cod`. Si no queda nada que mandar, es la respuesta de «nada
+  `conflicto_sin_confirmar`, salen en las `excluidas` de siempre, con un código en
+  `sigrid_cod`: en `duplicada_en_sigrid`, el primero de su veredicto; en
+  `conflicto_sin_confirmar`, el primero sin confirmar. Si no queda nada que mandar, es la respuesta de «nada
   que mandar» de F-059 (`ensayo_id: null`), sin login ni lote.
 - **Los tres códigos de error nuevos** del ensayo, y con ellos **ni login, ni
   lote, ni ensayo guardado**: 503 `sigrid_no_disponible`; 409
@@ -1440,8 +1452,8 @@ incidencia, código de obra y remesa.
 | La pasarela `sigrid-api` cae, no responde o baja el techo de `sql/read` (**F-056**) | El listado para revisar y las acciones **editar** y **aprobar** responden **503** (o **409** `catalogo_sin_verificar` al techo) y no escriben nada; **descartar**, **recuperar** y el historial siguen funcionando, porque solo usan nuestra base | Es del dueño de `sigrid-api`; avisar antes |
 | La pasarela `sigrid-api` o la base fallan al normalizar tras una importación (**F-060**) | **Nada visible**: la importación ya está guardada y responde exactamente igual; la normalización no se hace y queda un aviso en el log con la obra y el **tipo** del error. Lo que no se normalizó sigue saliendo como `ubicacion_fuera_de_lista` y lo recoge la siguiente importación o `POST /api/revision/normalizar`, que con la pasarela o la base caídas responde **503** sin escribir nada | Es de mejor esfuerzo; se ve en el log |
 | Alguien cambia en Sigrid las ubicaciones de una tipología, o la tipología de una unidad (**F-056**) | Una incidencia ya aprobada **sigue aprobada** —y candidata al volcado— con la ubicación de aquel día, aunque el listado le enseñe ya `ubicacion_fuera_de_lista`; para sacarla de las candidatas basta editarla. Las demás se validan contra la lista nueva. La comparación es exacta: corregir una errata en Sigrid también cuenta como cambio | Es de Sigrid; se ve al revisar |
-| Baja `MAX_ALLOWED_ROWS` de `sql/read` en `sigrid-api` por debajo de las reclamaciones de una obra (**F-065**) | `GET /api/revision/sigrid` y el ensayo dejan de servir esa obra: **409** `reclamaciones_sin_verificar` si la respuesta viene cortada, **503** si la pasarela no acepta el `max_rows` 500.000 que pedimos; nunca conflictos a medias. El 1.000 por defecto del código de la pasarela nos deja igual | Es del dueño de `sigrid-api`; avisar antes |
-| La pasarela `sigrid-api` cae o no responde (**F-065**) | **503** en `GET /api/revision/sigrid` y **503** `sigrid_no_disponible` en el ensayo: **no se ensaya**, y por tanto no se vuelca. El panel y la revisión de la base siguen | Es lo esperado: sin Sigrid no se registra nada |
+| Baja `MAX_ALLOWED_ROWS` de `sql/read` en `sigrid-api` por debajo de 500.000 (**F-065**) | La pasarela **rechaza** con 400 todo `max_rows` mayor que su tope, y pedimos siempre 500.000: `GET /api/revision/sigrid` responde **503**, y el ensayo, **503** `sigrid_no_disponible`, en **todas las obras**, tengan las reclamaciones que tengan, y **no se ensaya**. El 1.000 por defecto del código de la pasarela nos deja igual | Es del dueño de `sigrid-api`; avisar antes |
+| La pasarela `sigrid-api` cae o no responde (**F-065**) | **503** en `GET /api/revision/sigrid` y **503** `sigrid_no_disponible` en el ensayo: **no se ensaya**, y por tanto no se vuelca. Como en la fila de F-056, el listado de revisión, editar y aprobar también responden 503. Siguen el panel, descartar, recuperar y el historial, que solo miran la base | Es lo esperado: sin Sigrid no se registra nada |
 
 Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
 las reglas de §2. La única superficie compartida real es el **disco** y el
@@ -1573,8 +1585,11 @@ el nombre, ni el login del ERP.
 >   (`per.esiglog`, `per.esigpas`, `per.clamai`), las direcciones y las
 >   observaciones de la persona, ni ningún `ide`. La lista de campos es cerrada
 >   (§1) y ampliarla es una decisión del humano.
-> - **La guarda del ensayo no lee ninguno**: sus columnas no llevan la ficha, y
->   su línea de log, ninguno de esos datos ni ningún código de reclamación.
+> - **La guarda del ensayo no lee la ficha**: ni nombres, ni teléfonos, ni
+>   correos. Sí lee dos textos libres de la reclamación, `con.res` y
+>   `rcp.resubi`, porque el cruce los compara. Se quedan en la **memoria de la
+>   petición**: no salen en la respuesta del ensayo ni en su log, que tampoco
+>   lleva ningún código de reclamación.
 
 Consecuencias para quien administre el servidor:
 

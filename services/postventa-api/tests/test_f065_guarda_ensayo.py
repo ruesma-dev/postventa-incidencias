@@ -12,7 +12,7 @@ y lo que choca sin confirmar.
 |---|---|
 | `conflictos_confirmados`: opcional, de objetos con exactamente `incidencia_id` (en `incidencias`, sin repetir) y `sigrid_cods` (1 a 50 códigos `RS…` distintos); si no, 400 **sin construir nada** y sin repetir lo recibido; `confirmado` y `commit` siguen siendo 400 | R43 |
 | el orden: selección → Sigrid → login → lote; **sin** Sigrid si la selección no deja nada; solo las unidades de lo que se manda, por marcador | R44 |
-| `ya_existe` → `duplicada_en_sigrid`; `choca` sin confirmar, a medias o con una reclamación nueva → `conflicto_sin_confirmar`; confirmada, se manda; la `NPR` emparejada, igual; la confirmación sobrante se ignora | R45 |
+| `ya_existe` → `duplicada_en_sigrid`; `choca` sin confirmar, a medias o con una reclamación nueva → `conflicto_sin_confirmar`; confirmada, se manda; la `NPR` emparejada, igual; la emparejada con un estado desconocido o vacío, igual (L-3); la confirmación sobrante se ignora | R45 |
 | Sigrid caída, `truncated` o al techo, dos obras: 503/409 **sin login, sin lote y sin ensayo guardado** | R46 |
 | el bloque `sigrid`; `null` sin lectura; las claves de R12 de F-059 no cambian | R47 |
 | una línea `F-065 guarda del ensayo` por lectura, sin códigos `RS` ni textos; y una por confirmada | R48 |
@@ -497,6 +497,47 @@ def test_f065_r45_la_emparejada_en_npr_confirmada_se_manda() -> None:
     resultado = mundo.ensayar(1, confirmados={1: ("RS26.10/0080",)})
 
     assert mundo.mandadas() == [ID(1)]
+    assert _veredictos(resultado) == [(ID(1), V.CHOCA, ("RS26.10/0080",), True)]
+
+
+@pytest.mark.parametrize("estado", ["XYZ", None])
+def test_f065_r45_l3_la_emparejada_desconocida_sin_confirmar_se_excluye_con_su_codigo(estado: str | None) -> None:
+    """Decisión del humano sobre L-3: si no se sabe en qué estado está el
+    parte, lo mira una persona. Sin confirmar, no se manda nada: ni login ni
+    lote."""
+    mundo = _aprobadas(1).con(emparejada("RS26.10/0080", 1, estado), ya_existe("RS26.09/0123"))
+
+    resultado = mundo.ensayar(1)
+
+    assert _excluidas(resultado) == [(ID(1), MX.CONFLICTO_SIN_CONFIRMAR, "RS26.10/0080")]
+    assert _veredictos(resultado) == [(ID(1), V.CHOCA, ("RS26.10/0080",), False)]
+    assert mundo.sigrid.ensayados == []
+
+
+@pytest.mark.parametrize("estado", ["XYZ", None])
+def test_f065_r45_l3_la_desconocida_se_excluye_y_la_enlazable_se_manda(estado: str | None) -> None:
+    """Solo la de estado desconocido queda fuera: la emparejada en `SAT` de
+    otra incidencia se manda, como siempre (regla 1)."""
+    mundo = _aprobadas(1, 2).con(emparejada("RS26.10/0080", 1, estado), emparejada("RS26.10/0081", 2))
+
+    resultado = mundo.ensayar(1, 2)
+
+    assert mundo.mandadas() == [ID(2)]
+    assert _excluidas(resultado) == [(ID(1), MX.CONFLICTO_SIN_CONFIRMAR, "RS26.10/0080")]
+    assert _veredictos(resultado) == [
+        (ID(1), V.CHOCA, ("RS26.10/0080",), False),
+        (ID(2), V.SE_ENLAZA, ("RS26.10/0081",), False),
+    ]
+
+
+@pytest.mark.parametrize("estado", ["XYZ", None])
+def test_f065_r45_l3_la_emparejada_desconocida_confirmada_se_manda(estado: str | None) -> None:
+    mundo = _aprobadas(1).con(emparejada("RS26.10/0080", 1, estado))
+
+    resultado = mundo.ensayar(1, confirmados={1: ("RS26.10/0080",)})
+
+    assert mundo.mandadas() == [ID(1)]
+    assert _excluidas(resultado) == []
     assert _veredictos(resultado) == [(ID(1), V.CHOCA, ("RS26.10/0080",), True)]
 
 

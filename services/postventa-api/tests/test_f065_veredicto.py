@@ -9,8 +9,8 @@ candidatas (`es_candidata`: `aprobada` o `en_duda`) y **todos** sus pares
 
 | Orden | Veredicto | Cuándo | Sus códigos |
 |---|---|---|---|
-| 0 | `choca` | la emparejada por `PVI-` (la de código mayor) está en `NPR` (*enmienda del humano a S-3, 2026-10-28*) | solo el de la emparejada |
-| 1 | `se_enlaza` | emparejada por `PVI-` y la emparejada no está en `NPR` | el de la emparejada |
+| 0 | `choca` | la emparejada por `PVI-` (la de código mayor) está en `NPR` (*enmienda del humano a S-3, 2026-10-28*) o en un estado que no es ninguno de los cinco, también vacío (*decisión del humano sobre L-3, 2026-10-29*) | solo el de la emparejada |
+| 1 | `se_enlaza` | emparejada por `PVI-` y la emparejada está en `PTE`, `SAT`, `TER` o `CER` | el de la emparejada |
 | 2 | `ya_existe` | un par con **los dos** criterios y la reclamación en `SAT`/`PTE` | las de los dos criterios, abiertas |
 | 3 | `choca` | algún otro par de conflicto | **todas** las de conflicto |
 | 4 | `va` | lo demás, también con avisos | ninguno |
@@ -22,6 +22,7 @@ fecha al final, a igual fecha código descendente).
 |---|---|
 | los ejemplos de §15.2: E1 → `choca`, E1 con la descripción de E2b → `ya_existe`, E3/E4 → `va`, E6 B → `ya_existe`, E7 → `se_enlaza`, E12 sin veredicto | R41 |
 | la enmienda a S-3: E7 con la emparejada en `NPR` → `choca` con solo su código, también con un `ya_existe` por criterios; la menor de dos en `NPR` → `se_enlaza` | R41 (regla 0) |
+| L-3: la emparejada con un estado desconocido o vacío → `choca` con solo su código, también con un `ya_existe`, en la función y en la ruta; solo cuenta la mayor; los cinco conocidos no cambian | R41 (regla 0) |
 | todos los pares y no los 10 de R18; los códigos en el orden de R18; solo candidatas, en el orden recibido | R41 |
 | `Cruce.pares`: todos los pares de cada incidencia evaluable, en el orden de R18 | R41, §15.2 |
 | el bloque `volcado` de la ruta, con `por_veredicto`, `por_unidad` y `veredictos` | R42 |
@@ -189,8 +190,9 @@ def test_f065_r41_e6_b_con_los_dos_criterios_con_la_sat_emparejada_con_a_ya_exis
 
 
 @pytest.mark.parametrize("estado", ["aprobada", "en_duda"])
-@pytest.mark.parametrize("en_sigrid", ["SAT", "PTE", "TER", "CER", "XYZ", None])
-def test_f065_r41_e7_emparejada_y_no_anulada_se_enlaza(estado: str, en_sigrid: str | None) -> None:
+@pytest.mark.parametrize("en_sigrid", ["SAT", "PTE", "TER", "CER"])
+def test_f065_r41_e7_emparejada_y_no_anulada_se_enlaza(estado: str, en_sigrid: str) -> None:
+    """La regla 1, con la enmienda de L-3: solo en `PTE`, `SAT`, `TER` o `CER`."""
     situaciones = [sit(1, estado, **AJENA)]
     reclamaciones = [rec("RS26.10/0080", en_sigrid, referencia=pvi(1), **APARTE)]
     assert _uno(situaciones, reclamaciones) == (V.SE_ENLAZA, ("RS26.10/0080",))
@@ -267,6 +269,86 @@ def test_f065_r41_s3_la_mayor_de_dos_en_npr_choca_con_solo_la_mayor() -> None:
         rec("RS26.10/0079", "SAT", referencia=pvi(1), **APARTE),
     ]
     assert _uno(situaciones, reclamaciones) == (V.CHOCA, ("RS26.10/0080",))
+
+
+# ==========================================================================
+# R41 · la decisión del humano sobre L-3 (2026-10-29): la emparejada con un
+# estado desconocido o vacío
+# ==========================================================================
+
+#: Lo que no es ninguno de los cinco códigos de `conest`, tal cual (R17): el
+#: dominio no recorta ni pasa a mayúsculas, eso es cosa del adaptador.
+ESTADOS_DESCONOCIDOS = ["XYZ", "sat", " SAT", "", None]
+
+
+@pytest.mark.parametrize("estado", ["aprobada", "en_duda"])
+@pytest.mark.parametrize("en_sigrid", ESTADOS_DESCONOCIDOS)
+def test_f065_r41_l3_la_emparejada_con_un_estado_desconocido_o_vacio_choca_con_solo_su_codigo(
+    estado: str, en_sigrid: str | None
+) -> None:
+    """Si no se sabe en qué estado está el parte, lo mira una persona: `choca`
+    con el código de la emparejada, como la de `NPR`."""
+    situaciones = [sit(1, estado, **AJENA)]
+    reclamaciones = [rec("RS26.10/0080", en_sigrid, referencia=pvi(1), **APARTE)]
+    assert _uno(situaciones, reclamaciones) == (V.CHOCA, ("RS26.10/0080",))
+
+
+@pytest.mark.parametrize("en_sigrid", ESTADOS_DESCONOCIDOS)
+def test_f065_r41_l3_la_desconocida_choca_tambien_con_un_ya_existe_por_criterios(en_sigrid: str | None) -> None:
+    """Regla 0: antes que `ya_existe` y que `choca` por criterios, y con solo
+    el código de la emparejada."""
+    situaciones = [sit(1, "aprobada", descripcion=SILICONA)]
+    reclamaciones = [
+        rec("RS26.10/0080", en_sigrid, referencia=pvi(1), **APARTE),
+        rec("RS26.09/0123", "PTE", descripcion=CAMBIAR_SILICONA),  # los dos criterios
+        rec("RS26.09/0124", "SAT"),  # un criterio
+    ]
+    assert _uno(situaciones, reclamaciones) == (V.CHOCA, ("RS26.10/0080",))
+
+
+@pytest.mark.parametrize("en_sigrid", ESTADOS_DESCONOCIDOS)
+def test_f065_r41_l3_solo_cuenta_el_estado_de_la_mayor(en_sigrid: str | None) -> None:
+    """Como en `NPR`: la regla 0 mira la emparejada (la de código mayor, R13
+    bis). Una menor desconocida no cambia nada; una mayor desconocida, sí."""
+    menor_desconocida = [
+        rec("RS26.10/0080", "SAT", referencia=pvi(1), **APARTE),
+        rec("RS26.10/0079", en_sigrid, referencia=pvi(1), **APARTE),
+    ]
+    mayor_desconocida = [
+        rec("RS26.10/0080", en_sigrid, referencia=pvi(1), **APARTE),
+        rec("RS26.10/0079", "SAT", referencia=pvi(1), **APARTE),
+    ]
+    situaciones = [sit(1, "en_duda", **AJENA)]
+    assert _uno(situaciones, menor_desconocida) == (V.SE_ENLAZA, ("RS26.10/0080",))
+    assert _uno(situaciones, mayor_desconocida) == (V.CHOCA, ("RS26.10/0080",))
+
+
+@pytest.mark.parametrize(
+    ("en_sigrid", "esperado"),
+    [
+        (EstadoSigrid.SAT, V.SE_ENLAZA),
+        (EstadoSigrid.PTE, V.SE_ENLAZA),
+        (EstadoSigrid.TER, V.SE_ENLAZA),
+        (EstadoSigrid.CER, V.SE_ENLAZA),
+        (EstadoSigrid.NPR, V.CHOCA),
+    ],
+)
+def test_f065_r41_l3_los_cinco_conocidos_dan_lo_mismo_que_antes(en_sigrid: EstadoSigrid, esperado: Veredicto) -> None:
+    """La enmienda de L-3 no cambia nada de los cinco estados de `conest`, ni
+    como texto ni como enumerado."""
+    assert [e.value for e in EstadoSigrid] == ["SAT", "PTE", "TER", "CER", "NPR"]
+    situaciones = [sit(1, "aprobada", **AJENA)]
+    for estado in (en_sigrid.value, en_sigrid):
+        reclamaciones = [rec("RS26.10/0080", estado, referencia=pvi(1), **APARTE)]
+        assert _uno(situaciones, reclamaciones) == (esperado, ("RS26.10/0080",))
+
+
+def test_f065_r41_l3_sin_referencia_un_estado_desconocido_sigue_sin_contar() -> None:
+    """L-3 solo toca la emparejada: una reclamación desconocida que no lleva
+    `PVI-` sigue sin dar pares (E5) y la incidencia `va`."""
+    situaciones = [sit(1, "aprobada")]
+    reclamaciones = [rec("RS26.09/0200", e) for e in ("XYZ", None)]
+    assert _uno(situaciones, reclamaciones) == (V.VA, ())
 
 
 # ==========================================================================
@@ -686,6 +768,21 @@ def test_f065_r42_la_emparejada_en_npr_choca_en_la_ruta(monkeypatch) -> None:
     volcado = _volcado(monkeypatch, (sit(1, "en_duda", **AJENA),), filas)
 
     assert volcado["por_veredicto"] == _cuentas(choca=1)
+    assert volcado["veredictos"][0]["sigrid_cods"] == ["RS26.10/0080"]
+
+
+@pytest.mark.parametrize("en_sigrid", ["XYZ", None])
+def test_f065_r42_l3_la_emparejada_con_un_estado_desconocido_choca_en_la_ruta(
+    monkeypatch, en_sigrid: str | None
+) -> None:
+    filas = (
+        fila("RS26.10/0080", en_sigrid, referencia=pvi(1), n=1, **APARTE),
+        fila("RS26.10/0079", "SAT", referencia=pvi(1), n=2, **APARTE),
+    )
+    volcado = _volcado(monkeypatch, (sit(1, "aprobada", **AJENA),), filas)
+
+    assert volcado["por_veredicto"] == _cuentas(choca=1)
+    assert volcado["veredictos"][0]["veredicto"] == "choca"
     assert volcado["veredictos"][0]["sigrid_cods"] == ["RS26.10/0080"]
 
 

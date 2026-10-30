@@ -1903,3 +1903,11 @@ Batería pedida por el líder, 31 ficheros: todos los `test_f065_*`, todos los `
 - C5 · T10 `[x]`: [x], sujeto a esa misma condición.
 
 O-A5-1 y O-A5-2 siguen abiertas, y no bloquean. La decisión de §8 sigue siendo del líder.
+
+### Cierre del Bloque A5 (líder, 2026-10-30)
+
+`bash harness/init.sh` en verde al tercer intento: servicio api **10006 passed, 365 skipped** (41 min), front en verde
+por caché, **PUERTA COBERTURA 100,0 %** (755/755 líneas cambiadas, umbral 80 %, nivel crítico), rama
+`feature/F-065-revision-sigrid-backend`. Los dos intentos previos cayeron solo por tests de tiempo de F-036
+(`r115`: 1,36 s con tope 1 s; `r118`: 11,4 s con tope 10 s) con 40–50 procesos Python de otros proyectos en la
+máquina; aislados, los 128 tests de tiempo de F-036 pasan. Condición del veredicto cumplida: **Bloque A5 APPROVED**.

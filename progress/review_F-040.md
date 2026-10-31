@@ -274,3 +274,85 @@ C-B1-1: la mutación por familias se hace sobre las funciones de la feature y no
 llegan a ellas.
 
 **Veredicto: CHANGES_REQUESTED** (C-B1-1, C-B1-2).
+
+---
+
+## Re-review del Bloque 1 · correcciones `e7ddb2a` (reviewer, 2026-10-31)
+
+**Veredicto: APPROVED, condicionado** a dos cosas que no son del implementer ni puedo comprobar yo: (a)
+`bash harness/init.sh` en verde sobre `e7ddb2a` o posterior (lo corre el líder; no lo he ejecutado, por encargo)
+y (b) la **aceptación escrita del humano** del mutante equivalente V3 (C4 bis en `critico`). Sin las dos, este
+APROBADO no vale para avanzar al Bloque 2.
+
+### Alcance
+
+`git show --stat e7ddb2a`: `bandeja.html`, `js/volcado.js`, `tests_js/volcado.test.js`, `tests_js/revision.test.js`,
+`progress/impl_F-040.md`, `progress/mutacion_F-040.md`, `progress/current.md`. Nada fuera de
+`services/postventa-front` y `progress/`; `js/api.js`, `js/revision.js` y `services/postventa-api` intactos.
+O-1 y O-2 no se han tocado, como se encargó.
+
+### C-B1-1 · corregido
+
+- `volcadoOcupado(estado)` = `enVuelo` o fase `sincronizando` o `hayVolcadoEnMarcha`; `volcadoAlCargar` sale sin
+  reiniciar ni releer si está ocupado. `hayVolcadoEnMarcha` (guarda de salida, R55) no se ensancha: correcto.
+- `bandeja.html`: la obra, el filtro de estado, «Solo las que tienen algo que corregir» y «Cargar» llevan
+  `:disabled` también con `volcadoOcupado()`. Añadir el campo de la obra (su Intro llama a `cargar()`) es
+  correcto: un control deshabilitado no recibe `keydown`.
+- Las relecturas internas de la serie (`volcadoReleer` al final de `ensayar()` y `volcar()`) van **después** de
+  poner `enVuelo = false` y la fase final, así que no las bloquea la puerta nueva.
+- Mi sonda original (`api` doble, volcado en vuelo, cargar otra obra), repetida sobre `e7ddb2a`:
+  `hayVolcadoEnMarcha true puedeRegistrar false obra panel 9901`, y al acabar el resultado está en el panel
+  (`creados: 1`). Antes daba `false / true / 9902 / null`.
+- **Enmienda de F-038, citada con el porqué**: comentario fechado sobre los cuatro controles en `bandeja.html`
+  (C-B1-1, R53/R55/R56, «sin serie en marcha, nada cambia para F-038»), y en `tests_js/revision.test.js` el
+  mutante DS13 enmendado con comentario: cambia el texto buscado y sigue quitando lo mismo (`!obra.trim()`). Bien.
+
+### C-B1-2 · corregido
+
+- Lista blanca `NADA_ESCRITO_EN_EL_VOLCADO` con los diez códigos de `design.md` §1 y §3.2 (el
+  `volcado_rechazado_por_la_pasarela` cubre su 409 y su 503). `juntarVolcados`: `volcado_sin_respuesta` → sus
+  `en_duda` (resto sin volcar, como antes); lista blanca → sin volcar; **todo lo demás** → trozo entero en duda.
+  `textoDeParada("volcado", …)` dice «No se sabe qué ha pasado con este trozo (el servicio respondió N[, código])».
+- Sonda repetida: `500 sin codigo -> enDuda [a, b] sinMandar []`; `504 sin codigo -> enDuda [a]`.
+
+### RED
+
+Traza real pegada en `impl_F-040.md` («Correcciones … · RED»): 5 de 6 tests nuevos en rojo con el fallo concreto
+de cada hallazgo (`'9902' !== '9901'`, `volcadoOcupado is not a function`, el `:disabled` ausente, `+ []` frente
+al trozo en duda). El que pasa en RED es el de «nada escrito sigue sin volcar», a propósito (que la lista no se
+pase de ancha), y lo mata D2. Válido.
+
+### Mutación de las correcciones
+
+`mutacion_F-040.md`: K1–K7 y D1–D5, 12/12 muertos (K3 vivo en primera pasada, muerto con un test del contrato de
+`volcadoOcupado`; razonamiento correcto). Repetidos por mí en una copia desechable del front, solo con
+`volcado.test.js` y `api.test.js`:
+
+| Mutante | Resultado | Primer test (de F-040) |
+|---|---|---|
+| K1 (`volcadoAlCargar` sin la condición) | muerto, 2 | «R55, R56 (C-B1-1): con un volcado en vuelo, cargar otra obra no suelta la serie…» |
+| D1 (vuelta a la clasificación vieja) | muerto, 2 | «R53.2, R53.4 (C-B1-2): un fallo … fuera de la lista de “nada escrito” deja TODO el trozo en duda» |
+| K4 («Cargar» sin `volcadoOcupado()`) | muerto, 1 | «R56 (C-B1-1): con una serie en marcha, ni la obra, ni los filtros, ni “Cargar”…» |
+| V3 (control) | sigue vivo, 0 | equivalente, razonado arriba |
+
+Copia borrada; `git status` del worktree, limpio.
+
+### Suites (salida real)
+
+```
+$ python -m pytest services/postventa-front/tests -q -p no:cacheprovider
+910 passed, 7 skipped in 52.24s
+$ cd services/postventa-front && node --test "tests_js/*.test.js"
+ℹ tests 1119   ℹ pass 1119   ℹ fail 0
+```
+
+### Checkpoints que cambian respecto de la primera pasada
+
+- C4 bis «los tests cubren los caminos de fallo»: **[x]** (C-B1-1 y C-B1-2 con test y mutante).
+- C4 bis «cero supervivientes salvo aceptación escrita»: **pendiente del humano** (V3), condición (b).
+- C1 `init.sh`: **pendiente del líder**, condición (a).
+- El resto, como en la primera pasada.
+
+Siguen abiertas, sin bloquear: O-1 (descripción en «va»), O-2 (letra de la spec), O-3 (T6 bis con T4), O-4.
+
+**Veredicto final: APPROVED** (condicionado a `init.sh` en verde y a la aceptación escrita de V3 por el humano).

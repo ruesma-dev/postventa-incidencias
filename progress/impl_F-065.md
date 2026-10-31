@@ -3065,3 +3065,124 @@ Bloque A2 (`_Ordenable(h, 0)`), **ya aceptado por escrito por el humano el
 
 Sin GUID literales, hosts, IP ni secretos en lo escrito. Nada contra Sigrid ni
 la red.
+
+## Bloque A7 · Publicación y verificación en producción (2026-10-31)
+
+Las tareas MANUAL las ejecutaron el humano (despliegue) y el líder (lecturas);
+aquí se anotan sus resultados, solo recuentos, tiempos y códigos `RS`. El
+implementer solo hace el cierre documental. Todo en solo lectura salvo el
+despliegue. **Sin DDL.**
+
+### Resultados
+
+| Tarea | Resultado |
+|---|---|
+| **T-A11** | Backend publicado por el humano desde un worktree limpio de `dev` en **`ed590bd`**, mismos parámetros que el último despliegue: ventanas de archivo y de cierre **abiertas** como estaban, volcado **cerrado**. 41 App Settings (11 referencias a Key Vault). La lista de funciones incluye `revision_sigrid`. Despliegue correcto el 2026-10-31 a las 00:21 UTC. **PASA** |
+| **T-A12** (antes) | Script 29. **0677**: 1358 filas (PTE 313, SAT 30, TER 135, CER 719, NPR 161), 10 unidades, 0 `PVI-`, 1,33 s / 0,69 s, 499197 bytes. **0626**: 7 filas (SAT 1, CER 5, NPR 1), 4 unidades, 2 `PVI-`. `GET /api/revision?obra=0677` → 200, total 467 (nueva 254, editada 212, descartada 1). **PASA** |
+| **T-A13** | `/api/revision/sigrid?obra=0677` → 200: reclamaciones 1359 (SAT 31, una más que el script 29: actividad de Posventa entre ambas lecturas), emparejadas 0, evaluadas 466, con conflicto 7, con aviso 86, coincide 168. **0626** → 200: reclamaciones 7; emparejada `RS26.10/0074` (hallazgo `anulada_en_sigrid`, **sin** `volcada_no_encontrada`) y `RS26.09/0439` con `referencia_desconocida`. **PASA** |
+| **T-A14** | 0626 → 200 con `cache-control: no-store`; `obra=%25%25` → **400**. Campos de la ficha «no null» de 7: `descripcion_larga` 2, `motivo` 7, `urgencia` 7, `forma_comunicacion` 7, `clase_codigo` 5, `clase_nombre` 5, el resto 0. **PASA** (ver «La ficha: motivo y urgencia» abajo) |
+| **T-A15** | 10 cargas de la 0677. Líneas `F-065 sigrid de la bandeja`: total p50 ≈ 0,67 s, máx 4,70 s; `sigrid.leer` p50 ≈ 0,56 s, máx 4,52 s; bytes 1310511. En la 0626, `sigrid.leer` ≈ 4,1 s (lecturas frías). **Ninguna** línea con texto, nombre, teléfono, correo, referencia, código `RS` ni `oid`: solo obra, recuentos y tiempos. **PASA** |
+| **T-A16** (después) | Script 29 repetido: **idéntico** a T-A12 en las dos obras. **PASA** |
+| **T-A17** | `volcado.candidatas` 0 = aprobadas 0 + en_duda 0 de `GET /api/volcado?obra=0677`; `por_veredicto` todo 0; `por_unidad` vacío. **PASA** (trivial: aún no hay aprobadas en la 0677) |
+| **T-A18** | **No hecho**: espera la autorización expresa del humano. Sigue `[ ]` |
+
+### La ficha: `motivo` y `urgencia` (T-A14 contra el script 29)
+
+En la 0626 el script 29 da `motivo` 0 y `urgencia` 0 «rellenos», y la ruta da
+7 «no null» en los dos. **No es un defecto respecto a la spec; es coherente con
+ella**, por estas razones, contrastadas con el código:
+
+1. **Miden cosas distintas.** El script 29 cuenta un campo de R33 como relleno
+   solo si **no está en blanco** («un texto en blanco no cuenta; la fecha
+   prevista a 0, tampoco», cabecera de `infra/29_reclamaciones_obra_sigrid.ps1`,
+   `Test-Relleno`). La orden de T-A14 cuenta `ficha[k] !== null`. Con las
+   mismas 7 filas, 0 frente a 7 solo se explica si `motrcp` y `texurg` llegan
+   como **texto en blanco** (vacío o espacios), no como `NULL`. Es una
+   inferencia: las órdenes no copian valores, a propósito.
+2. **El adaptador pasa los textos tal cual.** En
+   `infrastructure/sigrid/consultas_reclamaciones_obra.py`, `_ficha` mapea
+   `motivo` y `urgencia` con `_texto`, que devuelve `None` solo para `NULL` y
+   el resto «a texto tal cual (como F-036)». El recorte (`strip`, vacío →
+   `None`) se aplica **solo a los códigos** (`estado_codigo`, `cod`,
+   `tipo_codigo`, `clase_codigo`), por la enmienda del 2026-10-28 de
+   `design.md` (§ «El recorte de los códigos en el mapeo»). Por eso
+   `clase_codigo` sí cuadra (5 y 5).
+3. **R33 y R6.** R33 fija **qué** campos lleva la ficha (lista cerrada), no
+   cómo se normalizan. R6 dice «`null` lo que no haya»: un texto en blanco que
+   Sigrid sí devuelve es un valor, y el diseño eligió no tocar los textos. Ni
+   la spec ni los tests (`test_f065_adaptador.py`) fijan que un texto en blanco
+   sea `null`.
+4. `forma_comunicacion` (`rcptip`) es entero y `_entero` deja el `0` como
+   valor («el `0` también»): 7 de 7 es lo esperado.
+
+**Observación para el líder (no es hallazgo de defecto):** quien pinte la ficha
+(F-064) verá `motivo` y `urgencia` como texto en blanco y no como ausentes. Si
+se quiere que la ruta los dé `null`, es una enmienda de R6/R33 (decisión del
+humano), no una corrección de F-065. No se ha tocado código.
+
+### Cierre documental (este bloque)
+
+- `specs/F-065-revision-sigrid-backend/tasks.md`: T-A11 a T-A17 `[x]`; T-A18
+  sigue `[ ]`.
+- `docs/INTEGRACION.md`: cabecera (Fecha 2026-10-31; F-065 **desplegada el
+  2026-10-31 desde `dev` `ed590bd`**, verificada en solo lectura, T-A11 a
+  T-A17; T-A18 pendiente), §1 «la cuarta lectura» y §8 «Qué NO está
+  desplegado» (la fila de F-065). **F-038 no cambia**: es front y no se ha
+  publicado («implementada en su rama; se publica con su T6» sigue).
+- `docs/ARCHITECTURE.md`: la línea «Añadida el 2026-10-30 por F-065» de su
+  sección dice ya que está desplegada.
+- `services/postventa-api/tests/test_f065_documentacion.py`: la cabecera pasa
+  a 2026-10-31; la fila de §8 exige «Desplegada el 2026-10-31», `ed590bd`,
+  T-A11 a T-A17 y T-A18, y prohíbe «Pendiente de publicar»; tres tests nuevos
+  (`test_f065_a7_*`: cabecera, sección de ARCHITECTURE y §1) y uno para la fila
+  de consumidores de `sigrid_api.md`; la copia de `azure-apps` pasa a
+  2026-10-31 y la fila de §8 entra en las que deben ser idénticas a
+  INTEGRACION.
+- `azure-apps` (commit aparte, sin push): `postventa_incidencias.md`
+  (cabecera, «LO QUE CAMBIA», §1 y §8, idénticas) y la fila de F-065 en
+  `sigrid_api.md` §10 («desplegada el 2026-10-31»).
+
+### Fase RED (Bloque A7)
+
+Comando:
+`.\.venv\Scripts\python.exe -m pytest tests/test_f065_documentacion.py -q -p no:cacheprovider`
+(desde `services/postventa-api`), con los tests cambiados y los documentos aún
+sin tocar:
+
+```
+E       AssertionError: assert 'pendiente de publicar' not in '| postventa...ias.md) §1 |'
+E           | postventa-incidencias (F-065; pendiente de publicar) | sql/read (solo lectura), max_rows 500.000 ...
+tests\test_f065_documentacion.py:635: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f065_documentacion.py::test_f065_r30_la_cabecera_dice_que_f065_lo_toco
+FAILED tests/test_f065_documentacion.py::test_f065_a7_la_cabecera_dice_que_f065_esta_desplegada
+FAILED tests/test_f065_documentacion.py::test_f065_r30_la_seccion_ocho_dice_lo_que_falta_por_publicar
+FAILED tests/test_f065_documentacion.py::test_f065_a7_la_cuarta_lectura_dice_que_esta_desplegada
+FAILED tests/test_f065_documentacion.py::test_f065_r30_la_copia_de_azure_apps_dice_lo_que_cambia
+FAILED tests/test_f065_documentacion.py::test_f065_a7_la_fila_de_consumidores_ya_no_dice_pendiente
+6 failed, 58 passed in 1.31s
+```
+
+Y el de ARCHITECTURE, añadido después (`-k arquitectura_dice`):
+
+```
+E       AssertionError: assert 'Añadida el 2026-10-30 por F-065; desplegada el 2026-10-31 desde dev ed590bd' in '## Las reclamaciones de Sigrid en la revisión (F-065) Añadida el 2026-10-30 por F-065; implementada en su rama y pend...'
+FAILED tests/test_f065_documentacion.py::test_f065_a7_la_seccion_de_arquitectura_dice_que_esta_desplegada
+1 failed, 64 deselected in 0.99s
+```
+
+El caso nuevo de la fila idéntica en la copia (`| Las reclamaciones de Sigrid
+en la revisión |`) ya pasaba antes: la copia era idéntica; lo que fija es que
+siga siéndolo.
+
+### Evidencias (Bloque A7)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Los de documentación y de repo, como pide el encargo: todos los `tests/*_documentacion.py`, `test_f005_integracion_sin_secretos.py`, `test_f006_repo_sin_identificadores.py` y `test_f051_sin_caracteres_de_control.py`: **675 passed**, 0 fallos, 0 saltados (`azure-apps` presente). **No** se ha ejecutado `harness/init.sh` (encargo) |
+| Cobertura de las líneas cambiadas | No aplica: solo cambian Markdown y un fichero de tests; ningún código de producción |
+| Mutantes | No aplica: ningún código de producción cambiado |
+| Tiempo de la suite | 21,45 s (la selección de arriba) |
+
+Pendiente: **T-A18** (autorización expresa del humano) y, al merge, el
+`init.sh` del líder.

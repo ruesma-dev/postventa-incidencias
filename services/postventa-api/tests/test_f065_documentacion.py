@@ -182,10 +182,22 @@ def test_f065_t10_el_control_de_codigos_caza():
 def test_f065_r30_la_cabecera_dice_que_f065_lo_toco():
     cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
 
-    assert "Fecha: 2026-10-30." in cabecera
+    assert "Fecha: 2026-10-31." in cabecera
     assert "Última feature que lo tocó: F-065" in cabecera
     for texto in (RUTA, "guarda del ensayo", "Antes, F-038"):
         assert texto in cabecera, f"la cabecera no dice «{texto}»"
+
+
+def test_f065_a7_la_cabecera_dice_que_f065_esta_desplegada():
+    """Cierre del Bloque A7 (2026-10-31): desplegada desde `dev` `ed590bd` y
+    verificada en solo lectura (T-A11 a T-A17); T-A18, el ensayo, pendiente.
+    F-038 (front) **no** se ha publicado: su frase no cambia."""
+    cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
+
+    for texto in ("desplegada el 2026-10-31 desde dev ed590bd", "T-A11 a T-A17", "T-A18 pendiente"):
+        assert texto in cabecera, f"la cabecera no dice «{texto}»"
+    assert "F-065" in cabecera and "pendiente de publicar" not in cabecera
+    assert "implementada en su rama; se publica con su T6" in cabecera
 
 
 def test_f065_r30_la_fila_de_sigrid_api_de_la_seccion_uno_gana_la_lectura():
@@ -465,11 +477,29 @@ def test_f065_r30_la_fila_del_ensayo_dice_la_guarda():
 
 
 def test_f065_r30_la_seccion_ocho_dice_lo_que_falta_por_publicar():
+    """Desde el Bloque A7 (2026-10-31): desplegada y verificada en solo
+    lectura; lo que falta es el ensayo T-A18 y las páginas de F-064 y F-040."""
     ausencias = _integracion("### Qué NO está desplegado, y hay que decirlo antes de enseñarlo")
     fila = _normal(_fila(ausencias, "| Las reclamaciones de Sigrid en la revisión |"))
 
-    for texto in ("F-065", "Pendiente de publicar", "F-064", "F-040"):
+    for texto in ("F-065", "Desplegada el 2026-10-31", "dev ed590bd", "T-A11 a T-A17", "T-A18", "F-064", "F-040"):
         assert texto in fila, f"la fila de F-065 no dice «{texto}»"
+    assert "Pendiente de publicar" not in fila
+    assert "existen en su rama" not in fila
+
+
+def test_f065_a7_la_seccion_de_arquitectura_dice_que_esta_desplegada():
+    seccion = _normal(_arquitectura())
+
+    assert "Añadida el 2026-10-30 por F-065; desplegada el 2026-10-31 desde dev ed590bd" in seccion
+    assert "pendiente de publicar" not in seccion
+
+
+def test_f065_a7_la_cuarta_lectura_dice_que_esta_desplegada():
+    lectura = _normal(_integracion(TITULO_DE_LA_LECTURA))
+
+    assert "desplegada el 2026-10-31 desde dev ed590bd" in lectura
+    assert "pendiente de publicar" not in lectura
 
 
 @pytest.mark.parametrize("modulo", MODULOS_DE_F065)
@@ -564,6 +594,7 @@ def test_f065_r30_la_copia_de_azure_apps_lleva_las_secciones_identicas(titulo):
         "| Baja `MAX_ALLOWED_ROWS` de `sql/read`",
         "| La pasarela `sigrid-api` cae o no responde (**F-065**) |",
         "| El volcado a Sigrid |",
+        "| Las reclamaciones de Sigrid en la revisión |",
     ),
 )
 def test_f065_c4_c6_las_filas_de_la_copia_son_las_de_integracion(principio):
@@ -596,8 +627,20 @@ def test_f065_la_fila_de_f059_en_consumidores_dice_que_ya_escribio():
 def test_f065_r30_la_copia_de_azure_apps_dice_lo_que_cambia():
     cabecera = _normal(_leer(COPIA).split("## 1 ·")[0])
 
-    for texto in ("LO QUE CAMBIA EN ESTA REVISIÓN (2026-10-30)", "F-065", RUTA, "Fecha del documento: 2026-10-30"):
+    for texto in ("LO QUE CAMBIA EN ESTA REVISIÓN (2026-10-31)", "F-065", RUTA, "Fecha del documento: 2026-10-31"):
         assert texto in cabecera, f"la cabecera de la copia no dice «{texto}»"
+    assert "desplegada el 2026-10-31 desde dev ed590bd" in cabecera
+    assert "F-065 implementada y pendiente de publicar" not in cabecera
+    assert "F-038 mergeada y sin publicar todavía" in cabecera
+
+
+@sin_azure_apps
+def test_f065_a7_la_fila_de_consumidores_ya_no_dice_pendiente():
+    consumidores = _seccion(_leer(PASARELA), "## 10. Consumidores de la API")
+    fila = _normal(next(f for f in consumidores.splitlines() if "(F-065;" in f))
+
+    assert "pendiente de publicar" not in fila
+    assert "desplegada el 2026-10-31" in fila
 
 
 @sin_azure_apps

@@ -1516,8 +1516,8 @@ Nuestros partes se reconocen por la referencia `PVI-` en `RCPCLI`
 
 ## Las reclamaciones de Sigrid en la revisión (F-065)
 
-**Añadida el 2026-10-30 por F-065; implementada en su rama y pendiente de
-publicar.** Hasta aquí la bandeja solo se comparaba consigo misma. `GET
+**Añadida el 2026-10-30 por F-065; desplegada el 2026-10-31 desde `dev`
+`ed590bd` y verificada en solo lectura (T-A11 a T-A17); T-A18 pendiente.** Hasta aquí la bandeja solo se comparaba consigo misma. `GET
 /api/revision/sigrid?obra=` lee de Sigrid **todas** las reclamaciones de la obra,
 de cualquier estado y fecha, y las cruza con la bandeja. Solo lee: ninguna
 tabla, ninguna variable, ninguna escritura, ninguna caché. Es el **tramo A**: la

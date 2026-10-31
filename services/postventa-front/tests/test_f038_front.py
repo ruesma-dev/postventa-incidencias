@@ -69,7 +69,10 @@ MIGAS_DE_BANDEJA = (("index.html", "Portal de posventa"), ("./#/bandeja", "Bande
 PIE_DE_BANDEJA = "Construcciones Ruesma · Posventa · bandeja de revisión."
 
 #: Los scripts propios de la página, en orden de dependencia (R1, R15).
-SCRIPTS_DE_BANDEJA = ["js/config.js", "js/traza.js", "js/api.js", "js/revision.js"]
+# Enmienda del 2026-10-31 · F-040 T2: eran cuatro; el panel de volcado añade
+# `js/volcado.js`, el último (compone su panel sobre `appRevision`, `design.md`
+# §3.3 y §5 de F-040). Los cuatro de antes, en el mismo orden.
+SCRIPTS_DE_BANDEJA = ["js/config.js", "js/traza.js", "js/api.js", "js/revision.js", "js/volcado.js"]
 
 #: La frase de la cabecera (`design.md` §2.2, punto 1).
 FRASE_DE_LA_CABECERA = (
@@ -420,7 +423,12 @@ def test_f038_r10_control_la_confirmacion_en_el_html_salta():
     assert "confirmado" in _sin_comentarios_html(copia)
 
 
-_FILTROS_DEL_PANEL = re.compile(r"^(?:obra|filtros\.\w+)$")
+# Enmienda del 2026-10-31 · F-040 T2: el panel de volcado trae dos campos que
+# no son de la revisión de una fila —la casilla de lo que choca y el número
+# tecleado para confirmar el volcado (R52, R62 de F-040)—; tienen su propia
+# puerta, que prueba `tests/test_f040_front.py`. Se nombran uno a uno, no
+# `volcado.*`: un campo nuevo cualquiera sigue saltando.
+_FILTROS_DEL_PANEL = re.compile(r"^(?:obra|filtros\.\w+|volcado\.incluidas\[fila\.incidencia_id\]|volcado\.tecleado)$")
 
 
 def campos_fuera_de_su_puerta(html: str) -> list[str]:

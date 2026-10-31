@@ -1138,6 +1138,7 @@
         this.cargando = true;
         this.errorCarga = "";
         this.cerrarDetalle();
+        let cargada = false;
         try {
           const respuesta = await api.revision(
             consulta.obra,
@@ -1152,6 +1153,7 @@
           this.incidencias = pagina.incidencias;
           this.siguiente = pagina.siguiente;
           this.nDeM = pagina.nDeM;
+          cargada = true;
         } catch (error) {
           this.consulta = null;
           this.catalogo = null;
@@ -1162,6 +1164,12 @@
           this.errorCarga = queHacerConElError(error, false).mensaje;
         } finally {
           this.cargando = false;
+        }
+        // F-040 R50 · con la obra cargada, el panel de volcado lee su estado
+        // (solo `GET /api/volcado`). El panel vive en `js/volcado.js` y se
+        // compone sobre este componente (`appRevision`); sin él, nada.
+        if (cargada && typeof this.volcadoAlCargar === "function") {
+          await this.volcadoAlCargar();
         }
       },
 
@@ -1395,7 +1403,11 @@
   function appRevision() {
     const config = window.CONFIG_POSTVENTA;
     const api = window.Api.crearApi({ baseApi: config.baseApi, config: config });
-    return crearAppRevision({ api: api, parametros: window.location.search });
+    const app = crearAppRevision({ api: api, parametros: window.location.search });
+    // F-040 · el panel de volcado se compone sobre ESTE componente (un solo
+    // `x-data` por página, F-035 R70): `js/volcado.js` le añade su estado
+    // (`volcado`) y sus métodos. Sin el módulo cargado, la bandeja sigue igual.
+    return window.Volcado ? window.Volcado.conPanel(app, { api: api }) : app;
   }
 
   const Revision = {

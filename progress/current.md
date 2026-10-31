@@ -7,12 +7,18 @@
 > por el humano a F-040** (no había candidatas aprobadas). `azure-apps` al día en local (`03adbd6`), sin push. Para
 > F-064: `motivo` y `urgencia` de la ficha llegan como texto en blanco, no `null` (coherente con la spec).
 
-> ## F-040 · `spec_ready` · 2026-10-31 · desbloqueada al cerrar F-065
+> ## F-040 · `in_progress` · 2026-10-31 · T0: base fija `dev` `7cc0bbb`; el spec-author concilia con F-065
+> **El estado del backlog se lleva en la rama de F-040 mientras esté en curso** (worktree `postventa-f040`).
 > Spec conciliada con `dev` en `b86e876` (worktree `postventa-f040`). Humano, 2026-10-28: C-2 el volcado de la VILLA 15 no es
 > tarea de la ficha; C-4 botón «Registrar» que sincroniza con Sigrid (F-065) antes de ensayar y volcar; el resto como recomendó
 > el spec-author. Siguiente: traer `dev` (`ed590bd`) a su rama y Bloque 1 (implementer). **Recoge T-A18 de F-065**: en el
 > primer ensayo real de la 0677, una incidencia `choca` sin confirmar sale `conflicto_sin_confirmar` y confirmada `previsto`,
 > con la línea `F-065 guarda del ensayo` sin códigos `RS` ni texto.
+> **2026-10-31 · T0 (spec)**: base fija `f97ec6e`; spec conciliada con el contrato implementado de F-065 (T-A18 como
+> T5 bis). Esperan al humano **P-1 a P-3** (`progress/spec_F-040.md`, «Conciliación con F-065»). Falta `init.sh` (líder).
+> **2026-10-31 · Bloque 1 (implementer)**: T1 RED y T2 GREEN hechos (panel en `bandeja.html`, `js/volcado.js`, cuatro
+> funciones en `js/api.js`, composición en `appRevision`, README y ARCHITECTURE); suites del front en verde. T3 hecha: 82 mutantes
+> a mano, 1 vivo equivalente (V3) para aceptación del humano. Review: CHANGES_REQUESTED (C-B1-1, C-B1-2); corregidas con RED, 12/12 mutantes muertos, a la espera de re-review. Pendiente fuera del encargo: `azure-apps/postventa_incidencias.md` (R58). Detalle en `progress/impl_F-040.md`.
 
 > ## F-066 · `blocked` (aparcada, sin fallo) · 2026-10-27 · espera a que termine F-040
 > **Aparcada por el humano el 2026-10-27** para hacer F-040. Bloque 1 y T3 hechos y APROBADOS (lote versionado

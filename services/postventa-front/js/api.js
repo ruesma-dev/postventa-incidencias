@@ -1,5 +1,5 @@
 // services/postventa-front/js/api.js
-// R12, R23-R27 · El cliente de los endpoints del backend (veinte desde F-038).
+// R12, R23-R27 · El cliente de los endpoints del backend (veinticuatro desde F-040).
 //
 // Una sola forma de hablar con el backend y una sola forma de error hacia
 // arriba: `ErrorApi {tipo, http, mensaje, avisos}` con
@@ -25,6 +25,15 @@
 // `historialRevision` y `accionRevision`— con las mismas reglas (el texto del
 // servicio también en un 503; la acción no se reintenta sola) y, aditivo, el
 // cuerpo del error en `ErrorApi.detalle` (R26). Los diecisiete no cambian.
+//
+// F-040 añade cuatro para el panel de volcado: las tres rutas de F-059
+// —`volcadoPanel`, `volcadoEnsayo`, `volcadoVolcar`— y la sincronización con
+// Sigrid de F-065 —`revisionSigrid`—. Las cuatro enseñan el texto del
+// servicio también en un 503. El ensayo, el volcado y la sincronización **no
+// se reintentan nunca solos** (`sinReintentos`): el volcado escribe en el ERP
+// de producción, y repetir sin que lo decida la persona es lo que R53 prohíbe.
+// `volcadoPanel` es una lectura y reintenta lo transitorio, como `revision`
+// (`design.md` §3.3 de F-040). Los veinte de antes no cambian.
 
 (function () {
   "use strict";
@@ -750,6 +759,57 @@
           cuerpo: JSON.stringify(cuerpo),
           cabeceras: { "Content-Type": "application/json" },
           paso: "revision_accion",
+          sinReintentos: true,
+          mensajeDelServicio: true,
+        });
+      },
+
+      /** F-040 R50 · F-059: el panel de volcado de la obra (solo lee). Lectura: reintenta lo transitorio. */
+      volcadoPanel: function (obra) {
+        return peticion(conObra("/volcado", obra), { metodo: "GET", paso: "volcado_panel", mensajeDelServicio: true });
+      },
+
+      /**
+       * F-040 R60 · F-065: la sincronización de la obra con Sigrid. **No se
+       * reintenta sola**: es cara (lee las reclamaciones de la obra) y la repite
+       * la persona con otro «Registrar».
+       */
+      revisionSigrid: function (obra) {
+        return peticion(conObra("/revision/sigrid", obra), {
+          metodo: "GET",
+          paso: "revision_sigrid",
+          sinReintentos: true,
+          mensajeDelServicio: true,
+        });
+      },
+
+      /**
+       * F-040 R51, R62 · F-059: el ensayo de un trozo. El cuerpo lo compone
+       * `js/volcado.js::cuerpoDeEnsayo` y viaja tal cual. **No se reintenta solo.**
+       */
+      volcadoEnsayo: function (cuerpo) {
+        return peticion("/volcado/ensayo", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "volcado_ensayo",
+          sinReintentos: true,
+          mensajeDelServicio: true,
+        });
+      },
+
+      /**
+       * F-040 R52, R53 · F-059: el volcado de un ensayo, que ESCRIBE en Sigrid.
+       * El cuerpo lo compone `js/volcado.js::cuerpoDeVolcado` y viaja tal cual.
+       * **No se reintenta nunca solo**: un reintento es una segunda escritura en
+       * el ERP de producción.
+       */
+      volcadoVolcar: function (cuerpo) {
+        return peticion("/volcado/volcar", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "volcado_volcar",
           sinReintentos: true,
           mensajeDelServicio: true,
         });

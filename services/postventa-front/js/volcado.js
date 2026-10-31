@@ -177,6 +177,25 @@
     "No se ha podido hablar con el servicio (sin conexión o tardó demasiado) y no se ha reintentado. Repetir es inocuo: vuelve a registrar.";
   const TEXTO_SIN_RESPUESTA_VOLCADO =
     "No se sabe qué ha pasado con este trozo (sin conexión o tardó demasiado): sus partes quedan en duda hasta volver a leer. Volver a registrar y volcar lo aclara sin duplicar.";
+  /**
+   * C-B1-2 (review del Bloque 1) · lo que `design.md` §1 y §3.2 documentan como
+   * «nada escrito» en un volcado: el trozo queda «sin volcar». Lista blanca:
+   * cualquier otro fallo (corte, `volcado_sin_traza`, sin `codigo`, un código
+   * desconocido o de otra ruta) deja el trozo entero «en duda», y
+   * `volcado_sin_respuesta`, solo sus `en_duda`.
+   */
+  const NADA_ESCRITO_EN_EL_VOLCADO = [
+    "peticion_invalida",
+    "ensayo_no_valido",
+    "usuario_sigrid_no_mapeado",
+    "usuario_sigrid_inexistente",
+    "volcado_rechazado_por_la_pasarela",
+    "ensayo_sin_respuesta",
+    "volcado_deshabilitado",
+    "configuracion_de_volcado_invalida",
+    "configuracion_sigrid_incompleta",
+    "base_de_datos_no_disponible",
+  ];
   const TEXTO_CADUCADO =
     "El ensayo de este trozo ha caducado antes de mandarlo: no se ha mandado. Hay que volver a registrar lo que queda.";
   const TEXTO_POSTERIOR_SINCRONIZACION = "Puedes volver a registrar más tarde: no se ha escrito nada.";
@@ -702,6 +721,19 @@
       return TEXTO_SIN_RESPUESTA_SINCRONIZACION;
     }
     const codigo = e.codigo;
+    if (
+      fase === "volcado" &&
+      NADA_ESCRITO_EN_EL_VOLCADO.indexOf(codigo) === -1 &&
+      codigo !== "volcado_sin_respuesta" &&
+      codigo !== "volcado_sin_traza"
+    ) {
+      // C-B1-2 · sin un código de «nada escrito», el panel no sabe si Sigrid escribió.
+      return (
+        "No se sabe qué ha pasado con este trozo (el servicio respondió " + e.http +
+        (codigo ? ", " + codigo : "") + "): sus partes quedan en duda hasta volver a leer. " +
+        "Volver a registrar y volcar lo aclara sin duplicar."
+      );
+    }
     if (!codigo) {
       if (fase === "sincronizacion" && e.http === 503) {
         return (e.mensajeServicio ? e.mensajeServicio + " " : "Sigrid o la base no están disponibles. ") + TEXTO_POSTERIOR_SINCRONIZACION;
@@ -781,14 +813,18 @@
     if (fallo) {
       const ids = fallo.ids || [];
       const error = fallo.error || {};
+      // C-B1-2 · lista blanca: solo lo documentado como «nada escrito» queda
+      // «sin volcar»; `volcado_sin_respuesta`, sus `en_duda`; lo demás (corte,
+      // `volcado_sin_traza`, sin código, código desconocido), el trozo entero en duda.
+      const sinRespuesta = error.http === null || error.http === undefined;
       let enDuda = [];
-      if (error.http === null || error.http === undefined || error.codigo === "volcado_sin_traza") {
-        enDuda = ids.slice();
-      } else if (error.codigo === "volcado_sin_respuesta") {
+      if (!sinRespuesta && error.codigo === "volcado_sin_respuesta") {
         const lista = (error.detalle && Array.isArray(error.detalle.en_duda) && error.detalle.en_duda) || [];
         enDuda = ids.filter(function (id) {
           return lista.indexOf(id) !== -1;
         });
+      } else if (sinRespuesta || NADA_ESCRITO_EN_EL_VOLCADO.indexOf(error.codigo) === -1) {
+        enDuda = ids.slice();
       }
       enDuda.forEach(function (id) {
         r.enDuda.push(id);
@@ -834,6 +870,19 @@
     } catch (error) {
       return false;
     }
+  }
+
+  /**
+   * C-B1-1 · una petición del panel en vuelo o una serie en marcha
+   * (sincronizando, ensayando, volcando). Más ancho que `hayVolcadoEnMarcha`,
+   * que es la guarda de salida (R55: solo ensayos y volcados).
+   */
+  function volcadoOcupado(estado) {
+    const v = estado && estado.volcado;
+    if (!v) {
+      return false;
+    }
+    return Boolean(v.enVuelo) || v.fase === "sincronizando" || hayVolcadoEnMarcha(estado);
   }
 
   /** R50 · los recuentos de `GET /api/volcado`. */
@@ -925,6 +974,12 @@
       /** R50 · tras una carga buena de la bandeja: `GET /api/volcado` (solo lee). Otra obra, el panel a cero. */
       async volcadoAlCargar() {
         const obra = this.obraCargada;
+        if (volcadoOcupado(this)) {
+          // C-B1-1 · con una serie en marcha el panel no se toca: ni se reinicia
+          // ni se relee. La serie sigue, la guarda de salida sigue preguntando
+          // y su resultado se enseña al acabar. (El HTML ya no deja cargar.)
+          return;
+        }
         if (obra !== this.volcado.obra) {
           detenerReloj();
           this.volcado = estadoInicial(obra);
@@ -1163,6 +1218,11 @@
         return hayVolcadoEnMarcha(this);
       },
 
+      /** C-B1-1 · algo del panel en vuelo: la bandeja no deja cambiar de obra ni de filtro. */
+      volcadoOcupado() {
+        return volcadoOcupado(this);
+      },
+
       /** Cómo nombrar una incidencia en el resultado: su descripción del ensayo, o su identificador. */
       volcadoNombre(incidenciaId) {
         const vista = this.volcado.vistaEnsayo;
@@ -1213,6 +1273,8 @@
     textoPorque: textoPorque,
     textoInclusion: textoInclusion,
     hayVolcadoEnMarcha: hayVolcadoEnMarcha,
+    volcadoOcupado: volcadoOcupado,
+    NADA_ESCRITO_EN_EL_VOLCADO: NADA_ESCRITO_EN_EL_VOLCADO,
     resumenDelPanel: resumenDelPanel,
     estadoInicial: estadoInicial,
     conPanel: conPanel,

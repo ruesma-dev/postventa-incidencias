@@ -203,3 +203,31 @@ C6 muerto 1 f040 R52 (T3, C6, C7): la confirmación empieza siempre vacía: ni c
 C7 muerto 1 f040 R52 (T3, C6, C7): la confirmación empieza siempre vacía: ni cancelar ni volver a pedir dejan el número
 G2 muerto 1 f040 R61 (T3, G2): cada reclamación de lo que choca lleva su porqué ya en texto (el HTML no llama a Volcado)
 ```
+
+## Correcciones de la review del Bloque 1 (C-B1-1, C-B1-2)
+
+Mismo método y mismo guion, con los mutantes de las dos correcciones.
+
+| Mutante | Qué cambia | Resultado | Test asesino (el primero) |
+|---|---|---|---|
+| K1 | `volcadoAlCargar` sin la condición `volcadoOcupado(this)` (reinicia con una serie en marcha) | muerto (2 tests) | f040 R55, R56 (C-B1-1): con un volcado en vuelo, cargar otra obra no suelta la serie y el resultado llega al panel |
+| K2 | `volcadoOcupado` solo con `hayVolcadoEnMarcha` (sin `enVuelo` ni `sincronizando`) | muerto (2 tests) | f040 R56 (C-B1-1): con la sincronización en vuelo, cargar otra obra tampoco reinicia el panel |
+| K3 | `volcadoOcupado` sin `hayVolcadoEnMarcha` | vivo → **muerto** con test nuevo | f040 R55, R56 (C-B1-1, mutante K3): volcadoOcupado es enVuelo, sincronizando o una serie en marcha, cada uno por sí solo |
+| K4 | «Cargar» sin `volcadoOcupado()` en su `:disabled` | muerto (1 test) | f040 R56 (C-B1-1): con una serie en marcha, ni la obra, ni los filtros, ni «Cargar» de bandeja.html se pueden tocar |
+| K5 | el filtro de estado sin `:disabled` | muerto (1 test) | ídem |
+| K6 | la casilla «Solo las que tienen algo que corregir» sin `:disabled` | muerto (1 test) | ídem |
+| K7 | el campo de la obra sin `:disabled` | muerto (1 test) | ídem |
+| D1 | `juntarVolcados` vuelve a la clasificación vieja (solo el corte y `volcado_sin_traza`, en duda) | muerto (2 tests) | f040 R53.2 (C-B1-2): un volcado con 500 sin código para la serie y deja el trozo en duda, no «sin volcar» |
+| D2 | la lista blanca pierde `base_de_datos_no_disponible` | muerto (2 tests) | f040 R53.2 (C-B1-2): lo documentado como «nada escrito» sigue «sin volcar» |
+| D3 | `textoDeParada` sin la rama de «no se sabe» del volcado | muerto (2 tests) | f040 R53.2 (C-B1-2): un volcado con 500 sin código para la serie y deja el trozo en duda, no «sin volcar» |
+| D4 | `volcado_sin_respuesta` deja de usar su `en_duda` (todo el trozo, en duda) | muerto (2 tests) | f040 R53.2, R53.4: en duda salen los sin_respuesta de un 200 y, del fallo, los de cada parada de §3.2 |
+| D5 | `volcado_sin_respuesta` cae en el texto de «no se sabe» | muerto (1 test) | f040 R53.3, §3.2: el volcado para y lo dice según el error: ventana cerrada, en duda, no se sabe |
+
+**K3, por qué vivía.** Al empezar una serie, `ensayar()` y `volcar()` ponen la fase y `enVuelo` juntos, y al
+acabar los quitan juntos. Así que, en los estados a los que se llega, «ensayando» y «volcando» siempre van con
+`enVuelo`. Un test fija el contrato de la función pura: cada condición basta por sí sola. **D2** no se aplicó en
+la primera pasada porque su texto aparecía dos veces (`CODIGOS_DE_ERROR` tiene la misma secuencia). Se reescribió
+sobre un texto único y muere.
+
+**Total de las correcciones: 12 mutantes, 12 muertos.** Total de la feature: 94 aplicados, 1 vivo (V3,
+equivalente).

@@ -1846,3 +1846,152 @@ test("f040 R61 (T3, G2): cada reclamación de lo que choca lleva su porqué ya e
     }
   }
 });
+
+// --- Review del Bloque 1 · C-B1-1 y C-B1-2 (progress/review_F-040.md) ---------------------------
+
+test("f040 R55, R56 (C-B1-1): con un volcado en vuelo, cargar otra obra no suelta la serie y el resultado llega al panel", async () => {
+  let soltar = null;
+  const { app } = await ensayado({
+    volcadoVolcar: [
+      () =>
+        new Promise((resolver) => {
+          soltar = () => resolver(volcado([hecho(1, "creado", "RS26.10/9030"), hecho(6, "creado", "RS26.10/9031")]));
+        }),
+      volcado([hecho(7, "creado", "RS26.10/9032")]),
+    ],
+  });
+  app.pedirVolcado();
+  app.volcado.tecleado = "3";
+  const enCurso = app.volcar();
+  assert.equal(typeof soltar, "function", "el primer volcado está en vuelo");
+  assert.equal(app.hayVolcadoEnMarcha(), true);
+
+  app.obra = "9902";
+  await app.cargar();
+
+  assert.equal(app.volcado.obra, OBRA, "el panel sigue siendo el de la obra que vuelca");
+  assert.equal(app.hayVolcadoEnMarcha(), true, "la guarda de salida sigue preguntando");
+  assert.equal(app.volcadoPuedeRegistrar(), false, "no se puede lanzar otra serie");
+  assert.equal(app.volcadoOcupado(), true);
+
+  soltar();
+  await enCurso;
+  assert.ok(app.volcado.resultado, "el resultado se enseña");
+  assert.equal(app.volcado.resultado.resumen.creados, 3);
+  assert.equal(app.hayVolcadoEnMarcha(), false);
+});
+
+test("f040 R56 (C-B1-1): con la sincronización en vuelo, cargar otra obra tampoco reinicia el panel", async () => {
+  let soltar = null;
+  const { app } = await componente({
+    revisionSigrid: () =>
+      new Promise((resolver) => {
+        soltar = () => resolver(sincronizacion());
+      }),
+  });
+  const enCurso = app.registrar();
+  assert.equal(app.volcadoOcupado(), true);
+
+  app.obra = "9902";
+  await app.cargar();
+  assert.equal(app.volcado.obra, OBRA);
+
+  soltar();
+  await enCurso;
+  assert.equal(app.volcado.fase, "sincronizado");
+  assert.ok(app.volcado.grupos);
+  assert.equal(app.volcadoOcupado(), false);
+});
+
+test("f040 R56 (C-B1-1): con una serie en marcha, ni la obra, ni los filtros, ni «Cargar» de bandeja.html se pueden tocar", async () => {
+  const { app } = await componente();
+  const controles = (alcance) =>
+    recorrer(leerBandeja(), alcance).elementos.filter(
+      (e) =>
+        e.atributos["x-model"] === "obra" ||
+        e.atributos["x-model"] === "filtros.estado" ||
+        e.atributos["x-model"] === "filtros.conMotivos" ||
+        e.atributos["@click"] === "cargar()",
+    );
+
+  const libres = controles(app);
+  assert.equal(libres.length, 4, "la obra, los dos filtros y «Cargar»");
+  for (const e of libres) {
+    assert.equal(Boolean(evaluarEn(e.alcance, e.atributos[":disabled"] || "false")), false, "sin serie, se pueden tocar");
+  }
+  for (const marcha of [{ fase: "volcando", enVuelo: true }, { fase: "ensayando", enVuelo: true }, { fase: "sincronizando", enVuelo: true }]) {
+    const alcance = Object.create(app);
+    alcance.volcado = Object.assign({}, app.volcado, marcha);
+    for (const e of controles(alcance)) {
+      assert.ok(":disabled" in e.atributos, `${JSON.stringify(e.atributos)} lleva :disabled`);
+      assert.equal(Boolean(evaluarEn(alcance, e.atributos[":disabled"])), true, `${marcha.fase}: ${JSON.stringify(e.atributos)}`);
+    }
+  }
+});
+
+test("f040 R53.2, R53.4 (C-B1-2): un fallo del volcado fuera de la lista de «nada escrito» deja TODO el trozo en duda", () => {
+  const trozo = { ids: [ID(3), ID(5)] };
+  for (const [nombre, error] of [
+    ["500 sin código", fallo(500, { error: "excepción inventada" })],
+    ["502 sin código", fallo(502, { error: "proxy caído, inventado" })],
+    ["504 sin cuerpo", fallo(504, null)],
+    ["código desconocido", fallo(409, { error: "x", codigo: "codigo_que_no_existe" })],
+    ["código de otra ruta", fallo(409, { error: "x", codigo: "obra_ambigua" })],
+  ]) {
+    const r = Volcado.juntarVolcados([], Object.assign({ error: error }, trozo), [ID(7)]);
+    assert.deepEqual(r.enDuda, [ID(3), ID(5)], `${nombre}: el trozo, en duda`);
+    assert.deepEqual(r.sinMandar, [ID(7)], `${nombre}: solo lo de después, sin volcar`);
+    const texto = Volcado.textoDeParada("volcado", error);
+    assert.match(texto, /No se sabe/, `${nombre}: dice que no se sabe`);
+    assert.match(texto, /en duda/, nombre);
+    assert.doesNotMatch(texto, /no se ha escrito nada/i, nombre);
+  }
+});
+
+test("f040 R53.2 (C-B1-2): lo documentado como «nada escrito» sigue «sin volcar»", () => {
+  const trozo = { ids: [ID(3)] };
+  for (const [http, codigo] of [
+    [400, "peticion_invalida"],
+    [409, "ensayo_no_valido"],
+    [409, "usuario_sigrid_no_mapeado"],
+    [409, "usuario_sigrid_inexistente"],
+    [409, "volcado_rechazado_por_la_pasarela"],
+    [502, "ensayo_sin_respuesta"],
+    [503, "volcado_deshabilitado"],
+    [503, "volcado_rechazado_por_la_pasarela"],
+    [503, "configuracion_de_volcado_invalida"],
+    [503, "configuracion_sigrid_incompleta"],
+    [503, "base_de_datos_no_disponible"],
+  ]) {
+    const r = Volcado.juntarVolcados([], Object.assign({ error: fallo(http, { error: "x", codigo: codigo }) }, trozo), []);
+    assert.deepEqual(r.enDuda, [], `${http} ${codigo}`);
+    assert.deepEqual(r.sinMandar, [ID(3)], `${http} ${codigo}`);
+  }
+});
+
+test("f040 R53.2 (C-B1-2): un volcado con 500 sin código para la serie y deja el trozo en duda, no «sin volcar»", async () => {
+  const { app, llamadas } = await ensayado({ volcadoVolcar: [fallo(500, { error: "excepción inventada" }), volcado([])] });
+  app.pedirVolcado();
+  app.volcado.tecleado = "3";
+
+  await app.volcar();
+
+  assert.deepEqual(nombres(llamadas).filter((n) => n === "volcadoVolcar"), ["volcadoVolcar"]);
+  assert.deepEqual(app.volcado.resultado.enDuda, [ID(1), ID(6)]);
+  assert.deepEqual(app.volcado.resultado.sinMandar, [ID(7)]);
+  assert.match(app.volcado.parada, /No se sabe/);
+});
+
+test("f040 R55, R56 (C-B1-1, mutante K3): volcadoOcupado es enVuelo, sincronizando o una serie en marcha, cada uno por sí solo", () => {
+  const con = (v) => Volcado.volcadoOcupado({ volcado: Object.assign({ fase: "inicio", enVuelo: false }, v) });
+
+  assert.equal(con({}), false);
+  assert.equal(con({ fase: "ensayado" }), false);
+  assert.equal(con({ fase: "parado" }), false);
+  assert.equal(con({ enVuelo: true }), true);
+  assert.equal(con({ fase: "sincronizando" }), true);
+  assert.equal(con({ fase: "ensayando" }), true, "la serie de ensayos, aunque enVuelo se haya leído a destiempo");
+  assert.equal(con({ fase: "volcando" }), true, "la serie de volcados, ídem");
+  assert.equal(Volcado.volcadoOcupado(null), false);
+  assert.equal(Volcado.volcadoOcupado({}), false);
+});

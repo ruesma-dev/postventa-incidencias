@@ -105,16 +105,23 @@
         <p class="rs-texto">
           Cargar solo lee: nada cambia hasta que pulses una acción en una incidencia.
         </p>
+        <!-- Enmienda del 2026-10-31 · F-040, review del Bloque 1 (C-B1-1): la
+             obra, los dos filtros y «Cargar» de F-038 quedan también deshabilitados
+             con el panel de volcado ocupado (volcadoOcupado(): una sincronización,
+             un ensayo o un volcado en marcha). Cambiar de obra a mitad de una
+             serie soltaba la serie: la guarda de salida dejaba de preguntar,
+             «Registrar» volvía a habilitarse y el resultado se perdía (R53, R55,
+             R56 de F-040). Sin serie en marcha, nada cambia para F-038. -->
         <div class="mt-4 flex flex-wrap items-end gap-3">
           <label class="flex w-40 flex-col gap-1">
             <span class="rs-campo__etiqueta">Código de obra</span>
-            <input type="text" x-model="obra" autocomplete="off"
+            <input type="text" x-model="obra" autocomplete="off" :disabled="volcadoOcupado()"
                    @keydown.enter.prevent="cargar()"
                    class="rs-campo">
           </label>
           <label class="flex flex-col gap-1">
             <span class="rs-campo__etiqueta">Estado</span>
-            <select x-model="filtros.estado" @change="cambiarFiltro()" class="rs-campo">
+            <select x-model="filtros.estado" @change="cambiarFiltro()" :disabled="volcadoOcupado()" class="rs-campo">
               <option value="activas">Activas (todo menos descartadas y volcadas)</option>
               <option value="todas">Todas</option>
               <option value="nueva">Nuevas</option>
@@ -126,10 +133,10 @@
             </select>
           </label>
           <label class="flex items-center gap-2 rs-texto">
-            <input type="checkbox" x-model="filtros.conMotivos" @change="cambiarFiltro()">
+            <input type="checkbox" x-model="filtros.conMotivos" @change="cambiarFiltro()" :disabled="volcadoOcupado()">
             Solo las que tienen algo que corregir
           </label>
-          <button type="button" @click="cargar()" :disabled="!obra.trim() || cargando"
+          <button type="button" @click="cargar()" :disabled="!obra.trim() || cargando || volcadoOcupado()"
                   class="rs-btn rs-btn--primario">Cargar</button>
           <span x-show="cargando" class="rs-nota">Leyendo la bandeja y Sigrid…</span>
         </div>

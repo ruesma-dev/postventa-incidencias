@@ -18,7 +18,7 @@
 > T5 bis). Esperan al humano **P-1 a P-3** (`progress/spec_F-040.md`, «Conciliación con F-065»). Falta `init.sh` (líder).
 > **2026-10-31 · Bloque 1 (implementer)**: T1 RED y T2 GREEN hechos (panel en `bandeja.html`, `js/volcado.js`, cuatro
 > funciones en `js/api.js`, composición en `appRevision`, README y ARCHITECTURE); suites del front en verde. T3 hecha: 82 mutantes
-> a mano, 1 vivo equivalente (V3) para aceptación del humano. Bloque 1 listo para review. Pendiente fuera del encargo: `azure-apps/postventa_incidencias.md` (R58). Detalle en `progress/impl_F-040.md`.
+> a mano, 1 vivo equivalente (V3) para aceptación del humano. Review: CHANGES_REQUESTED (C-B1-1, C-B1-2); corregidas con RED, 12/12 mutantes muertos, a la espera de re-review. Pendiente fuera del encargo: `azure-apps/postventa_incidencias.md` (R58). Detalle en `progress/impl_F-040.md`.
 
 > ## F-066 · `blocked` (aparcada, sin fallo) · 2026-10-27 · espera a que termine F-040
 > **Aparcada por el humano el 2026-10-27** para hacer F-040. Bloque 1 y T3 hechos y APROBADOS (lote versionado

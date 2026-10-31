@@ -210,3 +210,95 @@ líneas, 0 mutantes. Es lo esperado: los únicos `.py` cambiados son tests.
   (tasks T2); el «único `confirmado: true`» interpretado como recuento por fichero (sección T2).
 - `bash harness/init.sh`: lo corre el líder.
 - Bloque 2 (T4, T5, T5 bis): MANUAL del humano.
+
+## Correcciones de la review del Bloque 1 (C-B1-1, C-B1-2) · implementer, 2026-10-31
+
+Encargo del líder tras `progress/review_F-040.md` (CHANGES_REQUESTED, `4b1ae80`): corregir **solo** C-B1-1 y
+C-B1-2, RED primero. O-1 y O-2 no se tocan. V3 lo gestiona el líder.
+
+### RED
+
+Seis tests nuevos al final de `tests_js/volcado.test.js` («Review del Bloque 1 · C-B1-1 y C-B1-2»), escritos
+antes de tocar el código:
+
+```
+$ cd services/postventa-front && node --test tests_js/volcado.test.js
+✖ f040 R55, R56 (C-B1-1): con un volcado en vuelo, cargar otra obra no suelta la serie y el resultado llega al panel
+  AssertionError [ERR_ASSERTION]: el panel sigue siendo el de la obra que vuelca
+  '9902' !== '9901'
+✖ f040 R56 (C-B1-1): con la sincronización en vuelo, cargar otra obra tampoco reinicia el panel
+  TypeError: app.volcadoOcupado is not a function
+✖ f040 R56 (C-B1-1): con una serie en marcha, ni la obra, ni los filtros, ni «Cargar» de bandeja.html se pueden tocar
+  AssertionError [ERR_ASSERTION]: {"type":"text","x-model":"obra","autocomplete":"off","@keydown.enter.prevent":"cargar()","class":"rs-campo"} lleva :disabled
+✖ f040 R53.2, R53.4 (C-B1-2): un fallo del volcado fuera de la lista de «nada escrito» deja TODO el trozo en duda
+  AssertionError [ERR_ASSERTION]: 500 sin código: el trozo, en duda
+  + []
+  - [ '00000000-0000-0000-0000-000000000003', ...
+✔ f040 R53.2 (C-B1-2): lo documentado como «nada escrito» sigue «sin volcar»
+✖ f040 R53.2 (C-B1-2): un volcado con 500 sin código para la serie y deja el trozo en duda, no «sin volcar»
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + []
+  - [ '00000000-0000-0000-0000-000000000001', ...
+ℹ tests 113
+ℹ pass 108
+ℹ fail 5
+```
+
+El que pasa en RED («nada escrito sigue sin volcar») es a propósito: fija que la lista blanca no se pasa de
+ancha (los once códigos de `design.md` §1 y §3.2). Lo mata el mutante D2.
+
+### Cambios
+
+- **C-B1-1** · `js/volcado.js`: nueva `volcadoOcupado(estado)` (pura y método del componente). Es verdadera con
+  `enVuelo`, con la fase `sincronizando` o con `hayVolcadoEnMarcha` (ensayando, volcando). `volcadoAlCargar` no
+  reinicia ni relee el panel si está ocupado. `hayVolcadoEnMarcha` (la guarda de salida, R55) **no** se
+  ensancha. En `bandeja.html`, cuatro controles llevan `:disabled` también con `volcadoOcupado()`: la obra, el
+  filtro de estado, la casilla «Solo las que tienen algo que corregir» y «Cargar». **Es una enmienda del HTML de
+  F-038**, citada con el porqué en un comentario sobre esos controles. Añadí el campo de la obra, que el reviewer
+  no nombra (nombra «Cargar» y los dos filtros): su Intro también llama a `cargar()` y es la misma puerta.
+- **C-B1-2** · `js/volcado.js`: nueva lista blanca `NADA_ESCRITO_EN_EL_VOLCADO` (§1 y §3.2). En
+  `juntarVolcados`, cada fallo va a un sitio:
+  - `volcado_sin_respuesta`: sus `en_duda` en duda; el resto del trozo, sin volcar (como antes).
+  - Lo de la lista blanca: sin volcar.
+  - **Cualquier otra cosa**: el trozo entero en duda. Entra aquí un corte, `volcado_sin_traza`, un fallo sin
+    `codigo` y un código desconocido o de otra ruta.
+
+  En `textoDeParada("volcado", …)`, lo que no es de la lista blanca, ni `volcado_sin_respuesta`, ni
+  `volcado_sin_traza` (estos dos ya tienen su texto de duda) dice: «No se sabe qué ha pasado con este trozo (el
+  servicio respondió N[, código]): sus partes quedan en duda…».
+- **Test de F-038 enmendado**: `tests_js/revision.test.js`, mutante DS13. Busca el `:disabled` de «Cargar», que
+  ahora lleva `|| volcadoOcupado()`. Cambia el texto buscado, no lo que el mutante quita (`!obra.trim()`). Va
+  citado en el fichero.
+
+### Mutación de las correcciones
+
+12 mutantes a mano, detalle en `progress/mutacion_F-040.md`: K1–K7 para C-B1-1 y D1–D5 para C-B1-2. Primera
+pasada: 10 muertos y dos sin resolver:
+
+- **K3** quedó vivo: en los estados a los que se llega, «ensayando» y «volcando» siempre van con `enVuelo`. Lo
+  mata un test nuevo del contrato de `volcadoOcupado`.
+- **D2** no se aplicó porque su texto no era único. Reescrito sobre un texto único, muere.
+
+**Final: 12/12 muertos.**
+
+### Verificación (salidas reales)
+
+```
+$ python -m pytest services/postventa-front/tests -q -p no:cacheprovider
+910 passed, 7 skipped in 35.80s
+
+$ cd services/postventa-front && node --test "tests_js/*.test.js"
+ℹ tests 1119
+ℹ pass 1119
+ℹ fail 0
+ℹ duration_ms 9414.6618
+```
+
+### Evidencias (actualizadas)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | node 1119/1119; pytest del front 910 passed, 7 skipped |
+| Cobertura de líneas cambiadas | No disponible (JavaScript y HTML; la puerta mide `.py`). La sustituye la mutación a mano |
+| Mutantes / supervivientes | a mano: 82 + 12 = **94 / 1** (V3, equivalente, ya razonado; la aceptación la gestiona el líder); `harness.mutacion`: 0 / 0 |
+| Tiempo de la suite | node 9,4 s; pytest del front 35,80 s |

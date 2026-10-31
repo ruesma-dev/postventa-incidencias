@@ -3707,7 +3707,10 @@ const MUTANTES_HTML_T5 = [
   ["XS32", problemasDeLaVisibilidad, 'x-show="!historial && !errorHistorial"', 'x-show="!historial || !errorHistorial"'],
   ["XS33", problemasDeLaVisibilidad, '<dd x-show="campo.llegoAsi"', '<dd x-show="!campo.llegoAsi"'],
   ["XS35", problemasDeLaVisibilidad, '<span x-show="cargando"', '<span x-show="!cargando"'],
-  ["DS13", problemasDeCargar, ':disabled="!obra.trim() || cargando"', ':disabled="cargando"'],
+  // Enmienda del 2026-10-31 · F-040, review del Bloque 1 (C-B1-1): «Cargar»
+  // también se deshabilita con el panel de volcado ocupado; el mutante quita la
+  // misma condición de F-038 (`!obra.trim()`) sobre el texto nuevo.
+  ["DS13", problemasDeCargar, ':disabled="!obra.trim() || cargando || volcadoOcupado()"', ':disabled="cargando || volcadoOcupado()"'],
   ["BN10", problemasDeLosOtrosBotones, '<button type="button" @click="cancelarDescarte()"', '<button type="button"'],
   ["BN12", problemasDeLosOtrosBotones, '@click="cancelarFormulario()"\n', "\n"],
   ["FE1", problemasDeLaFilaEquivocada, '@click="aprobar(fila.incidencia_id)"', '@click="aprobar(incidencias[0].incidencia_id)"'],

@@ -356,3 +356,11 @@ $ cd services/postventa-front && node --test "tests_js/*.test.js"
 Siguen abiertas, sin bloquear: O-1 (descripción en «va»), O-2 (letra de la spec), O-3 (T6 bis con T4), O-4.
 
 **Veredicto final: APPROVED** (condicionado a `init.sh` en verde y a la aceptación escrita de V3 por el humano).
+
+### Cierre del Bloque 1 (líder, 2026-10-31)
+
+- **V3 aceptado por escrito por el humano** el 2026-10-31 («acepto v3») como mutante equivalente.
+- `bash harness/init.sh` en verde tras `e7ddb2a`: api en verde (caché), front en verde, cobertura N/A (sin `.py` de
+  producción).
+- Condiciones de la re-review cumplidas: **Bloque 1 APPROVED**. Siguiente: T4 (merge a `dev` y publicar el front
+  con `-SoloFront`, el humano) y T5 en la 0626.

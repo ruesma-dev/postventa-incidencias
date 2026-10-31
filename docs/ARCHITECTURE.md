@@ -1508,11 +1508,31 @@ Nuestros partes se reconocen por la referencia `PVI-` en `RCPCLI`
   nombra `sql/write`.
 - **No anula ni modifica** un parte creado: es la UI de Sigrid.
 - **No trocea**: el troceo y la confirmación (segundo clic y número de partes)
-  son de **F-040**, que tampoco existe todavía; hasta entonces, solo se puede
-  usar llamando a las rutas.
+  son del front, **F-040** (sección «El panel de volcado (F-040)»).
 - **No manda la urgencia** ni varios intervinientes por parte (**F-039**).
 - **No es asíncrono**: sin cola; con la referencia idempotente, el troceo
   síncrono basta.
+
+## El panel de volcado (F-040)
+
+**Añadido el 2026-10-31 por F-040 (Bloque 1); sin publicar todavía.** Es la
+cara de las rutas de **F-059** y de la sincronización de **F-065**: el front
+no añade ninguna ruta ni toca el backend.
+
+- **Dónde.** En `bandeja.html`, dentro del componente de la bandeja
+  (`appRevision`): `js/volcado.js` compone su panel sobre él
+  (`Volcado.conPanel`), con su estado bajo `volcado`. `js/revision.js` solo le
+  avisa tras una carga buena de la obra.
+- **Qué consume.** `GET /api/volcado` al cargar (solo lee);
+  `GET /api/revision/sigrid` con «Registrar»; `POST /api/volcado/ensayo` por
+  trozos con «Ensayar»; `POST /api/volcado/volcar`, un ensayo cada vez, tras
+  un segundo clic y teclear el número de partes. Las cuatro, por
+  `js/api.js`; las tres que no son la lectura del panel, sin reintentos.
+- **Qué escribe.** Solo el volcado escribe, y escribe en Sigrid a través del
+  backend (F-059): el front no habla con Sigrid ni con la base.
+- **Lo que no hace.** No pasa nada a PTE (se avisa de que es a mano), no
+  anula ni corrige un parte creado y no guarda la `ficha` de las reclamaciones
+  de Sigrid.
 
 ## Las reclamaciones de Sigrid en la revisión (F-065)
 

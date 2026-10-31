@@ -1020,7 +1020,10 @@ function textosPropios(funcion, codigos) {
     assert.equal(typeof texto, "string", codigos[i]);
     assert.ok(texto.length > 0, `${codigos[i]}: sin texto`);
     assert.notEqual(texto, codigos[i], `${codigos[i]}: sale tal cual, sin traducir`);
-    assert.doesNotMatch(texto, /_/, `${codigos[i]}: el texto lleva un código`);
+    // Ajuste de T2 (2026-10-31): el texto de `usuario_sigrid_*` nombra el
+    // script que da de alta la correspondencia (`infra/07_alta_usuario_sigrid.ps1`,
+    // R54: decir qué hacer). Esa ruta no es un código; se quita antes de mirar.
+    assert.doesNotMatch(texto.replace(/infra\/\S+/g, ""), /_/, `${codigos[i]}: el texto lleva un código`);
   }
   assert.equal(new Set(textos).size, textos.length, "un texto distinto para cada código");
 }
@@ -1149,7 +1152,7 @@ async function componente(guion, opciones) {
     Object.assign(
       {
         identidad: IDENTIDAD,
-        revision: () => respuestaRevision(),
+        revision: (obra) => Object.assign(respuestaRevision(), { obra: obra }),
         volcadoPanel: () => panel(2),
         revisionSigrid: () => sincronizacion(),
       },
@@ -1660,7 +1663,10 @@ test("f040 R50: control: un nombre que el componente no tiene, en el panel, salt
   const alcance = await alcanceAbierto();
   for (const [viejo, nuevo] of [
     ['@click="registrar()"', '@click="registrarla()"'],
-    ['x-text="volcado.panel.texto"', 'x-text="volcado.panel.textos"'],
+    // Ajuste de T2 (2026-10-31): `volcado.panel.textos` era un mal control —una
+    // propiedad que falta da `undefined`, no un error, también en Alpine—; un
+    // objeto que falta sí lanza, que es lo que el recorrido tiene que ver.
+    ['x-text="volcado.panel.texto"', 'x-text="volcado.paneles.texto"'],
   ]) {
     assert.ok(html.includes(viejo), `el control no encuentra ${viejo}`);
     const { problemas } = recorrer(html.replace(viejo, nuevo), alcance);

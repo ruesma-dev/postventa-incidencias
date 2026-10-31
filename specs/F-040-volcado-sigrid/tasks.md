@@ -81,7 +81,7 @@
   de F-038 y `/.auth/me`; ningún `console.*` ni almacenamiento con el correo o
   el `oid`; la guarda de salida de R55, una sola). Traza pegada. |
   Verificación: `python -m pytest services/postventa-front/tests/test_f040_front.py services/postventa-front/tests/test_f007_js.py` **falla**
-- [ ] **T2 · GREEN**: `js/volcado.js`, el panel en `bandeja.html` (con
+- [x] **T2 · GREEN**: `js/volcado.js`, el panel en `bandeja.html` (con
   «Registrar», su `<script>` y la guarda de salida ampliada), las funciones
   en `js/api.js` (las tres de F-059 con `sinReintentos` y
   `mensajeDelServicio`, y la de la sincronización), la composición en

@@ -608,10 +608,63 @@ aquí está la página que los usa. Diseño: `specs/F-038-bandeja-revision/`.
   rechazaría con 409); su historial sí se lee. El correo de quien volcó, como el de
   quien revisó, no va a la consola ni al almacenamiento del navegador.
 
-Lo que **todavía** no hace: el panel de volcado (ensayar y volcar, F-040),
-editar o anular una incidencia ya volcada (F-062), el industrial propuesto
+Lo que **todavía** no hace: editar o anular una incidencia ya volcada (F-062), el industrial propuesto
 (F-039), aprobar o descartar varias a la vez (F-043) y abrir una incidencia
 por enlace (F-057).
+
+## El panel de volcado (F-040)
+
+**Añadido el 2026-10-31 por F-040 (Bloque 1); sin publicar todavía** (la
+publicación y la prueba en producción son T4 y T5 de
+`specs/F-040-volcado-sigrid/tasks.md`, del humano).
+
+Vive en `bandeja.html`, entre el resumen de la obra y la lista, **dentro del
+mismo componente** (`appRevision`, un solo `x-data` por página): su estado
+cuelga de `volcado` y sus métodos los añade `js/volcado.js`
+(`Volcado.conPanel`). Habla con el backend solo por cuatro funciones de
+`js/api.js`; no tiene rutas propias.
+
+El orden es fijo y cada paso sale de un clic, nunca solo:
+
+1. **Al cargar la obra**, solo lee el panel: `GET /api/volcado` (aprobadas, en
+   duda, volcadas, cuántas candidatas y en cuántos trozos). Nada más.
+2. **«Registrar»** pide una vez la sincronización con Sigrid,
+   `GET /api/revision/sigrid` (F-065), y enseña cada candidata en su grupo:
+   **va** (incluidas las que «se enlaza con RS…»), **ya existe** (sin casilla
+   ni botón: no se manda) y **choca** (con la reclamación y el porqué, y una
+   casilla por incidencia para incluirla a sabiendas; un veredicto que la
+   página no conoce va a choca sin casilla). De la respuesta **no se guarda la
+   `ficha`** de ninguna reclamación (datos personales del cliente). Si la
+   sincronización falla, el panel para y lo dice: sin sincronizar no se
+   ensaya. Tras el primer registro el botón dice «Volver a registrar», que lo
+   repite todo desde cero.
+3. **«Ensayar»** manda `POST /api/volcado/ensayo` por trozos de
+   `partes_por_llamada`, de uno en uno, con lo que va y lo incluido, y en
+   `conflictos_confirmados` los choques que la persona marcó en ese trozo. Para
+   en el primer fallo. Enseña la tabla de lo que se crearía con los nombres
+   del catálogo, lo excluido con su motivo, lo que cambió en Sigrid desde el
+   registro y la cuenta atrás hasta que el ensayo caduca. Con algún ya creado
+   (`idempotente`), relee el panel y la bandeja.
+4. **«Volcar N partes»** solo abre la confirmación: el recuento por unidad y
+   un campo donde **hay que teclear N**. El segundo botón manda
+   `POST /api/volcado/volcar`, un ensayo cada vez y en su orden, y **para ante
+   cualquier cosa**: un error, un corte, un `sin_respuesta` o un ensayo
+   caducado. Enseña qué se creó (con su RS), qué ya estaba, qué se rechazó,
+   qué quedó en duda y qué no se llegó a mandar, y relee la bandeja.
+
+Reglas que no se ven a simple vista:
+
+- **Ninguna petición del panel se reintenta sola** salvo la lectura del panel:
+  el ensayo, el volcado y la sincronización van con `sinReintentos`. Un
+  reintento del volcado sería una segunda escritura en el ERP de producción.
+- **El único `confirmado: true` del panel** está en
+  `js/volcado.js::cuerpoDeVolcado`, y solo se llama desde el segundo clic con
+  el número bien tecleado. El HTML no lo nombra.
+- **Lo creado queda en SAT en Sigrid.** El panel lo avisa: Posventa lo pasa a
+  PTE a mano, que es cuando Sigrid avisa al industrial. El panel no lo hace.
+- **La guarda de salida** (`beforeunload`) es la misma de F-038, ampliada:
+  también pregunta con una serie de ensayos o de volcados en marcha.
+- Ni el correo ni el `oid` van a la consola ni al almacenamiento.
 
 ## Lo que este front NO hace (a propósito)
 

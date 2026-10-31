@@ -24,6 +24,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const Revision = require("../js/revision.js");
+// Enmienda del 2026-10-31 · F-040 T2: bandeja.html lleva desde F-040 el panel
+// de volcado, que vive en el MISMO componente (`appRevision` compone
+// `Volcado.conPanel`, `design.md` §3.3 de F-040). Los recorridos de esta
+// suite evalúan TODO bandeja.html contra el componente, así que el componente
+// de estos tests se compone igual que el de la página. Las aserciones de
+// F-038 no cambian; el doble de `api` no trae las funciones del volcado, y el
+// panel se queda en su error sin tocar nada de la bandeja.
+const Volcado = require("../js/volcado.js");
 
 const CORREO = "revisora@ejemplo.invalid";
 const OTRO_CORREO = "otra.persona@ejemplo.invalid";
@@ -1549,7 +1557,7 @@ function componente(guion, extra) {
       guion || {},
     ),
   );
-  const app = Revision.crearAppRevision(Object.assign({ api: api, parametros: "" }, extra || {}));
+  const app = Volcado.conPanel(Revision.crearAppRevision(Object.assign({ api: api, parametros: "" }, extra || {})), { api: api });
   return { app, llamadas };
 }
 
@@ -1992,7 +2000,7 @@ async function rastroDelVolcado(Modulo) {
       revision: () => respuesta({ incidencias: incidencias }),
       historialRevision: { incidencia_id: ID_1, importada: null, revisiones: [] },
     });
-    const app = Modulo.crearAppRevision({ api: api, parametros: "?obra=9901" });
+    const app = Volcado.conPanel(Modulo.crearAppRevision({ api: api, parametros: "?obra=9901" }), { api: api });
     await app.iniciar();
     const filas = app.vista().filas;
     assert.equal(filas.filter((f) => f.lineaVolcado && f.lineaVolcado.includes(OTRO_CORREO)).length, 3, "las tres líneas, pintadas");
@@ -2888,7 +2896,7 @@ function componenteDe(M, guion) {
       guion || {},
     ),
   );
-  return { app: M.crearAppRevision({ api: api, parametros: "" }), llamadas };
+  return { app: Volcado.conPanel(M.crearAppRevision({ api: api, parametros: "" }), { api: api }), llamadas };
 }
 
 /** Lo que se manda de verdad: el cuerpo después de `JSON.stringify` (una clave `undefined` no viaja). */

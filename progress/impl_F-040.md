@@ -94,3 +94,87 @@ Lo que este RED demuestra y lo que no: los tests de `api.test.js` y de `test_f04
 ausencia concreta que fijan (la función, la sección, el script, la guarda). Los de `volcado.test.js` caen todos
 juntos porque el módulo no existe; que cada uno de ellos fije **su** comportamiento lo demuestra la mutación a
 mano de T3 (cada mutante con su test asesino).
+
+### T2 · GREEN
+
+**Ficheros de producción tocados** (solo `services/postventa-front`, más la documentación de R58):
+
+- `js/volcado.js` (nuevo): las funciones puras de `design.md` §3.1 y §3.2 (agrupar la sincronización en va /
+  ya existe / choca, `paraEnsayar`, `puedeEnsayar`, `trocear`, `cuerpoDeEnsayo` con `conflictos_confirmados`
+  del trozo, `excluidasDeLaGuarda`, `juntarEnsayos`, `caducado`, `cuentaAtras`, `puedeVolcar`,
+  `confirmacionValida`, `textoConfirmacion` con el recuento por unidad, `cuerpoDeVolcado`, `siguientePaso`,
+  `textoDeParada`, `juntarVolcados`, `avisoDePte`, `hayVolcadoEnMarcha`, los textos de cada motivo y código) y
+  `conPanel(app, {api, reloj})`, que mezcla en el componente el estado `volcado` y los métodos `registrar`,
+  `ensayar`, `pedirVolcado`, `volcar`, `cancelarVolcado` y los de lectura.
+- `bandeja.html`: `section#volcado` (`x-show="consulta && obraCargada"`) entre el resumen y la lista, dentro
+  del único `x-data`; `<script src="js/volcado.js">` detrás de `js/revision.js`; la guarda `beforeunload`
+  ampliada (la misma, un solo listener): `hayEdicionSinGuardar(...) || hayVolcadoEnMarcha(...)`.
+- `js/api.js`: `volcadoPanel` (GET, lectura con reintentos), `revisionSigrid`, `volcadoEnsayo` y
+  `volcadoVolcar` (las tres con `sinReintentos`); las cuatro con `mensajeDelServicio` y su `paso` de traza.
+- `js/revision.js`: `cargar()` llama a `this.volcadoAlCargar()` tras una carga buena (si existe);
+  `appRevision()` devuelve `Volcado.conPanel(app, {api})` si el módulo está cargado. Las tablas de F-038 R21
+  no se tocan.
+- `README.md` del front: sección «El panel de volcado (F-040)»; quitado F-040 de «lo que todavía no hace».
+- `docs/ARCHITECTURE.md`: sección «El panel de volcado (F-040)»; la viñeta «No trocea» de F-059 deja de decir
+  que F-040 no existe.
+
+**Tests de otras features enmendados, con el porqué** (`design.md` §5):
+
+- `tests/test_f038_front.py`: `SCRIPTS_DE_BANDEJA` pasa de cuatro a cinco (`js/volcado.js` el último);
+  `_FILTROS_DEL_PANEL` acepta, uno a uno, los dos campos del panel (`volcado.incluidas[fila.incidencia_id]` y
+  `volcado.tecleado`), que tienen su puerta propia probada en `test_f040_front.py`. Enmiendas fechadas en el
+  propio fichero.
+- `tests_js/revision.test.js`: los tres constructores del componente (`componente`, el de la línea del
+  volcado y `componenteDe`) componen `Volcado.conPanel` como la página, porque los recorridos de F-038
+  evalúan TODO `bandeja.html`. Ninguna aserción de F-038 cambia.
+- `tests_js/api.test.js`: ya enmendado en T1 (de 20 a 24 endpoints).
+
+**Ajustes a tests de T1** (fallos del propio test, no del código; anotados en el fichero):
+
+- `textosPropios` (volcado.test.js) prohibía «_» en los textos, pero el de `usuario_sigrid_*` nombra el script
+  `infra/07_alta_usuario_sigrid.ps1` (R54: decir qué hacer). Se quita la ruta `infra/…` antes de mirar.
+- El control «un nombre que el componente no tiene» cambiaba `volcado.panel.texto` por
+  `volcado.panel.textos`: una propiedad que falta da `undefined` y no lanza, ni aquí ni en Alpine. Ahora cambia
+  a `volcado.paneles.texto`, que sí lanza.
+- El doble de `revision` del `componente()` de volcado.test.js devuelve la obra que se le pide (antes, siempre
+  la 9901), para que «cargar otra obra» cargue de verdad otra.
+
+**Decisiones y desviaciones** (para el reviewer):
+
+- **«Un solo `confirmado: true` en todo el front» no es literal**: `oficios.js`, `pipeline.js` y `revision.js`
+  ya llevaban uno cada uno en la base fija. Lo fijado es el recuento por fichero de la base más **uno** en
+  `js/volcado.js`, dentro de `cuerpoDeVolcado` (`CONFIRMADO_TRUE_POR_FICHERO`). El HTML no lo nombra.
+- **`volcadoPanel` reintenta** (es una lectura), como dice `design.md` §3.3; `tasks.md` T2 dice «las tres de
+  F-059 con `sinReintentos`». Seguido el design; las que no reintentan son ensayo, volcado y sincronización.
+  **Pregunta para el humano/reviewer**: si se quiere también la lectura sin reintentos, es una línea.
+- **«Sin volcar» (`sinMandar`)**: los ids de un trozo que no llegó a escribir (un 409, 503 o 400 del volcado)
+  y los de los trozos siguientes que ya no se mandaron. Los de un corte, un `volcado_sin_traza` o los
+  `en_duda` de un 502 `volcado_sin_respuesta` van a «en duda».
+- El botón de cancelar la confirmación dice «No volcar»: los recorridos de F-038 marcan los botones por su
+  texto y ya hay un «Cancelar» en la bandeja.
+- Clases: solo `rs-*` de `css/styles.css` y utilidades de disposición de Tailwind (`flex`, `gap-*`,
+  `mt-*`, `space-y-*`). `rs-acciones` y `rs-lista` solo existen en `portal.css` y el test de F-038 lo cazó;
+  sustituidas.
+- `volcadoNombre(id)` (método del componente): nombra una incidencia en el resultado por su unidad y
+  descripción del ensayo, o por su id si no está.
+
+**Fuera del alcance de este bloque y pendiente**: R58 pide también que `azure-apps/postventa_incidencias.md`
+deje de hablar de F-040 en futuro. Ese repositorio queda fuera del encargo («SOLO services/postventa-front»);
+**lo anoto para el líder** (regla de mantenimiento de `azure-apps/`).
+
+**Verificación** (salidas reales, 2026-10-31):
+
+```
+$ python -m pytest services/postventa-front/tests -q -p no:cacheprovider
+910 passed, 7 skipped in 49.59s
+
+$ cd services/postventa-front && node --test "tests_js/*.test.js"
+ℹ tests 1107
+ℹ pass 1107
+ℹ fail 0
+ℹ duration_ms 12397.4669
+```
+
+Además, por haber tocado `docs/ARCHITECTURE.md`, los tests de documentación y arquitectura del backend con su
+venv (`services/postventa-api`, 20 ficheros `*documentacion*`, `*arquitectura*`, `*alcance*`):
+`576 passed, 82 skipped in 72.73s`.

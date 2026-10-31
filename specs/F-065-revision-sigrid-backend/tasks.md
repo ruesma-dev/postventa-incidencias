@@ -379,3 +379,7 @@
   confirmándola (sale `previsto`). Y en Application Insights, la línea
   `F-065 guarda del ensayo` y la duración del ensayo (R48, R71), sin ningún
   código `RS` ni texto. Anotar solo motivos, estados, recuentos y segundos. | Verificación: MANUAL (humano)
+  **APLAZADA por decisión del humano (2026-10-31)** al primer ensayo real de la
+  0677 con el botón «Registrar» de **F-040**, que la recoge: en la 0626 y en la
+  0677 no había ninguna candidata (0 aprobadas, 0 en duda), y aprobar una solo
+  para ensayar es una escritura fuera de lo autorizado.

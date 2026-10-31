@@ -17,6 +17,10 @@
 > volcado de la VILLA 15 **no** es tarea de esta ficha (C-2): lo hará el
 > humano cuando el panel esté operativo. Marcado «(2026-10-28)».
 >
+> **Conciliado con F-065 el 2026-10-31** (T0, base fija `f97ec6e`): T1, T5.2
+> y la **T5 bis** nueva (la T-A18 de F-065, pendiente de P-3 en
+> `progress/spec_F-040.md`).
+>
 > Rigor **`critico`**: RED con la traza pegada en `progress/impl_F-040.md`;
 > cobertura de lo cambiado; mutación: `harness.mutacion` no tiene `.py` de
 > producción que mutar aquí (su informe lo dice y se justifica por escrito) y
@@ -32,21 +36,28 @@
   `dev` (merge) —ese merge es la **base fija**, en
   `progress/impl_F-040.md`— y el spec-author concilia `requirements.md`
   R60–R62 y `design.md` §1.1, §3.1, §3.2 y §3.3 con el contrato **implementado**
-  de F-065, quitando cada «a fijar por F-065»; el humano lo valida antes del
-  Bloque 1. |
-  Verificación: `bash harness/init.sh` en verde sobre el merge, y ningún «a fijar por F-065» en `specs/F-040-volcado-sigrid/`
+  de F-065, sin dejar nada pendiente de su spec; el humano lo valida (y
+  responde P-1 a P-3 de `progress/spec_F-040.md`) antes del Bloque 1.
+  *(2026-10-31: base fija `f97ec6e`, que trae `dev` `7cc0bbb`; la spec,
+  conciliada: `requirements.md` §6, `design.md` §11. Falta `init.sh` sobre
+  el merge, que corre el líder, y la validación del humano.)* |
+  Verificación: `bash harness/init.sh` en verde sobre el merge, y `grep -rn "fijar por F-06[5]" specs/F-040-volcado-sigrid/` sin resultados
 
 **Parar. Validación del humano.**
 
 ## Bloque 1 · El panel de volcado
 
 - [ ] **T1 · RED**: `tests_js/volcado.test.js` (`node --test`) con las
-  funciones de `design.md` §3.1 —*(2026-10-28)* `agruparSincronizacion` en va
-  / ya existe / choca con su recuento por unidad; `paraEnsayar` sin lo que ya
-  existe y con lo que choca solo tras su segundo clic; `puedeEnsayar` sin
-  sincronización buena; «Registrar» en su orden (sincronizar → enseñar →
-  ensayar) con un `api` doble, y parado ante un fallo o un corte de la
-  sincronización; `recuentoPorUnidad`—; `trocear` sin perder ni repetir
+  funciones de `design.md` §3.1 —*(2026-10-28; conciliado 2026-10-31 con el
+  contrato de §1.1)* `agruparSincronizacion` con los cuatro veredictos en va
+  / ya existe / choca, el porqué de cada choque, `sinSincronizar` y el
+  recuento de `por_unidad`, sin `ficha`; `paraEnsayar` sin lo que ya existe y
+  con lo que choca solo tras su casilla; `confirmadosDelTrozo` y
+  `cuerpoDeEnsayo` con `conflictos_confirmados`; `excluidasDeLaGuarda`;
+  `puedeEnsayar` sin sincronización en 200; «Registrar» en su orden
+  (sincronizar → enseñar → ensayar) con un `api` doble, y parado ante cada
+  error de la sincronización de §3.2 (también el 503 sin `codigo`) o un
+  corte; `recuentoPorUnidad`—; `trocear` sin perder ni repetir
   (también 285 entre 5); `cuerpoDeVolcado` con solo los `previsto` y su
   `revision_id`, y `null` sin ninguno; `juntarEnsayos` con un ensayo sin
   `ensayo_id` y nombres del catálogo; `puedeVolcar` con caducado, sin
@@ -57,8 +68,9 @@
   avisos y las en duda de cada parada de §3.2; `avisoDePte`; un texto para
   **cada** motivo de exclusión, causa de `ensayo_no_valido` y `codigo` de
   error de §3.2 (los de F-065 incluidos)—; en `tests_js/api.test.js`, las
-  funciones nuevas (ruta, método, cuerpo) y que `volcadoEnsayo` y
-  `volcadoVolcar` **no** se reintentan ante un 502 ni un corte; y
+  cuatro funciones nuevas (ruta, método, cuerpo; `LOS_ENDPOINTS` de 20 a 24)
+  y que `volcadoEnsayo`, `volcadoVolcar` y `revisionSigrid` **no** se
+  reintentan ante un 502 ni un corte; y
   `tests/test_f040_front.py` (pytest: el panel dentro del único `x-data`;
   «Registrar» como único botón de entrada; `js/volcado.js` detrás de
   `js/revision.js`; un solo `confirmado: true` en todo el front; sincronizar,
@@ -108,10 +120,14 @@
      una UPV de la 0626 con tipología con ubicaciones y un oficio con
      proveedor, con ubicación y aprobada desde la bandeja. *(2026-10-28)*
      **«Registrar»**: la sincronización con Sigrid sale antes que cualquier
-     ensayo (en la pestaña de red, ninguna petición a `volcado/ensayo` hasta
-     el clic del paso siguiente); la fila de prueba sale en **va**, con su
-     unidad en el recuento; las reclamaciones de la 0626 que F-065 empareje o
-     cruce salen donde diga su contrato (las anuladas de F-059 incluidas). Con
+     ensayo (en la pestaña de red, **una** petición a `revision/sigrid?obra=0626`
+     y ninguna a `volcado/ensayo` hasta el clic del paso siguiente); la fila
+     de prueba sale en **va**, con su unidad en el recuento, que cuadra con
+     `volcado.por_unidad` de esa respuesta *(conciliado 2026-10-31)*; la
+     incidencia de la prueba de F-059, `volcada`, no sale (no es candidata,
+     aunque su `RS26.10/0074` esté en `NPR`); si la fila de prueba coincidiera
+     con la reclamación `SAT` de la 0626, saldría en **ya existe** o **choca**
+     con su código y el porqué, y se anota. Con
      el clic de ensayar: la tabla con su `envio` (tipo `0002`) y los nombres
      del catálogo; la cuenta atrás. *(Conciliado 2026-10-27: el primer ensayo
      tras un rato parado puede dar 502 `ensayo_sin_respuesta` o el corte de 40
@@ -138,10 +154,34 @@
 
   Si algo falla, parar y volver al spec-author. |
   Verificación: MANUAL (humano)
+- [ ] **T5 bis · MANUAL (humano) · la T-A18 de F-065** *(añadida el
+  2026-10-31: aplazada por el humano al cerrar F-065, `specs/F-065-revision-sigrid-backend/tasks.md`
+  T-A18, y recogida aquí; dónde y cuándo, **pendiente de P-3**)*. Solo
+  **ensayos** (`commit: false`: no escribe en Sigrid; sí guarda eventos de
+  ensayo en nuestra base) y con la autorización expresa del humano para esa
+  acción. En el **primer ensayo real de la 0677 con «Registrar»** (propuesta
+  de P-3; la 0626 no tiene ninguna candidata que choque):
+  1. Una incidencia que la sincronización da **choca**, ensayada **sin**
+     marcar su casilla: sale en las excluidas con `conflicto_sin_confirmar` y
+     su `sigrid_cod` (si era la única del trozo, `ensayo_id` nulo).
+  2. La misma, con su casilla marcada («Volver a registrar» y ensayar): sale
+     `previsto` («Se crearía»), y el bloque `sigrid` del ensayo la trae
+     `confirmada: true`.
+  3. En Application Insights, la línea `F-065 guarda del ensayo` de cada uno
+     (recuentos `choca`, `conflicto_sin_confirmar`, `con_conflicto_confirmado`
+     y `segundos`) y la de «conflicto confirmado» del segundo (con `codigos=`
+     un número), **sin** ningún código `RS` ni texto de Sigrid; y la duración
+     de los ensayos (línea de F-059).
+  4. **No se vuelca** en esta tarea (C-2): el volcado de la VILLA 15 es del
+     humano. Se anotan solo motivos, estados, recuentos y segundos en
+     `progress/impl_F-040.md`.
+
+  Verificación: MANUAL (humano)
 
 ## Bloque 3 · El cierre de la ficha (con F-038 `done`, C-1)
 
-- [ ] **T6**: por encargo del líder, tras T5, el APROBADO del Bloque 1 **y con
+- [ ] **T6**: por encargo del líder, tras T5 (y T5 bis, si P-3 la deja
+  antes del cierre), el APROBADO del Bloque 1 **y con
   F-038 `done`** (C-1, decidido el 2026-10-28), **un solo commit** con el
   cierre de R57 (restos de F-040 fuera de la maqueta —la lista de `design.md`
   §4, con los catálogos mudados y no borrados—, enlace a `bandeja.html`,

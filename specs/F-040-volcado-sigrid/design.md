@@ -19,7 +19,13 @@
 > **Respuestas del humano aplicadas el 2026-10-28** (§10): «Registrar»
 > sincroniza con Sigrid (F-065) antes de ensayar (§1.1, §2, §3), recuento por
 > unidad, Bloque 3 tras F-038 `done`, T5 en la 0626, sin volcado de la VILLA
-> 15 en la ficha. Lo que depende de F-065 va marcado **«a fijar por F-065»**.
+> 15 en la ficha.
+>
+> **Conciliado con el contrato implementado de F-065 el 2026-10-31** (T0, base
+> fija `f97ec6e`): §1, §1.1, §2, §3.1–§3.3, §5, §7 y §8 citan la ruta, la
+> forma y los errores reales, con fichero y línea; §11 lo resume. Lo que
+> tocaría una decisión aprobada va como **P-1 a P-3** en
+> `progress/spec_F-040.md`, y el texto, con la recomendación, marcado «(P-n)».
 
 ## 0 · Dónde está el riesgo
 
@@ -47,10 +53,12 @@ su traza.
 - **F-059** `done`: mergeada en `dev`, desplegada el 2026-10-17 (`dev`
   `81049bc`) con la ventana cerrada y verificada en producción el 2026-10-19.
   La rama de F-040 sale de `dev` `f7f63da`, que ya la trae.
-- **F-065** *(2026-10-28, C-4)*: `done`, mergeada en `dev` y desplegada
-  **antes del Bloque 1**. La rama de F-040 trae ese `dev` (merge) y ese merge
-  es su **base fija** (se anota en `progress/impl_F-040.md`); antes del merge,
-  el spec-author concilia §1.1 con su contrato.
+- **F-065** *(2026-10-28, C-4; conciliado 2026-10-31)*: `done`, mergeada en
+  `dev` (`7cc0bbb`) y desplegada el 2026-10-31 desde `ed590bd`. La rama de
+  F-040 trae ese `dev` en el merge `f97ec6e`, su **base fija**
+  (`progress/impl_F-040.md`); §1.1 es su contrato implementado. Su T-A18
+  (aplazada por el humano el 2026-10-31) la recoge esta ficha (`tasks.md`
+  T5 bis, P-3).
 - **F-038**: `bandeja.html` y `js/revision.js` están en `dev` y publicados;
   la ficha está `blocked` a la espera de su T7 (verificación manual). C-1
   (2026-10-28): los Bloques 1 y 2 no la esperan; el Bloque 3 sí.
@@ -113,6 +121,10 @@ código; `js/api.js` lo deja en `ErrorApi.codigo`, `ErrorApi.http` y
   obra (`unidades: [{codigo, nombre}]`, `oficios: [{codigo, nombre, grupo}]`,
   `pares: [{oficio_codigo, proveedor_codigo, proveedor_nombre}]`), que es de
   donde salen los nombres del ensayo (R51).
+- *(F-065, conciliado 2026-10-31)* El ensayo admite además
+  `conflictos_confirmados`, su 200 gana el bloque `sigrid`, sus `excluidas`
+  dos motivos y sus errores tres códigos: §1.1. `GET /api/volcado` y
+  `POST /api/volcado/volcar` **no cambian** (R49 de F-065).
 
 **Tiempos (conciliado 2026-10-27).** El front aborta a los 40 s
 (`TIMEOUT_PETICION_MS`), el proxy de la Static Web App corta a los 45 y el
@@ -121,27 +133,110 @@ lectura del login, que sí reintenta. Un volcado puede, por tanto, quedarse
 **sin respuesta del servicio** en el front y seguir escribiendo detrás: el
 panel lo trata como «no se sabe» (R53.2).
 
-### 1.1 · Lo que el panel espera de F-065 (2026-10-28, C-4) — **a fijar por F-065**
+### 1.1 · El contrato de F-065 que consume el panel (conciliado 2026-10-31)
 
-El contrato lo fija la spec de F-065 (`specs/F-065-revision-sigrid-backend/`,
-en conciliación en el worktree `postventa-f065`); aquí **no se inventa**. Lo
-que el panel necesita, sin nombres de ruta ni de campo:
+El **implementado** en la base fija `f97ec6e`, sin reinterpretarlo. Todas
+las rutas, en `services/postventa-api/`.
 
-| Necesidad del panel | Para qué (R) | Estado |
-|---|---|---|
-| Una lectura, por obra, de las reclamaciones de Sigrid cruzadas con la bandeja, que no escribe nada | R60 (paso 1) | **A fijar por F-065** |
-| Por cada candidata del panel, si **va**, **ya existe** (con el código de Sigrid) o **choca** (con lo que choca y por qué) | R61, R62 | **A fijar por F-065** (qué hallazgos son cada cosa) |
-| La unidad de cada candidata, para el recuento por unidad antes de ensayar | R61 (C-3) | **A fijar por F-065** (o de otra lectura ya existente; hoy `GET /api/volcado` no la trae) |
-| Los errores de esa lectura, con `{error, codigo}` como el resto del backend, y si `truncated` es error | R60 | **A fijar por F-065** |
-| Cómo dice el ensayo que excluye lo que ya existe y lo que choca sin incluir (un motivo de exclusión nuevo u otro mecanismo), y cómo viaja la inclusión de lo que choca | R62 | **A fijar por F-065**; hoy el ensayo de F-059 tiene sus 7 motivos de exclusión |
-| Qué responde el ensayo si la sincronización ya no vale (otra persona, mucho tiempo, Sigrid cambió) | R62 | **A fijar por F-065** |
+**La sincronización: `GET /api/revision/sigrid?obra=`** (`function_app.py`
+l. 2074–2119; handler `interface_adapters/api/sigrid_bandeja.py`). Solo lee:
+una lectura de la base y como mucho una de Sigrid (R3 de F-065). Todas sus
+respuestas, también las de error, con `Cache-Control: no-store` (l.
+2063–2071). Cualquier parámetro que no sea `obra` se ignora.
 
-Referencia, **no contrato**: la spec de F-065 aprobada el 2026-10-21 hablaba
-de una ruta de solo lectura aparte del listado de la revisión y de hallazgos
-como `ya_en_sigrid`, `coincide` o `referencia_desconocida`; está en
-conciliación y puede cambiar. Cuando F-065 esté en `dev`, el spec-author
-sustituye esta tabla por el contrato implementado, como §1 hace con F-059, y
-completa §3.1, §3.2 y §3.3.
+- **200** · `{obra, leido_at_utc, criterio, reclamaciones, hallazgos,
+  incidencias, resumen, volcado}` (`_cuerpo`, l. 236–252). Lo que usa el
+  panel:
+  - `volcado` (`_volcado`, l. 324–347): `{candidatas, por_veredicto,
+    por_unidad, veredictos}`. `veredictos`, uno por candidata (`aprobada` o
+    `en_duda`), en el orden de la bandeja: `{incidencia_id, unidad_codigo,
+    estado, veredicto, sigrid_cods}`, con la unidad y el estado **vigentes** y
+    **todos** sus códigos (sin el tope de 10 de los hallazgos).
+    `por_veredicto` y cada `por_unidad[<unidad_codigo>]` llevan **siempre** las
+    cuatro claves `va`, `se_enlaza`, `ya_existe`, `choca`, en ese orden
+    (`_por_veredicto`, l. 350–352); `por_unidad`, solo las unidades de las
+    candidatas, por código.
+  - `reclamaciones` (`_reclamacion`, l. 255–270): `{cod, estado, fecha,
+    unidad_codigo, ubicacion, oficio_codigo, oficio_nombre, tipo_codigo,
+    tipo_nombre, descripcion, referencia, incidencia_id, ficha}`; el panel las
+    busca por `cod` para enseñar con qué choca o qué ya existe, y **no** usa
+    `ficha` (datos personales, R33 de F-065).
+  - `hallazgos` (`_hallazgo`, l. 273–283): `{tipo, severidad, incidencia_id,
+    sigrid_cod, sigrid_cods, guardado_cod, criterios, parecido}`; del `coincide`
+    de una incidencia con un código, `criterios` y `parecido` dicen **por qué**
+    choca. Como mucho 10 `coincide` por incidencia (R18 de F-065): si un código
+    de `sigrid_cods` no tiene hallazgo, el panel enseña la reclamación sin el
+    porqué.
+- **Los veredictos** (`domain/models/sigrid_bandeja.py` l. 127–137 y
+  `_veredicto`, l. 697–713; R41 de F-065), por precedencia: `choca` si su
+  emparejada por `PVI-` (la de código mayor) está en `NPR` o en un estado
+  desconocido o vacío, con solo ese código; `se_enlaza` si la emparejada está
+  en `PTE`, `SAT`, `TER` o `CER`; `ya_existe` si un par con los dos criterios
+  es de una abierta (`SAT`/`PTE`); `choca` si hay otro par de conflicto con
+  una abierta; `va` en lo demás. En el panel: **va** = `va` + `se_enlaza`
+  (P-1), **ya existe** = `ya_existe`, **choca** = `choca`. La emparejada de
+  una incidencia es la reclamación de `reclamaciones` cuyo `incidencia_id` es
+  el suyo: así distingue el panel el `choca` por un parte anulado del `choca`
+  por criterios.
+- **Errores** (l. 2096–2118):
+  - **400** `{error, codigo: "peticion_invalida"}`: la obra no vale
+    (`_error_de_revision`, l. 1642–1663);
+  - **409** `{error, codigo: "bandeja_demasiado_grande", total}` (más de
+    10.000, sin leer Sigrid); `{error, codigo: "reclamaciones_sin_verificar",
+    filas}` (l. 2102–2107: techo o `truncated`, nada cruzado); `{error,
+    codigo: "obra_ambigua"}` (`_rechazo_de_obra`, l. 1335–1341);
+  - **503** `{error}` **sin `codigo`** (`_sin_sigrid_o_sin_base`, l.
+    1344–1361): Sigrid, su configuración, el entorno o la base; el texto dice
+    que se puede reintentar más tarde.
+- **Tiempo** (`progress/impl_F-065.md`, T-A15, 10 cargas de la 0677 tras
+  publicar): total p50 ≈ 0,67 s, máximo 4,70 s; 1.310.511 bytes. Cabe en los
+  40 s del front.
+
+**La guarda del ensayo: `POST /api/volcado/ensayo`** (cambios de F-065 sobre
+el contrato de §1; `interface_adapters/api/volcado.py` l. 231–301):
+
+- **Cuerpo**: las cuatro claves de F-059 y, **opcional**,
+  `conflictos_confirmados: [{incidencia_id, sigrid_cods}]` (l. 238–250,
+  461–504): cada `incidencia_id`, una de las `incidencias` del cuerpo y una
+  sola vez; `sigrid_cods`, de 1 a 50 códigos distintos con la forma
+  `RS<aa>.<mm>/<4 cifras>`. Mal formada → **400** `peticion_invalida` antes
+  de construir nada. Sin la clave, lista vacía.
+- **Qué hace** (`application/pipelines/guarda_sigrid.py` l. 96–172; F-065
+  `design.md` §15.7): si la selección de F-059 deja algo que mandar, **una**
+  lectura de Sigrid de las unidades de lo que se manda (sin datos
+  personales), el mismo veredicto, y: `ya_existe` → excluida
+  **`duplicada_en_sigrid`** con su primer código en `sigrid_cod`; `choca` con
+  algún código **no** confirmado → excluida **`conflicto_sin_confirmar`** con
+  el primero sin confirmar; `choca` con todos confirmados, `se_enlaza` y `va`
+  → se mandan. Una confirmación de algo que ya no choca se ignora (y se cuenta
+  en el log). **Relee Sigrid en cada ensayo**: no hay identificador de
+  sincronización ni caducidad suya (S-4); lo que cambió entre la
+  sincronización y el ensayo sale como exclusión. Si no queda nada que mandar,
+  la respuesta de «nada que mandar» de F-059 (`ensayo_id` nulo), sin login ni
+  lote.
+- **200**: el de §1 más `sigrid` (`_sigrid_de`, l. 285–301): `{leido_at_utc,
+  reclamaciones_leidas, veredictos: [{incidencia_id, veredicto, sigrid_cods,
+  confirmada}]}`, o `null` si la guarda no leyó.
+- **Errores nuevos** (`function_app.py` `CODIGOS_DEL_VOLCADO` l. 1892–1895,
+  `HTTP_DEL_VOLCADO` l. 1913–1915, `_error_del_volcado` l. 1958–1959), con
+  **nada** guardado, ni login, ni lote: **503** `sigrid_no_disponible`;
+  **409** `reclamaciones_sin_verificar` (con `filas`); **409** `obra_ambigua`.
+- **Diferencia escrita entre la ruta y la guarda** (`docs/INTEGRACION.md` l.
+  319–325): la ruta lee la obra entera y la guarda solo las unidades que se
+  mandan; con una referencia `PVI-` en **otra** unidad pueden diferir, y ese
+  caso lo para la pasarela (`rechazado`, `referencia_en_conflicto`), que el
+  panel ya enseña como rechazado con su motivo (§8.9, `textoMotivoVolcado`).
+- **La línea `F-065 guarda del ensayo`** (`guarda_sigrid.py` l. 185–223): una
+  por lectura con recuentos (`va`, `se_enlaza`, `ya_existe`, `choca`,
+  `duplicada_en_sigrid`, `conflicto_sin_confirmar`, `con_conflicto_confirmado`,
+  `confirmaciones_sobrantes`, `segundos`) y una por incidencia mandada con un
+  conflicto confirmado, con **cuántos** códigos. Nunca un código `RS` ni un
+  texto. Es lo que comprueba T-A18 (`tasks.md` T5 bis).
+
+**Observación, no del panel**: la docstring de la ruta (`function_app.py` l.
+2081–2082) lista la respuesta 200 **sin** `volcado`, que sí sale
+(`sigrid_bandeja.py` l. 251). No se toca aquí (`services/postventa-api` es de
+F-065); va al líder.
 
 ## 2 · El panel en `bandeja.html` (D-2)
 
@@ -155,13 +250,16 @@ del único `x-data="appRevision()"`, visible con una obra cargada:
 2. **Recuentos** de `GET /api/volcado`: aprobadas, en duda, volcadas, y
    «N candidatas, en M trozos de `partes_por_llamada`».
 3. **«Registrar»** (R60, 2026-10-28), el único botón de entrada. Paso 1: la
-   sincronización con Sigrid (F-065). Paso 2: tres grupos —**va**, **ya
-   existe** (con su código de Sigrid), **choca** (con lo que choca y por
-   qué)— con el recuento por unidad de cada uno (R61); lo que ya existe no
-   tiene botón; lo que choca, uno para incluirlo, que es el **segundo clic**
-   de R62 (si por incidencia o para todas las que chocan, y cómo viaja al
-   ensayo, se cierra con el contrato de F-065). Paso 3: **«Ensayar lo que
-   va»**.
+   sincronización, `GET /api/revision/sigrid` (§1.1). Paso 2: tres grupos
+   —**va** (las `se_enlaza`, marcadas «se enlaza con RS…», P-1), **ya
+   existe** (con sus códigos de Sigrid), **choca** (cada reclamación con la
+   que choca: estado, unidad, ubicación, oficio y descripción, y el porqué;
+   o «su parte RS… está anulado en Sigrid»)— con el recuento por unidad de
+   cada uno (R61) y, aparte, las candidatas de `GET /api/volcado` que la
+   sincronización no nombra; lo que ya existe no tiene botón; lo que choca,
+   una casilla **por incidencia** para incluirla, que es el **segundo clic**
+   de R62 (P-2) y viaja en `conflictos_confirmados` con todos sus códigos.
+   Paso 3: **«Ensayar lo que va»** (y lo incluido).
 4. **El ensayo** (R51): un ensayo tras otro con barra de progreso («trozo k
    de M»); tabla única con unidad, oficio y proveedor (nombres del
    `catalogo`; sin nombre, el código del `envio`), ubicación, descripción,
@@ -199,12 +297,14 @@ Con `node --test` (`tests_js/volcado.test.js`, que el patrón
 
 | Función | Qué hace | R |
 |---|---|---|
-| `agruparSincronizacion(candidatas, respuesta, catalogo)` *(2026-10-28; la forma de `respuesta`, a fijar por F-065)* | Cada candidata en **va**, **ya existe** o **choca**, con el recuento por unidad de cada grupo; una candidata que la sincronización no nombra, en **va** solo si F-065 lo dice así | R61 |
-| `paraEnsayar(grupos, incluidasQueChocan)` *(2026-10-28)* | Las que van más las que chocan incluidas con su segundo clic; nunca las que ya existen | R62 |
-| `puedeEnsayar(estado)` *(2026-10-28)* | Sincronización hecha y buena, ≥ 1 para ensayar, sin petición en vuelo | R60, R56 |
-| `recuentoPorUnidad(filas, catalogo)` *(2026-10-28)* | Cuántas por unidad, con su nombre (sin nombre, el código), para el paso 2, el ensayo y la confirmación | R61, R51, R52 |
+| `agruparSincronizacion(candidatas, respuesta, catalogo)` *(conciliado 2026-10-31)* | Con `respuesta` el 200 de `GET /api/revision/sigrid` (§1.1) y `candidatas` las de `GET /api/volcado`: cada fila de `respuesta.volcado.veredictos` en **va** (`va` y `se_enlaza`, esta marcada con su código, P-1), **ya existe** (`ya_existe`) o **choca** (`choca`), en el orden de la respuesta; a cada código, su reclamación de `respuesta.reclamaciones` **sin `ficha`** y, si es `choca`, el porqué (`anulada`: la reclamación tiene el `incidencia_id` de la fila; si no, `criterios` y `parecido` de su `coincide` de `hallazgos`, o nada si no viajó); el recuento por unidad de cada grupo, de `volcado.por_unidad`; y `sinSincronizar`, las `candidatas` que los veredictos no nombran. Un veredicto desconocido, en **choca** sin casilla (no se puede incluir) | R61, R51 |
+| `paraEnsayar(grupos, incluidas)` *(conciliado 2026-10-31)* | Los `incidencia_id` de **va** más los de **choca** que están en `incluidas`, en el orden de la sincronización; nunca **ya existe** ni `sinSincronizar` | R62, R51 |
+| `confirmadosDelTrozo(ids, grupos, incluidas)` *(conciliado 2026-10-31)* | Para el cuerpo del ensayo: `[{incidencia_id, sigrid_cods}]` de las incluidas que van en ese trozo, con **todos** los `sigrid_cods` de su veredicto; lista vacía si ninguna | R62 |
+| `puedeEnsayar(estado)` *(2026-10-28)* | Sincronización en 200, ≥ 1 para ensayar, sin petición en vuelo | R60, R56 |
+| `recuentoPorUnidad(filas, catalogo)` *(2026-10-28)* | Cuántas por unidad, con su nombre (sin nombre, el código), para el ensayo y la confirmación (en el paso 2 sale de `por_unidad`) | R61, R51, R52 |
 | `trocear(ids, n)` | Grupos de `n` en orden, sin perder ni repetir | R51 |
-| `cuerpoDeEnsayo(obra, ids, identidad)` | `{obra, usuario_oid, usuario_correo, incidencias}`, sin `confirmado` | R51 |
+| `cuerpoDeEnsayo(obra, ids, identidad, confirmados)` *(conciliado 2026-10-31)* | `{obra, usuario_oid, usuario_correo, incidencias}`, sin `confirmado`, y `conflictos_confirmados` **solo** si `confirmados` no está vacía | R51, R62 |
+| `excluidasDeLaGuarda(respuestas, grupos)` *(conciliado 2026-10-31)* | Las excluidas `duplicada_en_sigrid` y `conflicto_sin_confirmar` de los ensayos; marca «cambió desde la sincronización» las que iban en **va**, o las incluidas cuya `sigrid_cod` no estaba entre sus códigos confirmados; con alguna marcada, el panel ofrece «Volver a registrar» | R62 |
 | `cuerpoDeVolcado(ensayo, identidad)` | **El único** `confirmado: true`; solo los `previsto`, cada uno `{incidencia_id, revision_id}` de su parte del ensayo; `null` si no hay ninguno | R52 |
 | `juntarEnsayos(respuestas, catalogo)` | Una tabla (con los nombres del catálogo) y un resumen; N; la caducidad más temprana de los que tienen `ensayo_id`; si hubo algún `idempotente` | R51, R52, R53.5 |
 | `puedeVolcar(estado, ahora)` | ≥ 1 previsto, todos los ensayos en 200, sin caducar, sin petición en vuelo | R52, R56 |
@@ -213,11 +313,17 @@ Con `node --test` (`tests_js/volcado.test.js`, que el patrón
 | `siguientePaso(resultado)` | Seguir o **parar**: para ante cualquier no-200, sin respuesta del servicio o un 200 con `resumen.sin_respuesta` > 0; el mensaje según §3.2 | R51, R53 |
 | `juntarVolcados(respuestas, fallo, sinMandar)` | Creados, ya creados, rechazados, no procesados, excluidas, en duda (de los `sin_respuesta`, de `en_duda` del 502, del trozo del 500 o del corte) y sin mandar; los avisos | R53.4 |
 | `avisoDePte(resumen)` | El aviso de R59 si hay algún `creado` | R59 |
-| `textoExclusion(codigo)`, `textoEnsayoNoValido(causa)`, `textoError(codigo)`, `etiquetaParte(estado)` | Castellano para cada código propio de F-059 (R54) y, cuando F-065 los fije, para los suyos; los de §8.9, por `Revision.textoMotivoVolcado` | R54 |
+| `textoExclusion(codigo)`, `textoEnsayoNoValido(causa)`, `textoError(codigo)`, `etiquetaParte(estado)`, `textoVeredicto(veredicto)`, `textoPorque(choque)` | Castellano para cada código propio de F-059 (R54), para los de F-065 (`duplicada_en_sigrid`, `conflicto_sin_confirmar`; `sigrid_no_disponible`, `reclamaciones_sin_verificar`, `obra_ambigua`; los cuatro veredictos; los criterios `misma_unidad_oficio_ubicacion` y `misma_unidad_descripcion_parecida`) y para el 503 sin `codigo` de la sincronización; los de §8.9, por `Revision.textoMotivoVolcado` | R54, R61 |
 | `hayVolcadoEnMarcha(estado)` | La guarda de salida | R55 |
 
-La lista de funciones de la sincronización es la propuesta de hoy; sus
-firmas se cierran cuando se fije el contrato de F-065 (§1.1).
+*(Conciliado 2026-10-31.)* Las firmas de la sincronización quedan cerradas
+contra §1.1. **Qué se ensaya lo decide la sincronización**, no
+`GET /api/volcado`: una candidata aprobada después de sincronizar no tiene
+veredicto, así que no se ensaya y se pide «Volver a registrar»; una que tiene
+veredicto y ya no es candidata la excluye el ensayo (`no_es_candidata`, F-059).
+El panel guarda de la respuesta de la sincronización **solo** lo que enseña
+(veredictos, recuentos y las reclamaciones citadas, sin `ficha`); el resto del
+cuerpo no se conserva.
 
 ### 3.2 · Qué dice el panel al parar (conciliado 2026-10-27)
 
@@ -235,8 +341,27 @@ firmas se cierran cuando se fije el contrato de F-065 (§1.1).
 | 503 otros (configuración, base) | Avisa a sistemas | Igual; nada escrito |
 | Sin respuesta del servicio | Repetir es inocuo | **No se sabe**: las del trozo, en duda hasta volver a leer |
 | 200 con algún `sin_respuesta` | — | Esas, en duda; para |
-| Un fallo de la sincronización (F-065) *(2026-10-28)* | No se ensaya: para antes del paso 2 y lo dice; los códigos, **a fijar por F-065** | — |
-| El ensayo rechaza o excluye por la guarda de F-065 *(2026-10-28)* | Lo dice con su texto y propone «Volver a registrar»; los códigos, **a fijar por F-065** | — |
+
+*(Conciliado 2026-10-31.)* La sincronización (`GET /api/revision/sigrid`, §1.1)
+para **antes del paso 2**, sin ensayar ni dejar ensayar:
+
+| Respuesta de la sincronización | Qué dice el panel |
+|---|---|
+| 400 `peticion_invalida` | Error de la página: recarga |
+| 409 `bandeja_demasiado_grande` | Con `total` |
+| 409 `reclamaciones_sin_verificar` | Sigrid devolvió demasiadas reclamaciones (`filas`) o cortadas: no se puede saber qué hay; avisa a sistemas |
+| 409 `obra_ambigua` | Hay más de una obra con ese código en Sigrid: lo tiene que mirar una persona |
+| 503 (sin `codigo`) | El texto del servicio (`mensajeDelServicio`): sin Sigrid o sin base, nada escrito, se puede volver a registrar más tarde |
+| Otro no-200 (p. ej. el 504 del proxy) o sin respuesta del servicio | No se ha podido mirar Sigrid; volver a registrar es inocuo (solo lee) |
+
+Y el ensayo, por la guarda de F-065:
+
+| Respuesta del ensayo | Qué dice el panel |
+|---|---|
+| 503 `sigrid_no_disponible` | Sigrid no responde: no se ha ensayado nada (ni guardado); la serie para; volver a registrar más tarde |
+| 409 `reclamaciones_sin_verificar` (con `filas`) / 409 `obra_ambigua` | Como en la sincronización; la serie para, nada guardado |
+| 400 `peticion_invalida` (también un `conflictos_confirmados` mal formado) | Error de la página: recarga |
+| 200 con excluidas `duplicada_en_sigrid` / `conflicto_sin_confirmar` | No es un fallo: la serie sigue; salen en las excluidas con su texto y su `sigrid_cod`; si alguna «cambió desde la sincronización» (`excluidasDeLaGuarda`), propone «Volver a registrar» |
 
 ### 3.3 · Cómo se monta en la página (conciliado 2026-10-27)
 
@@ -258,9 +383,13 @@ firmas se cierran cuando se fije el contrato de F-065 (§1.1).
   defecto `peticion` reintenta dos veces un 502 o un corte, que en un volcado
   sería el reintento que R53 prohíbe). Mismo `TIMEOUT_PETICION_MS` (40 s). Sin
   `mensajeDelServicio`, un 503 saldría con el texto de la puerta de archivar.
-  *(2026-10-28)* Y una cuarta para la sincronización de F-065 (una lectura,
-  con `mensajeDelServicio`); su nombre, su ruta y si se reintenta como
-  lectura: **a fijar por F-065**.
+  *(2026-10-28; conciliado 2026-10-31)* Y una cuarta,
+  `revisionSigrid(obra)`: `GET /api/revision/sigrid?obra=` (con `conObra`,
+  como `revision`), con `mensajeDelServicio` (el 503 llega sin `codigo` y su
+  texto es el que vale) y **`sinReintentos: true`**: es una lectura, pero
+  pesada (1,3 MB en la 0677) y con datos personales; la repite la persona con
+  otro «Registrar». `volcadoEnsayo(cuerpo)` manda `conflictos_confirmados` tal
+  cual lo compone `cuerpoDeEnsayo`.
 - **La identidad** es la de `api.identidad()` (`identidadDe`, `{usuarioOid,
   correo}`), la que ya guarda `appRevision` en `usuario`; no se lee otra.
   **Nada sale sin un clic** (R56).
@@ -307,8 +436,8 @@ barra en todas las páginas reales, que es trabajo del cierre de F-038.
 - `bandeja.html`: la sección del panel; `<script src="js/volcado.js">`
   **detrás** de `js/revision.js` (los propios tienen que cerrar el `<body>`,
   `problemas_de_carga` de `test_f036_front.py`); la guarda de salida ampliada.
-- `js/api.js`: las tres funciones de §3.3 y la de la sincronización (a fijar
-  por F-065).
+- `js/api.js`: las tres funciones de §3.3 y `revisionSigrid` (conciliado
+  2026-10-31).
 - `js/revision.js`: solo la composición de `appRevision()` y el aviso de
   `cargar()` (§3.3).
 - `README.md` del front y `docs/ARCHITECTURE.md` (R58).
@@ -323,9 +452,10 @@ barra en todas las páginas reales, que es trabajo del cierre de F-038.
   - `tests_js/revision.test.js`: el recorrido de `bandeja.html` (Bloque 1
     bis) evalúa las expresiones del panel contra un componente que ya lleva
     `volcado`.
-  - `tests_js/api.test.js`: los endpoints pasan de 20 a 23 (`LOS_ENDPOINTS`),
-    más los que añadan F-065/F-064 y la función de la sincronización: la
-    cuenta se cierra contra el `dev` de la base fija.
+  - `tests_js/api.test.js`: los endpoints pasan de **20 a 24**
+    (`LOS_ENDPOINTS`, l. 206–231 en la base fija `f97ec6e`: F-065 no tocó el
+    front y F-064 no está en `dev`): `volcadoPanel`, `volcadoEnsayo`,
+    `volcadoVolcar` y `revisionSigrid` (conciliado 2026-10-31).
 - En el cierre (R57): `index.html`, `js/maqueta_datos.js`, `js/portal.js`,
   `js/portal_app.js`, `harness/features.json` y los tests de §4; y, en el
   repositorio `azure-apps`, `postventa_incidencias.md` (R58).
@@ -362,9 +492,9 @@ unidad (C-3); Bloque 3 tras F-038 `done` (C-1); aprobar en bloque fuera
 | R | Dónde | Lo que fija además de lo obvio |
 |---|---|---|
 | R50 | pytest | El panel en `bandeja.html`, dentro del único `x-data`; `js/volcado.js` cargado detrás de `js/revision.js`; solo lee al cargar; «Registrar» es el único botón de entrada |
-| R60 | node | «Registrar» pide la sincronización y nada más; sin una sincronización buena no se puede ensayar (`puedeEnsayar`); un fallo o un corte de la sincronización para antes del ensayo; el orden sincronizar → enseñar → ensayar, con el `api` doble (la respuesta, con la forma que fije F-065) |
-| R61 | node | `agruparSincronizacion` reparte en va / ya existe / choca y cuenta por unidad, con nombres del catálogo y, sin nombre, el código |
-| R62 | node, pytest | `paraEnsayar` nunca lleva lo que ya existe; lo que choca solo con su segundo clic; ningún botón incluye lo que ya existe |
+| R60 | node | «Registrar» pide `GET /api/revision/sigrid?obra=` y nada más, una vez; sin una sincronización en 200 no se puede ensayar (`puedeEnsayar`); para antes del ensayo con 400, cada 409 de §3.2, el 503 sin `codigo`, otro no-200 y un corte; `revisionSigrid` no se reintenta ante un 502 ni un corte; el orden sincronizar → enseñar → ensayar, con el `api` doble y respuestas con la forma de §1.1 (datos ficticios) |
+| R61 | node | `agruparSincronizacion`: los cuatro veredictos en tres grupos (`se_enlaza` en va, marcado); el recuento de `por_unidad` con nombres del catálogo y, sin nombre, el código; el porqué de un `choca` por `NPR` (emparejada) y por criterios, y sin hallazgo; `sinSincronizar`; un veredicto desconocido sin casilla; ninguna clave de `ficha` en lo que guarda el panel |
+| R62 | node, pytest | `paraEnsayar` nunca lleva ya existe ni `sinSincronizar`; lo que choca solo con su casilla; `confirmadosDelTrozo` con todos los códigos y solo las del trozo; `cuerpoDeEnsayo` sin `conflictos_confirmados` si no hay ninguna; `excluidasDeLaGuarda` marca lo que cambió; el texto del segundo clic en un `choca` por `NPR` dice que enlaza con el parte anulado; ningún botón incluye lo que ya existe |
 | R51 | node | `trocear` con `n` 1, 5 y mayor que la lista, y 285 entre 5 = 57; `juntarEnsayos` con excluidas, con un ensayo sin `ensayo_id` y con nombres que faltan en el catálogo; la serie para en el primer ensayo no-200 o sin respuesta |
 | R52 | node, pytest | Un solo `confirmado: true` en todo el front; `cuerpoDeVolcado` sin los no `previsto` y `null` sin ninguno; `puedeVolcar` con caducado, sin previstos, con un ensayo no-200 y con petición en vuelo; `confirmacionValida` con `N`, `N±1`, vacío y texto; el texto de la confirmación con el recuento por unidad |
 | R53 | node | Se para en 400, 409, 500, 502, 503, sin respuesta del servicio y en un 200 con `sin_respuesta`; con el ensayo del trozo caducado no se manda; no se pide el trozo siguiente; `volcadoEnsayo` y `volcadoVolcar` no se reintentan ante un 502 ni un corte (con el `fetch` doble de `api.test.js`); los avisos llegan al resultado; tras parar se relee el panel |
@@ -403,17 +533,25 @@ unidad (C-3); Bloque 3 tras F-038 `done` (C-1); aprobar en bloque fuera
 8. **Riesgo: un volcado sin respuesta del servicio sigue escribiendo** detrás
    (§1, «Tiempos»): el panel para, lo trata como en duda y relee; la
    referencia `PVI-` hace que volver a ensayar y volcar no duplique.
-9. **Riesgo: la sincronización de una obra grande tarda** *(2026-10-28)*:
-   leer todas las reclamaciones de la obra en Sigrid tiene que caber en los
-   40 s del front y los 45 del proxy. Cuánto tarda en la 0677 y qué pasa si
-   no cabe es de F-065; el panel solo para y lo dice (R60).
+9. **Riesgo: la sincronización de una obra grande tarda** *(2026-10-28;
+   conciliado 2026-10-31)*: medido tras publicar F-065 (T-A15), la 0677 da
+   p50 ≈ 0,67 s y máximo 4,70 s, con 1,3 MB; cabe en los 40 s del front. Si
+   no cabe un día, el panel para y lo dice (R60) y la persona vuelve a
+   registrar.
 10. **Riesgo: Sigrid cambia entre la sincronización y el volcado**
-    *(2026-10-28)*: alguien da de alta a mano mientras se ensaya. La guarda
-    del ensayo en el backend (F-065) es la que lo cubre; cuánto vale una
-    sincronización, **a fijar por F-065**.
+    *(2026-10-28; conciliado 2026-10-31)*: la sincronización no caduca porque
+    la guarda **relee Sigrid en cada ensayo** (§1.1); lo que cambió sale como
+    exclusión y el panel propone volver a registrar. Entre el ensayo y el
+    volcado (hasta 30 min) `volcar` no relee: riesgo aceptado en F-065 (S-6,
+    `design.md` §15.8).
 11. **Alternativa descartada: ensayar sin sincronizar** (como estaba el
     2026-10-27): descartada por el humano el 2026-10-28 (C-4): el volcado de
     F-059 no ve lo dado de alta a mano y lo duplicaría.
+12. **Riesgo: la ruta y la guarda difieren** *(conciliado 2026-10-31)* con
+    una referencia `PVI-` en otra unidad (`docs/INTEGRACION.md` l. 319–325):
+    el panel puede enseñar «va» y el ensayo «se enlaza», o al revés; la
+    pasarela lo para (`referencia_en_conflicto`) y el panel lo enseña como
+    rechazado con su motivo.
 
 ## 9 · Conciliación 2026-10-27 (resumen)
 
@@ -434,7 +572,7 @@ unidad (C-3); Bloque 3 tras F-038 `done` (C-1); aprobar en bloque fuera
 
 | § | Qué cambió | Por qué |
 |---|---|---|
-| 1, 1.1 | F-040 depende de F-065, que va antes; la base fija pasa a ser el merge del `dev` con F-065; tabla de lo que el panel espera de su contrato, **a fijar por F-065** | C-4 |
+| 1, 1.1 | F-040 depende de F-065, que va antes; la base fija pasa a ser el merge del `dev` con F-065; tabla de lo que el panel espera de su contrato (sustituida el 2026-10-31 por el contrato implementado, §11) | C-4 |
 | 1, 4 | El Bloque 3 va tras F-038 `done`; los Bloques 1 y 2 no la esperan | C-1 |
 | 2 | «Registrar» como único botón de entrada: sincronizar → va / ya existe / choca con recuento por unidad → ensayar; «Volver a registrar» como reanudación; recuento por unidad en el ensayo y en la confirmación | C-4, C-3 |
 | 3.1 | `agruparSincronizacion`, `paraEnsayar`, `puedeEnsayar`, `recuentoPorUnidad`; firmas a cerrar con F-065 | C-4, C-3 |
@@ -443,5 +581,25 @@ unidad (C-3); Bloque 3 tras F-038 `done` (C-1); aprobar en bloque fuera
 | 7 | Tests de R60–R62 y del recuento en la confirmación | C-4, C-3 |
 | 8 | Riesgos de la sincronización (tiempo, Sigrid que cambia) y la alternativa descartada | C-4 |
 
-Pendiente para cuando F-065 esté en `dev`: volver a conciliar §1.1, §3.1,
-§3.2 y §3.3 con su contrato implementado, antes del Bloque 1.
+Lo pendiente para cuando F-065 estuviera en `dev` (§1.1, §3.1, §3.2 y §3.3) se
+hizo el 2026-10-31: §11.
+
+## 11 · Conciliación con F-065 (2026-10-31, T0)
+
+Contra la base fija `f97ec6e` (`dev` `7cc0bbb`, F-065 `done`, desplegada desde
+`ed590bd`).
+
+| § | Qué cambió | De dónde (fichero:línea) |
+|---|---|---|
+| 1 | F-065 `done` y su base fija; el ensayo gana clave, bloque, motivos y errores; `GET /api/volcado` y `volcar`, sin cambios | `interface_adapters/api/volcado.py` 231–301; F-065 R49 |
+| 1.1 | La tabla de necesidades, sustituida por el contrato implementado: la ruta, su 200 (`volcado`, `reclamaciones`, `hallazgos`), los veredictos y su precedencia, los errores (el 503 sin `codigo`), el tiempo medido; la guarda del ensayo (cuerpo, exclusiones, `sigrid`, errores, la línea de log) y la diferencia ruta/guarda | `function_app.py` 1335–1361, 1642–1663, 1877–1961, 2063–2119; `sigrid_bandeja.py` 236–352; `domain/models/sigrid_bandeja.py` 127–137, 697–713; `guarda_sigrid.py` 96–223; `docs/INTEGRACION.md` 292–353; `progress/impl_F-065.md` T-A15 |
+| 2 | El paso 2 con `se_enlaza` en va (P-1), el porqué del choque, las no sincronizadas y la casilla por incidencia (P-2) | §1.1 |
+| 3.1 | `agruparSincronizacion`, `paraEnsayar`, `cuerpoDeEnsayo` con firma cerrada; nuevas `confirmadosDelTrozo`, `excluidasDeLaGuarda`, `textoVeredicto`, `textoPorque`; qué se ensaya lo decide la sincronización; sin `ficha` | §1.1 |
+| 3.2 | Paradas de la sincronización y del ensayo por la guarda, código a código | `function_app.py` 2096–2118, 1892–1915 |
+| 3.3 | `revisionSigrid`, con `mensajeDelServicio` y `sinReintentos` | `js/api.js` 280–320 (`peticion`) |
+| 5 | `LOS_ENDPOINTS` de 20 a 24 | `tests_js/api.test.js` 206–231 |
+| 7 | Tests de R60–R62 contra la forma real | §1.1 |
+| 8 | Riesgos 9 y 10 con lo medido y la relectura de la guarda; riesgo 12 nuevo | `progress/impl_F-065.md` T-A15; F-065 §15.8 |
+
+Preguntas para el humano (no aplicadas como decisión; el texto lleva la
+recomendación): P-1 a P-3 en `progress/spec_F-040.md`.

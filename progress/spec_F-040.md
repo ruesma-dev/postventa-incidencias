@@ -258,3 +258,87 @@ y que el ensayo excluya, con un motivo que se pueda traducir, lo que ya existe
 y lo que choca sin incluir.
 
 Sin preguntas abiertas nuevas.
+
+## Conciliación con F-065 (2026-10-31, T0)
+
+> spec-author, worktree `postventa-f040`, rama `feature/F-040-volcado-sigrid`,
+> base fija **`f97ec6e`** (merge de `dev` `7cc0bbb`: F-065 `done`, desplegada
+> desde `ed590bd`), anotada en `progress/impl_F-040.md`. Sin tocar código ni
+> tests; `init.sh` no se ha ejecutado (lo corre el líder). Fuentes, en este
+> orden: código de `services/postventa-api`, `specs/F-065-revision-sigrid-backend/`
+> (R41–R49, `design.md` §15) y `docs/INTEGRACION.md` (l. 235–353).
+
+### Qué cambió
+
+`grep -rn "fijar por F-06[5]" specs/F-040-volcado-sigrid/` ya no da nada.
+
+| Fichero · sitio | Cambio | Fuente (fichero:línea, en `services/postventa-api/` salvo que se diga) |
+|---|---|---|
+| `requirements.md` cabecera | Nota de la conciliación; «Bloqueada por F-065» pasa a «Dependía de F-065» con la base fija | `harness/features.json` (F-040), `git log` `f97ec6e` |
+| `requirements.md` glosario | Sincronización = `GET /api/revision/sigrid?obra=`; los cuatro veredictos en tres grupos: va = `va` + `se_enlaza` (P-1), ya existe = `ya_existe`, choca = `choca` (también el `PVI-` anulado o de estado desconocido) | `function_app.py:2074`; `domain/models/sigrid_bandeja.py:127-137`, `:697-713` |
+| `requirements.md` R60 | Ruta, una petición sin reintento, y los errores reales: 400 `peticion_invalida`; 409 `bandeja_demasiado_grande` (`total`), `reclamaciones_sin_verificar` (`filas`), `obra_ambigua`; **503 sin `codigo`** | `function_app.py:2096-2118`, `:1335-1341`, `:1344-1361`, `:1642-1663` |
+| `requirements.md` R61 | Grupos de `volcado.veredictos` (`{incidencia_id, unidad_codigo, estado, veredicto, sigrid_cods}`); recuento de `volcado.por_unidad` (unidad vigente, cuatro claves siempre); el porqué de un choque desde `reclamaciones` (emparejada → anulada) y `hallazgos` (`criterios`, `parecido`); sin `ficha` | `interface_adapters/api/sigrid_bandeja.py:255-283`, `:324-352` |
+| `requirements.md` R62 | Segundo clic **por incidencia** (P-2); viaja en `conflictos_confirmados: [{incidencia_id, sigrid_cods}]` con **todos** los códigos del veredicto y solo las del trozo; texto propio para el `choca` por parte anulado (enlaza con él); la guarda relee Sigrid en cada ensayo, así que la sincronización no caduca: lo que cambió sale como `duplicada_en_sigrid` / `conflicto_sin_confirmar` y se ofrece «Volver a registrar» | `interface_adapters/api/volcado.py:238-250`, `:461-504`; `application/pipelines/guarda_sigrid.py:131-153`; F-065 `design.md` §15.4; F-065 R45 (enmienda a S-3) |
+| `requirements.md` R51 | Se ensaya lo que nombra la sincronización; lo aprobado después se cuenta aparte y pide volver a registrar | Decisión de diseño (no hay `sincronizacion_id`: F-065 §15.4) |
+| `requirements.md` R54 | Textos para `duplicada_en_sigrid`, `conflicto_sin_confirmar`, `sigrid_no_disponible`, `reclamaciones_sin_verificar`, `obra_ambigua` y el 503 sin código | `domain/models/volcado.py:188-204`; `function_app.py:1877-1916` |
+| `requirements.md` R55 | La respuesta de la sincronización (datos personales, `no-store`) no va al almacenamiento ni a `console` | F-065 R35; `function_app.py:2063-2071` |
+| `requirements.md` §5, §6 | El párrafo «a fijar» pasa a pasado; §6 nuevo con la tabla de la conciliación | — |
+| `design.md` cabecera, §1 | Nota; F-065 `done` y su base fija; el ensayo gana clave, bloque, motivos y errores; `GET /api/volcado` y `volcar` sin cambios | F-065 R49; `interface_adapters/api/volcado.py:231-301` |
+| `design.md` §1.1 | La tabla de necesidades se sustituye por el contrato implementado: la ruta y su 200, los veredictos y su precedencia, los errores, el tiempo medido (0677: p50 0,67 s, máx. 4,70 s, 1,3 MB); la guarda (cuerpo, exclusiones, `sigrid`, tres errores, la línea de log); la diferencia ruta/guarda con un `PVI-` en otra unidad | `sigrid_bandeja.py:236-352`; `function_app.py:1877-1961`, `:2063-2119`; `guarda_sigrid.py:96-223`; `docs/INTEGRACION.md:319-325`; `progress/impl_F-065.md:3084` (T-A15) |
+| `design.md` §2 | Paso 2 con `se_enlaza` en va, el porqué, las no sincronizadas y la casilla por incidencia | §1.1 |
+| `design.md` §3.1 | Firmas cerradas: `agruparSincronizacion(candidatas, respuesta, catalogo)`, `paraEnsayar(grupos, incluidas)`, `cuerpoDeEnsayo(obra, ids, identidad, confirmados)`; nuevas `confirmadosDelTrozo`, `excluidasDeLaGuarda`, `textoVeredicto`, `textoPorque`; el panel guarda solo lo que enseña, sin `ficha` | §1.1 |
+| `design.md` §3.2 | Tablas de paradas de la sincronización y del ensayo por la guarda, código a código | `function_app.py:2096-2118`, `:1892-1915` |
+| `design.md` §3.3 | `revisionSigrid(obra)` con `mensajeDelServicio` y `sinReintentos: true` (lectura pesada y con datos personales; la repite la persona) | `services/postventa-front/js/api.js:280-320` (`peticion`) |
+| `design.md` §5 | `LOS_ENDPOINTS` de 20 a **24** (F-065 no tocó el front; F-064 no está en `dev`) | `services/postventa-front/tests_js/api.test.js:206-231` |
+| `design.md` §7, §8, §10, §11 | Tests de R60–R62 contra la forma real; riesgos 9 y 10 con lo medido; riesgo 12 nuevo (ruta y guarda difieren); §11 nuevo con el resumen | — |
+| `tasks.md` | Nota; T0 con la base y la verificación por `grep` que no se encuentra a sí misma; T1 con las funciones y los 24 endpoints; T5.2 con lo que sale en la 0626; **T5 bis nueva = T-A18 de F-065** (pendiente de P-3); T6 espera a T5 bis si P-3 lo pide | F-065 `tasks.md:373-385` |
+| `progress/impl_F-040.md` | Nuevo, con la base fija `f97ec6e` | — |
+| `progress/current.md` | Una línea en el bloque de F-040 | — |
+
+### Observación para el líder (no es de F-040)
+
+- La docstring de la ruta, `function_app.py:2081-2082`, lista el 200 **sin**
+  `volcado`, que sí sale (`interface_adapters/api/sigrid_bandeja.py:251`). Es
+  código de F-065 (`done`); no se toca aquí.
+- El encargo nombraba «503 `sigrid_no_disponible`» para las dos rutas: ese
+  código es **solo del ensayo** (`function_app.py:1893`); la ruta de la
+  sincronización responde 503 **sin** `codigo` (`:2111-2118` →
+  `_sin_sigrid_o_sin_base`, `:1344-1361`). La spec lo refleja así.
+
+### Preguntas para el humano (3)
+
+La spec está escrita con la recomendación de cada una, marcada «(P-n)».
+Ninguna se ha tomado como decidida.
+
+- **P-1 · Dónde va `se_enlaza`.** C-4 aprobó **tres** grupos (va / ya existe
+  / choca) y «lo que ya existe se excluye». F-065 da **cuatro** veredictos: el
+  cuarto, `se_enlaza`, es una candidata cuya **propia** reclamación (con su
+  `PVI-`) ya está en Sigrid y no anulada; F-065 la **manda** (S-3, aprobada:
+  si se excluyera, una `en_duda` no saldría nunca de ahí) y el ensayo la
+  devuelve `idempotente` («Ya estaba creado»), sin crear otra. Choca con la
+  letra de C-4 porque «Sigrid ya la tiene» y no se excluye.
+  **Recomendación**: dentro de **va**, marcada «se enlaza con RS…» y sumada al
+  recuento de va. Alternativas: (b) un cuarto grupo visible «ya registrada
+  desde aquí: se enlaza», que también se ensaya; (c) excluirla en el panel
+  (contradice S-3 y deja las `en_duda` atascadas).
+- **P-2 · El segundo clic de lo que choca, por incidencia o en bloque.** El
+  diseño del 2026-10-28 (§2) lo dejó abierto «hasta el contrato de F-065», y
+  F-065 admite los dos (§15.4: el cuerpo va siempre por incidencia).
+  **Recomendación**: una casilla **por incidencia**, cada una con sus
+  reclamaciones a la vista; en la 0677 se midieron 7 incidencias con
+  conflicto de 466 (T-A13), así que no hay volumen que pida el bloque.
+  Alternativa: además, «incluir todas las que chocan de esta unidad».
+- **P-3 · Dónde se hace la T-A18 de F-065, y si choca con C-6 y C-2.** La
+  T-A18 pide hacerla en el **primer ensayo real de la 0677** con
+  «Registrar». C-6 deja T5 (la verificación con escritura) en la **0626**, y
+  ahí no hay nada que choque (7 reclamaciones; la única abierta es una `SAT`),
+  así que dentro de T5 solo se podría provocar un `choca` importando y
+  aprobando otra fila de prueba hecha para parecerse a esa `SAT`. Y C-2 dice
+  que el volcado de la VILLA 15 no es tarea de la ficha.
+  **Recomendación**: una **T5 bis** aparte, **solo ensayos** (`commit:
+  false`) en la 0677, con autorización expresa, sin volcar: no toca C-6 (T5
+  sigue en la 0626) ni C-2 (no se vuelca nada). Ya escrita así en
+  `tasks.md`. Preguntas concretas: (a) ¿T5 bis en la 0677 o, en su lugar,
+  provocar el `choca` en la 0626 dentro de T5?; (b) ¿el cierre (T6, Bloque 3)
+  espera a T5 bis o se cierra F-040 con T5 bis pendiente y se anota como
+  hecha cuando el humano empiece la 0677?

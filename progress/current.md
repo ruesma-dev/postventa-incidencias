@@ -14,6 +14,8 @@
 > el spec-author. Siguiente: traer `dev` (`ed590bd`) a su rama y Bloque 1 (implementer). **Recoge T-A18 de F-065**: en el
 > primer ensayo real de la 0677, una incidencia `choca` sin confirmar sale `conflicto_sin_confirmar` y confirmada `previsto`,
 > con la línea `F-065 guarda del ensayo` sin códigos `RS` ni texto.
+> **2026-10-31 · T0 (spec)**: base fija `f97ec6e`; spec conciliada con el contrato implementado de F-065 (T-A18 como
+> T5 bis). Esperan al humano **P-1 a P-3** (`progress/spec_F-040.md`, «Conciliación con F-065»). Falta `init.sh` (líder).
 
 > ## F-066 · `blocked` (aparcada, sin fallo) · 2026-10-27 · espera a que termine F-040
 > **Aparcada por el humano el 2026-10-27** para hacer F-040. Bloque 1 y T3 hechos y APROBADOS (lote versionado

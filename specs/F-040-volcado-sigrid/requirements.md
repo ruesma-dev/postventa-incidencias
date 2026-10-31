@@ -27,9 +27,10 @@
 > y desplegada desde `ed590bd`): R60–R62, el glosario y R54 dicen ya la ruta,
 > la forma y los errores reales de la sincronización y de la guarda del
 > ensayo, con su fichero y línea en el §6. Lo que tocaría una decisión
-> aprobada **no** se ha cambiado: son las preguntas **P-1 a P-3** de
-> `progress/spec_F-040.md` («Conciliación con F-065, 2026-10-31»); el texto
-> está escrito con la recomendación de cada una, marcada «(P-n)».
+> aprobada se preguntó como **P-1 a P-3** (`progress/spec_F-040.md`,
+> «Conciliación con F-065, 2026-10-31»); **respuesta del humano 2026-10-31**:
+> las tres como se recomendaron, ya aplicadas y marcadas «(P-n, respuesta del
+> humano 2026-10-31)».
 >
 > **Partida por D-1 (decisión del humano del 2026-10-07).** El backend —ensayo,
 > volcado, tabla `volcados_sigrid`, estados `volcada` y `en_duda`, ventana
@@ -104,7 +105,7 @@ Los de F-059 (candidata, referencia, ensayo, volcado, llamada, en duda), más:
     avisos de reincidencias en `TER`/`CER`), **y** `se_enlaza` (Sigrid ya tiene
     **su** parte, con su referencia `PVI-`, en `PTE`, `SAT`, `TER` o `CER`: la
     pasarela no crea otro y el ensayo la devuelve `idempotente`), que se
-    enseña dentro de «va» con su código y la marca «se enlaza» *(P-1)*. Se
+    enseña dentro de «va» con su código y la marca «se enlaza con RS…» *(P-1, respuesta del humano 2026-10-31)*, sumada al recuento de va. Se
     ensaya.
   - **Ya existe**: veredicto `ya_existe` (una reclamación abierta, `SAT` o
     `PTE`, casa con los dos criterios de F-065). Se excluye, sin salida.
@@ -147,7 +148,7 @@ Los de F-059 (candidata, referencia, ensayo, volcado, llamada, en duda), más:
   (`interface_adapters/api/sigrid_bandeja.py` `_volcado`, l. 324–347:
   `{incidencia_id, unidad_codigo, estado, veredicto, sigrid_cods}`, en el
   orden de la bandeja) en uno de tres grupos —**va** (con `se_enlaza` marcado
-  y su código, *P-1*), **ya existe** (con sus `sigrid_cods`) y **choca** (con
+  y su código, *P-1, respuesta del humano 2026-10-31*), **ya existe** (con sus `sigrid_cods`) y **choca** (con
   cada reclamación de sus `sigrid_cods`: su estado, unidad, ubicación, oficio
   y descripción, de `reclamaciones` de la misma respuesta, y por qué choca:
   «su parte está anulado en Sigrid» si es la emparejada de la incidencia
@@ -161,7 +162,7 @@ Los de F-059 (candidata, referencia, ensayo, volcado, llamada, en duda), más:
 - **R62.** Lo que **ya existe** en Sigrid se excluye: no se ensaya ni se
   vuelca, y no hay botón que lo incluya. Lo que **choca** no se ensaya salvo
   que la persona lo incluya con un **segundo clic** explícito **por
-  incidencia** *(P-2)*; sin él, se queda fuera y sale como tal en el
+  incidencia**, con sus reclamaciones a la vista y sin «todas las de la unidad» *(P-2, respuesta del humano 2026-10-31)*; sin él, se queda fuera y sale como tal en el
   resultado. En una que choca porque su parte está anulado (`NPR`), el texto
   del segundo clic debe decir que incluirla **la enlaza con el parte anulado**
   y no crea otro (R41 y R45 de F-065, enmienda a S-3). El ensayo lleva lo
@@ -351,7 +352,7 @@ Contra el código de la base fija `f97ec6e` (`services/postventa-api`),
 
 | Dónde | Ahora | De dónde (fichero:línea) |
 |---|---|---|
-| Glosario | Sincronización = `GET /api/revision/sigrid?obra=`; los cuatro veredictos en tres grupos (`se_enlaza` dentro de «va», P-1) | `function_app.py` 2074; `domain/models/sigrid_bandeja.py` 127–137, 697–713 |
+| Glosario | Sincronización = `GET /api/revision/sigrid?obra=`; los cuatro veredictos en tres grupos (`se_enlaza` dentro de «va», P-1, respuesta del humano 2026-10-31) | `function_app.py` 2074; `domain/models/sigrid_bandeja.py` 127–137, 697–713 |
 | R60 | Ruta, una sola petición sin reintento, y sus errores reales (el 503 sin `codigo`) | `function_app.py` 2096–2119, 1335–1361, 1642–1663 |
 | R61 | Grupos de `volcado.veredictos`; recuento de `volcado.por_unidad` (unidad vigente); el porqué de cada `choca`, de `reclamaciones` y `hallazgos`; sin `ficha` | `interface_adapters/api/sigrid_bandeja.py` 255–283, 324–352 |
 | R62 | `conflictos_confirmados` por incidencia con todos sus códigos; el texto del `choca` por `NPR`; la guarda relee en cada ensayo, sin caducidad de la sincronización | `interface_adapters/api/volcado.py` 238–250, 461–504; `application/pipelines/guarda_sigrid.py` 131–153; F-065 `design.md` §15.4 |
@@ -359,4 +360,4 @@ Contra el código de la base fija `f97ec6e` (`services/postventa-api`),
 | R54 | Dos motivos de exclusión y tres errores del ensayo más; el 503 sin código | `domain/models/volcado.py` 188–204; `function_app.py` 1877–1916 |
 | R55 | La respuesta de la sincronización tampoco se guarda en el navegador | F-065 R35; `function_app.py` 2063–2071 |
 
-Preguntas abiertas (P-1 a P-3): `progress/spec_F-040.md`.
+Preguntas P-1 a P-3 (`progress/spec_F-040.md`): **respuesta del humano 2026-10-31**, las tres como se recomendaron: P-1 `se_enlaza` dentro de «va», marcada y sumada a su recuento; P-2 casilla por incidencia, sin «todas las de la unidad»; P-3 T5 bis aparte en la 0677, solo ensayos, y F-040 se cierra sin esperarla (`tasks.md`).

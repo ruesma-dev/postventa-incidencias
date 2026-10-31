@@ -24,8 +24,10 @@
 > **Conciliado con el contrato implementado de F-065 el 2026-10-31** (T0, base
 > fija `f97ec6e`): §1, §1.1, §2, §3.1–§3.3, §5, §7 y §8 citan la ruta, la
 > forma y los errores reales, con fichero y línea; §11 lo resume. Lo que
-> tocaría una decisión aprobada va como **P-1 a P-3** en
-> `progress/spec_F-040.md`, y el texto, con la recomendación, marcado «(P-n)».
+> tocaría una decisión aprobada se preguntó como **P-1 a P-3**
+> (`progress/spec_F-040.md`); **respuesta del humano 2026-10-31**: las tres
+> como se recomendaron, aplicadas y marcadas «(P-n, respuesta del humano
+> 2026-10-31)».
 
 ## 0 · Dónde está el riesgo
 
@@ -58,7 +60,8 @@ su traza.
   F-040 trae ese `dev` en el merge `f97ec6e`, su **base fija**
   (`progress/impl_F-040.md`); §1.1 es su contrato implementado. Su T-A18
   (aplazada por el humano el 2026-10-31) la recoge esta ficha (`tasks.md`
-  T5 bis, P-3).
+  T5 bis, P-3, respuesta del humano 2026-10-31: aparte, en la 0677, solo
+  ensayos, y el cierre no la espera).
 - **F-038**: `bandeja.html` y `js/revision.js` están en `dev` y publicados;
   la ficha está `blocked` a la espera de su T7 (verificación manual). C-1
   (2026-10-28): los Bloques 1 y 2 no la esperan; el Bloque 3 sí.
@@ -174,7 +177,7 @@ respuestas, también las de error, con `Cache-Control: no-store` (l.
   en `PTE`, `SAT`, `TER` o `CER`; `ya_existe` si un par con los dos criterios
   es de una abierta (`SAT`/`PTE`); `choca` si hay otro par de conflicto con
   una abierta; `va` en lo demás. En el panel: **va** = `va` + `se_enlaza`
-  (P-1), **ya existe** = `ya_existe`, **choca** = `choca`. La emparejada de
+  (P-1, respuesta del humano 2026-10-31), **ya existe** = `ya_existe`, **choca** = `choca`. La emparejada de
   una incidencia es la reclamación de `reclamaciones` cuyo `incidencia_id` es
   el suyo: así distingue el panel el `choca` por un parte anulado del `choca`
   por criterios.
@@ -251,14 +254,16 @@ del único `x-data="appRevision()"`, visible con una obra cargada:
    «N candidatas, en M trozos de `partes_por_llamada`».
 3. **«Registrar»** (R60, 2026-10-28), el único botón de entrada. Paso 1: la
    sincronización, `GET /api/revision/sigrid` (§1.1). Paso 2: tres grupos
-   —**va** (las `se_enlaza`, marcadas «se enlaza con RS…», P-1), **ya
+   —**va** (las `se_enlaza`, marcadas «se enlaza con RS…» y sumadas al recuento de va, P-1, respuesta del
+   humano 2026-10-31), **ya
    existe** (con sus códigos de Sigrid), **choca** (cada reclamación con la
    que choca: estado, unidad, ubicación, oficio y descripción, y el porqué;
    o «su parte RS… está anulado en Sigrid»)— con el recuento por unidad de
    cada uno (R61) y, aparte, las candidatas de `GET /api/volcado` que la
    sincronización no nombra; lo que ya existe no tiene botón; lo que choca,
    una casilla **por incidencia** para incluirla, que es el **segundo clic**
-   de R62 (P-2) y viaja en `conflictos_confirmados` con todos sus códigos.
+   de R62 (P-2, respuesta del humano 2026-10-31: sin «todas las de la
+   unidad») y viaja en `conflictos_confirmados` con todos sus códigos.
    Paso 3: **«Ensayar lo que va»** (y lo incluido).
 4. **El ensayo** (R51): un ensayo tras otro con barra de progreso («trozo k
    de M»); tabla única con unidad, oficio y proveedor (nombres del
@@ -297,7 +302,7 @@ Con `node --test` (`tests_js/volcado.test.js`, que el patrón
 
 | Función | Qué hace | R |
 |---|---|---|
-| `agruparSincronizacion(candidatas, respuesta, catalogo)` *(conciliado 2026-10-31)* | Con `respuesta` el 200 de `GET /api/revision/sigrid` (§1.1) y `candidatas` las de `GET /api/volcado`: cada fila de `respuesta.volcado.veredictos` en **va** (`va` y `se_enlaza`, esta marcada con su código, P-1), **ya existe** (`ya_existe`) o **choca** (`choca`), en el orden de la respuesta; a cada código, su reclamación de `respuesta.reclamaciones` **sin `ficha`** y, si es `choca`, el porqué (`anulada`: la reclamación tiene el `incidencia_id` de la fila; si no, `criterios` y `parecido` de su `coincide` de `hallazgos`, o nada si no viajó); el recuento por unidad de cada grupo, de `volcado.por_unidad`; y `sinSincronizar`, las `candidatas` que los veredictos no nombran. Un veredicto desconocido, en **choca** sin casilla (no se puede incluir) | R61, R51 |
+| `agruparSincronizacion(candidatas, respuesta, catalogo)` *(conciliado 2026-10-31)* | Con `respuesta` el 200 de `GET /api/revision/sigrid` (§1.1) y `candidatas` las de `GET /api/volcado`: cada fila de `respuesta.volcado.veredictos` en **va** (`va` y `se_enlaza`, esta marcada con su código, P-1, respuesta del humano 2026-10-31), **ya existe** (`ya_existe`) o **choca** (`choca`), en el orden de la respuesta; a cada código, su reclamación de `respuesta.reclamaciones` **sin `ficha`** y, si es `choca`, el porqué (`anulada`: la reclamación tiene el `incidencia_id` de la fila; si no, `criterios` y `parecido` de su `coincide` de `hallazgos`, o nada si no viajó); el recuento por unidad de cada grupo, de `volcado.por_unidad`; y `sinSincronizar`, las `candidatas` que los veredictos no nombran. Un veredicto desconocido, en **choca** sin casilla (no se puede incluir) | R61, R51 |
 | `paraEnsayar(grupos, incluidas)` *(conciliado 2026-10-31)* | Los `incidencia_id` de **va** más los de **choca** que están en `incluidas`, en el orden de la sincronización; nunca **ya existe** ni `sinSincronizar` | R62, R51 |
 | `confirmadosDelTrozo(ids, grupos, incluidas)` *(conciliado 2026-10-31)* | Para el cuerpo del ensayo: `[{incidencia_id, sigrid_cods}]` de las incluidas que van en ese trozo, con **todos** los `sigrid_cods` de su veredicto; lista vacía si ninguna | R62 |
 | `puedeEnsayar(estado)` *(2026-10-28)* | Sincronización en 200, ≥ 1 para ensayar, sin petición en vuelo | R60, R56 |
@@ -593,7 +598,7 @@ Contra la base fija `f97ec6e` (`dev` `7cc0bbb`, F-065 `done`, desplegada desde
 |---|---|---|
 | 1 | F-065 `done` y su base fija; el ensayo gana clave, bloque, motivos y errores; `GET /api/volcado` y `volcar`, sin cambios | `interface_adapters/api/volcado.py` 231–301; F-065 R49 |
 | 1.1 | La tabla de necesidades, sustituida por el contrato implementado: la ruta, su 200 (`volcado`, `reclamaciones`, `hallazgos`), los veredictos y su precedencia, los errores (el 503 sin `codigo`), el tiempo medido; la guarda del ensayo (cuerpo, exclusiones, `sigrid`, errores, la línea de log) y la diferencia ruta/guarda | `function_app.py` 1335–1361, 1642–1663, 1877–1961, 2063–2119; `sigrid_bandeja.py` 236–352; `domain/models/sigrid_bandeja.py` 127–137, 697–713; `guarda_sigrid.py` 96–223; `docs/INTEGRACION.md` 292–353; `progress/impl_F-065.md` T-A15 |
-| 2 | El paso 2 con `se_enlaza` en va (P-1), el porqué del choque, las no sincronizadas y la casilla por incidencia (P-2) | §1.1 |
+| 2 | El paso 2 con `se_enlaza` en va (P-1), el porqué del choque, las no sincronizadas y la casilla por incidencia (P-2); respuesta del humano 2026-10-31 | §1.1 |
 | 3.1 | `agruparSincronizacion`, `paraEnsayar`, `cuerpoDeEnsayo` con firma cerrada; nuevas `confirmadosDelTrozo`, `excluidasDeLaGuarda`, `textoVeredicto`, `textoPorque`; qué se ensaya lo decide la sincronización; sin `ficha` | §1.1 |
 | 3.2 | Paradas de la sincronización y del ensayo por la guarda, código a código | `function_app.py` 2096–2118, 1892–1915 |
 | 3.3 | `revisionSigrid`, con `mensajeDelServicio` y `sinReintentos` | `js/api.js` 280–320 (`peticion`) |
@@ -601,5 +606,6 @@ Contra la base fija `f97ec6e` (`dev` `7cc0bbb`, F-065 `done`, desplegada desde
 | 7 | Tests de R60–R62 contra la forma real | §1.1 |
 | 8 | Riesgos 9 y 10 con lo medido y la relectura de la guarda; riesgo 12 nuevo | `progress/impl_F-065.md` T-A15; F-065 §15.8 |
 
-Preguntas para el humano (no aplicadas como decisión; el texto lleva la
-recomendación): P-1 a P-3 en `progress/spec_F-040.md`.
+Preguntas P-1 a P-3 (`progress/spec_F-040.md`): **respuesta del humano
+2026-10-31**, las tres como se recomendaron, aplicadas en §1, §1.1, §2 y §3.1
+y en `tasks.md` (T5 bis, T6).

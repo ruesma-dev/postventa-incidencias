@@ -342,3 +342,17 @@ Ninguna se ha tomado como decidida.
   provocar el `choca` en la 0626 dentro de T5?; (b) ¿el cierre (T6, Bloque 3)
   espera a T5 bis o se cierra F-040 con T5 bis pendiente y se anota como
   hecha cuando el humano empiece la 0677?
+
+### Respuestas del humano (2026-10-31), ya aplicadas
+
+> spec-author, mismo worktree y rama. Las tres, como se recomendaron. Sin
+> tocar código ni tests; `init.sh` no se ha ejecutado.
+
+| Pregunta | Respuesta | Qué se cambió |
+|---|---|---|
+| P-1 | `se_enlaza` dentro de «va», marcada «se enlaza con RS…» y sumada al recuento de va | `requirements.md` cabecera, glosario, R61, §6; `design.md` cabecera, §1.1, §2, §3.1, §11 (marcas «(P-1, respuesta del humano 2026-10-31)») |
+| P-2 | Segundo clic de lo que choca **por incidencia** (una casilla con sus reclamaciones a la vista), **sin** «todas las de la unidad» | `requirements.md` R62, §6; `design.md` §2, §11 |
+| P-3 | T5 bis aparte, en la **0677**, solo ensayos (`commit: false`), con autorización expresa del humano en ese momento, sin volcar; **F-040 se cierra sin esperar a T5 bis**: se anota hecha cuando el humano empiece a registrar la 0677 | `tasks.md` cabecera, T0, T5 bis (ya no «pendiente de P-3»), T6 (no espera a T5 bis); `design.md` §1, §11 |
+
+Sin preguntas abiertas. Queda para el Bloque 1: `init.sh` sobre el merge
+(líder) y la validación del humano de la spec conciliada, si la pide aparte.

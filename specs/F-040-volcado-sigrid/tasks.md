@@ -18,8 +18,8 @@
 > humano cuando el panel esté operativo. Marcado «(2026-10-28)».
 >
 > **Conciliado con F-065 el 2026-10-31** (T0, base fija `f97ec6e`): T1, T5.2
-> y la **T5 bis** nueva (la T-A18 de F-065, pendiente de P-3 en
-> `progress/spec_F-040.md`).
+> y la **T5 bis** nueva (la T-A18 de F-065; P-3, respuesta del humano
+> 2026-10-31: aparte, en la 0677, solo ensayos, y el cierre no la espera).
 >
 > Rigor **`critico`**: RED con la traza pegada en `progress/impl_F-040.md`;
 > cobertura de lo cambiado; mutación: `harness.mutacion` no tiene `.py` de
@@ -38,6 +38,8 @@
   R60–R62 y `design.md` §1.1, §3.1, §3.2 y §3.3 con el contrato **implementado**
   de F-065, sin dejar nada pendiente de su spec; el humano lo valida (y
   responde P-1 a P-3 de `progress/spec_F-040.md`) antes del Bloque 1.
+  *(P-1 a P-3: respuesta del humano 2026-10-31, las tres como se
+  recomendaron.)*
   *(2026-10-31: base fija `f97ec6e`, que trae `dev` `7cc0bbb`; la spec,
   conciliada: `requirements.md` §6, `design.md` §11. Falta `init.sh` sobre
   el merge, que corre el líder, y la validación del humano.)* |
@@ -156,11 +158,13 @@
   Verificación: MANUAL (humano)
 - [ ] **T5 bis · MANUAL (humano) · la T-A18 de F-065** *(añadida el
   2026-10-31: aplazada por el humano al cerrar F-065, `specs/F-065-revision-sigrid-backend/tasks.md`
-  T-A18, y recogida aquí; dónde y cuándo, **pendiente de P-3**)*. Solo
+  T-A18, y recogida aquí; P-3, **respuesta del humano 2026-10-31**: aparte
+  de T5, en la 0677, y **F-040 se cierra sin esperarla**: se anota hecha
+  cuando el humano empiece a registrar la 0677)*. Solo
   **ensayos** (`commit: false`: no escribe en Sigrid; sí guarda eventos de
   ensayo en nuestra base) y con la autorización expresa del humano para esa
-  acción. En el **primer ensayo real de la 0677 con «Registrar»** (propuesta
-  de P-3; la 0626 no tiene ninguna candidata que choque):
+  acción **en ese momento**. En el **primer ensayo real de la 0677 con
+  «Registrar»** (la 0626 no tiene ninguna candidata que choque):
   1. Una incidencia que la sincronización da **choca**, ensayada **sin**
      marcar su casilla: sale en las excluidas con `conflicto_sin_confirmar` y
      su `sigrid_cod` (si era la única del trozo, `ensayo_id` nulo).
@@ -180,8 +184,8 @@
 
 ## Bloque 3 · El cierre de la ficha (con F-038 `done`, C-1)
 
-- [ ] **T6**: por encargo del líder, tras T5 (y T5 bis, si P-3 la deja
-  antes del cierre), el APROBADO del Bloque 1 **y con
+- [ ] **T6**: por encargo del líder, tras T5 (**no** espera a T5 bis: P-3,
+  respuesta del humano 2026-10-31), el APROBADO del Bloque 1 **y con
   F-038 `done`** (C-1, decidido el 2026-10-28), **un solo commit** con el
   cierre de R57 (restos de F-040 fuera de la maqueta —la lista de `design.md`
   §4, con los catálogos mudados y no borrados—, enlace a `bandeja.html`,

@@ -49,7 +49,7 @@
 
 ## Bloque 1 · El panel de volcado
 
-- [ ] **T1 · RED**: `tests_js/volcado.test.js` (`node --test`) con las
+- [x] **T1 · RED**: `tests_js/volcado.test.js` (`node --test`) con las
   funciones de `design.md` §3.1 —*(2026-10-28; conciliado 2026-10-31 con el
   contrato de §1.1)* `agruparSincronizacion` con los cuatro veredictos en va
   / ya existe / choca, el porqué de cada choque, `sinSincronizar` y el

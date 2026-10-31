@@ -202,6 +202,29 @@ function cuerpoDeAccionInventado() {
   };
 }
 
+/** F-040 · el cuerpo de `POST /api/volcado/ensayo` (el de F-059 y el opcional de F-065), inventado. */
+function cuerpoDeEnsayoInventado() {
+  return {
+    obra: "9901",
+    usuario_oid: "oid-inventado-para-el-test",
+    usuario_correo: "volcadora@ejemplo.invalid",
+    incidencias: [UUID_INVENTADO],
+    conflictos_confirmados: [{ incidencia_id: UUID_INVENTADO, sigrid_cods: ["RS26.10/9001"] }],
+  };
+}
+
+/** F-040 · el cuerpo de `POST /api/volcado/volcar`, inventado. */
+function cuerpoDeVolcadoInventado() {
+  return {
+    obra: "9901",
+    ensayo_id: "00000000-0000-4000-8000-0000000000e1",
+    usuario_oid: "oid-inventado-para-el-test",
+    usuario_correo: "volcadora@ejemplo.invalid",
+    confirmado: true,
+    incidencias: [{ incidencia_id: UUID_INVENTADO, revision_id: "00000000-0000-4000-8000-0000000000b1" }],
+  };
+}
+
 /** Todos, con su ruta y su metodo. La lista ES la asercion. */
 const LOS_ENDPOINTS = [
   { nombre: "salud", ruta: "/api/health", metodo: "GET", llamar: (api) => api.salud() },
@@ -228,6 +251,12 @@ const LOS_ENDPOINTS = [
   { nombre: "revision", ruta: "/api/revision?obra=9901", metodo: "GET", llamar: (api) => api.revision("9901") },
   { nombre: "historialRevision", ruta: `/api/revision/historial?incidencia_id=${UUID_INVENTADO}`, metodo: "GET", llamar: (api) => api.historialRevision(UUID_INVENTADO) },
   { nombre: "accionRevision", ruta: "/api/revision/acciones", metodo: "POST", llamar: (api) => api.accionRevision(cuerpoDeAccionInventado()) },
+  // F-040 T1 · el panel de volcado: las tres rutas de F-059 y la sincronización
+  // de F-065. Obra, UUID y correo inventados.
+  { nombre: "volcadoPanel", ruta: "/api/volcado?obra=9901", metodo: "GET", llamar: (api) => api.volcadoPanel("9901") },
+  { nombre: "volcadoEnsayo", ruta: "/api/volcado/ensayo", metodo: "POST", llamar: (api) => api.volcadoEnsayo(cuerpoDeEnsayoInventado()) },
+  { nombre: "volcadoVolcar", ruta: "/api/volcado/volcar", metodo: "POST", llamar: (api) => api.volcadoVolcar(cuerpoDeVolcadoInventado()) },
+  { nombre: "revisionSigrid", ruta: "/api/revision/sigrid?obra=9901", metodo: "GET", llamar: (api) => api.revisionSigrid("9901") },
 ];
 
 /** Un `.xlsx` de mentira: cuatro bytes que no son el libro de nadie. */
@@ -245,7 +274,7 @@ function cuerpoDeDecisionInventado() {
   };
 }
 
-test("f007 R27 / f019 / f009 / f012 / f028 / f036 / f038: los VEINTE endpoints llaman a su ruta, con su metodo", async () => {
+test("f007 R27 / f019 / f009 / f012 / f028 / f036 / f038 / f040: los VEINTICUATRO endpoints llaman a su ruta, con su metodo", async () => {
   for (const endpoint of LOS_ENDPOINTS) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
 
@@ -261,7 +290,13 @@ test("f007 R27 / f019 / f009 / f012 / f028 / f036 / f038: los VEINTE endpoints l
   }
 });
 
-test("f007 R27 / f036 / f038: son veinte, y la lista se entera si aparece otro", () => {
+test("f007 R27 / f036 / f038 / f040: son veinticuatro, y la lista se entera si aparece otro", () => {
+  // Enmienda del 2026-10-31 · F-040 T1: eran VEINTE (contados contra la base
+  // fija `f97ec6e`: F-065 no tocó el front) y pasan a VEINTICUATRO con las
+  // tres rutas del volcado de F-059 (`volcadoPanel`, `volcadoEnsayo`,
+  // `volcadoVolcar`) y la sincronización de F-065 (`revisionSigrid`),
+  // `design.md` §3.3 y §5 de F-040. No se quita ninguno.
+  //
   // Enmienda del 2026-10-20 · F-038 T1: eran DIECISIETE y pasan a VEINTE con
   // los tres de la bandeja de revisión (`revision`, `historialRevision` y
   // `accionRevision`, `design.md` §2.1 de F-038). No se quita ninguno.
@@ -289,7 +324,7 @@ test("f007 R27 / f036 / f038: son veinte, y la lista se entera si aparece otro",
   const auxiliares = ["peticion", "cuerpoDeParte", "identidad"];
   const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
 
-  assert.equal(endpoints.length, 20);
+  assert.equal(endpoints.length, 24);
   assert.deepEqual(endpoints.sort(), LOS_ENDPOINTS.map((e) => e.nombre).sort());
 });
 
@@ -1484,6 +1519,173 @@ test("f038 R15/R26: las tres trazan su paso propio, y nada mas que hash, paso, e
         [],
         "ni el cuerpo, ni el correo, ni el oid pasan por la traza",
       );
+      assert.doesNotMatch(JSON.stringify(trazas), /ejemplo\.invalid|oid-inventado/);
+    }
+  }
+});
+
+// --- F-040 · el panel de volcado ---------------------------------------------------
+//
+// Las tres rutas de F-059 (`design.md` §1 de F-040) y la sincronización de
+// F-065 (§1.1), con las reglas de §3.3:
+//
+// - **El texto es el del servicio**, también en un 503 (`mensajeDelServicio`):
+//   el 503 de la sincronización llega SIN `codigo` y su texto es el que vale.
+// - **El ensayo, el volcado y la sincronización no se reintentan nunca solos**
+//   (`sinReintentos`): por defecto `peticion` repite dos veces un 502 o un
+//   corte, y en un volcado ese sería el reintento que R53 prohíbe contra el ERP
+//   de producción; la sincronización la repite la persona con otro «Registrar».
+// - **`volcadoPanel` es una lectura** y reintenta lo transitorio, como `revision`.
+
+test("f040 R50: volcadoPanel pide GET /api/volcado con la obra escapada, sin cuerpo", async () => {
+  const { api, llamadas } = apiDePrueba([respuesta(200, { obra: "9901", partes_por_llamada: 5 })]);
+
+  const datos = await api.volcadoPanel("9901");
+
+  assert.equal(llamadas[0].url, "/api/volcado?obra=9901");
+  assert.equal(llamadas[0].opciones.method, "GET");
+  assert.equal(llamadas[0].opciones.body, undefined);
+  assert.equal(datos.partes_por_llamada, 5);
+
+  const otra = apiDePrueba([respuesta(200, {})]);
+  await otra.api.volcadoPanel("99&obra=1");
+  assert.equal(otra.llamadas[0].url, "/api/volcado?obra=99%26obra%3D1");
+});
+
+test("f040 R60: revisionSigrid pide GET /api/revision/sigrid con la obra escapada, sin cuerpo", async () => {
+  const { api, llamadas } = apiDePrueba([respuesta(200, { obra: "9901", volcado: { veredictos: [] } })]);
+
+  const datos = await api.revisionSigrid("9901");
+
+  assert.equal(llamadas[0].url, "/api/revision/sigrid?obra=9901");
+  assert.equal(llamadas[0].opciones.method, "GET");
+  assert.equal(llamadas[0].opciones.body, undefined);
+  assert.deepEqual(datos.volcado, { veredictos: [] });
+
+  const otra = apiDePrueba([respuesta(200, {})]);
+  await otra.api.revisionSigrid("99&obra=1");
+  assert.equal(otra.llamadas[0].url, "/api/revision/sigrid?obra=99%26obra%3D1");
+});
+
+test("f040 R51, R52, R62: volcadoEnsayo y volcadoVolcar mandan el cuerpo JSON tal cual y devuelven la respuesta", async () => {
+  for (const [llamar, ruta, cuerpo] of [
+    [(api) => api.volcadoEnsayo(cuerpoDeEnsayoInventado()), "/api/volcado/ensayo", cuerpoDeEnsayoInventado()],
+    [(api) => api.volcadoVolcar(cuerpoDeVolcadoInventado()), "/api/volcado/volcar", cuerpoDeVolcadoInventado()],
+  ]) {
+    const { api, llamadas } = apiDePrueba([respuesta(200, { obra: "9901", partes: [] })]);
+
+    const datos = await llamar(api);
+
+    assert.equal(llamadas[0].url, ruta);
+    assert.equal(llamadas[0].opciones.method, "POST");
+    assert.equal(llamadas[0].opciones.headers["Content-Type"], "application/json");
+    assert.deepEqual(JSON.parse(llamadas[0].opciones.body), cuerpo);
+    assert.deepEqual(datos, { obra: "9901", partes: [] });
+  }
+});
+
+test("f040 R53, R60: volcadoEnsayo, volcadoVolcar y revisionSigrid NO se reintentan: ni un 502, ni la red, ni el corte", async () => {
+  const lasTres = [
+    ["volcadoEnsayo", (api) => api.volcadoEnsayo(cuerpoDeEnsayoInventado())],
+    ["volcadoVolcar", (api) => api.volcadoVolcar(cuerpoDeVolcadoInventado())],
+    ["revisionSigrid", (api) => api.revisionSigrid("9901")],
+  ];
+  const abortado = new Error("abortada a los 40 s");
+  abortado.name = "AbortError";
+  for (const [nombre, llamar] of lasTres) {
+    for (const paso of [respuesta(502, { error: "proxy caido, inventado" }), new TypeError("Failed to fetch"), abortado]) {
+      const { api, llamadas, esperas, trazas } = apiDePrueba([paso, respuesta(200, {})]);
+
+      await assert.rejects(() => llamar(api), (error) => {
+        if (paso instanceof Error) {
+          assert.equal(error.http, null, `${nombre}: sin respuesta del servicio, http null`);
+          assert.doesNotMatch(error.mensaje, /reintentando/i, `${nombre}: no dice que reintenta`);
+        }
+        return true;
+      });
+
+      assert.equal(llamadas.length, 1, `${nombre}: una peticion, ni una mas`);
+      assert.deepEqual(esperas, [], nombre);
+      assert.ok(trazas.every((t) => t.estado !== "reintentando"), nombre);
+    }
+  }
+});
+
+test("f040 R50: volcadoPanel es una lectura: reintenta lo transitorio, como revision", async () => {
+  const { api, llamadas, esperas } = apiDePrueba([respuesta(502, { error: "transitorio" }), respuesta(200, { obra: "9901" })]);
+
+  const datos = await api.volcadoPanel("9901");
+
+  assert.equal(llamadas.length, 2);
+  assert.deepEqual(esperas, [1000]);
+  assert.equal(datos.obra, "9901");
+});
+
+test("f040 R54, R60: un 503 de las cuatro ensena el texto del servicio (con o sin codigo), no la puerta de archivar", async () => {
+  const casos = [
+    (api) => api.volcadoPanel("9901"),
+    (api) => api.volcadoEnsayo(cuerpoDeEnsayoInventado()),
+    (api) => api.volcadoVolcar(cuerpoDeVolcadoInventado()),
+    (api) => api.revisionSigrid("9901"),
+  ];
+  for (const cuerpo of [
+    { error: "No se ha podido leer Sigrid, inventado." },
+    { error: "La ventana del volcado esta cerrada, inventado.", codigo: "volcado_deshabilitado" },
+  ]) {
+    for (const llamar of casos) {
+      const { api } = apiDePrueba([respuesta(503, cuerpo)]);
+
+      await assert.rejects(() => llamar(api), (error) => {
+        assert.equal(error.http, 503);
+        assert.equal(error.mensaje, cuerpo.error);
+        assert.equal(error.codigo, cuerpo.codigo || null);
+        assert.deepEqual(error.detalle, cuerpo);
+        assert.doesNotMatch(error.mensaje, /entorno no archiva/i);
+        return true;
+      });
+    }
+  }
+});
+
+test("f040 R53: el error del volcado trae su codigo y lo propio del cuerpo (en_duda, motivo, filas, codigo_pasarela) en `detalle`", async () => {
+  const cuerpos = [
+    { http: 502, cuerpo: { error: "x", codigo: "volcado_sin_respuesta", en_duda: [UUID_INVENTADO] } },
+    { http: 409, cuerpo: { error: "x", codigo: "ensayo_no_valido", motivo: "caducado" } },
+    { http: 409, cuerpo: { error: "x", codigo: "reclamaciones_sin_verificar", filas: 5001 } },
+    { http: 409, cuerpo: { error: "x", codigo: "volcado_rechazado_por_la_pasarela", codigo_pasarela: "obra_no_encontrada" } },
+  ];
+  for (const { http, cuerpo } of cuerpos) {
+    const { api } = apiDePrueba([respuesta(http, cuerpo)]);
+
+    await assert.rejects(() => api.volcadoVolcar(cuerpoDeVolcadoInventado()), (error) => {
+      assert.equal(error.http, http);
+      assert.equal(error.codigo, cuerpo.codigo);
+      assert.deepEqual(error.detalle, cuerpo);
+      return true;
+    });
+  }
+});
+
+test("f040 R55: las cuatro trazan su paso propio, y nada mas que hash, paso, estado y http", async () => {
+  const casos = [
+    { llamar: (api) => api.volcadoPanel("9901"), paso: "volcado_panel" },
+    { llamar: (api) => api.volcadoEnsayo(cuerpoDeEnsayoInventado()), paso: "volcado_ensayo" },
+    { llamar: (api) => api.volcadoVolcar(cuerpoDeVolcadoInventado()), paso: "volcado_volcar" },
+    { llamar: (api) => api.revisionSigrid("9901"), paso: "revision_sigrid" },
+  ];
+  for (const caso of casos) {
+    for (const guion of [[respuesta(200, {})], [respuesta(409, { error: "x", codigo: "obra_ambigua" })]]) {
+      const { api, trazas } = apiDePrueba(guion);
+
+      try {
+        await caso.llamar(api);
+      } catch (error) {
+        // el 409: lo que importa aqui es la traza
+      }
+      const evento = trazas[trazas.length - 1];
+
+      assert.equal(evento.paso, caso.paso);
+      assert.deepEqual(Object.keys(evento).filter((k) => ["hash", "paso", "estado", "http"].indexOf(k) === -1), []);
       assert.doesNotMatch(JSON.stringify(trazas), /ejemplo\.invalid|oid-inventado/);
     }
   }

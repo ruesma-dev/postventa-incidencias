@@ -316,7 +316,7 @@
 
 ## Bloque A7 · Publicar y verificar en producción (MANUAL, humano; solo lectura)
 
-- [ ] **T-A11 · MANUAL (humano)**: merge normal a `dev` desde un worktree
+- [x] **T-A11 · MANUAL (humano)**: merge normal a `dev` desde un worktree
   aparte (el líder) y publicar el backend desde un worktree limpio de `dev`,
   con los mismos parámetros que el último despliegue:
   ```
@@ -327,12 +327,12 @@
   Sin DDL. Anotar el commit publicado. **Vuelta atrás**: publicar el anterior
   con el mismo mecanismo; es segura (las rutas solo leen y no dejan nada). |
   Verificación: MANUAL (humano)
-- [ ] **T-A12 · MANUAL (humano)**, **antes**: el script 29 para la 0677 y la
+- [x] **T-A12 · MANUAL (humano)**, **antes**: el script 29 para la 0677 y la
   0626 (los dos primeros comandos de T-A0); y en la consola del navegador (F12)
   en una pestaña del front publicado:
   `fetch('/api/revision?obra=0677').then(r => r.json()).then(d => console.log(JSON.stringify(d.resumen)))`.
   Solo recuentos. | Verificación: MANUAL (humano)
-- [ ] **T-A13 · MANUAL (humano)**, el listado, en la misma consola:
+- [x] **T-A13 · MANUAL (humano)**, el listado, en la misma consola:
   ```
   fetch('/api/revision/sigrid?obra=0677').then(r => r.json()).then(d => console.log(JSON.stringify(d.resumen)))
   fetch('/api/revision/sigrid?obra=0626').then(r => r.json()).then(d => console.log(JSON.stringify({resumen: d.resumen, emparejadas: d.reclamaciones.filter(x => x.incidencia_id).map(x => x.cod), hallazgos: d.hallazgos.map(h => [h.tipo, h.severidad, h.sigrid_cod])})))
@@ -341,7 +341,7 @@
   Posventa, anotada por estado); en la 0626, `RS26.10/0074` sale emparejada y
   sin `volcada_no_encontrada`, y `RS26.09/0439` con `referencia_desconocida`.
   Anotar solo recuentos y códigos `RS`. | Verificación: MANUAL (humano)
-- [ ] **T-A14 · MANUAL (humano)**, la cabecera, los datos y los errores, sin
+- [x] **T-A14 · MANUAL (humano)**, la cabecera, los datos y los errores, sin
   copiar ningún valor a las notas:
   ```
   fetch('/api/revision/sigrid?obra=0626').then(r => { console.log(r.status, r.headers.get('cache-control')); return r.json(); }).then(d => console.log(JSON.stringify(Object.keys(d.reclamaciones[0].ficha).map(k => [k, d.reclamaciones.filter(x => x.ficha[k] !== null).length]))))
@@ -349,7 +349,7 @@
   ```
   Pasa con `200 no-store`, la lista de **nombres** de campo de R33 con cuántas
   reclamaciones lo traen (sin ningún valor), y `400`. | Verificación: MANUAL (humano)
-- [ ] **T-A15 · MANUAL (humano)**, tiempos y logs: diez cargas de la 0677; en Application Insights (Logs):
+- [x] **T-A15 · MANUAL (humano)**, tiempos y logs: diez cargas de la 0677; en Application Insights (Logs):
   ```
   traces
   | where timestamp > ago(1h)
@@ -360,9 +360,9 @@
   Anotar p50 y máximo de la ruta, de `sigrid.leer` y los bytes, y comprobar que
   **ninguna** línea lleva un texto, un nombre, un teléfono, un correo, una
   referencia, un código `RS` ni un `oid`. | Verificación: MANUAL (humano)
-- [ ] **T-A16 · MANUAL (humano)**, **después**: repetir T-A12; mismos
+- [x] **T-A16 · MANUAL (humano)**, **después**: repetir T-A12; mismos
   recuentos salvo la actividad de Posventa. | Verificación: MANUAL (humano)
-- [ ] **T-A17 · MANUAL (humano)** *(nuevo, 2026-10-28; si S-1)*, solo lectura,
+- [x] **T-A17 · MANUAL (humano)** *(nuevo, 2026-10-28; si S-1)*, solo lectura,
   el bloque de la sincronización, en la consola del front publicado:
   ```
   fetch('/api/revision/sigrid?obra=0677').then(r => r.json()).then(d => console.log(JSON.stringify({candidatas: d.volcado.candidatas, por_veredicto: d.volcado.por_veredicto, por_unidad: d.volcado.por_unidad})))

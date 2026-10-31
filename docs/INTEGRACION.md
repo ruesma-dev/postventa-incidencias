@@ -1,12 +1,14 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-10-30. **Última feature que
+> **Origen**: este repositorio. **Fecha**: 2026-10-31. **Última feature que
 > lo tocó**: F-065, las reclamaciones de Sigrid en la revisión —la ruta
 > `GET /api/revision/sigrid`, una cuarta lectura de `sigrid-api`, con datos
 > personales que se enseñan y no se guardan, y la **guarda del ensayo**, que
-> relee Sigrid antes de mandar nada (§1, §4, §6, §7, §8 y §9)—, implementada
-> en su rama y pendiente de publicar. Ninguna tabla, ni variable, ni escritura.
+> relee Sigrid antes de mandar nada (§1, §4, §6, §7, §8 y §9)—, **desplegada
+> el 2026-10-31 desde `dev` `ed590bd`** y verificada en solo lectura (T-A11 a
+> T-A17); T-A18 pendiente (el ensayo con la guarda). Ninguna tabla, ni
+> variable, ni escritura.
 > Antes, F-038, la página de revisión de la bandeja en el front
 > —`bandeja.html`, que consume las tres rutas de F-056 ya documentadas y no
 > añade rutas, ni variables, ni tablas, ni lecturas de Sigrid (§8)—,
@@ -232,7 +234,8 @@ puntual. **Nada se escribe en Sigrid.** El diseño, en
 
 ### Con F-065 · la cuarta lectura: las reclamaciones de la obra
 
-**F-065** (2026-10-30; implementada en su rama y pendiente de publicar) enseña
+**F-065** (2026-10-30; desplegada el 2026-10-31 desde `dev` `ed590bd` y
+verificada en solo lectura, T-A11 a T-A17; T-A18 pendiente) enseña
 en la revisión lo que **ya hay en Sigrid** y lo cruza con la bandeja, en una
 ruta aparte, `GET /api/revision/sigrid?obra=` (§8). Es una **cuarta lectura**
 por `POST /api/sql/read`, parametrizada, y **ninguna escritura**.
@@ -1924,7 +1927,7 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | Normalizar las ubicaciones | F-060 | **Desplegada** el 2026-10-13 y verificada en el entorno el 2026-10-14 (T26 y T27): la ruta `POST /api/revision/normalizar` existe, la importación normaliza tras registrar filas y el listado deja la línea de tiempos. Lo que aún no está es la velocidad del listado: tras la importación diferida del Bloque 7, la medición M2 (T35) da en caliente p50 5,00 s y máximo 13,21 s, por encima del objetivo (máximo < 10 s, p50 < 3 s); lo que falta, sobre todo las lecturas lentas de `sigrid-api`, va a **F-061** |
 | La revisión de la bandeja | F-056 | **Desplegada** el 2026-10-09 y verificada en el entorno (T19): las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` y la tabla `postventa.revisiones_bandeja` (la crea el DDL al arrancar) ya existen. Lo que aún no está: sin la página de **F-038** solo se puede usar llamando a las rutas; nada de lo aprobado llega a Sigrid hasta **F-040** |
 | El volcado a Sigrid | F-059 | **Desplegada el 2026-10-17** (desde `dev` `81049bc`) y **verificada en producción el 2026-10-19** en la obra 0626 (T25 y T26): **un** parte de prueba, autorizado, creado con la ventana abierta y anulado después desde la UI de Sigrid (NO PROCEDE). Las rutas `/api/volcado`, `/api/volcado/ensayo` y `/api/volcado/volcar` y la tabla `postventa.volcados_sigrid` existen en el entorno desplegado. La ventana `VOLCADO_HABILITADO` queda **cerrada** (D-3; cada despliegue la cierra) y se abre para cada volcado con `infra/27_ventana_volcado.ps1`. Lo que aún no está: sin la página de **F-040**, solo se puede volcar llamando a las rutas |
-| Las reclamaciones de Sigrid en la revisión | F-065 | **Pendiente de publicar** (`tasks.md`, Bloque A7): la ruta `GET /api/revision/sigrid` y la guarda del ensayo existen en su rama. Sin ninguna tabla ni variable. Hasta la página de **F-064** y el panel de **F-040**, solo se puede usar llamando a las rutas |
+| Las reclamaciones de Sigrid en la revisión | F-065 | **Desplegada el 2026-10-31** (desde `dev` `ed590bd`) y **verificada en solo lectura** (T-A11 a T-A17, `tasks.md` Bloque A7): la ruta `GET /api/revision/sigrid` y la guarda del ensayo existen en el entorno desplegado. Falta **T-A18**, un ensayo en la 0626 con la guarda, que espera la autorización expresa del humano. Sin ninguna tabla ni variable. Hasta la página de **F-064** y el panel de **F-040**, solo se puede usar llamando a las rutas |
 
 > **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo
 > cierta: F-013 está implementada en su rama y **no desplegada**. Deja de

@@ -1,8 +1,15 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-10-21. **Última feature que
-> lo tocó**: F-038, la página de revisión de la bandeja en el front
+> **Origen**: este repositorio. **Fecha**: 2026-10-31. **Última feature que
+> lo tocó**: F-065, las reclamaciones de Sigrid en la revisión —la ruta
+> `GET /api/revision/sigrid`, una cuarta lectura de `sigrid-api`, con datos
+> personales que se enseñan y no se guardan, y la **guarda del ensayo**, que
+> relee Sigrid antes de mandar nada (§1, §4, §6, §7, §8 y §9)—, **desplegada
+> el 2026-10-31 desde `dev` `ed590bd`** y verificada en solo lectura (T-A11 a
+> T-A17); T-A18 pendiente (el ensayo con la guarda). Ninguna tabla, ni
+> variable, ni escritura.
+> Antes, F-038, la página de revisión de la bandeja en el front
 > —`bandeja.html`, que consume las tres rutas de F-056 ya documentadas y no
 > añade rutas, ni variables, ni tablas, ni lecturas de Sigrid (§8)—,
 > implementada en su rama; se publica con su T6.
@@ -51,7 +58,7 @@
 | Recurso | Compartido con | Qué hacemos | Desde |
 |---|---|---|---|
 | PostgreSQL `psql-albaranes-rs9k2` | `albaranes`, `partes`, `datamart-seg-anual` | Base propia `postventa`: estado de remesas, partes, validaciones, archivo, cierres y el **histórico de estado** de cada parte (F-028); desde **F-036**, las importaciones del Excel de la propiedad, la **bandeja de incidencias** y las decisiones sobre oficios casi duplicados; desde **F-056**, la **revisión** de esa bandeja (append-only, con el correo de quien revisa); desde **F-059**, los **eventos del volcado** a Sigrid (append-only, con el correo de quien vuelca) | **F-005** / **F-036** / **F-056** / **F-059** |
-| `sigrid-api` | todo el ecosistema | Lectura de la reclamación **y DOS ESCRITURAS en el ERP de producción**: el **parte adjunto como gráfico** —`POST /api/sigrid/concepto-grafico`, tres filas en dos bases— y el **cierre** —`con.est` al estado de cierre y su fila de auditoría en `dbo.log`—. Solo desde el entorno desplegado y con el interruptor encendido. Desde **F-036**, además, **dos lecturas del catálogo de una obra** (sus unidades y sus oficios con proveedor), solo por `sql/read`; desde **F-056**, una **tercera lectura**, las **ubicaciones válidas** de la tipología de cada unidad, también solo por `sql/read`; desde **F-059**, una **TERCERA ESCRITURA**: la creación de **partes de reclamación** —`POST /api/sigrid/partes-reclamacion`, en lote, con ensayo previo y con su propia ventana— (§3 bis) | F-008 / **F-009** / **F-012** / **F-036** / **F-056** / **F-059** |
+| `sigrid-api` | todo el ecosistema | Lectura de la reclamación **y DOS ESCRITURAS en el ERP de producción**: el **parte adjunto como gráfico** —`POST /api/sigrid/concepto-grafico`, tres filas en dos bases— y el **cierre** —`con.est` al estado de cierre y su fila de auditoría en `dbo.log`—. Solo desde el entorno desplegado y con el interruptor encendido. Desde **F-036**, además, **dos lecturas del catálogo de una obra** (sus unidades y sus oficios con proveedor), solo por `sql/read`; desde **F-056**, una **tercera lectura**, las **ubicaciones válidas** de la tipología de cada unidad, también solo por `sql/read`; desde **F-059**, una **TERCERA ESCRITURA**: la creación de **partes de reclamación** —`POST /api/sigrid/partes-reclamacion`, en lote, con ensayo previo y con su propia ventana— (§3 bis). **Desde F-065**, una **cuarta lectura**, las **reclamaciones de la obra** con datos personales, solo por `sql/read`, y la **guarda del ensayo**, que relee por unidades sin ellos | F-008 / **F-009** / **F-012** / **F-036** / **F-056** / **F-059** / **F-065** |
 | SharePoint (Graph) | IT | Archivo de los PDF validados | F-006 |
 | Gemini | — | Extracción multimodal y clasificación de firma | F-003 |
 | Entra ID | todo el ecosistema | Autenticación del front y de la tarjeta del portal | F-010 |
@@ -224,6 +231,126 @@ que solo difieren en mayúsculas (§2). **Volumen**: una lectura más por cada
 importación con filas, y tres por cada llamada a la ruta nueva, que es de uso
 puntual. **Nada se escribe en Sigrid.** El diseño, en
 `specs/F-060-normalizar-ubicaciones/` (§5 y §9).
+
+### Con F-065 · la cuarta lectura: las reclamaciones de la obra
+
+**F-065** (2026-10-30; desplegada el 2026-10-31 desde `dev` `ed590bd` y
+verificada en solo lectura, T-A11 a T-A17; T-A18 pendiente) enseña
+en la revisión lo que **ya hay en Sigrid** y lo cruza con la bandeja, en una
+ruta aparte, `GET /api/revision/sigrid?obra=` (§8). Es una **cuarta lectura**
+por `POST /api/sql/read`, parametrizada, y **ninguna escritura**.
+
+- **Qué lee.** **Todas** las reclamaciones de la obra, **de cualquier estado y
+  de cualquier fecha**: las del tipo de concepto `SIGRID_TIP_RECLAMACION` (708)
+  cuya unidad de posventa es de una obra con ese código literal y recortado,
+  el mismo filtro de las lecturas de F-036. Parte de `dbo.rcp` y une `dbo.con`,
+  `dbo.upv`, `dbo.conest`, `dbo.auxofc`, `dbo.auxtrcp`, `dbo.auxrcp` y
+  `dbo.per`; y, de `dbo.conext`, el campo `RCPCLI`, solo si empieza por `PVI-`.
+  El estado se lee **por su código contra `dbo.conest`**, nunca por número.
+- **Qué se sirve.** De cada reclamación, su código, estado, fecha, unidad,
+  ubicación, oficio, tipo, descripción y la referencia `PVI-`; y una `ficha` con
+  una **lista cerrada**: la descripción larga, el motivo, la urgencia, la forma
+  de comunicación, la fecha prevista de nueva visita, la solución, la clase,
+  los teléfonos y el correo de avisos de la reclamación, el nombre del
+  **propietario**, y el nombre, los teléfonos y el correo de la **persona que
+  reclama** y de la **persona de contacto**. Ampliarla es una decisión del
+  humano.
+- **Hay datos personales**, de clientes, y se enseñan **a propósito**: la
+  página los necesita para buscar y filtrar. Solo en la respuesta de esta
+  ruta, detrás de la sesión del grupo de Posventa y con `Cache-Control:
+  no-store`. Se leen en cada petición y **no se guardan ni en nuestra base, ni
+  en ningún log, ni en el repositorio**. **Nunca** se leen `per.dni`, las
+  credenciales de i-Sigrid (`per.esiglog`, `per.esigpas`, `per.clamai`), las
+  direcciones ni las observaciones de la persona, ni sale ningún `ide`. El
+  detalle, en §7.
+- **Cuándo.** Se hace **una vez por petición**, después de la única lectura de la base
+  y sin caché entre peticiones. Si la bandeja pasa de 10.000 incidencias es 409
+  `bandeja_demasiado_grande`, **sin leer Sigrid**.
+- **El techo y los errores.** Pide `max_rows` a **500.000**, el
+  `MAX_ALLOWED_ROWS` de la instancia desplegada de la pasarela (§4.1 de
+  `sigrid_api.md`), y comprueba `truncated`. Con `truncated`, o con ese número
+  de filas, es 409 `reclamaciones_sin_verificar` con las `filas` y **sin
+  calcular ningún conflicto**: nunca conflictos a medias. Filas de dos obras:
+  409 `obra_ambigua`. Si la pasarela no responde o responde mal formado, **503**
+  sin nada a medias. Lo transitorio se reintenta, como en toda lectura.
+- **Las puertas**, las de F-036: `ENTORNO` en `dev` o `pro` y la configuración
+  de la pasarela. Y **no mira ninguna ventana de escritura**
+  (`CIERRE_HABILITADO`, `ARCHIVO_HABILITADO` ni `VOLCADO_HABILITADO`).
+- **Volumen.** Una lectura por cada petición de una persona; ningún proceso por
+  lotes.
+
+El SQL exacto vive en
+`services/postventa-api/infrastructure/sigrid/consultas_reclamaciones_obra.py`
+y un test lo fija carácter a carácter; se mide en seco, solo con recuentos, con
+`infra/29_reclamaciones_obra_sigrid.ps1`. El diseño, en
+`specs/F-065-revision-sigrid-backend/`.
+
+**Para el dueño de `sigrid-api`**: F-065 **no pide ningún cambio**; depende de
+que `sql/read` siga aceptando `max_rows` 500.000: por debajo, la pasarela rechaza
+la petición, y es 503 en todas las obras (§6).
+
+### Con F-065 · la guarda del ensayo
+
+Desde F-065, el ensayo de F-059 (`POST /api/volcado/ensayo`) **lee Sigrid una
+vez más** antes de mandar nada: lo que dedicación hace antes de escribir, leer
+lo que ya hay y no duplicar. Es lo que garantiza en el **backend** la regla del
+botón «Registrar» de F-040. `sigrid-api` no cambia, y su idempotencia por `PVI-`
+sigue siendo la última defensa.
+
+- **Qué lee.** Una lectura, **solo `sql/read`**, **por unidades** (las de lo que se va a
+  mandar, de 1 a 50, cada una por marcador) y **sin la `ficha`**: ni
+  nombres, ni teléfonos, ni correos. Sí lee dos textos libres de Sigrid,
+  `con.res` y `rcp.resubi`, porque el cruce los compara: se quedan en la
+  **memoria de la petición**, y no salen ni en la respuesta del ensayo ni en su
+  log. Con el mismo techo.
+- **Cuándo.** Va **después de la selección** de F-059 y **antes del login** de
+  Sigrid y del lote; si la selección no deja nada que mandar, no lee. Con la
+  lectura del login y el lote, son tres llamadas a la pasarela por ensayo.
+- **El veredicto.** Cada candidata recibe uno, calculado por la **misma**
+  función del dominio en la ruta de §8 y en el ensayo:
+
+  | Veredicto | Cuándo | En el ensayo |
+  |---|---|---|
+  | `se_enlaza` | Emparejada por `PVI-` con una reclamación en `PTE`, `SAT`, `TER` o `CER` | Se manda: la pasarela no puede crear otro parte |
+  | `ya_existe` | Una reclamación abierta (`SAT`, `PTE`) casa con los dos criterios de coincidencia | Se excluye con `duplicada_en_sigrid` |
+  | `choca` | La emparejada no se puede enlazar, o hay otro conflicto | Se excluye con `conflicto_sin_confirmar` si falta confirmar alguno de sus códigos |
+  | `va` | Todo lo demás, también con avisos de reincidencia | Se manda |
+
+- **La función es la misma y la lectura no.** La ruta lee toda la obra, y la
+  guarda solo las unidades de lo que se manda; así que **el bloque `volcado` de
+  la ruta y la guarda pueden diferir** en un caso: **una referencia `PVI-` en
+  otra unidad**. Si es la única, la ruta da `se_enlaza` y la guarda, `va`; si es
+  la de código mayor y está anulada, la ruta da `choca` y la guarda, `se_enlaza`.
+  Ese caso lo para la pasarela: con otra UPV, o con más de una, el parte vuelve `rechazado`
+  con `referencia_en_conflicto`.
+- **La regla de la emparejada.** La emparejada **solo se enlaza en PTE, SAT, TER
+  o CER**; **en NPR, con un estado desconocido o vacío da `choca`**, con solo su
+  código, y exige la **confirmación explícita**, aunque tenga además otras
+  coincidencias: si no se sabe en qué estado está el parte, lo mira una persona.
+- **La confirmación.** Una clave opcional del cuerpo, `conflictos_confirmados`,
+  por incidencia y con los códigos: hay que confirmar **todos** los de su
+  veredicto, también uno que apareció después de sincronizar. Un `ya_existe` no
+  se puede confirmar. Una confirmación mal formada es 400 antes de construir
+  nada. **La confirmación no se guarda** en la base: consta en el log.
+- **Los dos motivos de exclusión nuevos**, `duplicada_en_sigrid` y
+  `conflicto_sin_confirmar`, salen en las `excluidas` de siempre, con un código en
+  `sigrid_cod`: en `duplicada_en_sigrid`, el primero de su veredicto; en
+  `conflicto_sin_confirmar`, el primero sin confirmar. Si no queda nada que mandar, es la respuesta de «nada
+  que mandar» de F-059 (`ensayo_id: null`), sin login ni lote.
+- **Los tres códigos de error nuevos** del ensayo, y con ellos **ni login, ni
+  lote, ni ensayo guardado**: 503 `sigrid_no_disponible`; 409
+  `reclamaciones_sin_verificar`, con las `filas`; y 409 `obra_ambigua`.
+  **Sigrid caída = no se ensaya**, y **sin interruptor** que apague la guarda.
+- **La respuesta** 200 gana un bloque aditivo `sigrid`, con los veredictos de
+  lo que pasó por la guarda, o `null` si no leyó. Las claves de F-059 no cambian.
+- **Los logs.** Una línea `F-065 guarda del ensayo` por lectura: recuentos y
+  segundos, **ni un código de reclamación**, ni un texto, ni ningún dato personal.
+- **Lo que no cambia.** **`POST /api/volcado/volcar` y `GET /api/volcado` no
+  cambian**: el volcado solo manda lo que un ensayo vigente dio `previsto`, así
+  que lo excluido no puede volcarse. Riesgo aceptado: en los 30 minutos entre
+  ensayo y volcado, `volcar` no relee Sigrid.
+
+El diseño, en `specs/F-065-revision-sigrid-backend/` (`design.md` §15).
 
 ## 2 · La base de datos: qué pedimos y qué no tocamos
 
@@ -1267,6 +1394,13 @@ El volcado usa además la configuración de Sigrid de la tabla «Las de Sigrid»
 nuevas tiene valor en el repositorio más allá de su defecto: `.env.example` y
 `local.settings.json.example` las llevan con el mismo.
 
+### Las de F-065: ninguna
+
+F-065 no añade ninguna variable de entorno. La cuarta lectura y la guarda del
+ensayo usan la configuración de Sigrid de la tabla «Las de Sigrid», con
+`SIGRID_TIP_RECLAMACION`, `SIGRID_TIMEOUT_S` y `SIGRID_REINTENTOS`, y ninguna
+mira una ventana de escritura. La guarda no tiene interruptor.
+
 ## 5 · Qué le hacemos al servidor compartido, en números
 
 Los tres límites que importan, y por qué nos importan:
@@ -1321,6 +1455,8 @@ incidencia, código de obra y remesa.
 | La pasarela `sigrid-api` cae, no responde o baja el techo de `sql/read` (**F-056**) | El listado para revisar y las acciones **editar** y **aprobar** responden **503** (o **409** `catalogo_sin_verificar` al techo) y no escriben nada; **descartar**, **recuperar** y el historial siguen funcionando, porque solo usan nuestra base | Es del dueño de `sigrid-api`; avisar antes |
 | La pasarela `sigrid-api` o la base fallan al normalizar tras una importación (**F-060**) | **Nada visible**: la importación ya está guardada y responde exactamente igual; la normalización no se hace y queda un aviso en el log con la obra y el **tipo** del error. Lo que no se normalizó sigue saliendo como `ubicacion_fuera_de_lista` y lo recoge la siguiente importación o `POST /api/revision/normalizar`, que con la pasarela o la base caídas responde **503** sin escribir nada | Es de mejor esfuerzo; se ve en el log |
 | Alguien cambia en Sigrid las ubicaciones de una tipología, o la tipología de una unidad (**F-056**) | Una incidencia ya aprobada **sigue aprobada** —y candidata al volcado— con la ubicación de aquel día, aunque el listado le enseñe ya `ubicacion_fuera_de_lista`; para sacarla de las candidatas basta editarla. Las demás se validan contra la lista nueva. La comparación es exacta: corregir una errata en Sigrid también cuenta como cambio | Es de Sigrid; se ve al revisar |
+| Baja `MAX_ALLOWED_ROWS` de `sql/read` en `sigrid-api` por debajo de 500.000 (**F-065**) | La pasarela **rechaza** con 400 todo `max_rows` mayor que su tope, y pedimos siempre 500.000: `GET /api/revision/sigrid` responde **503**, y el ensayo, **503** `sigrid_no_disponible`, en **todas las obras**, tengan las reclamaciones que tengan, y **no se ensaya**. El 1.000 por defecto del código de la pasarela nos deja igual | Es del dueño de `sigrid-api`; avisar antes |
+| La pasarela `sigrid-api` cae o no responde (**F-065**) | **503** en `GET /api/revision/sigrid` y **503** `sigrid_no_disponible` en el ensayo: **no se ensaya**, y por tanto no se vuelca. Como en la fila de F-056, el listado de revisión, editar y aprobar también responden 503. Siguen el panel, descartar, recuperar y el historial, que solo miran la base | Es lo esperado: sin Sigrid no se registra nada |
 
 Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
 las reglas de §2. La única superficie compartida real es el **disco** y el
@@ -1433,6 +1569,31 @@ el nombre, ni el login del ERP.
 >   pasarela. El servicio **no manda** propietario ni persona: los copia la
 >   pasarela de la UPV.
 
+> **Enmienda del 2026-10-30 (F-065) · los datos de cliente de las reclamaciones
+> de Sigrid.** `GET /api/revision/sigrid` sirve a la página datos personales de
+> clientes: los nombres del propietario, de la persona que reclama y de la de
+> contacto, sus teléfonos y correos, y los textos libres de la reclamación.
+>
+> - **Dónde se enseñan.** Solo en la respuesta de esa ruta, detrás de la sesión
+>   del grupo de Posventa, y con `Cache-Control: no-store`, también en los
+>   errores, para que ningún navegador ni proxy la guarde.
+> - **Dónde no van.** **No se guardan**: ni en nuestra base ni en ningún fichero
+>   del servicio; se leen de Sigrid en cada petición. No van a **ningún log** ni
+>   a ninguna traza —la línea `F-065 sigrid de la bandeja` lleva la obra, el
+>   resultado, recuentos, bytes y segundos, y **ningún** código de reclamación—,
+>   ni a ningún mensaje de error, ni al repositorio: los tests usan datos
+>   inventados y la medición del script 29 solo da recuentos. Tampoco se copian
+>   a las notas de la verificación manual.
+> - **Lo que no se lee nunca.** `per.dni`, las credenciales de i-Sigrid
+>   (`per.esiglog`, `per.esigpas`, `per.clamai`), las direcciones y las
+>   observaciones de la persona, ni ningún `ide`. La lista de campos es cerrada
+>   (§1) y ampliarla es una decisión del humano.
+> - **La guarda del ensayo no lee la ficha**: ni nombres, ni teléfonos, ni
+>   correos. Sí lee dos textos libres de la reclamación, `con.res` y
+>   `rcp.resubi`, porque el cruce los compara. Se quedan en la **memoria de la
+>   petición**: no salen en la respuesta del ensayo ni en su log, que tampoco
+>   lleva ningún código de reclamación.
+
 Consecuencias para quien administre el servidor:
 
 - El DNI vive en **una sola columna de una sola tabla**, nunca duplicado en
@@ -1474,6 +1635,11 @@ Consecuencias para quien administre el servidor:
   volcarlos (`volcados_sigrid` lleva códigos y la referencia), no van a ningún
   log, y solo los devuelve el `envio` de la respuesta del ensayo, detrás de la
   sesión del grupo.
+
+- Desde **F-065** hay una **quinta superficie**, y esta **no se guarda**: los
+  datos de cliente de las reclamaciones de Sigrid, que solo pasan por la
+  memoria de la petición y por la respuesta de `GET /api/revision/sigrid`
+  (enmienda de arriba).
 
 El detalle columna a columna está en `specs/F-005-persistencia/design.md` §6
 y, para las tablas de F-036, en `specs/F-036-importar-excel/design.md` §6.1.
@@ -1526,7 +1692,7 @@ documento.
 | `POST /api/revision/normalizar` | **F-060** · pone en el **texto exacto** de Sigrid la ubicación de cada incidencia de la bandeja de **una** obra que solo difiere en mayúsculas de una de la tipología de su unidad, y **escribe** en `postventa.revisiones_bandeja` (esquema propio, **append-only**) una revisión `editar` **del sistema** (`sistema:normalizar_ubicacion`) por cada una. Exige `confirmado: true` como booleano y `ensayo` booleano, **sin valor por omisión**: con `ensayo: true` lee y cuenta pero **no escribe ninguna fila**. Responde **solo números** (los recuentos, `normalizadas` y `conflictos`): ni textos, ni identificadores, ni correos. Lee Sigrid por `sql/read` (§1); los errores, los de `GET /api/revision`. **Nada en Sigrid** |
 | `POST /api/revision/acciones` | **F-056** · **escribe** en `postventa.revisiones_bandeja` (esquema propio, **append-only**) que **una persona** edita, descarta, aprueba o recupera una incidencia de la bandeja, con su `oid` y su correo. Exige `confirmado: true` como booleano y la `revision_previa` sobre la que decide: si otra persona actuó entre medias, 409 `revision_desactualizada`. Editar y aprobar **vuelven a leer** el catálogo de Sigrid por `sql/read`; aprobar con algún motivo es 409 `incidencia_no_aprobable`. **Nada en Sigrid**: lo aprobado se vuelca con **F-040** |
 | `GET /api/volcado` | **F-059** · el **panel** del volcado de **una** obra (`?obra=`): las candidatas —`aprobada` y `en_duda`— en el orden de la revisión, cada una con su último resultado, los recuentos de aprobadas, en duda y volcadas, y `partes_por_llamada`. Solo la base: **no lee Sigrid** ni escribe. El mismo tope de 10.000 incidencias por obra (409 `bandeja_demasiado_grande`) |
-| `POST /api/volcado/ensayo` | **F-059** · el **ensayo** de hasta `N` incidencias de una obra: `POST /api/sigrid/partes-reclamacion` con `commit: false`, que **lee y no escribe en el ERP**, y **escribe** un evento de ensayo por parte en `postventa.volcados_sigrid` (esquema propio, **append-only**). Devuelve por parte lo que se mandó y lo que dijo la pasarela, el `ensayo_id` y su caducidad (30 minutos), y las excluidas con su motivo. Resuelve el login de Sigrid de quien pide por `sql/read`. **No mira la ventana** |
+| `POST /api/volcado/ensayo` | **F-059** · el **ensayo** de hasta `N` incidencias de una obra: `POST /api/sigrid/partes-reclamacion` con `commit: false`, que **lee y no escribe en el ERP**, y **escribe** un evento de ensayo por parte en `postventa.volcados_sigrid` (esquema propio, **append-only**). Devuelve por parte lo que se mandó y lo que dijo la pasarela, el `ensayo_id` y su caducidad (30 minutos), y las excluidas con su motivo. Resuelve el login de Sigrid de quien pide por `sql/read`. **No mira la ventana**. **Desde F-065**, antes del login **lee Sigrid una vez más** por `sql/read` (la guarda, §1): el cuerpo admite `conflictos_confirmados`, la respuesta gana el bloque `sigrid`, dos motivos de exclusión nuevos y tres errores nuevos |
 | `POST /api/volcado/volcar` | **F-059** · **ESCRIBE EN EL ERP DE PRODUCCIÓN**: crea como **partes de reclamación** las incidencias que salieron `previsto` en un ensayo vigente de la misma persona, con `commit: true`, en **una** llamada sin reintento. Exige `confirmado: true` como booleano y la ventana **`VOLCADO_HABILITADO`** abierta: con ella cerrada, que es como se publica, 503 `volcado_deshabilitado` sin leer nada. Antes de llamar escribe los eventos `enviado` (escritura anticipada) y después el resultado de cada parte, con su código de Sigrid. Si no hay respuesta, 502 `volcado_sin_respuesta` con las incidencias en duda: **reintentar es seguro** (§3 bis) |
 
 > **Enmienda del 2026-09-24 (F-013), para el día del corte.** La fila de
@@ -1714,6 +1880,20 @@ pertenencia al grupo. El razonamiento completo y las capas de protección que
 sí sostienen el acceso están en la cabecera de
 `services/postventa-api/function_app.py` y en `docs/DESPLIEGUE.md` §4 y §5 bis.
 
+> **`GET /api/revision/sigrid` (F-065) · una ruta más.** Con ella **son
+> veinticinco** en `function_app.py`, todas en el **mismo nivel anónimo** y por
+> el mismo motivo; la tabla y la cuenta de arriba aún no la recogen. **Solo
+> lee**: Sigrid una vez por `sql/read` y la base una vez, y no escribe en
+> ningún sitio. `?obra=` es lo único que mira. 200 con `obra`, `leido_at_utc`,
+> `criterio`, `reclamaciones`, `hallazgos`, `incidencias`, `resumen` y
+> `volcado`, el recuento por veredicto de la guarda del ensayo (§1); **400**
+> `peticion_invalida`; **409** `bandeja_demasiado_grande`,
+> `reclamaciones_sin_verificar` u `obra_ambigua`; **503** sin Sigrid, sin su
+> configuración, fuera de entorno o sin base. Todas con `Cache-Control:
+> no-store`, porque lleva datos personales (§7). Deja una línea `F-065 sigrid
+> de la bandeja`. Los conflictos **no bloquean** nada: se enseñan, y quien pone
+> la regla es la guarda del ensayo. Las rutas de antes no cambian.
+
 ### Lo que deja de escribirse desde F-028 (2026-09-16)
 
 Es lo que necesita saber quien audite, y el motivo de que esta sección cambie:
@@ -1747,6 +1927,7 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | Normalizar las ubicaciones | F-060 | **Desplegada** el 2026-10-13 y verificada en el entorno el 2026-10-14 (T26 y T27): la ruta `POST /api/revision/normalizar` existe, la importación normaliza tras registrar filas y el listado deja la línea de tiempos. Lo que aún no está es la velocidad del listado: tras la importación diferida del Bloque 7, la medición M2 (T35) da en caliente p50 5,00 s y máximo 13,21 s, por encima del objetivo (máximo < 10 s, p50 < 3 s); lo que falta, sobre todo las lecturas lentas de `sigrid-api`, va a **F-061** |
 | La revisión de la bandeja | F-056 | **Desplegada** el 2026-10-09 y verificada en el entorno (T19): las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` y la tabla `postventa.revisiones_bandeja` (la crea el DDL al arrancar) ya existen. Lo que aún no está: sin la página de **F-038** solo se puede usar llamando a las rutas; nada de lo aprobado llega a Sigrid hasta **F-040** |
 | El volcado a Sigrid | F-059 | **Desplegada el 2026-10-17** (desde `dev` `81049bc`) y **verificada en producción el 2026-10-19** en la obra 0626 (T25 y T26): **un** parte de prueba, autorizado, creado con la ventana abierta y anulado después desde la UI de Sigrid (NO PROCEDE). Las rutas `/api/volcado`, `/api/volcado/ensayo` y `/api/volcado/volcar` y la tabla `postventa.volcados_sigrid` existen en el entorno desplegado. La ventana `VOLCADO_HABILITADO` queda **cerrada** (D-3; cada despliegue la cierra) y se abre para cada volcado con `infra/27_ventana_volcado.ps1`. Lo que aún no está: sin la página de **F-040**, solo se puede volcar llamando a las rutas |
+| Las reclamaciones de Sigrid en la revisión | F-065 | **Desplegada el 2026-10-31** (desde `dev` `ed590bd`) y **verificada en solo lectura** (T-A11 a T-A17, `tasks.md` Bloque A7): la ruta `GET /api/revision/sigrid` y la guarda del ensayo existen en el entorno desplegado. Falta **T-A18**, un ensayo en la 0626 con la guarda, que espera la autorización expresa del humano. Sin ninguna tabla ni variable. Hasta la página de **F-064** y el panel de **F-040**, solo se puede usar llamando a las rutas |
 
 > **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo
 > cierta: F-013 está implementada en su rama y **no desplegada**. Deja de
@@ -1842,4 +2023,12 @@ siendo verdad después.
 | Los eventos del volcado en la base, y su DDL | `services/postventa-api/infrastructure/persistencia/repositorio_volcado_pg.py`, `services/postventa-api/infrastructure/persistencia/sentencias_volcado.py` y `services/postventa-api/infrastructure/persistencia/sql/16_volcados_sigrid.sql` |
 | Abrir y cerrar la ventana del volcado | `infra/27_ventana_volcado.ps1` |
 | Las fotos de Sigrid del volcado, solo lecturas | `infra/28_volcado_lectura_sigrid.ps1` |
+| Diseño completo y decisiones de las reclamaciones de Sigrid en la revisión y de la guarda del ensayo | `specs/F-065-revision-sigrid-backend/` |
+| El cruce y el veredicto, puros | `services/postventa-api/domain/models/sigrid_bandeja.py` |
+| El puerto de la lectura de las reclamaciones | `services/postventa-api/domain/ports/reclamaciones_obra.py` |
+| La aplicación de la ruta | `services/postventa-api/application/pipelines/sigrid_bandeja.py` |
+| La guarda del ensayo | `services/postventa-api/application/pipelines/guarda_sigrid.py` |
+| La ruta `GET /api/revision/sigrid` | `services/postventa-api/interface_adapters/api/sigrid_bandeja.py` |
+| La cuarta lectura de Sigrid y la de la guarda | `services/postventa-api/infrastructure/sigrid/reclamaciones_obra.py` y `services/postventa-api/infrastructure/sigrid/consultas_reclamaciones_obra.py` |
+| Medir en seco las reclamaciones de una obra, solo recuentos | `infra/29_reclamaciones_obra_sigrid.ps1` |
 | Documento gemelo del ecosistema | `azure-apps/postventa_incidencias.md` |

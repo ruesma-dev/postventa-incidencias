@@ -1,15 +1,19 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-040 · `in_progress` · 2026-10-27 · paso 1: el spec-author concilia la spec con `dev`
-> Decisión del humano (2026-10-27, «vamos a parar la actual y empezar ya con f40»): Posventa importó por Excel las
-> incidencias de la VILLA 15 de la 0677 (sacadas de los PDF de repasos) y quiere volcarlas a Sigrid con el panel.
-> Rama nueva `feature/F-040-volcado-sigrid` desde `dev` `f7f63da` en el worktree `postventa-f040` (venv por unión a los
-> de la carpeta principal); la rama antigua queda como `archivo/F-040-spec-2026-10-07` y su spec se trae tal cual.
-> **El estado del backlog se lleva en esta rama mientras F-040 esté en curso.** Paso 1: conciliar la spec (aprobada el
-> 2026-10-07) con `dev`: F-059 tal como se cerró, `bandeja.html` de F-038, F-060. Si cambia una decisión aprobada,
-> vuelve al humano. Después, Bloque 1 (implementer) y review; Bloque 2 es del humano (publicar con `-SoloFront` y T5
-> en la 0626). El volcado real de la VILLA 15 va después de T5, con autorización expresa.
+> ## F-065 · `done` · 2026-10-31 · desplegada desde `dev` `ed590bd` y verificada en solo lectura
+> Bloques A1 a A6 aprobados (mutación 182/182, cobertura 100 %, review final APPROVED); merge a `dev` en `ed590bd`,
+> publicada por el humano el 2026-10-31. T-A11 a T-A17 pasan (`progress/impl_F-065.md` «Bloque A7»). **T-A18 aplazada
+> por el humano a F-040** (no había candidatas aprobadas). `azure-apps` al día en local (`03adbd6`), sin push. Para
+> F-064: `motivo` y `urgencia` de la ficha llegan como texto en blanco, no `null` (coherente con la spec).
+
+> ## F-040 · `in_progress` · 2026-10-31 · T0: base fija `dev` `7cc0bbb`; el spec-author concilia con F-065
+> **El estado del backlog se lleva en la rama de F-040 mientras esté en curso** (worktree `postventa-f040`).
+> Spec conciliada con `dev` en `b86e876` (worktree `postventa-f040`). Humano, 2026-10-28: C-2 el volcado de la VILLA 15 no es
+> tarea de la ficha; C-4 botón «Registrar» que sincroniza con Sigrid (F-065) antes de ensayar y volcar; el resto como recomendó
+> el spec-author. Siguiente: traer `dev` (`ed590bd`) a su rama y Bloque 1 (implementer). **Recoge T-A18 de F-065**: en el
+> primer ensayo real de la 0677, una incidencia `choca` sin confirmar sale `conflicto_sin_confirmar` y confirmada `previsto`,
+> con la línea `F-065 guarda del ensayo` sin códigos `RS` ni texto.
 
 > ## F-066 · `blocked` (aparcada, sin fallo) · 2026-10-27 · espera a que termine F-040
 > **Aparcada por el humano el 2026-10-27** para hacer F-040. Bloque 1 y T3 hechos y APROBADOS (lote versionado

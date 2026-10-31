@@ -32,7 +32,7 @@
 
 ## Bloque 0 · La base, cuando F-065 esté en `dev` (2026-10-28)
 
-- [ ] **T0**: con F-065 `done`, mergeada en `dev` y desplegada, la rama trae
+- [x] **T0**: con F-065 `done`, mergeada en `dev` y desplegada, la rama trae
   `dev` (merge) —ese merge es la **base fija**, en
   `progress/impl_F-040.md`— y el spec-author concilia `requirements.md`
   R60–R62 y `design.md` §1.1, §3.1, §3.2 y §3.3 con el contrato **implementado**

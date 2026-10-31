@@ -94,7 +94,7 @@
   `volcado`— y `tests_js/api.test.js` —los endpoints, contados contra la base
   fija—; `design.md` §5)*. |
   Verificación: `python -m pytest services/postventa-front/tests` y `node --test services/postventa-front/tests_js`
-- [ ] **T3 · Mutación**: a mano por familias para `js/volcado.js` (el orden de
+- [x] **T3 · Mutación**: a mano por familias para `js/volcado.js` (el orden de
   «Registrar», `paraEnsayar` y `puedeEnsayar`, las condiciones de
   `puedeVolcar`, `caducado` y `siguientePaso`, el `confirmado`, el filtro de
   `previsto`, el troceo, el recuento por unidad, el `sinReintentos` de las dos

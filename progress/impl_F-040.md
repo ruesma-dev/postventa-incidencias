@@ -178,3 +178,35 @@ $ cd services/postventa-front && node --test "tests_js/*.test.js"
 Además, por haber tocado `docs/ARCHITECTURE.md`, los tests de documentación y arquitectura del backend con su
 venv (`services/postventa-api`, 20 ficheros `*documentacion*`, `*arquitectura*`, `*alcance*`):
 `576 passed, 82 skipped in 72.73s`.
+
+### T3 · Mutación a mano
+
+Detalle de cada mutante y su test asesino en `progress/mutacion_F-040.md`. Resumen: **82 mutantes** aplicados a
+mano por familias sobre `js/volcado.js` y `js/api.js` (el orden de «Registrar» y las guardas de cada clic,
+`paraEnsayar`/`puedeEnsayar`, `puedeVolcar`/`caducado`/`siguientePaso`, el `confirmado`, el filtro de `previsto`,
+el troceo, el recuento por unidad, agrupar, el resultado, y `sinReintentos`/`mensajeDelServicio` de las cuatro
+de `js/api.js`). Primera pasada: 75 muertos, 7 vivos. Cinco tests nuevos en `tests_js/volcado.test.js` matan 6 de
+los 7 (O5 y V5 eran huecos reales: «Volver a registrar» sin volcar no tiraba el ensayo, y volcar no exigía la
+sesión completa en `volcadoPuedeVolcar`; el `volcar()` sí la exigía, así que no llegaba a escribir).
+**Queda un vivo, V3, equivalente** (razonado en el informe): **para aceptación escrita del humano.**
+
+`python -m harness.mutacion --feature F-040 --base f97ec6e` (informe a un fichero temporal): 0 ficheros, 0
+líneas, 0 mutantes. Es lo esperado: los únicos `.py` cambiados son tests.
+
+## Evidencias (Bloque 1)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | node: **1112 tests, 1112 pass, 0 fail** (`node --test "tests_js/*.test.js"` en `services/postventa-front`); pytest del front: **910 passed, 7 skipped** (`python -m pytest services/postventa-front/tests`); docs/arquitectura del backend con su venv: 576 passed, 82 skipped |
+| Cobertura de líneas cambiadas | **No disponible**: el código de producción cambiado es JavaScript y HTML; la puerta `PUERTA COBERTURA` de `init.sh` mide `.py`. La sustituye la mutación a mano. `init.sh` no lo he ejecutado (lo corre el líder) |
+| Mutantes generados / supervivientes | a mano: **82 / 1** (V3, equivalente, pendiente de aceptación del humano); `harness.mutacion`: 0 / 0 (sin `.py` de producción) |
+| Tiempo de la suite | node: 19,6 s (`duration_ms 19604`); pytest del front: 31,79 s (máquina cargada; en otra pasada, 49,59 s) |
+
+## Pendiente y fuera del alcance de este bloque
+
+- `azure-apps/postventa_incidencias.md` (R58): fuera del encargo («SOLO services/postventa-front»); para el líder.
+- Aceptación del humano del mutante equivalente V3.
+- Preguntas abiertas: `volcadoPanel` reintenta (design §3.3) frente a «las tres de F-059 con `sinReintentos`»
+  (tasks T2); el «único `confirmado: true`» interpretado como recuento por fichero (sección T2).
+- `bash harness/init.sh`: lo corre el líder.
+- Bloque 2 (T4, T5, T5 bis): MANUAL del humano.

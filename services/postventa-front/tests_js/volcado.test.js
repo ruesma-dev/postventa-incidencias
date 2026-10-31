@@ -1778,3 +1778,71 @@ test("f040 R55: la guarda sigue preguntando por la edición sin guardar de F-038
   assert.equal(salirCon({ formulario: formulario, volcado: { fase: "inicio" } }).evento.prevenido, true);
   assert.equal(salirCon({ formulario: null, volcado: { fase: "volcando" } }, { Volcado: undefined }).evento.prevenido, false);
 });
+
+// --- T3 · tests añadidos por la mutación a mano (progress/mutacion_F-040.md) -------------------
+
+test("f040 R53.6 (T3, O5): «Volver a registrar» tras un ensayo sin volcar tira el ensayo: ya no se puede volcar", async () => {
+  const { app, llamadas } = await ensayado({ volcadoVolcar: () => volcado([]) });
+  assert.equal(app.volcadoPuedeVolcar(), true, "con el ensayo recién hecho, sí");
+
+  await app.registrar();
+
+  assert.deepEqual(app.volcado.ensayos, []);
+  assert.equal(app.volcado.vistaEnsayo, null);
+  assert.equal(app.volcadoPuedeVolcar(), false);
+  app.pedirVolcado();
+  app.volcado.tecleado = "3";
+  await app.volcar();
+  assert.ok(!nombres(llamadas).includes("volcadoVolcar"), "ni un volcado con el ensayo de antes");
+});
+
+test("f040 R52 (T3, O14): el primer clic de volcar no abre la confirmación si no se puede volcar", async () => {
+  const reloj = relojDoble();
+  const { app } = await ensayado({}, { reloj: reloj });
+  reloj.t = Date.parse(CADUCA);
+
+  app.pedirVolcado();
+
+  assert.equal(app.volcado.confirmando, false, "caducado: no hay nada que confirmar");
+});
+
+test("f040 R56 (T3, V5): sin la sesión completa no se puede volcar aunque haya ensayo", async () => {
+  const { app, llamadas } = await ensayado({ volcadoVolcar: () => volcado([]) });
+  app.usuario = Object.assign({}, app.usuario, { correo: "" });
+
+  assert.equal(app.volcadoPuedeVolcar(), false);
+  app.pedirVolcado();
+  app.volcado.tecleado = "3";
+  await app.volcar();
+  assert.ok(!nombres(llamadas).includes("volcadoVolcar"));
+});
+
+test("f040 R52 (T3, C6, C7): la confirmación empieza siempre vacía: ni cancelar ni volver a pedir dejan el número", async () => {
+  const { app } = await ensayado({ volcadoVolcar: () => volcado([]) });
+  app.pedirVolcado();
+  app.volcado.tecleado = "3";
+
+  app.cancelarVolcado();
+  assert.equal(app.volcado.tecleado, "", "cancelar borra lo tecleado");
+
+  app.volcado.tecleado = "3";
+  app.pedirVolcado();
+  assert.equal(app.volcado.tecleado, "", "abrir la confirmación empieza en blanco");
+});
+
+test("f040 R61 (T3, G2): cada reclamación de lo que choca lleva su porqué ya en texto (el HTML no llama a Volcado)", () => {
+  const grupos = Volcado.agruparSincronizacion(candidatas(), sincronizacion(), catalogo());
+  const tres = grupos.choca[0];
+
+  for (const fila of grupos.choca) {
+    for (const r of fila.reclamaciones) {
+      assert.equal(r.porqueTexto, Volcado.textoPorque(r.porque, r));
+    }
+  }
+  assert.ok(tres.reclamaciones[0].porqueTexto.length > 0);
+  for (const fila of [...grupos.va, ...grupos.ya_existe]) {
+    for (const r of fila.reclamaciones) {
+      assert.equal(r.porqueTexto, "", "fuera de lo que choca no hay porqué");
+    }
+  }
+});

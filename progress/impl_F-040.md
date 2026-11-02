@@ -313,4 +313,32 @@ $ cd services/postventa-front && node --test "tests_js/*.test.js"
 - **T5.1** (0626, solo lectura): el panel enseña aprobadas 0, en duda 0, ya volcadas 1, que cuadra con
   `GET /api/volcado?obra=0626`. «Registrar» hace **una** lectura a `revision/sigrid` y ninguna a `volcado/ensayo`;
   enseña va 0, ya existe 0, choca 0 y «Ninguna candidata»; «Ensayar» deshabilitado. PASA.
-- T5.2 a T5.6: esperan la fila de prueba «PRUEBA F-040 - ANULAR» aprobada en la 0626.
+- **Fila de prueba** (líder desde Chrome, autorización del humano en el chat; solo nuestra base): plantilla de la
+  0626 descargada en la página, una fila «PRUEBA F-040 - ANULAR» (UPV y oficio de los desplegables, detalle vacío)
+  e importada: leídas 1, nuevas 1, con error 0. Editada y aprobada con la lógica de `t41_f059_paso2`: UPV
+  `0626.03PORTAL 1.1.A` (tipología con 11 ubicaciones), ubicación de su lista (12 caracteres), par `0005`–`5265`
+  de obrofc, detalle vacío; `motivos_no_aprobable` vacío; revisiones 221 (editar) y 222 (aprobar). Referencia
+  `PVI-` + la `incidencia_id` (en la bandeja de la 0626).
+- **T5.1 otra vez**, con la fila aprobada: aprobadas 1, en duda 0, ya volcadas 1, «1 candidata, en 1 trozo de 5»;
+  cuadra con `GET /api/volcado?obra=0626` (`resumen` 1/0/1, 1 candidata). PASA.
+- **T5.2** — ventana leída antes (`VOLCADO_HABILITADO=false`). «Registrar»: **una** petición a `revision/sigrid`
+  (200) y ninguna a `volcado/ensayo`. La fila de prueba sale en **choca** (el caso previsto por la spec): con
+  `RS26.09/0439` («PRUEBA API - ANULAR», la `SAT` de la 0626), «Coincide en misma unidad y descripción parecida
+  (parecido 50 %)»; recuento por unidad 1; va 0, ya existe 0. La de F-059, `volcada`, no sale.
+  - Sin marcar la casilla, **«Ensayar» está deshabilitado** (nada que mandar): desde el panel no se puede pedir el
+    ensayo con `conflicto_sin_confirmar` de T5 bis.1; es coherente con P-2 (segundo clic por incidencia) y se
+    anota para T5 bis.
+  - Marcada la casilla: **un** `POST volcado/ensayo` 200; «Se crearían 1», ya creados 0, rechazados 0, sin
+    procesar 0, excluidas 0; la tabla con unidad, oficio y proveedor por su nombre del catálogo, la ubicación, la
+    descripción, tipo `0002 PRIMER LISTADO POSTVENTA` y «Se crearía»; cuenta atrás «caduca en 29:35». PASA.
+- **T5.3** — a medias: «Volcar 1 partes» abre la confirmación con el texto «Se va a crear 1 parte en el ERP de
+  producción de la obra 0626: 1 de <unidad>. Escribe 1 para confirmar.» y «Volcar en Sigrid» deshabilitado hasta
+  escribir el número. El clic final lo **bloqueó el clasificador de permisos** del líder (escritura en una app
+  conectada): **no salió ninguna petición a `volcado/volcar`**; se cerró con «No volcar». Ventana releída antes:
+  `false`. Pendiente: que el humano haga el clic (ventana cerrada → 503 `volcado_deshabilitado`) y la foto con
+  `28_volcado_lectura_sigrid.ps1 -CodigoObra 0626`.
+- **T5.5** (parcial, en la bandeja de la 0626): `localStorage` y `sessionStorage` vacíos y sin oid ni correo; el
+  oid no está en el DOM; la consola solo lleva trazas de `traza.js` (saneadas con lista blanca). El correo sale
+  en el DOM **solo** en la nota «Aprobada por …» de la ficha (F-038), fuera del panel de volcado. Se repite tras
+  el volcado real (T5.4).
+- T5.4 y T5.6: esperan T5.3 y la autorización expresa del humano.

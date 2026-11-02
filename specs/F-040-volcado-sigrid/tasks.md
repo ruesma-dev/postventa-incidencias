@@ -105,7 +105,7 @@
 
 ## Bloque 2 · Publicar y verificar el panel (MANUAL, humano)
 
-- [ ] **T4 · MANUAL (humano)**: merge a `dev` desde un worktree aparte y
+- [x] **T4 · MANUAL (humano)**: merge a `dev` desde un worktree aparte y
   publicar el front desde un worktree limpio:
   ```
   git worktree add --detach ..\postventa-publicar dev

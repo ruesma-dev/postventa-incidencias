@@ -302,3 +302,15 @@ $ cd services/postventa-front && node --test "tests_js/*.test.js"
 | Cobertura de líneas cambiadas | No disponible (JavaScript y HTML; la puerta mide `.py`). La sustituye la mutación a mano |
 | Mutantes / supervivientes | a mano: 82 + 12 = **94 / 1** (V3, equivalente, ya razonado; la aceptación la gestiona el líder); `harness.mutacion`: 0 / 0 |
 | Tiempo de la suite | node 9,4 s; pytest del front 35,80 s |
+
+## Bloque 2 · T4 y T5 (líder, 2026-11-02)
+
+- **T4**: merge del Bloque 1 a `dev` en `b9a66db` (líder, worktree aparte); el humano publicó el front con
+  `-SoloFront` desde una copia limpia de `dev` en `b9a66db`: despliegue correcto, asignación, Graph, tokens y
+  credenciales sin tocar. Ventana del volcado **cerrada** tras publicar (`27_ventana_volcado.ps1`, solo lectura).
+- Acceso (T16 del despliegue): sin sesión → inicio de sesión: pendiente; **miembro entra: sí** (el líder, con la
+  sesión del humano en Chrome); **no miembro entra: pendiente** (necesita otra cuenta, el humano).
+- **T5.1** (0626, solo lectura): el panel enseña aprobadas 0, en duda 0, ya volcadas 1, que cuadra con
+  `GET /api/volcado?obra=0626`. «Registrar» hace **una** lectura a `revision/sigrid` y ninguna a `volcado/ensayo`;
+  enseña va 0, ya existe 0, choca 0 y «Ninguna candidata»; «Ensayar» deshabilitado. PASA.
+- T5.2 a T5.6: esperan la fila de prueba «PRUEBA F-040 - ANULAR» aprobada en la 0626.

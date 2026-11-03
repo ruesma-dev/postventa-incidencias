@@ -1197,6 +1197,24 @@
       "rigor": "critico",
       "priority": 6,
       "branch": "feature/F-069-fotos-repasos-sigrid"
+    },
+    {
+      "id": "F-070",
+      "title": "Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos",
+      "description": "Alta del 2026-11-03 por decisión del humano. Hoy hay que escribir la obra con su 0 inicial (0677); escrita 677 no se encuentra. El humano dice que 677 y 0677 son la misma obra, así que la regla escrita en domain/models/nombrado.py («0677 y 677 son obras distintas; los ceros a la izquierda se conservan») ES INCORRECTA y se corrige: un código de obra solo numérico con menos de 4 cifras se completa con ceros a la izquierda (677 → 0677) antes de consultar o guardar, en todos los campos y rutas que reciben un código de obra (front y backend: plantilla, importación, bandeja, revisión, volcado, sincronización con Sigrid, partes y archivo). Lo que no es solo numérico no cambia. La spec decide dónde vive la normalización (una sola función, la de nombrado.py, para no tener dos criterios) y comprueba en Sigrid que ningún código de obra tenga menos de 4 cifras. Cuidado con el archivo en SharePoint: la carpeta y el nombre del parte cuelgan de normalizar_codigo.",
+      "acceptance": [
+        "677, 0677 y ' 677 ' llevan a la misma obra 0677 en todos los campos de código de obra del front y en todas las rutas del backend",
+        "Lo que se guarda y lo que se manda a Sigrid es siempre el código con sus 4 cifras",
+        "Un código que no es solo numérico no se toca",
+        "La regla de nombrado.py y sus tests dicen que 677 y 0677 son la misma obra",
+        "La carpeta y el nombre de los partes archivados no cambian para los códigos que ya tenían 4 cifras",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 3,
+      "branch": "feature/F-070-obra-sin-cero-inicial"
     }
   ]
 }

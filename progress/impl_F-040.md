@@ -342,3 +342,162 @@ $ cd services/postventa-front && node --test "tests_js/*.test.js"
   en el DOM **solo** en la nota «Aprobada por …» de la ficha (F-038), fuera del panel de volcado. Se repite tras
   el volcado real (T5.4).
 - T5.4 y T5.6: esperan T5.3 y la autorización expresa del humano.
+
+## T6a · Enlaces a `bandeja.html` (implementer, 2026-11-04)
+
+Encargo del líder: adelantar de T6 **solo** el enlace a `bandeja.html`, por decisión del humano del 2026-11-04. El
+resto de T6 sigue esperando a F-038. `tasks.md` gana **T6a** (antes de T6, fechada y con su verificación) y T6
+deja de pedir lo que T6a ya cubre (queda en T6 el enlace «Volcar a Sigrid» dentro de `index.html#/bandeja`, que es
+de R57). No se toca `services/postventa-api/`.
+
+### Qué cambió
+
+- `js/portal.js`: cada entrada de `Portal.SECCIONES` lleva `enlace` (la página real a la que llevan su pestaña, sus
+  pasos y su tarjeta; `null` = su ruta `#/<id>`). Solo `bandeja` → `"bandeja.html"`. `enlaceSeccion` lo usa desde el
+  portal, el circuito y las páginas reales (desde `bandeja.html`, su sección sigue siendo la actual: `null`).
+  `resolverRuta` no cambia: `#/bandeja` sigue existiendo, solo deja de enlazarse. `estado` no cambia (R62: ninguna
+  ficha de `bandeja` está `done`, sigue `construccion`). Nueva `Portal.marcadaEnConstruccion(id, desde)`: la marca
+  de R66/R87 es para lo que lleva a la maqueta; un enlace al `enlace` de su sección no la lleva; sin enlace (la
+  pestaña actual y los pasos de `bandeja.html`) sigue a la sección.
+- `index.html`, `partes.html`, `importar.html`, `oficios.html`: la pestaña «Bandeja de revisión» y los pasos 02 y
+  03 de la tira → `<a href="bandeja.html">` sin `data-construccion` ni `aria-label`. En `index.html`, también la
+  tarjeta «Bandeja de revisión» de la portada → `bandeja.html`, y los comentarios de la barra y de la tira.
+- `bandeja.html`: **sin cambios**. Su pestaña actual (`<span>`) y sus pasos 02 y 03 no enlazan y conservan la marca
+  (R2 y R25 de F-038).
+- `README.md` del front y `docs/ARCHITECTURE.md`: la regla nueva en una frase donde se cuenta la marca.
+
+### Decisiones
+
+- **D-T6a-1 · `:aria-current` de la pestaña y del paso 02 en `index.html`: fuera.** Llevan a otra página
+  (`bandeja.html`), como «Partes firmados» y el paso 06, que ya no lo llevan: una pestaña que abre otra página
+  nunca es la sección visible del portal. Consecuencia aceptada: en `#/bandeja` (que solo se alcanza escribiendo la
+  ruta) no se marca ninguna pestaña ni ningún paso. Mantenerlo habría exigido ampliar la lista cerrada de R63
+  (solo admite `:aria-current` en enlaces `#/<id>`) para un caso que ya no se navega.
+- **D-T6a-2 · La fuente de los `href` sigue siendo `enlaceSeccion`** (campo `enlace` en `SECCIONES`), no un parche
+  en el HTML: las guardias R44/R70/R85 comparan el HTML con esa fuente, y así lo siguen haciendo. No se reutiliza
+  `pagina` porque `pagina !== null` significa «la sección no vive en el portal» y haría desconocida la ruta
+  `#/bandeja` (R5).
+- **D-T6a-3 · La marca, por destino y no por sección** (`marcadaEnConstruccion`). La sección sigue en
+  `construccion` (R62 lo exige); lo que cambia es que su pestaña ya no lleva a la maqueta. En `bandeja.html` la
+  pestaña actual y los pasos 02/03 la conservan porque lo exige R2/R25 de F-038 (otra ficha) y no son enlaces.
+- **D-T6a-4 · La tarjeta de la portada conserva su chip «En construcción»** (y «Ver cómo será»): es el estado de su
+  sección (R62), como el punto de la pestaña en `bandeja.html`. La guardia de R67 la clasificaba por `href` (`#/…`
+  = en construcción, lo demás = en producción) y ahora la clasifica por **su sección** (`#/<id>` o el `enlace` de
+  `SECCIONES`). Pasarla a «En producción» es el paso 4 del cierre de F-038 (`design.md` §3.2 de F-038) y no se
+  adelanta.
+
+### Guardias ajustadas (solo en lo que este cambio toca)
+
+| Fichero | Qué | Por qué |
+|---|---|---|
+| `tests_js/portal.test.js` | R44 y R31 de `enlaceSeccion` (portal y circuito): `bandeja` → `bandeja.html` | la fuente cambia a propósito |
+| `tests_js/portal.test.js` | R87 de la tira: `marcadaEnConstruccion(seccion, desde)` en vez de `enConstruccion`; control «`:aria-current` en 03 del portal» buscando el 03 nuevo | D-T6a-3; el 03 ya no tiene `aria-label` |
+| `tests_js/f035_paginas.test.js` | `problemasR66(html, Portal, pagina)` con `DESDE_DE_PAGINA` y `marcadaEnConstruccion`; R44 de páginas reales; control H-7 `:data-construccion` mudado a `#/impresion`; control R70 «un href distinto» en importar/oficios ahora es «vuelve a `./#/bandeja`» | D-T6a-2/3; la pestaña de bandeja ya no va a `#/bandeja` |
+| `tests/test_f035_portal.py` | `ENLACE_REAL = {"bandeja": "bandeja.html"}` en R3, R31 y R51 (6 pestañas `#/` con `:aria-current`, no 7) | D-T6a-1/2 |
+| `tests/test_f035_paginas.py` | R63: 10 `:aria-current`, no 12; controles de R63 mudados (`_PESTANA_EN_CONSTRUCCION` = incidencias; `_PASO_SIGRID` = el 03 nuevo); R67 clasifica la tarjeta por su sección (`enlaces_de_secciones`), `TARJETAS_EN_CONSTRUCCION` con `bandeja.html` | D-T6a-1/4 |
+| `tests/test_f038_front.py` | R14 (el enlace de `importar.html`): cuenta los enlaces a `bandeja.html` **fuera** de la barra y la tira (que vigilan R70/R85); sus dos controles buscan el enlace por su `:href` | la barra y la tira de `importar.html` ganan 3 enlaces a `bandeja.html`; es una guardia de F-038, ajustada sin debilitarla (sigue exigiendo uno, y su control «otro dentro de la tabla» sigue saltando) |
+
+`tests/test_f035_placeholders_vivos.py` (raíz): **no** necesitó cambios (19 passed antes y después): R28/R29/R62 no
+dependen de los `href`.
+
+### Fase RED
+
+Tests nuevos en `services/postventa-front/tests_js/f040_enlace_bandeja.test.js` (11), escritos antes del código.
+Comando: `node --test tests_js/f040_enlace_bandeja.test.js` (en `services/postventa-front`), salida real recortada:
+
+```
+✖ f040 T6a: enlaceSeccion('bandeja') da bandeja.html desde el portal, el circuito y las páginas de entrada (6.6012ms)
+✔ f040 T6a: las demás secciones no cambian de enlace (0.4424ms)
+✔ f040 T6a: la ruta #/bandeja de la maqueta sigue existiendo y la sección sigue en construcción (0.4532ms)
+✖ f040 T6a: marcadaEnConstruccion: lo que lleva a bandeja.html no se marca; lo que lleva a la maqueta, sí (0.4161ms)
+✖ f040 T6a: en index.html, la pestaña y los pasos 02 y 03 van a bandeja.html, sin marca de construcción (4.5186ms)
+✖ f040 T6a: en partes.html, la pestaña y los pasos 02 y 03 van a bandeja.html, sin marca de construcción (1.6735ms)
+✖ f040 T6a: en importar.html, la pestaña y los pasos 02 y 03 van a bandeja.html, sin marca de construcción (2.4478ms)
+✖ f040 T6a: en oficios.html, la pestaña y los pasos 02 y 03 van a bandeja.html, sin marca de construcción (0.9375ms)
+✖ f040 T6a: ninguna pestaña, paso ni tarjeta del front enlaza la maqueta #/bandeja (1.7419ms)
+✖ f040 T6a: la tarjeta «Bandeja de revisión» de la portada va a bandeja.html (2.1701ms)
+✔ f040 T6a: control: un enlace a la maqueta, una marca o un :aria-current saltan (1.8452ms)
+ℹ tests 11
+ℹ pass 3
+ℹ fail 8
+
+    actual: { href: '#/bandeja', nuevaPestana: false },
+    expected: { href: 'bandeja.html', nuevaPestana: false },
+  TypeError: marcadaEnConstruccion is not a function
+    actual: [ 'index.html · pestaña Bandeja de revisión: <a href="#/bandeja">, no <a href="bandeja.html">',
+      'index.html · pestaña Bandeja de revisión: lleva data-construccion',
+      'index.html · pestaña Bandeja de revisión: aria-label «Bandeja de revisión (en construcción)»',
+      'index.html · pestaña Bandeja de revisión: lleva :aria-current: lleva a otra página', ... ]
+    actual: [ 'partes.html · pestaña Bandeja de revisión: <a href="./#/bandeja">, no <a href="bandeja.html">', ... ]
+    actual: [ `<a href="#/bandeja" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)" :aria-current=...>`,
+      ..., '<a href="#/bandeja" class="rs-tarjeta">' ]
+    actual: '#/bandeja',
+    expected: 'bandeja.html',
+```
+
+Los tres en verde en RED son los de no regresión (las demás secciones, la ruta `#/bandeja`) y el control del lector.
+
+GREEN (tras `js/portal.js` y el HTML, antes de ajustar guardias): `node --test "tests_js/*.test.js"` → 1130 tests,
+1113 pass, **17 fail**, todos guardias de F-035 que fijaban `#/bandeja` o la marca por sección (tabla de arriba). Tras
+ajustarlas: 1130/1130.
+
+### Mutación a mano (por familias de lo cambiado)
+
+Script en el scratchpad (no versionado): aplica cada mutante en el fichero real, lanza
+`node --test tests_js/f040_enlace_bandeja.test.js tests_js/f035_paginas.test.js tests_js/portal.test.js` y
+`pytest tests/test_f035_paginas.py tests/test_f035_portal.py tests/test_f038_front.py`, y restaura.
+
+| Id | Familia / mutante | Resultado |
+|---|---|---|
+| M1 | `enlaceSeccion` portal sin `seccion.enlace` | muerto (node 6 fail) |
+| M2 | circuito sin `seccion.enlace` | muerto (7) |
+| M3 | página real sin `seccion.enlace` | muerto (12) |
+| M4 | portal: `enlace` antes que `pagina` | **vivo, equivalente**: ninguna sección tiene a la vez `pagina` y `enlace` (partes: `enlace: null`; bandeja: `pagina: null`) |
+| M5 | página real: `enlace` antes que `pagina` | **vivo, equivalente** (mismo motivo) |
+| M6 | `marcadaEnConstruccion` sin la guarda de estado | muerto (14) |
+| M7 | sin el caso `enlace === null` | muerto (9) |
+| M8 | `\|\|` → `&&` | muerto (20) |
+| M9 | `!==` → `===` | muerto (14) |
+| M10 | null → no marcada | muerto (5) |
+| M11 | siempre `true` | muerto (10) |
+| M12 | `= enConstruccion(id)` | muerto (10) |
+| M13 | `enlace` de bandeja `null` | muerto (21 + pytest 1) |
+| M14 | `enlace` de bandeja `./bandeja.html` | muerto (15 + pytest 1) |
+| M15 | `enlace` puesto en `incidencias` | muerto (22) |
+| M16 | sin exportar `marcadaEnConstruccion` | muerto (34) |
+| H1 | pestaña de `index.html` de vuelta a `#/bandeja` | muerto (3 + pytest 3) |
+| H2 | pestaña de `index.html` con `:aria-current` | muerto (1 + pytest 14) |
+| H3 | tarjeta de vuelta a `#/bandeja` | muerto (2 + pytest 1) |
+| H4 | paso 02 de `partes.html` con marca | muerto (2) |
+| H5 | pestaña de `oficios.html` con marca | muerto (2) |
+| H6 | paso 03 de `importar.html` a `./#/bandeja` | muerto (3) |
+| H7 | pestaña actual de `bandeja.html` sin marca | muerto (1 + pytest 2) |
+
+**23 mutantes, 21 muertos, 2 vivos equivalentes (M4, M5)**, razonados arriba; su aceptación la gestiona el líder.
+
+### Verificación (salidas reales)
+
+- `node --test "tests_js/*.test.js"` (en `services/postventa-front`): 1130 tests, 1130 pass, 0 fail.
+- `python -m pytest -q tests/test_f035_placeholders_vivos.py`: 19 passed.
+- `bash harness/init.sh`: **ENTORNO LISTO**; raíz 115 passed; front 910 passed, 7 skipped en 48,10 s (incluye el
+  puente a `node --test`); PUERTA COBERTURA N/A (sin líneas Python de producción).
+- `grep '#/bandeja'` en los `.html` del front: solo queda la miga de `bandeja.html` (ver «Pendiente»).
+
+### Pendiente y fuera del alcance
+
+- **La miga «Bandeja de revisión» de `bandeja.html`** sigue yendo a `./#/bandeja` (la maqueta). No es pestaña, paso
+  ni tarjeta, y la fija `MIGAS_DE_BANDEJA` de F-038 (R1). Llevarla a `bandeja.html` sería un enlace a la propia
+  página; quitar el enlace cambia R1 de F-038. **Decisión para el líder / el humano.**
+- El chip «En construcción» y la llamada «Ver cómo será» de la tarjeta de la portada se quedan (D-T6a-4); su paso a
+  «En producción» es del cierre de F-038.
+- El resto de T6 (restos de F-040 en la maqueta, F-040 `done`) sigue esperando a F-038; T6 bis y T7, igual.
+- Verificación visual en navegador: no hecha (el encargo no la pide); los cambios son `href` y atributos estáticos.
+
+### Evidencias (T6a)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | node 1130/1130 (11 nuevos); pytest del front 910 passed, 7 skipped; raíz 115 passed |
+| Cobertura de líneas cambiadas | No disponible: el cambio es JavaScript y HTML (la puerta mide `.py`; init.sh: N/A). La sustituye la mutación a mano |
+| Mutantes / supervivientes | a mano: 23 / 2 (M4, M5, equivalentes); `harness.mutacion` no aplica (sin Python de producción) |
+| Tiempo de la suite | pytest del front 48,10 s (en init.sh, con node dentro); raíz 6,68 s |

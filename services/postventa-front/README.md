@@ -196,7 +196,16 @@ como R28). `Portal.enConstruccion(id)` lo consulta.
    construcción lleva `data-construccion`, un **punto ámbar** tras la
    etiqueta y `aria-label="<etiqueta> (en construcción)"` (R66). Las barras
    de las páginas reales llevan además una leyenda (`rs-barra__leyenda`) que
-   explica el punto.
+   explica el punto. **Desde F-040 T6a** (decisión del humano del
+   2026-11-04), la marca la da `Portal.marcadaEnConstruccion(id, desde)`: la
+   pestaña «Bandeja de revisión» y los pasos 02 y 03 de la tira llevan a la
+   página real, `bandeja.html` (el `enlace` de la sección en
+   `Portal.SECCIONES`, que usa `Portal.enlaceSeccion`), y van **sin** punto
+   aunque la sección siga en `construccion`; en `bandeja.html` la pestaña
+   actual y sus pasos 02 y 03, que no enlazan, lo conservan (R2 y R25 de
+   F-038). La ruta `#/bandeja` de la maqueta sigue existiendo, pero ya no la
+   enlazan ni las barras, ni las tiras, ni la tarjeta de la portada (que va a
+   `bandeja.html` con su chip «En construcción», el de su sección).
 2. **En la sección**: todo lo inventado va **dentro** de un recuadro
    `data-en-construccion` con la clase `rs-obras` (borde ámbar continuo y una
    cinta de obra arriba, nunca discontinuo ni burdeos), que empieza por su
@@ -249,7 +258,10 @@ incidencias y su ficha → 04, impresión → 05, partes → 06, económico →
 07—; inicio y datos no marcan ninguno, `importar.html` y `oficios.html`
 marcan 01 y `bandeja.html`, 02. En `bandeja.html`, el 03 es de su misma
 sección y no es el actual: un `<span>` sin enlace ni `aria-current` (R25 de
-F-038, un cambio a propósito de la guardia de la tira). En `partes.html`,
+F-038, un cambio a propósito de la guardia de la tira). En el portal, desde
+F-040 T6a, 02 y 03 llevan a `bandeja.html`, otra página, y como 06 no llevan
+`:aria-current`: en `#/bandeja` (que ya solo se alcanza escribiendo la ruta)
+no se marca ningún paso ni ninguna pestaña. En `partes.html`,
 `importar.html`, `oficios.html` y `bandeja.html` la tira es HTML estático y
 el paso actual va fijo; en el portal lo marca un `:aria-current` por paso.
 Sus estilos viven en `css/styles.css`, que cargan las cinco páginas.
@@ -576,7 +588,8 @@ aquí está la página que los usa. Diseño: `specs/F-038-bandeja-revision/`.
   pregunta con un formulario con cambios sin guardar (no es la del circuito).
 - **Mientras la sección esté en construcción** (R16–R17 de F-038): la
   sección `bandeja` del portal sigue «en construcción» —con su recuadro en
-  `#/bandeja` y el punto ámbar de su pestaña, también en esta página—
+  `#/bandeja` y el punto ámbar de su pestaña en esta página; en las demás,
+  desde F-040 T6a, la pestaña y los pasos 02 y 03 llevan aquí y sin punto—
   mientras F-038 no esté `done`, porque la sección tiene más fichas (F-039,
   F-040, F-043). El paso a «En producción» va en **un solo commit**, el que
   pone F-038 en `done`: la sección a `parcial`, fuera las marcas de la

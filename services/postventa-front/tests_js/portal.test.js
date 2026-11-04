@@ -399,8 +399,11 @@ test("f035 R4-R7: las incidencias de los datos de ejemplo se abren por su ruta",
 test("f035 R44: enlaceSeccion desde el portal: #/<id>, y partes.html en la misma pestaña", () => {
   const { enlaceSeccion } = portal();
 
+  // F-040 T6a (decisión del humano, 2026-11-04): `bandeja` lleva a su página
+  // real, bandeja.html, y no a la maqueta; las demás, como estaban.
   for (const id of SECCIONES_DEL_PORTAL) {
-    assert.deepEqual(enlaceSeccion(id, "portal"), { href: `#/${id}`, nuevaPestana: false }, id);
+    const href = id === "bandeja" ? "bandeja.html" : `#/${id}`;
+    assert.deepEqual(enlaceSeccion(id, "portal"), { href, nuevaPestana: false }, id);
   }
   assert.deepEqual(enlaceSeccion("partes", "portal"), { href: "partes.html", nuevaPestana: false });
 });
@@ -410,8 +413,10 @@ test("f035 R31: enlaceSeccion desde el circuito: ./#/<id> en la misma pestaña, 
   // circuito; la remesa en curso la protege la guarda de salida (R78).
   const { enlaceSeccion } = portal();
 
+  // F-040 T6a: `bandeja`, a bandeja.html (la guarda de salida, R78, la cubre igual).
   for (const id of SECCIONES_DEL_PORTAL) {
-    assert.deepEqual(enlaceSeccion(id, "circuito"), { href: `./#/${id}`, nuevaPestana: false }, id);
+    const href = id === "bandeja" ? "bandeja.html" : `./#/${id}`;
+    assert.deepEqual(enlaceSeccion(id, "circuito"), { href, nuevaPestana: false }, id);
   }
   assert.equal(enlaceSeccion("partes", "circuito"), null);
 });
@@ -669,7 +674,8 @@ function problemasDelRecorrido(html, Portal, desde) {
       const ligado = e.atributos[":aria-current"];
       const esperado = `seccion === '${paso.seccion}' ? 'step' : false`;
       // Solo los pasos a una sección del propio portal (`#/<id>`): 06 Cierre
-      // lleva a partes.html, que nunca es la sección visible (R5, R63).
+      // lleva a partes.html, que nunca es la sección visible (R5, R63); y
+      // desde F-040 T6a, 02 y 03 llevan a bandeja.html, igual.
       const delPortal = enlace !== null && enlace.href === `#/${paso.seccion}`;
       if (delPortal && Portal.pasoDeSeccion(paso.seccion) === paso.num) {
         if (ligado !== esperado) problemas.push(`${quien}: :aria-current «${ligado}», no «${esperado}» (R86)`);
@@ -691,12 +697,16 @@ function problemasDelRecorrido(html, Portal, desde) {
     // R87: la marca de construcción, la de la barra. También en el paso
     // actual: si su sección está en construcción, lleva su marca y su
     // aria-label (R25 de F-038 precisa así la última frase de R87).
+    // F-040 T6a (decisión del humano, 2026-11-04), cambio a propósito: la
+    // marca es `marcadaEnConstruccion(seccion, desde)`: los pasos 02 y 03 que
+    // llevan a bandeja.html, la página real, van sin ella; los de
+    // bandeja.html, sin enlace, la siguen llevando.
     for (const ligada of LIGADAS_PROHIBIDAS_EN_UN_PASO) {
       if (ligada in e.atributos) problemas.push(`${quien}: lleva ${ligada} (R86, R87, H-7)`);
     }
     const marcado = "data-construccion" in e.atributos;
     const accesible = e.atributos["aria-label"];
-    if (Portal.enConstruccion(paso.seccion)) {
+    if (Portal.marcadaEnConstruccion(paso.seccion, desde)) {
       if (!marcado) problemas.push(`${quien}: su sección está en construcción y no lleva data-construccion (R87)`);
       if (accesible !== `${paso.etiqueta} (en construcción)`) {
         problemas.push(`${quien}: aria-label «${accesible}», no «${paso.etiqueta} (en construcción)» (R87)`);
@@ -788,7 +798,11 @@ const ESTROPEOS_DEL_RECORRIDO = [
   ],
   [
     ":aria-current en 03 del portal", "index.html", "portal",
-    (html) => html.replace('aria-label="Sigrid (en construcción)">', "aria-label=\"Sigrid (en construcción)\" :aria-current=\"seccion === 'bandeja' ? 'step' : false\">"),
+    // F-040 T6a: el 03 ya no lleva aria-label; se le pone el :aria-current por su href.
+    (html) => html.replace(
+      '<a href="bandeja.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">03</span>',
+      "<a href=\"bandeja.html\" class=\"rs-recorrido__paso\" :aria-current=\"seccion === 'bandeja' ? 'step' : false\"><span class=\"rs-recorrido__num\" aria-hidden=\"true\">03</span>",
+    ),
     /03 Sigrid\): lleva :aria-current y no es el primer paso/,
   ],
   [

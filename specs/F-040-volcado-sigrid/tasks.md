@@ -184,11 +184,27 @@
 
 ## Bloque 3 · El cierre de la ficha (con F-038 `done`, C-1)
 
+- [x] **T6a** *(adelantada de T6 por decisión del humano, 2026-11-04; no
+  espera a F-038)*: la navegación del front que llevaba a la maqueta
+  (`#/bandeja`) lleva a la página real. En las cuatro barras con enlace a la
+  sección (`index.html`, `partes.html`, `importar.html`, `oficios.html`) la
+  pestaña «Bandeja de revisión» y los pasos «02 Revisión» y «03 Sigrid» de la
+  tira van a `bandeja.html`, sin `data-construccion` ni «(en construcción)» en
+  su `aria-label`; y la tarjeta «Bandeja de revisión» de la portada
+  (`index.html`) también. La fuente es `Portal.enlaceSeccion` (`js/portal.js`),
+  y las guardias de F-035 se ajustan solo en lo que este cambio toca. La ruta
+  `#/bandeja` de la maqueta sigue existiendo; solo dejan de enlazarla esas
+  navegaciones. La sección sigue en `construccion` (R62: ninguna de sus fichas
+  está `done`) y la pestaña actual y los pasos 02 y 03 de `bandeja.html`
+  conservan su marca (R2 y R25 de F-038). Commit «F-040 T6a: …». |
+  Verificación: `node --test services/postventa-front/tests_js` y `python -m pytest tests/test_f035_placeholders_vivos.py services/postventa-front/tests` en verde; `grep '#/bandeja'` en los `.html` del front no da ninguna pestaña, paso ni tarjeta
 - [ ] **T6**: por encargo del líder, tras T5 (**no** espera a T5 bis: P-3,
   respuesta del humano 2026-10-31), el APROBADO del Bloque 1 **y con
   F-038 `done`** (C-1, decidido el 2026-10-28), **un solo commit** con el
   cierre de R57 (restos de F-040 fuera de la maqueta —la lista de `design.md`
-  §4, con los catálogos mudados y no borrados—, enlace a `bandeja.html`,
+  §4, con los catálogos mudados y no borrados—, el enlace «Volcar a Sigrid» a
+  `bandeja.html` dentro de `index.html#/bandeja` —las pestañas, los pasos y
+  la tarjeta de la portada van ahí desde T6a—,
   guardias de F-035 en verde, F-039 y F-043 con sus restos) **y** F-040
   `done` en `harness/features.json`; review corta de ese commit; si falla, se
   revierte entero. |

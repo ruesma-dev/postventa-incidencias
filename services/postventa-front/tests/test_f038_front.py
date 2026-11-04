@@ -522,12 +522,19 @@ def test_f038_r13_un_solo_beforeunload_que_solo_lee():
 
 
 def problemas_r14(html: str) -> list[str]:
-    """El enlace de la bandeja de `importar.html` a `bandeja.html` (R14). Vacío = correcto."""
+    """El enlace de la bandeja de `importar.html` a `bandeja.html` (R14). Vacío = correcto.
+
+    F-040 T6a (decisión del humano, 2026-11-04): la pestaña «Bandeja de
+    revisión» de la barra y los pasos 02 y 03 de la tira también llevan a
+    `bandeja.html`; los vigilan R70 y R85 de F-035 y no cuentan aquí. Fuera de
+    la barra y de la tira, sigue habiendo un solo enlace.
+    """
     doc = leer_html_texto(html)
     enlaces = [
         e
         for e in doc.elementos()
-        if "bandeja.html" in e.atributos.get("href", "") or "bandeja.html" in e.atributos.get(":href", "")
+        if ("bandeja.html" in e.atributos.get("href", "") or "bandeja.html" in e.atributos.get(":href", ""))
+        and not any("data-barra-portal" in n.atributos or "data-recorrido" in n.atributos for n in e.ancestros())
     ]
     if len(enlaces) != 1:
         return [f"importar.html: {len(enlaces)} enlaces a bandeja.html; tiene que haber uno"]
@@ -562,8 +569,9 @@ def test_f038_r14_importar_enlaza_a_la_bandeja_de_su_obra_en_la_misma_pestana():
 @pytest.mark.parametrize(
     ("estropear", "senal"),
     [
-        (lambda h: re.sub(r'(<a href="bandeja\.html")', r'\1 target="_blank"', h, count=1), "misma pestaña"),
-        (lambda h: re.sub(r'<a href="bandeja\.html"', '<button type="button" href="bandeja.html"', h, count=1).replace(
+        # F-040 T6a: el primer `<a href="bandeja.html"` es ya la pestaña de la barra; el de R14 se busca por su :href.
+        (lambda h: re.sub(r'(<a href="bandeja\.html")( :href)', r'\1 target="_blank"\2', h, count=1), "misma pestaña"),
+        (lambda h: re.sub(r'<a href="bandeja\.html"( :href)', r'<button type="button" href="bandeja.html"\1', h, count=1).replace(
             f"{TEXTO_DEL_ENLACE_DE_IMPORTAR}</a>", f"{TEXTO_DEL_ENLACE_DE_IMPORTAR}</button>", 1), "no un <a>"),
         (lambda h: h.replace("<td x-text=\"fila.ubicacion || '—'\"></td>",
                              "<td x-text=\"fila.ubicacion || '—'\"></td><td><a href=\"bandeja.html\">x</a></td>", 1),

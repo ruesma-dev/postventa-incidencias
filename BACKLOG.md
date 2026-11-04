@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **69 features**, 39 abiertas, 30 terminadas.
+Resumen: **70 features**, 40 abiertas, 30 terminadas.
 
 En curso: **F-040**.
 
@@ -13,6 +13,7 @@ Bloqueadas: **F-038, F-066**.
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
+| F-071 | La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad | 1 | spec lista | critico | `feature/F-071-plantilla-desde-sigrid` |
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | bloqueada | critico | `feature/F-038-bandeja-revision` |
 | F-070 | Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos | 3 | pendiente | critico | `feature/F-070-obra-sin-cero-inicial` |
 | F-066 | Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar | 4 | bloqueada | critico | `feature/F-066-mudanza-posventa` |
@@ -89,6 +90,12 @@ Bloqueadas: **F-038, F-066**.
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 134 | critico |
 
 ## Detalle
+
+### F-071 · La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad
+
+estado **spec lista** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-071-plantilla-desde-sigrid`
+
+Alta del 2026-11-04 por petición del humano, URGENTE: «el excel que descarga debe extraer TODAS las opciones de TODOS los desplegables de lo que hay en el momento en sigrid. esta feature es urgente. lo mismo oficios, etc.». Problema real en la obra 0677 (Mirasierra): la plantilla de F-036 saca las ubicaciones de una lista FIJA (config/plantilla_incidencias.yaml, 44 etiquetas con «General (toda la unidad)» inventada), igual para todas las unidades, mientras la bandeja (F-056) valida contra prmtpl.ubica de la tipología de CADA unidad: se elige «Escalera» o «General» en el Excel y la bandeja dice «La ubicación no está en la lista». Segundo síntoma: el desplegable de Oficio agrupa oficios equivalentes (R86, R92 de F-036) y la fila importada queda oficio_ambiguo («Elige el código del oficio: hay varios en la obra»). Alcance: cada desplegable sale de Sigrid al descargar (unidad, ubicación dependiente de la unidad de la fila, oficio con su código, par oficio–proveedor de obrofc); la importación vuelve a leer Sigrid y valida contra lo de ese momento; lo que se elige en el Excel entra resuelto (sin oficio_ambiguo ni proveedor_ambiguo). Urgencia y listado: la spec dice qué hay en Sigrid (rcp.texurg es texto libre; auxtrcp son los tipos de reclamación) y lo deja como pregunta al humano. Absorbe F-058 (su spec y su prueba del desplegable dependiente, en el worktree postventa-f058). Versión de la plantilla a 2. Solo backend (postventa-api). Spec en specs/F-071-plantilla-desde-sigrid/ y preguntas en progress/spec_F-071.md.
 
 ### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
 

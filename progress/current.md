@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-071 · `spec_ready` · 2026-11-04 · URGENTE (prioridad 1) · spec escrita, pendiente de aprobación
+> Plantilla de incidencias con TODOS sus desplegables de Sigrid al descargar (petición del humano del 2026-11-04).
+> Spec en `specs/F-071-plantilla-desde-sigrid/` (worktree `postventa-f071`, rama `feature/F-071-plantilla-desde-sigrid`,
+> desde F-040 `d50fe9d`). Absorbe F-058. Esperan al humano **Q-1 a Q-13** en `progress/spec_F-071.md`; las
+> decisivas: Q-1 (prueba de 15 min del desplegable dependiente con los prototipos de F-058), Q-3 (tipo de
+> reclamación en ficha aparte), Q-13 (aparcar F-040 y llevar la rama a `dev`).
+
 > ## F-065 · `done` · 2026-10-31 · desplegada desde `dev` `ed590bd` y verificada en solo lectura
 > Bloques A1 a A6 aprobados (mutación 182/182, cobertura 100 %, review final APPROVED); merge a `dev` en `ed590bd`,
 > publicada por el humano el 2026-10-31. T-A11 a T-A17 pasan (`progress/impl_F-065.md` «Bloque A7»). **T-A18 aplazada

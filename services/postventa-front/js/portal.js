@@ -14,6 +14,7 @@
 //   ESTADOS        los cinco estados de conest, por código y resumen (R21)
 //   resolverRuta / hashDe / enlaceSeccion   rutas por hash y enlaces (R4-R7, R31, R44, R46, R70)
 //   enConstruccion                          si una sección está en construcción (R62, R66)
+//   marcadaEnConstruccion                   si su pestaña o su paso llevan la marca (R66, R87; F-040 T6a)
 //   pasoDeSeccion                           el paso de la tira que marca una sección (R83, R86)
 //   fichasDeSeccion                         las fichas que nombra su rótulo (R65)
 //   textoPlaceholder / seleccionadasPara    el aviso de un placeholder (R11, R12)
@@ -50,16 +51,23 @@
    * la raíz (`tests/test_f035_placeholders_vivos.py`), que lo compara con las
    * fichas de `harness/features.json`: cuando una ficha pasa a `done`, el
    * estado de su sección se cambia aquí en el mismo trabajo.
+   *
+   * `enlace` (F-040 T6a, decisión del humano del 2026-11-04): la página real
+   * a la que llevan la pestaña, los pasos de la tira y la tarjeta de una
+   * sección que vive en el portal, en vez de su ruta `#/<id>` de la maqueta;
+   * `null` = su ruta. Hoy solo `bandeja` → `bandeja.html`. La ruta `#/bandeja`
+   * sigue existiendo (`resolverRuta`): solo deja de enlazarse desde ahí, y el
+   * `estado` no cambia (lo dan las fichas, R62).
    */
   const SECCIONES = congelarLista([
-    { id: "inicio", etiqueta: "Inicio", fichas: [], pagina: null, estado: "parcial" },
-    { id: "entrada", etiqueta: "Entrada", fichas: ["F-036", "F-037"], pagina: null, estado: "parcial" },
-    { id: "bandeja", etiqueta: "Bandeja de revisión", fichas: ["F-038", "F-039", "F-040", "F-043"], pagina: null, estado: "construccion" },
-    { id: "incidencias", etiqueta: "Incidencias", fichas: ["F-041", "F-042", "F-043", "F-047"], pagina: null, estado: "construccion" },
-    { id: "impresion", etiqueta: "Impresión de partes", fichas: ["F-044"], pagina: null, estado: "construccion" },
-    { id: "partes", etiqueta: "Partes firmados", fichas: ["F-045"], pagina: "partes.html", estado: "parcial" },
-    { id: "economico", etiqueta: "Coste y venta", fichas: ["F-046", "F-047"], pagina: null, estado: "construccion" },
-    { id: "datos", etiqueta: "Datos y datamart", fichas: ["F-048"], pagina: null, estado: "construccion" },
+    { id: "inicio", etiqueta: "Inicio", fichas: [], pagina: null, enlace: null, estado: "parcial" },
+    { id: "entrada", etiqueta: "Entrada", fichas: ["F-036", "F-037"], pagina: null, enlace: null, estado: "parcial" },
+    { id: "bandeja", etiqueta: "Bandeja de revisión", fichas: ["F-038", "F-039", "F-040", "F-043"], pagina: null, enlace: "bandeja.html", estado: "construccion" },
+    { id: "incidencias", etiqueta: "Incidencias", fichas: ["F-041", "F-042", "F-043", "F-047"], pagina: null, enlace: null, estado: "construccion" },
+    { id: "impresion", etiqueta: "Impresión de partes", fichas: ["F-044"], pagina: null, enlace: null, estado: "construccion" },
+    { id: "partes", etiqueta: "Partes firmados", fichas: ["F-045"], pagina: "partes.html", enlace: null, estado: "parcial" },
+    { id: "economico", etiqueta: "Coste y venta", fichas: ["F-046", "F-047"], pagina: null, enlace: null, estado: "construccion" },
+    { id: "datos", etiqueta: "Datos y datamart", fichas: ["F-048"], pagina: null, enlace: null, estado: "construccion" },
   ]);
 
   /**
@@ -383,6 +391,8 @@
    * - Desde una página real (una clave de PAGINAS, `design.md` §16.8): la
    *   sección de la página es la actual → `null`; `partes` → `partes.html`;
    *   las demás → `./#/<id>`. Todo en la misma pestaña (R70, R73).
+   * - Una sección con `enlace` (F-040 T6a: `bandeja`) lleva a esa página
+   *   desde los tres sitios, salvo desde la propia página (`null`).
    *
    * Un id o un `desde` desconocidos → `null`, nunca lanza.
    */
@@ -390,15 +400,15 @@
     const seccion = seccionPorId(id);
     if (!seccion) return null;
     if (desde === "portal") {
-      return { href: seccion.pagina || hashDe(seccion.id), nuevaPestana: false };
+      return { href: seccion.pagina || seccion.enlace || hashDe(seccion.id), nuevaPestana: false };
     }
     if (desde === "circuito") {
       if (seccion.pagina !== null) return null;
-      return { href: "./" + hashDe(seccion.id), nuevaPestana: false };
+      return { href: seccion.enlace || "./" + hashDe(seccion.id), nuevaPestana: false };
     }
     if (typeof desde === "string" && Object.prototype.hasOwnProperty.call(PAGINAS, desde)) {
       if (seccion.id === PAGINAS[desde]) return null;
-      return { href: seccion.pagina || "./" + hashDe(seccion.id), nuevaPestana: false };
+      return { href: seccion.pagina || seccion.enlace || "./" + hashDe(seccion.id), nuevaPestana: false };
     }
     return null;
   }
@@ -411,6 +421,20 @@
   function enConstruccion(id) {
     const seccion = seccionPorId(id);
     return seccion !== null && seccion.estado === "construccion";
+  }
+
+  /**
+   * Si la pestaña o el paso de esa sección, vistos desde `desde` (el de
+   * `enlaceSeccion`), llevan la marca de construcción (R66, R87). F-040 T6a:
+   * la marca avisa de que se va a la maqueta; un enlace a la página real de
+   * la sección (`enlace`) no la lleva aunque la sección siga en
+   * construcción. Sin enlace —la pestaña actual de esa página, o un `desde`
+   * desconocido—, la de la sección (R2 y R25 de F-038). Nunca lanza.
+   */
+  function marcadaEnConstruccion(id, desde) {
+    if (!enConstruccion(id)) return false;
+    const enlace = enlaceSeccion(id, desde);
+    return enlace === null || enlace.href !== seccionPorId(id).enlace;
   }
 
   /** El num del primer paso de esa sección, o null; nunca lanza (R83). */
@@ -591,6 +615,7 @@
     hashDe: hashDe,
     enlaceSeccion: enlaceSeccion,
     enConstruccion: enConstruccion,
+    marcadaEnConstruccion: marcadaEnConstruccion,
     pasoDeSeccion: pasoDeSeccion,
     fichasDeSeccion: fichasDeSeccion,
     placeholderPorId: placeholderPorId,

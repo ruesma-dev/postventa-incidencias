@@ -364,3 +364,94 @@ Siguen abiertas, sin bloquear: O-1 (descripción en «va»), O-2 (letra de la sp
   producción).
 - Condiciones de la re-review cumplidas: **Bloque 1 APPROVED**. Siguiente: T4 (merge a `dev` y publicar el front
   con `-SoloFront`, el humano) y T5 en la 0626.
+
+## Review corta de T6a · `af8d091` enlaces a `bandeja.html` (reviewer, 2026-11-04)
+
+**Veredicto: APPROVED**
+
+Alcance: solo el commit `af8d091` (decisión del humano del 2026-11-04: la pestaña «Bandeja de revisión», los pasos
+02/03 y la tarjeta de la portada llevan a `bandeja.html`; el resto de T6 sigue esperando a F-038). Contra `tasks.md`
+T6a, `CHECKPOINTS.md`, `docs/CONVENTIONS.md` y las R de F-035/F-038 que toca.
+
+**Nivel de rigor:** `critico` (declarado en `harness/features.json`). Exige RED, cobertura y mutación. Cobertura y
+`harness.mutacion`: N/A justificado por el lenguaje (el cambio es JS + HTML; la puerta de `init.sh` imprime «N/A,
+F-040 no cambia líneas Python de producción»); los sustituye la mutación a mano, que he repetido en parte.
+
+### Verificación
+
+- `bash harness/init.sh` en el worktree: **ENTORNO LISTO** (raíz 115 passed; api verde por caché; front 910 passed,
+  7 skipped; PUERTA COBERTURA N/A con motivo).
+- `node --test "tests_js/*.test.js"`: 1130/1130.
+- `grep '#/bandeja'` en los `.html` del front: solo la miga de `bandeja.html` (línea 91), que no es pestaña, paso ni
+  tarjeta (la fija R1 de F-038). Cumple la verificación de T6a.
+- Diff: solo los ficheros que nombra T6a (cuatro páginas, `js/portal.js`, guardias de F-035, R14 de F-038, README del
+  front, ARCHITECTURE, tasks e informe). `bandeja.html` y `services/postventa-api/` sin tocar.
+- La fuente sigue siendo `Portal.enlaceSeccion` (campo `enlace`), no un parche en el HTML; `#/bandeja` sigue
+  resolviendo y la sección sigue en `construccion` (R62). `marcadaEnConstruccion` revisada caso a caso: bandeja desde
+  portal/circuito/páginas → sin marca; desde `bandeja.html` (enlace `null`) → con marca (R2/R25 de F-038); demás
+  secciones en construcción → con marca; `desde` desconocido → con marca, nunca lanza.
+- **R14 de F-038 (`test_f038_front.py`) no se debilita**: ahora excluye los enlaces dentro de `data-barra-portal` /
+  `data-recorrido`, que ya vigilan R70/R85. Comprobado con mutantes a mano en una copia desechable (scratchpad,
+  `git archive HEAD`): quitar el enlace real de `importar.html` (línea 202) → R14 rojo (4 fail); añadir un segundo
+  `<a href="bandeja.html">` fuera de barra y tira → rojo (3 fail); `target="_blank"` en la pestaña nueva de
+  `importar.html` → node +2 fail y pytest +1 fail respecto a la línea base de la copia.
+- RED: salida real en el informe (8 de 11 en rojo, con los `actual/expected`), los 3 verdes justificados (no regresión
+  y control). Sección «Evidencias (T6a)» con los cuatro números.
+
+Nota sobre la copia: en la copia por `git archive` la línea base ya da 16 fallos de node (controles de mutantes de
+F-038 que dependen del fin de línea del checkout; en el worktree, 0). Los mutantes se han medido como diferencia
+contra esa línea base.
+
+### M4 y M5: ¿equivalentes? **Sí.**
+
+M4/M5 invierten `seccion.pagina || seccion.enlace` → `seccion.enlace || seccion.pagina` en las ramas «portal» y
+«página real» de `enlaceSeccion`. Solo difieren si una sección tiene a la vez `pagina` y `enlace` no nulos, y
+`SECCIONES` es una lista congelada en la que eso no ocurre (`partes`: `enlace: null`; `bandeja`: `pagina: null`; el
+resto, ambos `null`). En la rama «circuito» la combinación ni siquiera es alcanzable (`pagina !== null` sale antes).
+Reproducido: aplicados los dos a la vez en la copia, node y pytest dan exactamente la línea base (1114/16 y el mismo
+único fallo del puente) → sobreviven, y no hay entrada que los distinga. En rigor `critico` los equivalentes necesitan
+la **aceptación escrita del humano** (como V3 del Bloque 1); el líder debe recabarla antes del cierre de T6.
+
+### Checkpoints (para este commit)
+
+- C1 [x] init.sh verde; ficheros del arnés presentes.
+- C2 [x] una sola `in_progress` (F-040); rama `feature/F-040-volcado-sigrid`. `current.md`/`history.md`: sin cambios
+  en este commit, no aplica cierre.
+- C3 [x] primera línea con ruta en `portal.js` y el test nuevo; sin `console.log`/`debugger`/TODO; sin secretos.
+  Hexagonal: N/A, el cambio es solo del front estático (no hay dominio en él). Reglas de partes/Sigrid/manuscritos:
+  N/A, el commit no toca el pipeline ni Sigrid (solo `href` y atributos).
+- C3 bis N/A: no entra ningún documento de fuera.
+- C4 [x] cada punto de T6a tiene test en `tests_js/f040_enlace_bandeja.test.js` (tabla abajo); sin red ni BBDD.
+  Verificación visual en navegador no hecha: no la pide T6a (cambios estáticos), anotado por el implementer.
+- C4 bis [x] rigor declarado; RED con salida real; cobertura N/A por lenguaje (escrito); mutación a mano 23/21 + 2
+  equivalentes razonados y reproducidos por mí; «Evidencias» presente. Pendiente solo la aceptación humana de M4/M5.
+- C4 ter N/A: no existe `harness/rutas_sensibles.json`.
+- C5 [x] T6a `[x]` con su commit «F-040 T6a: …»; árbol limpio (`git status` vacío tras la review, la copia vive en el
+  scratchpad). T6/T6 bis/T7 siguen `[ ]` por diseño (esperan a F-038); F-040 sigue `in_progress`, correcto.
+
+### Cobertura T6a → test (`tests_js/f040_enlace_bandeja.test.js` salvo indicación)
+
+| Punto de T6a | Test |
+|---|---|
+| `enlaceSeccion('bandeja')` → `bandeja.html` desde portal, circuito y páginas | «enlaceSeccion('bandeja') da bandeja.html…» + R44/R31 de `portal.test.js` |
+| Las demás secciones no cambian | «las demás secciones no cambian de enlace» |
+| `#/bandeja` sigue existiendo, sección en `construccion` | «la ruta #/bandeja de la maqueta sigue existiendo…» + `test_f035_placeholders_vivos.py` |
+| Sin marca lo que va a `bandeja.html`; marca lo que va a la maqueta | «marcadaEnConstruccion: …» + `problemasR66` de `f035_paginas.test.js` |
+| Pestaña y pasos 02/03 en las cuatro páginas | los cuatro «en <página>.html, la pestaña y los pasos 02 y 03…» |
+| Tarjeta de la portada | «la tarjeta «Bandeja de revisión» de la portada va a bandeja.html» + R67 (`test_f035_paginas.py`) |
+| Nada enlaza `#/bandeja` como pestaña/paso/tarjeta | «ninguna pestaña, paso ni tarjeta del front enlaza la maqueta» |
+| `bandeja.html` conserva su marca (R2/R25 de F-038) | guardias de F-038 sin tocar (H7 del informe lo mata) |
+| R14 de F-038 sigue exigiendo un solo enlace real | `test_f038_r14_*` (mutantes míos arriba) |
+
+### Observaciones (no bloquean)
+
+1. La miga «Bandeja de revisión» de `bandeja.html:91` sigue yendo a `./#/bandeja`; el implementer la deja para el
+   líder/humano. Coincido en que no es de T6a; conviene decidirla en T6 o en el cierre de F-038.
+2. D-T6a-1 (sin `:aria-current` en la pestaña/paso 02 del portal) deja `#/bandeja` sin pestaña marcada si se escribe
+   la ruta a mano. Aceptable mientras la maqueta muera en T6.
+3. La tarjeta mantiene el chip «En construcción» apuntando a una página real (D-T6a-4): coherente con R62; su paso a
+   «En producción» es del cierre de F-038.
+
+### Cambios requeridos
+
+Ninguno.

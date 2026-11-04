@@ -435,6 +435,11 @@ es su pestaña `partes`.
 >   (`data-construccion`, R66), el recuadro `data-en-construccion` con su
 >   rótulo que enmarca todo lo inventado (R63–R65) y la portada sin cifras
 >   inventadas, con los chips «En construcción» / «En producción» (R67).
+>   *F-040 T6a (decisión del humano, 2026-11-04):* la pestaña, los pasos 02
+>   y 03 y la tarjeta de la bandeja llevan a la página real `bandeja.html`
+>   (`enlace` en `Portal.SECCIONES`), no a la maqueta `#/bandeja`, y la
+>   pestaña y los pasos van sin punto (`Portal.marcadaEnConstruccion`)
+>   aunque la sección siga en `construccion`.
 > - **Todo se navega en la misma pestaña** (R73 ajustado), también desde el
 >   circuito: ningún enlace entre páginas del front lleva `target`. La
 >   remesa a medias la protege la **guarda de salida** del circuito

@@ -1090,7 +1090,9 @@ ENVOLTORIOS_DE_BLOQUE = {"F-037": "entrada", "F-045": "inicio"}
 
 #: R67: las tarjetas de la portada, por su chip (`design.md` §16.5).
 TARJETAS_EN_PRODUCCION = ("Entrada de incidencias", "Partes firmados")
-TARJETAS_EN_CONSTRUCCION = ("#/bandeja", "#/incidencias", "#/economico")
+#: F-040 T6a (2026-11-04): la tarjeta de la bandeja va a bandeja.html, la página real
+#: de una sección que sigue en construcción (R62): se cuenta por su sección.
+TARJETAS_EN_CONSTRUCCION = ("bandeja.html", "#/incidencias", "#/economico")
 CEJA_DE_INICIO = "Posventa"
 ENTRADILLA_DE_INICIO = (
     "El portal de posventa. Funcionan ya la entrada de incidencias (importar el Excel de la "
@@ -1106,6 +1108,14 @@ _LEE_DATOS = re.compile(r"\bdatos\.|\bMaquetaDatos\b")
 def estados_de_secciones(texto: str = PORTAL_JS_TEXTO) -> dict[str, str]:
     """`{id: estado}` de `Portal.SECCIONES`, leído como texto (R62)."""
     return dict(_ESTADO_DE_SECCION.findall(texto))
+
+
+_ENLACE_DE_SECCION = re.compile(r"""\{\s*id:\s*"([a-z]+)",[^}]*?\benlace:\s*"([^"]+)"[^}]*\}""")
+
+
+def enlaces_de_secciones(texto: str = PORTAL_JS_TEXTO) -> dict[str, str]:
+    """`{id: página}` de las secciones con `enlace` en `Portal.SECCIONES` (F-040 T6a), leído como texto."""
+    return dict(_ENLACE_DE_SECCION.findall(texto))
 
 
 def titulos_de_fichas(texto: str = PORTAL_JS_TEXTO) -> set[str]:
@@ -1301,7 +1311,10 @@ def test_f035_r63_la_lista_cerrada_mira_algo():
         [("div", "x-data"), ("div", "x-init")]
         # Siete de las pestañas de la barra y, desde el bloque 18 (R63 enmendado
         # por R86), cinco de la tira del recorrido: 01, 02, 04, 05 y 07.
-        + [("a", ":aria-current")] * 12
+        # F-040 T6a (2026-11-04): la pestaña de la bandeja y el paso 02 llevan
+        # a bandeja.html, otra página, y dejan su :aria-current, como
+        # «Partes firmados» y 06: seis de la barra y cuatro de la tira.
+        + [("a", ":aria-current")] * 10
         + [("section", "x-show"), ("section", "x-cloak")] * 7  # «partes» no tiene sección: es partes.html
         + [("div", ":class"), ("p", "x-text"), ("button", "x-show"), ("button", "x-cloak"), ("button", "@click")]
     ), vistas
@@ -1317,9 +1330,15 @@ def test_f035_r63_rs_obras_solo_y_siempre_en_un_recuadro():
 _CABECERA_DE_BANDEJA = '<h1 class="rs-titulo">Bandeja de revisión</h1>'
 _ROTULO_PARTES_FIRMADOS = '<p class="rs-tarjeta__rotulo">Partes firmados</p>'
 _TARJETA_IMPORTAR = '<a href="importar.html" class="rs-tarjeta rs-tarjeta--produccion">'
-_PESTANA_BANDEJA = '<a href="#/bandeja" class="rs-pestana" data-construccion'
+#: F-040 T6a (2026-11-04): la pestaña de la bandeja ya va a bandeja.html, sin marca; los
+#: controles se mudan a la de incidencias, que sigue en la maqueta.
+_PESTANA_EN_CONSTRUCCION = '<a href="#/incidencias" class="rs-pestana" data-construccion'
 #: Dos pasos de la tira del portal (`design.md` §16.16.5), para los controles de R63 enmendado.
-_PASO_SIGRID = '<a href="#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">'
+#: F-040 T6a: 02 y 03 van ya a bandeja.html y empiezan igual; el 03 se busca con su número.
+_PASO_SIGRID = (
+    '<a href="bandeja.html" class="rs-recorrido__paso">'
+    '<span class="rs-recorrido__num" aria-hidden="true">03</span>'
+)
 _PASO_GESTION_ACTUAL = (
     '<a href="#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)" '
     ":aria-current=\"seccion === 'incidencias' ? 'step' : false\">"
@@ -1343,8 +1362,8 @@ ESTROPEOS_R63_LISTA = {
         "bandejaFiltrada().length + ' por revisar'",
     ),
     "un :title ligado en una pestaña": (
-        _PESTANA_BANDEJA,
-        _PESTANA_BANDEJA + " :title=\"'Pendientes: ' + bandejaFiltrada().length\"",
+        _PESTANA_EN_CONSTRUCCION,
+        _PESTANA_EN_CONSTRUCCION + " :title=\"'Pendientes: ' + bandejaFiltrada().length\"",
         ":title=",
     ),
     "el x-show de una sección con otro id": (
@@ -1364,8 +1383,8 @@ ESTROPEOS_R63_LISTA = {
         "seccion === 'economico' ? 'page' : false",
     ),
     "una forma ligada x-bind: en una pestaña": (
-        _PESTANA_BANDEJA,
-        _PESTANA_BANDEJA + ' x-bind:title="obra(\'9901\')"',
+        _PESTANA_EN_CONSTRUCCION,
+        _PESTANA_EN_CONSTRUCCION + ' x-bind:title="obra(\'9901\')"',
         "x-bind:title=",
     ),
     "una forma ligada x-on: en una tarjeta en producción": (
@@ -1839,6 +1858,7 @@ def problemas_r67(html: str) -> list[str]:
     problemas = []
     inicio = seccion(leer_html_texto(html), "inicio")
     estados = estados_de_secciones()
+    paginas = {pagina: id_seccion for id_seccion, pagina in enlaces_de_secciones().items()}
     for e in inicio.elementos():
         if "rs-tarjeta__cifra" in clases(e):
             problemas.append(f"una cifra en la portada: {_describe(e)}")
@@ -1854,7 +1874,10 @@ def problemas_r67(html: str) -> list[str]:
             problemas.append(f"la tarjeta «{rotulo}» lleva {len(chips)} chips: uno, rs-chip")
             continue
         href = t.atributos.get("href", "")
-        if href.startswith("#/") and estados.get(href[2:]) == "construccion":
+        # F-040 T6a: la sección de la tarjeta, por su ruta `#/<id>` o por el `enlace`
+        # de su sección en `Portal.SECCIONES` (bandeja.html → bandeja).
+        de_la_seccion = href[2:] if href.startswith("#/") else paginas.get(href)
+        if de_la_seccion is not None and estados.get(de_la_seccion) == "construccion":
             en_construccion.append(href)
             if chips[0].texto() != "En construcción" or "rs-chip--atencion" not in clases(chips[0]):
                 problemas.append(f"la tarjeta «{rotulo}» es de una sección en construcción: chip «En construcción»")

@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **68 features**, 38 abiertas, 30 terminadas.
+Resumen: **69 features**, 39 abiertas, 30 terminadas.
 
 En curso: **F-040**.
 
@@ -14,6 +14,7 @@ Bloqueadas: **F-038, F-066**.
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | bloqueada | critico | `feature/F-038-bandeja-revision` |
+| F-070 | Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos | 3 | pendiente | critico | `feature/F-070-obra-sin-cero-inicial` |
 | F-066 | Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar | 4 | bloqueada | critico | `feature/F-066-mudanza-posventa` |
 | F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | 5 | spec lista | critico | `feature/F-064-bandeja-con-sigrid` |
 | F-067 | Registrar incidencias desde el PDF de repasos del cliente (backend): un PDF por unidad, casado de ubicaciones, prioridades y oficios, y fotos a SharePoint | 5 | pendiente | critico | `feature/F-067-pdf-repasos-cliente` |
@@ -94,6 +95,12 @@ Bloqueadas: **F-038, F-066**.
 estado **bloqueada** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano. APARCADA el 2026-10-26 por decisión del humano para empezar F-066: no hay fallo; solo espera T7 (MANUAL del humano, verificación en producción). Al hacerla, se retoma con T8–T11 (F-066 tendrá que pasar a blocked o estar cerrada: máximo una in_progress).
+
+### F-070 · Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos
+
+estado **pendiente** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-070-obra-sin-cero-inicial`
+
+Alta del 2026-11-03 por decisión del humano. Hoy hay que escribir la obra con su 0 inicial (0677); escrita 677 no se encuentra. El humano dice que 677 y 0677 son la misma obra, así que la regla escrita en domain/models/nombrado.py («0677 y 677 son obras distintas; los ceros a la izquierda se conservan») ES INCORRECTA y se corrige: un código de obra solo numérico con menos de 4 cifras se completa con ceros a la izquierda (677 → 0677) antes de consultar o guardar, en todos los campos y rutas que reciben un código de obra (front y backend: plantilla, importación, bandeja, revisión, volcado, sincronización con Sigrid, partes y archivo). Lo que no es solo numérico no cambia. La spec decide dónde vive la normalización (una sola función, la de nombrado.py, para no tener dos criterios) y comprueba en Sigrid que ningún código de obra tenga menos de 4 cifras. Cuidado con el archivo en SharePoint: la carpeta y el nombre del parte cuelgan de normalizar_codigo.
 
 ### F-066 · Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar
 

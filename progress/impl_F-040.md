@@ -233,12 +233,12 @@ $ cd services/postventa-front && node --test tests_js/volcado.test.js
 ✖ f040 R53.2, R53.4 (C-B1-2): un fallo del volcado fuera de la lista de «nada escrito» deja TODO el trozo en duda
   AssertionError [ERR_ASSERTION]: 500 sin código: el trozo, en duda
   + []
-  - [ '00000000-0000-0000-0000-000000000003', ...
+  - [ UUID(int=3), ...
 ✔ f040 R53.2 (C-B1-2): lo documentado como «nada escrito» sigue «sin volcar»
 ✖ f040 R53.2 (C-B1-2): un volcado con 500 sin código para la serie y deja el trozo en duda, no «sin volcar»
   AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
   + []
-  - [ '00000000-0000-0000-0000-000000000001', ...
+  - [ UUID(int=1), ...
 ℹ tests 113
 ℹ pass 108
 ℹ fail 5

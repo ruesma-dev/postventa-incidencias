@@ -507,8 +507,11 @@ Script en el scratchpad (no versionado): aplica cada mutante en el fichero real,
 - Front publicado por el humano desde una copia limpia de `dev` `ed935ad`
   con `infra\desplegar_front.ps1 -SoloFront`: despliegue correcto, sin tocar
   asignación, permisos, tokens ni credenciales. La copia se retiró al acabar.
-- Comprobación en el portal de que los enlaces llevan a `bandeja.html`:
-  pendiente del humano.
+- Comprobación en el portal publicado (líder, por Chrome con la sesión del
+  humano, 2026-11-05): en `index`, `importar`, `oficios` y `partes`, la
+  pestaña «Bandeja de revisión» y los pasos 02 y 03 llevan a `bandeja.html`,
+  sin marca de «en construcción»; la tarjeta 02 del inicio también.
+  `bandeja.html` responde 200 con su título. Pasa.
 - El humano acepta por escrito M4 y M5 como equivalentes (2026-11-05).
 - Decisiones del humano (2026-11-05): la miga de pan de `bandeja.html` queda
   como texto sin enlace; la tarjeta del inicio pasa a «En producción».

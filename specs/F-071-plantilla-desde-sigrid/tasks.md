@@ -58,7 +58,7 @@
 > `ubicaciones` de `ListasCerradas` rompe a la vez la plantilla y la
 > importación.
 
-- [ ] **T1 · RED**: `tests/test_f071_casado_con_lista.py`,
+- [x] **T1 · RED** (hecha el 2026-11-05, traza en `progress/impl_F-071.md`): `tests/test_f071_casado_con_lista.py`,
   `tests/test_f071_dominio_opciones.py` y `tests/test_f071_dominio_importacion.py`
   contra lo que aún no existe (`design.md` §5):
   - casado (§5.5): `casado_con_lista` expone `Coincidencia`,

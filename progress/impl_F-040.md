@@ -501,3 +501,17 @@ Script en el scratchpad (no versionado): aplica cada mutante en el fichero real,
 | Cobertura de líneas cambiadas | No disponible: el cambio es JavaScript y HTML (la puerta mide `.py`; init.sh: N/A). La sustituye la mutación a mano |
 | Mutantes / supervivientes | a mano: 23 / 2 (M4, M5, equivalentes); `harness.mutacion` no aplica (sin Python de producción) |
 | Tiempo de la suite | pytest del front 48,10 s (en init.sh, con node dentro); raíz 6,68 s |
+
+### T6a · Publicación y decisiones del humano (líder, 2026-11-05)
+
+- Front publicado por el humano desde una copia limpia de `dev` `ed935ad`
+  con `infra\desplegar_front.ps1 -SoloFront`: despliegue correcto, sin tocar
+  asignación, permisos, tokens ni credenciales. La copia se retiró al acabar.
+- Comprobación en el portal de que los enlaces llevan a `bandeja.html`:
+  pendiente del humano.
+- El humano acepta por escrito M4 y M5 como equivalentes (2026-11-05).
+- Decisiones del humano (2026-11-05): la miga de pan de `bandeja.html` queda
+  como texto sin enlace; la tarjeta del inicio pasa a «En producción».
+  Pendiente de implementar al retomar F-040.
+- F-040 aparcada (`blocked`, sin fallo) para hacer F-071; el estado del
+  backlog se lleva en la rama de F-071.

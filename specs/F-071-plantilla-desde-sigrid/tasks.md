@@ -1,14 +1,13 @@
 <!-- specs/F-071-plantilla-desde-sigrid/tasks.md -->
 # F-071 · La plantilla de incidencias saca todos sus desplegables de Sigrid al descargarla — Tareas
 
-> **PENDIENTE DE APROBACIÓN DEL HUMANO** (preguntas Q-1 a Q-13 en
-> `progress/spec_F-071.md`). Rama `feature/F-071-plantilla-desde-sigrid`
+> **APROBADA POR EL HUMANO el 2026-11-05** (respuestas a Q-1..Q-13 en
+> `design.md` §13.1 y `progress/spec_F-071.md`; D-1 pendiente de T0). Rama `feature/F-071-plantilla-desde-sigrid`
 > (worktree `postventa-f071`). Rigor **`critico`**, prioridad 1.
 >
-> **Base fija**: la decide el líder antes del Bloque 1 (Q-13; hoy la rama sale
-> de `feature/F-040-volcado-sigrid` en `d50fe9d`) y el implementer la anota en
-> `progress/impl_F-071.md`. La usan `test_f071_alcance_cerrado.py` y la
-> mutación.
+> **Base fija: `dev` `ed935ad`** (el líder rebasó la rama el 2026-11-05,
+> Q-13). El implementer la anota en `progress/impl_F-071.md` al empezar el
+> Bloque 1. La usan `test_f071_alcance_cerrado.py` y la mutación.
 >
 > RED con la traza **pegada** en `progress/impl_F-071.md`; cobertura de las
 > líneas cambiadas ≥ umbral de `init.sh`; **cero supervivientes** sin
@@ -25,13 +24,14 @@
 >
 > `pytest` desde `services/postventa-api` con `.venv/Scripts/python.exe -m
 > pytest …`. Mutación: `python -m harness.mutacion --feature F-071 --base
-> <base fija> --timeout 1800` (el Bloque 1 escribe
+> ed935ad --timeout 1800` (el Bloque 1 escribe
 > `progress/mutacion_F-071.md`; los demás, `--salida
 > progress/mutacion_F-071_bloqueN.md`).
 
 ## Bloque 0 · La prueba del desplegable dependiente y la base (sin código)
 
-- [ ] **T0 · MANUAL (humano)**: abrir los dos prototipos que F-058 dejó fuera
+- [ ] **T0 · MANUAL (humano)** (confirmado por el humano, Q-1 2026-11-05):
+  abrir los dos prototipos que F-058 dejó fuera
   del repositorio, `C:\Users\pgris\Downloads\f058_prototipos\prototipo_f058_a1.xlsx`
   y `prototipo_f058_a2.xlsx` (datos ficticios), en **Excel de escritorio** y en
   **Excel web** (subidos al OneDrive **personal**, nunca al SharePoint de
@@ -44,15 +44,19 @@
   Anotar aparte el punto 3/4 (si Excel acepta lo tecleado con la lista vacía,
   `design.md` §4.2). Borrar los prototipos del OneDrive al acabar. |
   Verificación: MANUAL (humano) — la tabla y la decisión en `progress/impl_F-071.md`
-- [ ] **T0 bis · líder**: fijar la base (Q-13) —traer la rama a `dev` o
-  dejarla sobre F-040— y anotarla en `progress/impl_F-071.md`; con F-040
-  `in_progress`, decidir con el humano cuál se aparca (máximo una
-  `in_progress`). |
-  Verificación: el commit de la base en `progress/impl_F-071.md`; `bash harness/init.sh` en verde
+- [x] **T0 bis · líder** (hecho el 2026-11-05): rama rebasada sobre `dev`
+  `ed935ad` (base fija) y F-040 aparcada (`blocked`, sin fallo); commit
+  `e103d70`. |
+  Verificación: `bash harness/init.sh` en verde (lo ejecuta el líder; el worktree aún no tiene venv)
 
 **Parar. Si D-1 = ninguna, volver al humano con la opción (c) antes de seguir.**
 
 ## Bloque 1 · El dominio
+
+> Es el bloque más grande. Si el encargo se cuelga, el líder lo parte en dos
+> encargos: T1 (RED) y T2–T3 (GREEN y mutación). No se parte por fichero: quitar
+> `ubicaciones` de `ListasCerradas` rompe a la vez la plantilla y la
+> importación.
 
 - [ ] **T1 · RED**: `tests/test_f071_casado_con_lista.py`,
   `tests/test_f071_dominio_opciones.py` y `tests/test_f071_dominio_importacion.py`
@@ -89,7 +93,7 @@
   y el R que la sustituye. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_casado_con_lista.py tests/test_f071_dominio_opciones.py tests/test_f071_dominio_importacion.py tests/test_f036_plantilla_dominio.py tests/test_f036_importacion_dominio.py tests/test_f060_*` en verde
 - [ ] **T3 · mutación del bloque**: `python -m harness.mutacion --feature F-071
-  --base <base fija> --timeout 1800` sobre lo del bloque; matar los
+  --base ed935ad --timeout 1800` sobre lo del bloque; matar los
   supervivientes con tests nuevos o justificarlos uno a uno. |
   Verificación: `progress/mutacion_F-071.md` con 0 supervivientes sin justificación
 
@@ -145,10 +149,6 @@
   `test_f036_plantilla_http.py`, `test_f036_importar_http.py`,
   `tests/utiles_revision.py` con citas. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_pipelines.py tests/test_f071_http.py tests/test_f036_pipeline_importacion.py tests/test_f036_plantilla_http.py tests/test_f036_importar_http.py` en verde
-- [ ] **T9**: retirar el script de migración y sus tests (`design.md` §3.3,
-  R45) y las menciones que los exijan (`test_f036_arquitectura.py`,
-  `test_f036_documentacion.py` si los nombran). |
-  Verificación: `.venv/Scripts/python.exe -m pytest` del servicio entero en verde
 - [ ] **T10 · mutación del bloque**: como T3, `--salida
   progress/mutacion_F-071_bloque3.md`. |
   Verificación: el informe con 0 supervivientes sin justificación
@@ -157,6 +157,11 @@
 
 ## Bloque 4 · Documentos, alcance y cierre del código
 
+- [ ] **T9** (movida aquí desde el Bloque 3 para que cada encargo sea pequeño):
+  retirar el script de migración y sus tests (`design.md` §3.3, R45, Q-9) y
+  las menciones que los exijan (`test_f036_arquitectura.py`,
+  `test_f036_documentacion.py` si los nombran). |
+  Verificación: `.venv/Scripts/python.exe -m pytest` del servicio entero en verde
 - [ ] **T11**: `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` (`design.md`
   §12), `tests/test_f071_documentacion.py` (R46) y
   `tests/test_f071_alcance_cerrado.py` (R42, R43, R45: con la base fija, ni un
@@ -175,8 +180,8 @@
 ## Bloque 5 · Despliegue y verificación en producción
 
 - [ ] **T13 · líder**: merge normal de la rama a `dev` **desde un worktree
-  aparte** (con la base de T0 bis; si F-040 no está en `dev`, no se mergea
-  esta rama sin resolver antes R-6). El push, el humano. |
+  aparte** (la rama ya está sobre `dev`, T0 bis; R-6 resuelto). El push, el
+  humano. |
   Verificación: `git log dev` con el merge; `bash harness/init.sh` en verde en `dev`
 - [ ] **T14 · MANUAL (humano)**: publicar el backend desde una copia limpia de
   `dev`, en la raíz del repositorio principal:
@@ -205,7 +210,7 @@
      respuesta de `/api/revision`: `catalogo.ubicaciones` de esas dos unidades
      tiene tantas entradas como su desplegable; `catalogo.oficios` tiene
      tantas entradas como el desplegable de `Oficio`, cada una con su código.
-  3. **Solo con la autorización de Q-10**: en la plantilla, dos filas con
+  3. **Autorizado por el humano el 2026-11-05 (Q-10)**; nada en Sigrid: en la plantilla, dos filas con
      «PRUEBA F-071 - DESCARTAR» en `Descripción corta`: la A con una
      ubicación **pegada** de otra unidad (pegar se salta la validación); la B
      con ubicación, `Oficio` y `Proveedor` del desplegable. Importar: la
@@ -219,8 +224,10 @@
   Verificación: MANUAL (humano) — los cuatro pasos anotados con su resultado real
 - [ ] **T17 · líder**: `progress/history.md` (resumen), `progress/current.md`,
   F-071 a `done` en `harness/features.json` **solo con T18 en verde y la
-  review final APPROVED** (regla dura de `CLAUDE.md`), y F-058 cerrada como absorbida
-  (Q-11); retirar el worktree `postventa-f058` si el humano lo aprueba. |
+  review final APPROVED** (regla dura de `CLAUDE.md`); F-058 ya consta como
+  absorbida (Q-11, el líder el 2026-11-05): cerrar su ficha y retirar el
+  worktree `postventa-f058` si el humano lo aprueba. Siguiente feature: F-072,
+  luego retomar F-040 (Q-3). |
   Verificación: `python harness/backlog.py --comprobar` sin diferencias
 - [ ] **T18**: Ejecutar `bash harness/init.sh` en verde. |
   Verificación: `bash harness/init.sh`

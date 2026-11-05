@@ -1,16 +1,19 @@
 <!-- specs/F-071-plantilla-desde-sigrid/requirements.md -->
 # F-071 · La plantilla de incidencias saca todos sus desplegables de Sigrid al descargarla — Requisitos
 
-> **PENDIENTE DE APROBACIÓN DEL HUMANO.** Escrita el 2026-11-04 por el
+> **APROBADA POR EL HUMANO el 2026-11-05** (respuestas a Q-1..Q-13, versión 1
+> de las respuestas; traza en `design.md` §13.1 y en `progress/spec_F-071.md`
+> «Decisiones del humano 2026-11-05»). Escrita el 2026-11-04 por el
 > spec-author en la rama `feature/F-071-plantilla-desde-sigrid` (worktree
-> `postventa-f071`, desde `feature/F-040-volcado-sigrid` en `d50fe9d`). Rigor
-> **`critico`**, prioridad 1 (URGENTE). Solo `services/postventa-api` y los
-> documentos.
+> `postventa-f071`), **rebasada por el líder sobre `dev` `ed935ad`** el
+> 2026-11-05 (base fija, Q-13). Rigor **`critico`**, prioridad 1 (URGENTE).
+> Solo `services/postventa-api` y los documentos.
 >
 > Los requisitos marcados **[D-n]** dependen de una decisión de `design.md`
-> §13 y están escritos con la **opción recomendada**; las preguntas al humano,
-> numeradas **Q-n**, están en `progress/spec_F-071.md`. Si el humano elige otra
-> opción, el requisito cambia **antes** de empezar.
+> §13; todas quedan con la opción recomendada, que el humano aprobó, **salvo
+> D-1, pendiente del resultado de la prueba manual del Bloque 0** (T0): si sale
+> a2, cambian R10 y los tests de la fórmula; si no sale ninguna, se vuelve al
+> humano antes de escribir código.
 >
 > **Absorbe F-058** (spec aprobada el 2026-10-09 en el worktree `postventa-f058`,
 > nunca implementada): sus requisitos de ubicación dependiente pasan aquí con
@@ -51,8 +54,8 @@ Lo que hay en Sigrid para cada desplegable (`azure-apps/sigrid_tablas.md`,
 | Ubicación | `prmtpl.ubica` de la tipología de cada unidad | lista fija del YAML | **Sigrid, por unidad** |
 | Oficio | `obrofc` → `auxofc` de la obra, sin baja | Sigrid, agrupado | **Sigrid, un código por entrada** |
 | Proveedor | `obrofc` de la obra con proveedor | Sigrid, por grupo de oficio | **Sigrid, una fila de `obrofc` por entrada** |
-| Urgencia | **no hay catálogo**: `rcp.texurg` es texto libre de 32; la pasarela no lo admite y el volcado no lo manda (D-10 de F-059) | YAML | YAML [D-15, Q-2] |
-| Listado | `auxtrcp` («Tipos de reclamación»); el volcado manda **siempre** `0002` (Q-1 de F-059) | YAML | YAML; el tipo de reclamación de punta a punta, ficha aparte [D-16, Q-3] |
+| Urgencia | **no hay catálogo**: `rcp.texurg` es texto libre de 32; la pasarela no lo admite y el volcado no lo manda (D-10 de F-059) | YAML | YAML [D-15, Q-2]; más adelante, una lista **interna** de prioridades del humano (fuera de alcance, §4) |
+| Listado | `auxtrcp` («Tipos de reclamación»); el volcado manda **siempre** `0002` (Q-1 de F-059) | YAML | YAML; el tipo de reclamación de punta a punta es **F-072** [D-16, D-21, Q-3] |
 
 ## 0.1 · Glosario
 
@@ -169,6 +172,7 @@ que no está en el desplegable de `Oficio`. [D-12]
 `seguridad`; `primero`, `segundo`), porque Sigrid no tiene catálogo de
 urgencias y el tipo de reclamación no lo decide la bandeja (§0). La hoja
 «Instrucciones» no debe decir que salen de Sigrid. [D-15, D-16]
+Lo que vendrá después, **fuera de esta ficha**, está en §4.1.
 
 ### 1.6 · Versión, textos y tamaño
 
@@ -330,6 +334,18 @@ sin ubicaciones, opciones de oficio, pares).
 tests se **retiran**, con constancia en `docs/ARCHITECTURE.md` de que
 cumplieron y del commit en que quedan. [D-6]
 
+### 4.1 · Fuera de alcance, con su sustituto ya nombrado
+
+- **Urgencia** (Q-2, 2026-11-05): sigue saliendo del YAML de momento. El
+  humano pasará más adelante una **lista interna de prioridades** (no viene de
+  Sigrid) que sustituirá a la del YAML. Ni se diseña ni se anticipa aquí.
+- **Listado → tipo de reclamación** (Q-3, 2026-11-05): ficha **F-072**,
+  `auxtrcp` de punta a punta (plantilla, bandeja, revisión y volcado); en
+  blanco, `0002`. Orden fijado por el humano: **F-071 → F-072 → retomar
+  F-040**. F-071 deja `Listado` como está (YAML), con el generador preparado
+  para que F-072 cambie el origen de la lista sin rehacer la plantilla
+  (`design.md` D-21, §7.1).
+
 ## 5 · Documentación y verificación
 
 **R46.** `docs/ARCHITECTURE.md` («La plantilla», «La importación», «La
@@ -348,7 +364,8 @@ distintas, cada una con tantas entradas como su tipología en
 `GET /api/revision` (`catalogo.ubicaciones`); una fila sin unidad no ofrece
 ninguna; el desplegable de `Oficio` tiene tantas entradas como oficios
 distintos de la obra en `catalogo.oficios` de esa misma respuesta, cada una
-con su código; y una importación de prueba (autorizada en F-058 Q-6; el humano
-la reconfirma, Q-10) con una fila de ubicación de otra unidad la devuelve en
+con su código; y una importación de prueba (autorizada por el humano el
+2026-11-05, Q-10: filas «PRUEBA F-071 - DESCARTAR» en la bandeja de la 0677,
+que descarta el humano; nada en Sigrid) con una fila de ubicación de otra unidad la devuelve en
 el Excel de errores con `UBICACION_FUERA_DE_LA_UNIDAD`, y una fila buena con
 oficio y proveedor entra sin `oficio_ambiguo` y se descarta en la bandeja.

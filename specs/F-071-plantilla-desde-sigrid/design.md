@@ -1,8 +1,10 @@
 <!-- specs/F-071-plantilla-desde-sigrid/design.md -->
 # F-071 · La plantilla de incidencias saca todos sus desplegables de Sigrid al descargarla — Diseño
 
-> **PENDIENTE DE APROBACIÓN DEL HUMANO.** Decisiones D-1 a D-20 en §13, con su
-> recomendación; las preguntas Q-1 a Q-13, en `progress/spec_F-071.md`.
+> **APROBADA POR EL HUMANO el 2026-11-05.** Decisiones D-1 a D-21 en §13; las
+> respuestas a Q-1..Q-13 (versión 1, 2026-11-05) en §13.1 y en
+> `progress/spec_F-071.md`. **D-1 queda pendiente** del resultado de la prueba
+> manual del Bloque 0.
 > Requisitos en `requirements.md`. Ejemplos siempre ficticios.
 >
 > **Hereda el diseño de F-058** (`git show feature/F-058-plantilla-ubicaciones-sigrid:specs/F-058-plantilla-ubicaciones-sigrid/design.md`),
@@ -129,7 +131,8 @@ F-058 ya generó** (`C:\Users\pgris\Downloads\f058_prototipos\prototipo_f058_a1.
 y `_a2.xlsx`, datos ficticios, siguen en disco) en Excel de escritorio y Excel
 web (Q-7 de F-058). Si a1 falla y a2 (`OFFSET`) vale, a2; si fallan las dos,
 **parar** y volver al humano con (c). Sea cual sea, **manda la importación**
-(§5.3): pegar se salta la validación de Excel.
+(§5.3): pegar se salta la validación de Excel. **El humano hará la prueba
+antes del Bloque 1** (Q-1, 2026-11-05); D-1 queda pendiente de su resultado.
 
 ### 4.2 · La forma recomendada (a1)
 
@@ -379,6 +382,11 @@ revisión para enseñar el grupo de las filas ya importadas como ambiguas.
   celda); un test lo fija.
 - Tamaño: R20 se mide en un test real (generar y leer con
   `LectorPlantillaOpenpyxl`); en la 0677, ~160 celdas más.
+- **`Listado`, preparado para F-072 (D-21).** El generador no sabe de dónde
+  sale la lista de `Listado`: la recibe como una lista de opciones más (como
+  `Urgencia`) y la escribe en su rango `lista_listados`, igual que las demás.
+  F-072 solo cambiará quién construye esa lista (de YAML a `auxtrcp`) sin
+  tocar la hoja, la cabecera ni la validación. Nada más se diseña aquí.
 
 ### 7.2 · `plantilla_yaml.py`
 
@@ -416,9 +424,10 @@ la lista de ubicaciones ya no se configura aquí; sale de Sigrid, por unidad
 - **Urgencia.** En Sigrid es `rcp.texurg`, **texto libre** de 32 caracteres
   (`sigrid_tablas.md`, tabla `rcp`), sin tabla auxiliar. `sigrid-api` §8.9 no
   lo admite y el volcado no la manda (D-10 de F-059). No hay «lo que hay en
-  Sigrid» que ofrecer: se queda la lista del YAML. Si Posventa usa en
-  `texurg` unos valores de hecho, una medición (T0 bis, MANUAL) lo dirá, y
-  mandarlos a Sigrid sería otra ficha con cambio en `sigrid-api` (Q-2).
+  Sigrid» que ofrecer: se queda la lista del YAML **de momento** (Q-2,
+  2026-11-05). El humano pasará más adelante una **lista interna de
+  prioridades** (no de Sigrid) que la sustituirá: fuera de alcance, sin
+  diseñar aquí.
 - **Listado.** En Sigrid el equivalente es el **tipo de reclamación**
   (`rcp.trcpide` → `auxtrcp`; `0002` «PRIMER LISTADO POSTVENTA»). Hoy el
   `listado` de la bandeja **no llega a Sigrid**: el volcado manda siempre
@@ -426,8 +435,10 @@ la lista de ubicaciones ya no se configura aquí; sale de Sigrid, por unidad
   lo guarde por código y el volcado lo mande sería enseñar algo que no se usa.
   Hacerlo de punta a punta toca DDL (`CHECK (listado IN …)` en
   `13_bandeja_incidencias.sql` y `15_revisiones_bandeja.sql`), la revisión, la
-  página de la bandeja y el volcado de F-040, que está **en curso**: por eso
-  se propone **ficha aparte** (Q-3).
+  página de la bandeja y el volcado de F-040: por eso va en **ficha aparte,
+  F-072** (Q-3, 2026-11-05: `auxtrcp` de punta a punta; en blanco, `0002`;
+  orden F-071 → F-072 → retomar F-040). F-071 deja `Listado` en el YAML con el
+  generador preparado (D-21, §7.1).
 
 ## 9 · Compatibilidad
 
@@ -468,9 +479,9 @@ en el Excel, nunca al log. Tests y documentos con datos ficticios.
 
 ## 13 · Decisiones
 
-| Id | Decisión | Opciones | Recomendación |
+| Id | Decisión | Opciones | Elegida (humano, 2026-11-05) |
 |---|---|---|---|
-| **D-1** | Cómo ofrecer la ubicación por fila | (a) dependiente; (b) pares; (c) unión + validar al importar | **(a) a1**, con la prueba del Bloque 0 sobre los prototipos de F-058; a2 de reserva; si fallan, parar y volver con (c) |
+| **D-1** | Cómo ofrecer la ubicación por fila | (a) dependiente; (b) pares; (c) unión + validar al importar | **(a) a1**, con la prueba del Bloque 0 sobre los prototipos de F-058; a2 de reserva; si fallan, parar y volver con (c). **Pendiente del resultado de T0** |
 | **D-2** | Cómo se agrupan las listas | por tipología (pidiendo `obrtplide`) o por contenido | **Por contenido**: no cambia la consulta de F-056 |
 | **D-3** | Ubicación que solo difiere en mayúsculas | normalizar con F-060 y avisar; exacta | **Normalizar** con `ubicacion_de_sigrid` (F-060 ya está en `dev`) |
 | **D-4** | Plantillas v1 | rechazar; importar con reglas nuevas | **Rechazar** con `version_anterior` (decisión del humano en F-058, y la v1 no casaría por las etiquetas de oficio, §9) |
@@ -484,12 +495,33 @@ en el Excel, nunca al log. Tests y documentos con datos ficticios.
 | **D-12** | Proveedor | par por grupo de oficio (hoy); par por fila de `obrofc` con código | **Par por (oficio, proveedor), con los dos códigos** |
 | **D-13** | Qué se guarda como nombre del oficio y del proveedor | la etiqueta del desplegable; el nombre de Sigrid | **El nombre de Sigrid** (el front ya añade el código) |
 | **D-14** | Equivalencias de oficio (R86, R92 de F-036) | seguir agrupando en la plantilla; no agrupar | **No agrupar en la plantilla ni en la importación**; la tabla, `oficios.html`, sus rutas y la revisión no se tocan (Q-6) |
-| **D-15** | Urgencia | YAML; inventar catálogo | **YAML** (no hay catálogo en Sigrid, §8) |
-| **D-16** | Listado / tipo de reclamación | YAML ahora y ficha aparte de punta a punta; dentro de F-071 | **YAML ahora, ficha aparte** (Q-3) |
+| **D-15** | Urgencia | YAML; inventar catálogo | **YAML de momento** (no hay catálogo en Sigrid, §8); la sustituirá una lista interna del humano, fuera de alcance |
+| **D-16** | Listado / tipo de reclamación | YAML ahora y ficha aparte de punta a punta; dentro de F-071 | **YAML ahora, ficha aparte F-072** (Q-3) |
 | **D-17** | Valores tecleados con otra mayúscula en las demás columnas tasadas | exacto (decisión 7 de F-036); casado de F-060 | **Casado de F-060** con aviso (R36): la importación no rechaza lo que Excel dio por bueno |
 | **D-18** | Filas ya importadas ambiguas | arreglarlas en esta ficha; dejarlas a la bandeja | **A la bandeja**, como hoy |
 | **D-19** | Proveedor dependiente del oficio | sí (otro `INDIRECT`); no | **No**: el par lleva su oficio y la importación comprueba (R34) |
 | **D-20** | F-058 | mergear; absorberla | **Absorberla**: F-058 no se implementa; el líder la cierra como absorbida y retira su worktree (Q-11) |
+| **D-21** | `Listado` frente a F-072 | dejarlo cableado al YAML; que el generador lo reciba como una lista más | **Una lista más** (§7.1): F-072 cambia el origen sin rehacer la plantilla |
+
+### 13.1 · Respuestas del humano (versión 1, 2026-11-05)
+
+Todas según la recomendación de `progress/spec_F-071.md`, con estos matices:
+
+| Q | Respuesta | Dónde queda |
+|---|---|---|
+| Q-1 | Sí: el humano hace la prueba manual de los prototipos **antes del Bloque 1** | T0; D-1 pendiente del resultado |
+| Q-2 | La urgencia sigue en el YAML **de momento**; la sustituirá una lista **interna** de prioridades que pasará el humano (no viene de Sigrid) | D-15, §8, requirements §4.1; sin diseñar |
+| Q-3 | Ficha aparte **F-072** (`auxtrcp` de punta a punta; en blanco = `0002`). Orden F-071 → F-072 → retomar F-040. F-071 deja `Listado` en el YAML con el generador preparado | D-16, D-21, §7.1, §8 |
+| Q-4 | Rechazar la v1 | D-4, R23 |
+| Q-5 | Etiquetas siempre con código | D-11, D-12 |
+| Q-6 | Las equivalencias se quedan sin cambios | D-14 |
+| Q-7 | Sí: casado de F-060 (una sola opción salvo mayúsculas, con aviso) en `Unidad`, `Oficio`, `Proveedor`, `Urgencia` y `Listado` | D-17, R36 |
+| Q-8 | Ubicación en blanco y explicación en «Detalle» si el sitio no está | R18 |
+| Q-9 | Retirar el script de migración de F-036 | D-6, R45 |
+| Q-10 | Autorizada la fila de prueba «PRUEBA F-071 - DESCARTAR» en la bandeja de la 0677; la descarta el humano; nada en Sigrid | R47, T16 |
+| Q-11 | F-058 absorbida (anotado por el líder en el backlog) | D-20, T17 |
+| Q-12 | Lo ya importado se resuelve en la bandeja | D-18 |
+| Q-13 | Hecho por el líder: F-040 `blocked` y la rama de F-071 rebasada sobre `dev` `ed935ad` (base fija) | R-6, T0 bis |
 
 ## 14 · Riesgos
 
@@ -504,10 +536,10 @@ en el Excel, nunca al log. Tests y documentos con datos ficticios.
   una menos de PostgreSQL en la plantilla: dentro de los 45 s.
 - **R-5 · Muchos tests de F-036 cambian** (versión, lista, grupos, firma).
   Cada uno se cita con su sustituto (§3.2); el reviewer lo comprueba.
-- **R-6 · Rama desde F-040.** La rama sale de `feature/F-040-volcado-sigrid`
-  (`d50fe9d`), no de `dev`. F-071 no usa nada de F-040; si F-040 no está
-  mergeada cuando F-071 vaya a `dev`, el merge arrastraría F-040 a medias. El
-  líder decide la base fija antes del Bloque 1 (Q-13).
+- **R-6 · Rama desde F-040 (resuelto).** La rama salió de
+  `feature/F-040-volcado-sigrid`; el 2026-11-05 el líder la rebasó sobre
+  `dev` `ed935ad` (base fija) y aparcó F-040 (`blocked`), así que el merge a
+  `dev` no arrastra F-040 a medias (Q-13).
 - **R-7 · Excel acepta lo tecleado con la lista vacía** (§4.2): lo mide el
   Bloque 0.
 - **R-9 · Los `test_f0NN_alcance_cerrado.py` de F-036, F-056, F-059, F-060 y

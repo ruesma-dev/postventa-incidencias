@@ -4,8 +4,8 @@
 Escrita en el worktree `postventa-f071`, rama
 `feature/F-071-plantilla-desde-sigrid` (desde `feature/F-040-volcado-sigrid`
 en `d50fe9d`). Carpeta: `specs/F-071-plantilla-desde-sigrid/`
-(`requirements.md`, `design.md`, `tasks.md`). **Pendiente de aprobación del
-humano.** F-071 dada de alta en `harness/features.json` (`spec_ready`,
+(`requirements.md`, `design.md`, `tasks.md`). **Aprobada por el humano el
+2026-11-05** (ver «Decisiones del humano 2026-11-05», al final). F-071 dada de alta en `harness/features.json` (`spec_ready`,
 prioridad 1, rigor `critico`) y `BACKLOG.md` regenerado. No se ha consultado
 Sigrid ni escrito nada fuera del worktree.
 
@@ -149,3 +149,39 @@ poder mergearla y publicarla sin arrastrar F-040 a medias.
 - `azure-apps/postventa_incidencias.md` es del líder al desplegar (T15).
 - Si el humano aprueba Q-3 (ficha aparte), darla de alta; y anotar en F-058 que
   queda absorbida (Q-11).
+
+## Decisiones del humano 2026-11-05
+
+Respuestas a Q-1..Q-13 (versión 1 de las respuestas), incorporadas a la spec
+por el spec-author el 2026-11-05 y trazadas en `design.md` §13.1. **La spec
+queda APROBADA.** Todas según la recomendación de arriba, con estos matices:
+
+- **Q-1**: sí; el humano hará la prueba manual de los prototipos **antes del
+  Bloque 1** (T0, Bloque 0 MANUAL). **D-1 queda pendiente** de su resultado.
+- **Q-2**: la urgencia sigue saliendo del YAML **de momento**. El humano pasará
+  más adelante una lista **interna** de prioridades (no viene de Sigrid) que la
+  sustituirá. Escrito como fuera de alcance (requirements §4.1, design §8,
+  D-15), sin diseñarla.
+- **Q-3**: el tipo de reclamación va en **F-072** (`auxtrcp` de punta a punta:
+  plantilla, bandeja, revisión y volcado; en blanco = `0002`). Orden fijado:
+  **F-071 → F-072 → retomar F-040**. F-071 deja `Listado` en el YAML, con el
+  generador preparado para que F-072 cambie el origen de la lista sin rehacer
+  la plantilla: decisión nueva **D-21** (design §7.1), solo nombrada.
+- **Q-4, Q-5, Q-6, Q-8, Q-9, Q-12**: según recomendación (D-4, D-11/D-12,
+  D-14, R18, D-6, D-18).
+- **Q-7**: sí; casado de F-060 (si casa con **una sola** opción salvo
+  mayúsculas se toma, con aviso) en `Unidad`, `Oficio`, `Proveedor`,
+  `Urgencia` y `Listado` (D-17, R36).
+- **Q-10**: autorizada la fila de prueba «PRUEBA F-071 - DESCARTAR» en la
+  bandeja de la 0677; la descarta el humano; nada en Sigrid (R47, T16).
+- **Q-11**: F-058 absorbida (ya anotado por el líder en el backlog).
+- **Q-13**: hecho por el líder: F-040 `blocked` y la rama rebasada sobre
+  `dev` `ed935ad`, que pasa a ser la **base fija** (T0 bis marcada hecha; los
+  comandos de mutación de `tasks.md` la llevan ya escrita; R-6 resuelto).
+
+Cambios en `tasks.md` para que cada encargo sea pequeño: **T9** (retirar el
+script de migración) pasa del Bloque 3 al Bloque 4; el Bloque 1 lleva una nota
+para partirlo en dos encargos (T1 / T2–T3) si se cuelga. Los identificadores
+de tarea no cambian.
+
+Siguiente paso: T0 (humano). Con D-1 decidida, el líder encarga el Bloque 1.

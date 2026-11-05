@@ -31,4 +31,6 @@ Lectura:
 - Sin medir por COM: lo que **se ve** en el desplegable (orden en a1) y
   **Excel web**. Quedan para el humano.
 
-D-1: pendiente de la decisión del humano (recomendación del líder: **a1**).
+**D-1 = a1** (`INDIRECT`), decidido por el humano el 2026-11-05. Excel web:
+opcional, no hecho. El punto 3 de a1 (unidad vacía acepta lo tecleado) se
+acepta: lo rechaza la importación.

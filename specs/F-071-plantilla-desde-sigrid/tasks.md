@@ -30,7 +30,7 @@
 
 ## Bloque 0 · La prueba del desplegable dependiente y la base (sin código)
 
-- [ ] **T0 · MANUAL (humano)** (confirmado por el humano, Q-1 2026-11-05):
+- [x] **T0 · MANUAL (humano)** (confirmado por el humano, Q-1 2026-11-05; hecho el 2026-11-05: escritorio por el líder con COM, **D-1 = a1** decidido por el humano; Excel web opcional, no hecho):
   abrir los dos prototipos que F-058 dejó fuera
   del repositorio, `C:\Users\pgris\Downloads\f058_prototipos\prototipo_f058_a1.xlsx`
   y `prototipo_f058_a2.xlsx` (datos ficticios), en **Excel de escritorio** y en

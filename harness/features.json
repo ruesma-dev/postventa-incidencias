@@ -695,11 +695,12 @@
         "Cada parte creado lleva los mismos campos que el alta manual de docs/referencia/04_alta_incidencia_sigrid.md",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "rigor": "critico",
       "priority": 6,
-      "branch": "feature/F-040-volcado-sigrid"
+      "branch": "feature/F-040-volcado-sigrid",
+      "blocked_by": "Aparcada por el humano el 2026-11-05 para hacer F-071 (urgente). No hay fallo. Hecho y en dev (ed935ad): Bloque 1, T4, T5.1, T5.2, T6a (enlaces a bandeja.html, APPROVED; M4 y M5 aceptados por escrito por el humano el 2026-11-05). Decisiones del humano 2026-11-05: miga de pan de bandeja.html como texto sin enlace; tarjeta del inicio a «En producción». Al retomar: T5.3 (clic del humano con la ventana cerrada), T5.4 solo DESPUÉS de F-072 (tipo de reclamación), T5.6, resto de T6, T6 bis, T7."
     },
     {
       "id": "F-041",
@@ -977,7 +978,7 @@
       "rigor": "critico",
       "priority": 8,
       "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
-      "blocked_by": null
+      "blocked_by": "Absorbida por F-071 (decisión del humano 2026-11-05, Q-11). No se implementa por su cuenta: se cierra cuando F-071 esté done; su rama se conserva como archivo y el worktree postventa-f058 se retira entonces."
     },
     {
       "id": "F-059",
@@ -1229,11 +1230,31 @@
         "No se escribe nada en Sigrid",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 1,
       "branch": "feature/F-071-plantilla-desde-sigrid"
+    },
+    {
+      "id": "F-072",
+      "title": "El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado",
+      "description": "Alta del 2026-11-05 por decisión del humano (Q-3 de F-071, «toca lo que sea»). Hoy la columna «Listado» de la plantilla ofrece dos valores fijos del YAML (Primer listado / Segundo listado), la bandeja los guarda pero el volcado manda SIEMPRE el tipo 0002 (PRIMER LISTADO POSTVENTA, constante TIPO_RECLAMACION en domain/models/volcado.py): una incidencia de segundo listado entraría en Sigrid como primer listado. Alcance: la plantilla ofrece los tipos vigentes de dbo.auxtrcp (vía sigrid-api, lectura) al descargar; la importación valida contra los de ese momento y guarda el código; la bandeja lo guarda en columna nueva (DDL solo en el schema postventa); la revisión lo enseña y deja cambiarlo; el volcado manda el código elegido. En blanco = 0002, como hoy (decisión del humano 2026-11-05). Orden fijado por el humano: F-071 -> F-072 -> retomar F-040; el primer volcado real (T5.4 de F-040) no se hace antes de F-072.",
+      "acceptance": [
+        "La columna Listado de la plantilla ofrece los tipos de reclamación vigentes en Sigrid (auxtrcp sin fecha de baja) en el momento de la descarga",
+        "La importación valida el tipo contra Sigrid en ese momento, con la regla de mayúsculas de F-060/F-071, y guarda su código",
+        "Un tipo en blanco se guarda y se vuelca como 0002",
+        "La revisión de la bandeja enseña el tipo y deja cambiarlo antes de aprobar",
+        "El volcado manda a Sigrid el código del tipo guardado, no una constante",
+        "El DDL va solo en el schema propio postventa y es re-ejecutable",
+        "Ninguna escritura en Sigrid desde local ni desde tests",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 2,
+      "branch": "feature/F-072-tipo-reclamacion-sigrid"
     }
   ]
 }

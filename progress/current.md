@@ -1,12 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-071 · `spec_ready` · 2026-11-04 · URGENTE (prioridad 1) · spec escrita, pendiente de aprobación
+> ## F-071 · `in_progress` · 2026-11-05 · URGENTE (prioridad 1) · spec aprobada por el humano
 > Plantilla de incidencias con TODOS sus desplegables de Sigrid al descargar (petición del humano del 2026-11-04).
 > Spec en `specs/F-071-plantilla-desde-sigrid/` (worktree `postventa-f071`, rama `feature/F-071-plantilla-desde-sigrid`,
-> desde F-040 `d50fe9d`). Absorbe F-058. Esperan al humano **Q-1 a Q-13** en `progress/spec_F-071.md`; las
-> decisivas: Q-1 (prueba de 15 min del desplegable dependiente con los prototipos de F-058), Q-3 (tipo de
-> reclamación en ficha aparte), Q-13 (aparcar F-040 y llevar la rama a `dev`).
+> **rebasada sobre `dev` `ed935ad` el 2026-11-05**). **El estado del backlog se lleva en esta rama mientras esté en curso.**
+> Absorbe F-058. Respuestas del humano (2026-11-05) a Q-1..Q-13 de `progress/spec_F-071.md`: todas según
+> recomendación, con estos matices: **Q-2** la urgencia sigue en el YAML de momento; el humano pasará una lista
+> interna de prioridades que la sustituirá. **Q-3** tipo de reclamación en ficha aparte **F-072**, orden
+> F-071 → F-072 → F-040; en blanco = `0002`. **Q-7** se normalizan mayúsculas en todas las columnas.
+> Siguiente: spec-author incorpora las decisiones; luego T0 (prueba manual de los prototipos, humano) y Bloque 1.
+>
+> F-040 aparcada (`blocked`, sin fallo) el 2026-11-05; motivo y punto de retorno en su `blocked_by`.
+> El humano aceptó por escrito M4 y M5 de T6a, miga de pan sin enlace y tarjeta «En producción» (2026-11-05).
 
 > ## F-065 · `done` · 2026-10-31 · desplegada desde `dev` `ed590bd` y verificada en solo lectura
 > Bloques A1 a A6 aprobados (mutación 182/182, cobertura 100 %, review final APPROVED); merge a `dev` en `ed590bd`,

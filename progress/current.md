@@ -1,7 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-071 · `in_progress` · 2026-11-05 · URGENTE (prioridad 1) · spec aprobada por el humano
+> ## F-071 · `blocked` · 2026-11-05 · URGENTE (prioridad 1) · spec aprobada por el humano
+> **Bloque 1 (implementer, 2026-11-05): T1 RED hecha (`89a01d1`); T2 y T3 bloqueadas.** T2 cambia solo el dominio
+> y rompe a sus llamadores de los Bloques 2 y 3 (`plantilla_yaml.py`, `excel_openpyxl.py`, `paso_importacion.py`,
+> `plantilla.py`, el puerto): suite en rojo, y la mutación de T3 (suite entera) no mediría nada. Opciones (a)/(b)/(c)
+> y recomendación (b) en `progress/impl_F-071.md` «Bloqueo de T2–T3». Decide el líder o el humano.
+>
 > Plantilla de incidencias con TODOS sus desplegables de Sigrid al descargar (petición del humano del 2026-11-04).
 > Spec en `specs/F-071-plantilla-desde-sigrid/` (worktree `postventa-f071`, rama `feature/F-071-plantilla-desde-sigrid`,
 > **rebasada sobre `dev` `ed935ad` el 2026-11-05**). **El estado del backlog se lleva en esta rama mientras esté en curso.**

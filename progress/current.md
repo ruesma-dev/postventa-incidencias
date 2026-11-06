@@ -1,7 +1,9 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-071 · `blocked` · 2026-11-05 · URGENTE (prioridad 1) · spec aprobada por el humano
+> ## F-071 · `in_progress` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> **Desbloqueada: opción (b) autorizada por el humano el 2026-11-06** (T2 con el mínimo imprescindible en los
+> llamadores para mantener la suite en verde; T3 con la suite en verde). Lo de abajo es el bloqueo ya resuelto.
 > **Bloque 1 (implementer, 2026-11-05): T1 RED hecha (`89a01d1`); T2 y T3 bloqueadas.** T2 cambia solo el dominio
 > y rompe a sus llamadores de los Bloques 2 y 3 (`plantilla_yaml.py`, `excel_openpyxl.py`, `paso_importacion.py`,
 > `plantilla.py`, el puerto): suite en rojo, y la mutación de T3 (suite entera) no mediría nada. Opciones (a)/(b)/(c)

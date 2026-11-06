@@ -1230,8 +1230,7 @@
         "No se escribe nada en Sigrid",
         "bash harness/init.sh en verde"
       ],
-      "status": "blocked",
-      "blocked_by": "Bloque 1 (implementer, 2026-11-05): T1 RED hecha (89a01d1). T2 tal como está en tasks.md cambia solo el dominio (ListasCerradas sin ubicaciones, validar_filas con firma nueva, versión 2) y deja rotos a sus llamadores de los Bloques 2 y 3 (plantilla_yaml.py, excel_openpyxl.py, paso_importacion.py, plantilla.py, el puerto): la suite quedaría en rojo y la mutación de T3, que corre la suite entera, daría 0 supervivientes sin medir nada. Opciones (a)/(b)/(c) en progress/impl_F-071.md «Bloqueo de T2-T3»; decide el líder o el humano.",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 1,

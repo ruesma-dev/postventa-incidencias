@@ -192,6 +192,11 @@ Salidas que veo, a decidir por el líder o el humano:
 Recomendación: **(b)**. Deja cada bloque revisable con la suite en verde y da
 sentido a la mutación de T3.
 
+**Decisión del humano: (b) autorizada el 2026-11-06** (por el líder). T2 incluye
+el mínimo en `plantilla_yaml.py`, `excel_openpyxl.py`, `paso_importacion.py`,
+`plantilla.py`, `domain/ports/hoja_calculo.py` y `scripts/migracion_f036.py`;
+nada de la lógica nueva de los Bloques 2 y 3.
+
 ### Evidencias (Bloque 1, parcial)
 
 | Evidencia | Valor |

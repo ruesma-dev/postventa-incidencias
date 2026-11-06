@@ -88,7 +88,12 @@
 - [ ] **T2 · GREEN**: `domain/models/casado_con_lista.py` (lo movido sin
   cambiar una letra y `casar_con_lista`), `normalizacion.py` (solo imports),
   `plantilla_incidencias.py`, `importacion.py`, `errores.py`
-  (`version_anterior`). Adaptar los tests de dominio de F-036, F-056 y F-060
+  (`version_anterior`). **Alcance ampliado (opción (b), humano 2026-11-06)**:
+  además, el mínimo imprescindible en los llamadores para que la suite siga en
+  verde —firmas y construcción de `ListasCerradas` en `plantilla_yaml.py`,
+  `excel_openpyxl.py`, `paso_importacion.py`, `plantilla.py`, `hoja_calculo.py` y
+  `scripts/migracion_f036.py`—, sin la lógica nueva de los Bloques 2 y 3, con
+  cada cambio citado en `progress/impl_F-071.md`. Adaptar los tests de dominio de F-036, F-056 y F-060
   que cambien, **citando** en `progress/impl_F-071.md` cada aserción cambiada
   y el R que la sustituye. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_casado_con_lista.py tests/test_f071_dominio_opciones.py tests/test_f071_dominio_importacion.py tests/test_f036_plantilla_dominio.py tests/test_f036_importacion_dominio.py tests/test_f060_*` en verde

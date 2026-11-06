@@ -1,7 +1,10 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-071 · `blocked` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> ## F-071 · `in_progress` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> **Opción (d) aprobada por el humano el 2026-11-06:** un solo GREEN para los Bloques 1–3 (T2 ya hecha, T5 y T8, con T9
+> adelantada), en dos tandas seguidas. Tanda 1: T4/T5 (generador v2). Tanda 2: T7/T8 y T9. Entre tandas la suite puede
+> estar en rojo. Al final: `init.sh` en verde, mutación de todo lo cambiado y una sola review. Lo de abajo ya está resuelto.
 > **Bloqueada otra vez en T2 (2026-11-06):** con (b) el dominio queda en verde, pero la suite no: hay 230 rojos en 12
 > ficheros, porque la importación no tiene ubicaciones de Sigrid hasta T8 y la migración de F-036 depende de los grupos.
 > Propuestas (d) juntar el GREEN de los Bloques 1–3 (recomendada), (e) adelantar la lectura de T8 y T9, o (c), en

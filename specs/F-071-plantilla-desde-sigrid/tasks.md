@@ -53,6 +53,12 @@
 
 ## Bloque 1 · El dominio
 
+> **Reparto (opción (d), humano 2026-11-06), sin renumerar las tareas.** El
+> GREEN de los Bloques 1 a 3 va en un solo bloque de trabajo: T2 (hecha), T5 y
+> T8, con T9 adelantada. Tanda 1: T4 y T5. Tanda 2: T7, T8 y T9. Entre tandas la
+> suite puede quedar en rojo. Al final: `init.sh` en verde, una sola campaña de
+> mutación (T3 + T6 + T10) y una sola review.
+
 > Es el bloque más grande. Si el encargo se cuelga, el líder lo parte en dos
 > encargos: T1 (RED) y T2–T3 (GREEN y mutación). No se parte por fichero: quitar
 > `ubicaciones` de `ListasCerradas` rompe a la vez la plantilla y la

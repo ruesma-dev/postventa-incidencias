@@ -349,3 +349,12 @@ el final.
 | Suite completa | 230 failed, 9 844 passed, 447 skipped, 3 errors, 1 424,6 s |
 | Cobertura de las líneas cambiadas | no medida: `init.sh` no llega con la suite en rojo |
 | Mutantes | campaña no lanzada: con la suite en rojo todo saldría «muerto» |
+
+## Opción (d): un solo GREEN para los Bloques 1 a 3 (humano, 2026-11-06)
+
+Aprobada por el humano el 2026-11-06 (por el líder). T2 (hecha, `bb93d19`), T5 y
+T8 forman un solo bloque de trabajo, con T9 adelantada. Se encarga en dos tandas
+seguidas: **tanda 1**, T4 (RED) y T5 (GREEN, el generador v2); **tanda 2**, T7,
+T8 y T9. Entre una y otra la suite puede quedar en rojo, y así queda escrito. Al
+final: `bash harness/init.sh` en verde, mutación de todo lo cambiado (T3, T6 y
+T10 en una sola campaña) y una sola review.

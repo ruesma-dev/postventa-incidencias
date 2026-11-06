@@ -902,3 +902,42 @@ F-036, la fuente nueva es `UbicacionesEnMemoria`, en `utiles_importacion.py`.
 Antes de adaptar los tests, la corrida conjunta de esos ficheros con el código
 de T8 daba `227 failed, 1056 passed, 71 skipped in 566.18s`: todos en los seis
 ficheros de arriba, ninguno fuera.
+
+## Tanda 2 · T9, adelantada (implementer, 2026-11-06)
+
+R45, `design.md` §3.3. **Se retiran**, con `git rm`:
+
+- `scripts/migrar_excel_f036.py`;
+- `scripts/migracion_f036.py`;
+- `scripts/migracion_f036_correcciones.yaml`;
+- `tests/test_f036_migracion.py`;
+- `tests/test_f036_migracion_contenido.py`.
+
+**Se quedan**: `scripts/medir_catalogos_f036.py` y
+`scripts/contar_elementos_xml_f036.py`.
+
+**Constancia en `docs/ARCHITECTURE.md`**, en la sección de F-036. La línea de
+«La migración del Excel actual» ahora dice tres cosas:
+
+- que se retiró en F-071 porque cumplió (R45, D-6);
+- que entró con F-036 en `4a0bdaa`;
+- que `ed935ad` es el último commit de `dev` que la tiene.
+
+Se cita un commit de `dev` y no uno de la rama porque la rama se integra con
+squash y sus hashes no sobreviven.
+
+**Menciones que los exigían.** Solo `tests/test_f036_alcance_cerrado.py`.
+`test_f036_arquitectura.py` y `test_f036_documentacion.py` no los nombran:
+se buscó con `git grep` y no salió nada.
+
+| Test o dato | Era | Ahora | R |
+|---|---|---|---|
+| `NUEVOS_DE_F036` | con los dos scripts | sin ellos, con un comentario | R45 |
+| `test_f036_r46_los_bloques_7_y_8_tambien_estan_en_el_control` | los dos scripts tenían que estar en el control | no existen y no están en la lista; el front sigue en el control | R45 |
+
+`progress/migracion_F-036.md`, `harness/features.json` y `BACKLOG.md` las
+nombran como historia y se dejan.
+
+Comprobación: `test_f036_alcance_cerrado.py`, `test_f036_arquitectura.py` y
+`test_f036_documentacion.py` dan 114 passed, 7 skipped in 19.88s.
+

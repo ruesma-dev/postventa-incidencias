@@ -919,9 +919,15 @@ La misma hexagonal que el resto del servicio:
   abren en la misma pestaña; el circuito vive en `partes.html` y una guarda
   pide confirmación antes de salir con una remesa a medias (ver la sección del
   portal).
-- **La migración del Excel actual** de la obra piloto:
-  `scripts/migrar_excel_f036.py`, que usa el mismo lector, el mismo generador
-  y la misma validación, y no modifica el original.
+- **La migración del Excel actual** de la obra piloto
+  (`scripts/migrar_excel_f036.py`, `scripts/migracion_f036.py`,
+  `scripts/migracion_f036_correcciones.yaml` y sus tests
+  `test_f036_migracion*.py`) **se retiró en F-071** (R45, D-6): cumplió, y
+  usaba la lista de ubicaciones del YAML y los grupos de equivalencia que la
+  plantilla v2 ya no tiene. Entró con F-036 en `4a0bdaa`
+  y sigue en `dev` hasta `ed935ad`, el último commit que la tiene, por si
+  hiciera falta consultarla. `scripts/medir_catalogos_f036.py` y
+  `scripts/contar_elementos_xml_f036.py` se quedan.
 
 **Dependencias nuevas**: `openpyxl` y `defusedxml`, en `requirements.txt`.
 **Ninguna variable de entorno nueva.**

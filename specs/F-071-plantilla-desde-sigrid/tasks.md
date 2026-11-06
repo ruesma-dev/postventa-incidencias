@@ -168,7 +168,7 @@
 
 ## Bloque 4 · Documentos, alcance y cierre del código
 
-- [ ] **T9** (movida aquí desde el Bloque 3 para que cada encargo sea pequeño):
+- [x] **T9** (movida aquí desde el Bloque 3 para que cada encargo sea pequeño):
   retirar el script de migración y sus tests (`design.md` §3.3, R45, Q-9) y
   las menciones que los exijan (`test_f036_arquitectura.py`,
   `test_f036_documentacion.py` si los nombran). |

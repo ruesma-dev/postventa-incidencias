@@ -215,7 +215,7 @@ def test_f036_r57_ninguna_otra_urgencia_se_inventa():
 
 
 def test_f036_r57_todas_las_ubicaciones_son_de_la_lista_cerrada():
-    lista = set(CONFIG.listas.ubicaciones)
+    lista = set(CONFIG.ubicaciones)
     fuera = [
         (c.origen, x.ubicacion)
         for c, _, x in _nuevas()

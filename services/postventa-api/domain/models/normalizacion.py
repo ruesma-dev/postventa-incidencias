@@ -25,13 +25,19 @@ Sin red, sin base de datos y sin reloj: la hora entra por parámetro.
 
 from __future__ import annotations
 
-import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime
-from enum import StrEnum
 from uuid import UUID
 
+# La regla de F-060 vive en una hoja del grafo de imports (F-071, design.md
+# §5.5): se importa de allí y se reexporta con los mismos nombres.
+from domain.models.casado_con_lista import (
+    Coincidencia,
+    UbicacionDeSigrid,
+    clave_de_ubicacion,
+    ubicacion_de_sigrid,
+)
 from domain.models.revision import (
     AccionRevision,
     EstadoRevision,
@@ -44,14 +50,19 @@ from domain.models.revision import (
 )
 
 
-class Coincidencia(StrEnum):
-    """Cómo casa una ubicación con la lista de su unidad (R2), en su orden."""
-
-    EXACTA = "exacta"
-    NORMALIZABLE = "normalizable"
-    AMBIGUA = "ambigua"
-    SIN_COINCIDENCIA = "sin_coincidencia"
-
+__all__ = [
+    "ESTADOS_NORMALIZABLES",
+    "QUIEN_SISTEMA",
+    "TEXTO_SISTEMA",
+    "Coincidencia",
+    "PlanDeNormalizacion",
+    "RecuentoNormalizacion",
+    "UbicacionDeSigrid",
+    "clave_de_ubicacion",
+    "planificar_normalizacion",
+    "revision_de_normalizacion",
+    "ubicacion_de_sigrid",
+]
 
 #: El `oid` y el correo de las revisiones del sistema (D-4, Q-2). Sin `@`:
 #: `validar_quien` lo rechaza, así que ninguna persona puede enviarlo (R11).
@@ -62,15 +73,6 @@ QUIEN_SISTEMA = Quien(oid=TEXTO_SISTEMA, correo=TEXTO_SISTEMA)
 #: `aprobada` perdería la aprobación; una `descartada` no admite `editar`; y
 #: los estados que añada F-059 quedan fuera sin tocar nada aquí.
 ESTADOS_NORMALIZABLES = frozenset({EstadoRevision.NUEVA, EstadoRevision.EDITADA})
-
-
-@dataclass(frozen=True)
-class UbicacionDeSigrid:
-    """La clasificación de una ubicación: `texto` es el de la lista si es
-    `NORMALIZABLE`, y `None` en los otros tres casos."""
-
-    coincidencia: Coincidencia
-    texto: str | None
 
 
 @dataclass(frozen=True)
@@ -96,41 +98,6 @@ class PlanDeNormalizacion:
     revisiones: tuple[RevisionNueva, ...]
     esperadas: Mapping[UUID, int | None]
     recuento: RecuentoNormalizacion
-
-
-def clave_de_ubicacion(texto: str) -> str:
-    """NFC, recortada por los extremos y con `casefold` (R1, D-3).
-
-    Sin colapsar los blancos interiores, sin quitar tildes ni diéresis y sin
-    quitar puntuación.
-    """
-    return unicodedata.normalize("NFC", texto).strip().casefold()
-
-
-def ubicacion_de_sigrid(texto: str, lista: tuple[str, ...]) -> UbicacionDeSigrid:
-    """La clasificación de `texto` contra la lista de su unidad (R2–R5).
-
-    En este orden: `exacta` si está tal cual; `normalizable` hacia el valor
-    igual al texto recortado; `normalizable` hacia el **único** valor con su
-    misma clave; `ambigua` si son dos o más; `sin_coincidencia` si ninguno
-    (también con la lista vacía, R3). Un valor repetido tal cual en la lista
-    es uno solo. El resultado es siempre el valor de la lista, carácter a
-    carácter (R5).
-    """
-    if texto in lista:
-        return UbicacionDeSigrid(Coincidencia.EXACTA, None)
-    recortado = texto.strip()
-    if recortado in lista:
-        return UbicacionDeSigrid(Coincidencia.NORMALIZABLE, recortado)
-    clave = clave_de_ubicacion(texto)
-    candidatos = tuple(
-        dict.fromkeys(valor for valor in lista if clave_de_ubicacion(valor) == clave)
-    )
-    if not candidatos:
-        return UbicacionDeSigrid(Coincidencia.SIN_COINCIDENCIA, None)
-    if len(candidatos) > 1:
-        return UbicacionDeSigrid(Coincidencia.AMBIGUA, None)
-    return UbicacionDeSigrid(Coincidencia.NORMALIZABLE, candidatos[0])
 
 
 def revision_de_normalizacion(

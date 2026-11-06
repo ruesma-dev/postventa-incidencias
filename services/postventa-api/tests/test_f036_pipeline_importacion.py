@@ -69,7 +69,7 @@ from domain.models.errores import (
 )
 from domain.models.importacion import (
     FALTA_DESCRIPCION,
-    UNIDAD_FUERA_DE_LISTA,
+    ya_no_esta_en_sigrid,
     CeldaLeida,
     ErrorDeFila,
     EstadoFilaImportada,
@@ -783,7 +783,7 @@ def test_f036_r62_el_excel_de_errores_lleva_solo_las_filas_con_error_tal_como_ll
     assert filas[0][2] == "Puerta que no cierra"
     assert filas[1][4] == "Fontanería"
     assert filas[0][CABECERA.index(COLUMNA_ERRORES)] == (
-        f"Fila 2 del fichero subido · Unidad: {UNIDAD_FUERA_DE_LISTA}"
+        f"Fila 2 del fichero subido · Unidad: {ya_no_esta_en_sigrid('Unidad')}"
     )
     assert filas[1][CABECERA.index(COLUMNA_ERRORES)].startswith(
         f"Fila 4 del fichero subido · Descripción corta: {FALTA_DESCRIPCION} · Oficio: "
@@ -948,7 +948,7 @@ def test_f036_r67_el_excel_de_errores_generado_se_puede_volver_a_subir():
     assert segunda.obra_codigo == "0677"
     assert segunda.validas == ()
     assert [e.problema for f in segunda.con_error for e in f.errores] == [
-        UNIDAD_FUERA_DE_LISTA
+        ya_no_esta_en_sigrid("Unidad")
     ]
 
 

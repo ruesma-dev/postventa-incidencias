@@ -160,7 +160,7 @@ def test_f036_t6_ruta_relativa_al_servicio_no_al_cwd(
 def test_f036_t6_ubicaciones_hasta_48_y_sin_repetidas(
     real: ConfiguracionPlantilla,
 ) -> None:
-    ubicaciones = real.listas.ubicaciones
+    ubicaciones = real.ubicaciones
     assert all(0 < len(u) <= MAX_UBICACION for u in ubicaciones)
     assert all(u == u.strip() and "  " not in u for u in ubicaciones)
     plegadas = [plegar(u) for u in ubicaciones]
@@ -199,7 +199,7 @@ def test_f036_t6_d3_cuarenta_de_medidas_y_las_anadidas_marcadas(
     assert all(str(e.get("revisar", "")).strip() for e in anadidas)
     assert real.ubicaciones_por_revisar == tuple(e["etiqueta"] for e in anadidas)
     assert "General (toda la unidad)" in real.ubicaciones_por_revisar
-    assert real.listas.ubicaciones == tuple(e["etiqueta"] for e in crudo["ubicaciones"])
+    assert real.ubicaciones == tuple(e["etiqueta"] for e in crudo["ubicaciones"])
 
 
 #: Las ubicaciones que no salen de ninguna medida, en el orden del desplegable:
@@ -231,7 +231,7 @@ def test_f036_t25_las_anadidas_en_t25_dicen_de_donde_vienen(crudo: dict) -> None
 def test_f036_t25_orden_del_desplegable_general_alfabetico_y_otra(
     real: ConfiguracionPlantilla,
 ) -> None:
-    ubicaciones = real.listas.ubicaciones
+    ubicaciones = real.ubicaciones
     assert ubicaciones[0] == "General (toda la unidad)"
     assert ubicaciones[-1] == "Otra (explicar en el detalle)"
     medio = list(ubicaciones[1:-1])
@@ -331,7 +331,7 @@ def test_f036_r5_dos_o_tres_ejemplos_validos(real: ConfiguracionPlantilla) -> No
         assert set(ejemplo) <= set(CABECERA) - {COLUMNA_ERRORES}
         assert ejemplo["Unidad"] and ejemplo["Descripción corta"]
         assert len(ejemplo["Descripción corta"]) <= MAX_DESCRIPCION
-        assert ejemplo.get("Ubicación") in (None, *real.listas.ubicaciones)
+        assert ejemplo.get("Ubicación") in (None, *real.ubicaciones)
         assert ejemplo.get("Urgencia") in (None, *urgencias)
         assert ejemplo.get("Listado") in (None, *listados)
     assert any(e.get("Urgencia") for e in ejemplos)  # uno enseña la columna Urgencia
@@ -418,7 +418,7 @@ def test_f036_t6_ubicacion_de_48_se_admite(tmp_path: Path, crudo: dict) -> None:
     datos = copy.deepcopy(crudo)
     datos["ubicaciones"][1]["etiqueta"] = "x" * 48
     assert (
-        "x" * 48 in cargar_plantilla_yaml(_escribir(tmp_path, datos)).listas.ubicaciones
+        "x" * 48 in cargar_plantilla_yaml(_escribir(tmp_path, datos)).ubicaciones
     )
 
 

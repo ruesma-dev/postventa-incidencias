@@ -55,6 +55,9 @@ from domain.models.plantilla_incidencias import (
     COLUMNA_ERRORES,
     ListasCerradas,
     TextosPlantilla,
+    oficios_del_desplegable,
+    pares_del_desplegable,
+    ubicaciones_de_la_plantilla,
 )
 from domain.ports.bandeja import BandejaPort, RegistroImportacion
 from domain.ports.catalogo_obra import CatalogoObraPort
@@ -193,6 +196,10 @@ def paso_catalogo(
     contexto.grupos_proveedor = opciones.grupos_proveedor
     contexto.opciones_oficio = opciones.oficios
     contexto.opciones_proveedor = opciones.proveedores
+    # F-071 T2, provisional hasta T8: las opciones por código, las mismas que
+    # escribe la plantilla; las ubicaciones de Sigrid no se leen aún.
+    contexto.oficios = oficios_del_desplegable(catalogo)
+    contexto.pares = pares_del_desplegable(catalogo, contexto.oficios)
     return contexto
 
 
@@ -207,9 +214,10 @@ def paso_validacion(
     contexto.validas, contexto.con_error = validar_filas(
         contexto.libro.filas,
         catalogo=contexto.catalogo,
-        opciones_oficio=contexto.opciones_oficio,
-        opciones_proveedor=contexto.opciones_proveedor,
+        oficios=contexto.oficios,
+        pares=contexto.pares,
         listas=listas,
+        ubicaciones_por_unidad=contexto.ubicaciones_por_unidad,
     )
     log.info(
         "F-036 filas validadas: obra=%s validas=%d con_error=%d",
@@ -284,8 +292,11 @@ def paso_excel_errores(
     importacion_id = contexto.resultado.importacion.importacion_id
     contenido = generador.generar(
         catalogo=contexto.catalogo,
-        opciones_oficio=contexto.opciones_oficio,
-        opciones_proveedor=contexto.opciones_proveedor,
+        oficios=contexto.oficios,
+        pares=contexto.pares,
+        ubicaciones=ubicaciones_de_la_plantilla(
+            contexto.catalogo.unidades, contexto.ubicaciones_por_unidad
+        ),
         listas=listas,
         textos=textos,
         generada_at=contexto.ahora,

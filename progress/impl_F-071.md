@@ -206,3 +206,146 @@ nada de la lógica nueva de los Bloques 2 y 3.
 | Mutantes | campaña no lanzada: T3 bloqueada (ver arriba) |
 | Tiempo de la ejecución RED | 0,97 s |
 | `bash harness/init.sh` | en rojo, y es lo esperado tras un RED: los tres módulos nuevos no se recogen |
+
+### T2 con la opción (b): hecho y nuevo bloqueo (implementer, 2026-11-06)
+
+**Resumen: el dominio está en verde, pero el «mínimo» de (b) en los
+llamadores no basta para que la suite vuelva a verde.** Quedan 230 tests en
+rojo y 3 errores en 12 ficheros. La mayoría solo se arregla con lo que la spec
+pone en T8 (Bloque 3: leer las ubicaciones de Sigrid en la importación), y el
+encargo lo excluye. Paro y vuelvo a proponer, como manda `CLAUDE.md` («si la
+propuesta era incompleta, para y vuelve a proponer»). El trabajo está en el
+commit `F-071 T2 (a medias)` para que no se pierda. **T3 no se ha lanzado.**
+
+#### Lo hecho en el dominio (T2 propiamente dicho)
+
+- `domain/models/casado_con_lista.py` (nuevo): `Coincidencia`,
+  `UbicacionDeSigrid`, `clave_de_ubicacion` y `ubicacion_de_sigrid`, movidos
+  **carácter a carácter** desde `normalizacion.py` (el script de la edición
+  comprueba que cada bloque cortado está tal cual en el fichero nuevo), y
+  `casar_con_lista`.
+- `normalizacion.py`: solo el import de lo movido y un `__all__` con los
+  nombres que reexporta (para que la reexportación sea explícita y ruff no la
+  dé por import sin usar). No cambia ninguna regla.
+- `plantilla_incidencias.py`: `VERSION_PLANTILLA = 2`,
+  `VERSIONES_SOPORTADAS = {2}`, `VERSION_ANTERIOR = 1`; `ListasCerradas` sin
+  `ubicaciones`; `OpcionOficioSigrid`, `ParSigrid`, `UbicacionesPorUnidad`,
+  `UbicacionesDeLaPlantilla` (con `union()`), `oficios_del_desplegable`,
+  `pares_del_desplegable` y `ubicaciones_de_la_plantilla`.
+  `opciones_de_oficio` y `opciones_de_proveedor` se quedan (las usa la
+  revisión).
+- `importacion.py`: `version_anterior` (R23); `_Fila.tasado` con el casado y su
+  aviso (R36); `_Fila.ubicacion` (§5.3); oficio y proveedor por opción (§5.4);
+  los textos de §5.6; `validar_filas(…, oficios, pares, listas,
+  ubicaciones_por_unidad)`. Fuera `UNIDAD_FUERA_DE_LISTA` (lo sustituye
+  `ya_no_esta_en_sigrid`, R37) y `_aviso_de_ambiguo` (sin ambigüedad de
+  entrada, R35). `resolver_oficio_y_proveedor` y `Elegido` se quedan.
+- `errores.py`: `version_anterior` en `CODIGOS_FICHERO_NO_ES_PLANTILLA`.
+
+Resultado medido: `test_f071_casado_con_lista.py`,
+`test_f071_dominio_opciones.py` y `test_f071_dominio_importacion.py` →
+**146 passed**; junto con `test_f036_importacion_dominio.py`,
+`test_f036_plantilla_dominio.py` y `test_f056_revision_dominio.py` →
+**586 passed**.
+
+#### Lo hecho fuera del dominio (mínimo de (b)), con su motivo
+
+| Fichero | Cambio | Motivo |
+|---|---|---|
+| `domain/ports/hoja_calculo.py` | `generar(catalogo, oficios, pares, ubicaciones, listas, …)`: la firma final de `design.md` §3.2 | el generador ya no puede recibir `listas.ubicaciones` (R22) ni las opciones de grupo |
+| `infrastructure/documentos/excel_openpyxl.py` | la misma firma; `Ubicación` = `ubicaciones.union()` como lista plana, **provisional hasta T5** (sin desplegable dependiente) | lo mínimo para que siga generando sin la lista del YAML |
+| `infrastructure/documentos/plantilla_yaml.py` | `ListasCerradas` sin `ubicaciones`; la lista del YAML queda en un campo provisional `ConfiguracionPlantilla.ubicaciones`, usado solo para validar los ejemplos, hasta que T5 la quite (R21) | sin esto, cargar el YAML real da `TypeError` |
+| `application/pipelines/plantilla.py` | genera con `oficios_del_desplegable`, `pares_del_desplegable` y `ubicaciones_de_la_plantilla(unidades, {})`; sigue leyendo los grupos (R2 es de T8) | la plantilla y la importación tienen que compartir etiquetas |
+| `application/pipelines/contexto_importacion.py` | campos `oficios`, `pares` y `ubicaciones_por_unidad` (vacío hasta T8); los viejos se quedan | `validar_filas` y el Excel de errores los necesitan |
+| `application/pipelines/paso_importacion.py` | `paso_catalogo` calcula `oficios` y `pares`; `paso_validacion` y `paso_excel_errores` con la firma nueva | ídem |
+| `scripts/migracion_f036.py` | **sin tocar** | ver «Por qué no basta» |
+
+Tests adaptados hasta aquí, cada uno con el requisito que lo cambia (el
+comentario `# F-071, Rnn` va también en el código del test):
+
+- `tests/utiles_revision.py` y `tests/test_f056_revision_dominio.py` (dos
+  sitios): `ListasCerradas(ubicaciones=…)` → sin el argumento (R22). La guarda
+  «Esto no se usa: D-4» de `utiles_revision` queda más fuerte: el campo ya no
+  existe.
+- `tests/test_f036_plantilla_dominio.py`: versión 1 → 2 (R17); el test de
+  inmutabilidad usa `urgencias` en vez de `ubicaciones` (R22);
+  `version_anterior` en la lista de códigos (R23).
+- `tests/test_f036_importacion_dominio.py`: la plantilla buena es la v2
+  (R17); las versiones no soportadas son `None, 0, 3, 99` y ya no la 2 (R23);
+  las ubicaciones van por unidad (R22); las opciones son las de Sigrid por
+  código (R12–R14) y las etiquetas de los tests llevan el código (R13, R14).
+  `test_f036_r26_unidad_exacta`: las variantes de mayúsculas y blancos de los
+  extremos pasan a un test nuevo, `test_f036_r26_unidad_casada`, que las da
+  por buenas con aviso (R36), y el motivo de lo que no casa es el de «ya no
+  está en Sigrid» (R37). `test_f036_r29_ubicacion_exacta`: las de otra
+  mayúscula pasan a `test_f036_r29_ubicacion_casada` (R28) y las que no casan
+  dan `UBICACION_FUERA_DE_LA_UNIDAD` (R29). `test_f036_r30_oficio_exacto`:
+  motivo de R37. `test_f036_r31_urgencia_y_listado_exactos`: fuera «urgente»
+  y «primer listado», que ya casan (R36). `test_f036_r24_r33_…`: «cocina» sin
+  unidad casa con la unión (R31) y «URGENTE» con «Urgente» (R36), así que se
+  cambian por «Patio» y «Muy urgente» para que la fila siga con error en
+  todas sus columnas. `test_f036_r93_fila_con_oficio_ambiguo_avisa` y
+  `test_f036_r75_fila_con_proveedor_ambiguo_avisa`: sustituidos por R32/R35 y
+  R14/R35 (elegir uno de los dos códigos da ese código sin ambigüedad; el
+  proveedor en dos oficios da dos pares, cada uno resuelto).
+  `test_f036_r73_proveedor_exacto`: etiquetas v2 y motivo de R37, y la
+  variante en minúsculas sale porque ya casa (R36). Orden de comprobaciones,
+  con la versión 3 (R23).
+- `tests/test_f036_pipeline_importacion.py` y `tests/test_f036_importar_http.py`:
+  `UNIDAD_FUERA_DE_LISTA` → `ya_no_esta_en_sigrid("Unidad")` (R37).
+- `tests/test_f036_configuracion_plantilla.py` (5 sitios) y
+  `tests/test_f036_migracion_contenido.py` (1): `listas.ubicaciones` →
+  `ubicaciones`, el campo provisional (R22).
+- `tests/utiles_plantilla.py`: `generar()` escribe la plantilla v2 (oficios y
+  pares por código; `decisiones` ya no cambia el libro, R12) y admite
+  `ubicaciones=`.
+
+#### Por qué no basta: lo que sigue en rojo
+
+Suite completa con todo lo anterior salvo los dos últimos puntos
+(`pytest -q`, 23 min 44 s con la máquina cargada por otros procesos):
+**230 failed, 9 844 passed, 447 skipped, 3 errors**.
+
+| Fichero | Rojos | Causa |
+|---|---|---|
+| `test_f060_importar_normaliza.py` | 75 | importan por `importar_excel` filas con ubicación; sin la lectura de Sigrid en la importación (T8), `ubicaciones_por_unidad` es `{}` y toda ubicación da `UNIDAD_SIN_UBICACIONES` |
+| `test_f036_migracion.py` + `_contenido` | 60 + 2, y 3 errores | el script compone las filas con las opciones **de grupo** y la lista del YAML, y las valida con `validar_filas`; adaptarlo no es «mínimo», es reescribir su composición, y T9 lo retira |
+| `test_f036_pipeline_importacion.py` | 30 | lo mismo que F-060 (ubicaciones) y las etiquetas de grupo; además fijan que `paso_catalogo` deja las opciones de grupo, que cambia en T8 |
+| `test_f036_excel_generador.py` | 23 | fijan la lista del YAML en `Ubicación` y las etiquetas de grupo: lo que reescribe T5 |
+| `test_f036_importar_http.py` | 16 | como el pipeline |
+| `test_f036_excel_lector.py` | 9 | ida y vuelta generar → leer → validar, con ubicaciones y grupos |
+| `test_f053_importado_at_utc.py` | 5 | importación con filas con ubicación |
+| `test_f036_configuracion_plantilla.py` | 5 | sin mirar uno a uno (parte la arregla el cambio a `ubicaciones` de arriba) |
+| `test_f036_lector_aislado.py` | 4 | sin mirar uno a uno |
+| `test_f036_plantilla_http.py` | 1 | sin mirar |
+
+El fondo: con (b), la importación **no tiene de dónde sacar las ubicaciones**
+de cada unidad hasta que T8 añada la lectura de Sigrid, y la lista del YAML no
+se puede usar de puente sin incumplir R22. Así que cualquier test que importe
+una fila con ubicación (casi todos) cae, y adaptarlo ahora sería reescribir
+los tests de T5 y T8 dos veces: una contra un estado provisional y otra contra
+el final.
+
+#### Salidas que propongo (decide el líder o el humano)
+
+- **(d) Juntar el GREEN de los Bloques 1 a 3** (T2 + T5 + T8, y T9 para la
+  migración) en un solo bloque de trabajo, con review y mutación al final,
+  cuando la suite vuelva a verde. Es lo que avisa la nota de `tasks.md`.
+  **Recomendada.**
+- **(e) Ampliar (b) con la lectura de T8**: `paso_catalogo(…, ubicaciones)` y
+  el borde con `construir_fuente_de_ubicaciones` ya en este bloque, más T9
+  adelantada (retirar la migración, que la spec ya decide, R45). El
+  generador sigue provisional hasta T5. Es casi lo mismo que (d), partido de
+  otra forma.
+- **(c) de antes**: el dominio en verde, la suite en rojo hasta el Bloque 3 y
+  la mutación del dominio aplazada a T6/T10.
+
+#### Evidencias (T2, parcial)
+
+| Evidencia | Valor |
+|---|---|
+| Tests del dominio de F-071 | 146 passed |
+| Dominio de F-036 y F-056 adaptado | 586 passed (con los de F-071) |
+| Suite completa | 230 failed, 9 844 passed, 447 skipped, 3 errors, 1 424,6 s |
+| Cobertura de las líneas cambiadas | no medida: `init.sh` no llega con la suite en rojo |
+| Mutantes | campaña no lanzada: con la suite en rojo todo saldría «muerto» |

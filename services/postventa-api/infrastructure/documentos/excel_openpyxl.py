@@ -73,9 +73,10 @@ from domain.models.plantilla_incidencias import (
     CatalogoObra,
     ListasCerradas,
     MensajeColumna,
-    OpcionOficio,
-    OpcionProveedor,
+    OpcionOficioSigrid,
+    ParSigrid,
     TextosPlantilla,
+    UbicacionesDeLaPlantilla,
     etiquetas_de_unidades,
 )
 from domain.ports.hoja_calculo import FilaPlantilla
@@ -277,8 +278,9 @@ class GeneradorPlantillaOpenpyxl:
         self,
         *,
         catalogo: CatalogoObra,
-        opciones_oficio: tuple[OpcionOficio, ...],
-        opciones_proveedor: tuple[OpcionProveedor, ...],
+        oficios: tuple[OpcionOficioSigrid, ...],
+        pares: tuple[ParSigrid, ...],
+        ubicaciones: UbicacionesDeLaPlantilla,
         listas: ListasCerradas,
         textos: TextosPlantilla,
         generada_at: datetime,
@@ -298,9 +300,11 @@ class GeneradorPlantillaOpenpyxl:
             "Unidad": tuple(
                 o.etiqueta for o in etiquetas_de_unidades(catalogo.unidades)
             ),
-            "Ubicación": listas.ubicaciones,
-            "Oficio": tuple(o.etiqueta for o in opciones_oficio),
-            "Proveedor": tuple(p.etiqueta for p in opciones_proveedor),
+            # F-071 T2, provisional hasta T5 (Bloque 2): la unión de la obra
+            # como lista plana; el desplegable dependiente es de T5.
+            "Ubicación": ubicaciones.union(),
+            "Oficio": tuple(o.etiqueta for o in oficios),
+            "Proveedor": tuple(p.etiqueta for p in pares),
             "Urgencia": tuple(o.etiqueta for o in listas.urgencias),
             "Listado": tuple(o.etiqueta for o in listas.listados),
         }
@@ -310,7 +314,7 @@ class GeneradorPlantillaOpenpyxl:
             instrucciones,
             catalogo,
             textos,
-            sin_oficios=not opciones_oficio,
+            sin_oficios=not oficios,
             es_excel_de_errores=importacion_origen is not None,
         )
         self._metadatos(

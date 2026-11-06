@@ -50,7 +50,10 @@ from domain.models.importacion import (
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
     OpcionOficio,
+    OpcionOficioSigrid,
     OpcionProveedor,
+    ParSigrid,
+    UbicacionesPorUnidad,
 )
 from domain.ports.bandeja import ResultadoImportacion
 
@@ -84,6 +87,14 @@ class ContextoImportacion:
     grupos_proveedor: GruposVigentes | None = field(default=None, repr=False)
     opciones_oficio: tuple[OpcionOficio, ...] = field(default=(), repr=False)
     opciones_proveedor: tuple[OpcionProveedor, ...] = field(default=(), repr=False)
+    # F-071: las opciones por código y las ubicaciones de cada unidad con las
+    # que se valida y se escribe el Excel de errores. Provisional hasta T8
+    # (Bloque 3): las ubicaciones aún no se leen de Sigrid y quedan vacías.
+    oficios: tuple[OpcionOficioSigrid, ...] = field(default=(), repr=False)
+    pares: tuple[ParSigrid, ...] = field(default=(), repr=False)
+    ubicaciones_por_unidad: UbicacionesPorUnidad = field(
+        default_factory=dict, repr=False
+    )
     validas: tuple[IncidenciaValida, ...] | None = field(default=None, repr=False)
     con_error: tuple[FilaConError, ...] | None = field(default=None, repr=False)
     agrupadas: tuple[GrupoDeClave, ...] = field(default=(), repr=False)

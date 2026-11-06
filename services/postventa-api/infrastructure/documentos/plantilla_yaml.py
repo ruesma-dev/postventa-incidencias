@@ -69,6 +69,10 @@ class ConfiguracionPlantilla:
     listas: ListasCerradas
     textos: TextosPlantilla
     ubicaciones_por_revisar: tuple[str, ...]  # añadidas sin medir: las revisa el humano
+    #: F-071 T2, provisional hasta T5 (Bloque 2, R21): la lista del YAML ya no
+    #: va en `ListasCerradas` (R22) ni a ninguna plantilla; solo valida los
+    #: ejemplos hasta que T5 la quite del YAML.
+    ubicaciones: tuple[str, ...] = ()
 
 
 def _falla(motivo: str) -> ConfiguracionPlantillaInvalida:
@@ -153,13 +157,15 @@ def _opciones(
     return opciones
 
 
-def _ejemplos(crudo: object, listas: ListasCerradas) -> tuple[Mapping[str, str], ...]:
+def _ejemplos(
+    crudo: object, listas: ListasCerradas, ubicaciones: tuple[str, ...]
+) -> tuple[Mapping[str, str], ...]:
     if not isinstance(crudo, list) or not MIN_EJEMPLOS <= len(crudo) <= MAX_EJEMPLOS:
         raise _falla(
             f"textos.ejemplos: tienen que ser de {MIN_EJEMPLOS} a {MAX_EJEMPLOS}"
         )
     permitidas = {
-        "Ubicación": listas.ubicaciones,
+        "Ubicación": ubicaciones,
         "Urgencia": tuple(o.etiqueta for o in listas.urgencias),
         "Listado": tuple(o.etiqueta for o in listas.listados),
     }
@@ -215,7 +221,9 @@ def _mensajes(crudo: object) -> Mapping[str, MensajeColumna]:
     return MappingProxyType(mensajes)
 
 
-def _textos(crudo: object, listas: ListasCerradas) -> TextosPlantilla:
+def _textos(
+    crudo: object, listas: ListasCerradas, ubicaciones: tuple[str, ...]
+) -> TextosPlantilla:
     if not isinstance(crudo, Mapping):
         raise _falla("textos: tiene que ser un mapping")
     instrucciones = crudo.get("instrucciones")
@@ -226,7 +234,7 @@ def _textos(crudo: object, listas: ListasCerradas) -> TextosPlantilla:
         instrucciones=tuple(_texto(p, "textos.instrucciones") for p in instrucciones),
         sin_oficios=_texto(crudo.get("sin_oficios"), "textos.sin_oficios"),
         excel_errores=_texto(crudo.get("excel_errores"), "textos.excel_errores"),
-        ejemplos=_ejemplos(crudo.get("ejemplos"), listas),
+        ejemplos=_ejemplos(crudo.get("ejemplos"), listas, ubicaciones),
         mensajes=_mensajes(crudo.get("mensajes")),
     )
 
@@ -244,7 +252,6 @@ def cargar_plantilla_yaml(
         raise _falla("la raíz tiene que ser un mapping")
     ubicaciones, por_revisar = _ubicaciones(crudo.get("ubicaciones"))
     listas = ListasCerradas(
-        ubicaciones=ubicaciones,
         urgencias=_opciones(
             crudo.get("urgencias"), "urgencias", tuple(u.value for u in Urgencia)
         ),
@@ -254,6 +261,7 @@ def cargar_plantilla_yaml(
     )
     return ConfiguracionPlantilla(
         listas=listas,
-        textos=_textos(crudo.get("textos"), listas),
+        textos=_textos(crudo.get("textos"), listas, ubicaciones),
         ubicaciones_por_revisar=por_revisar,
+        ubicaciones=ubicaciones,
     )

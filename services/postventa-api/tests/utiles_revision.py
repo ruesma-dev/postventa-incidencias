@@ -84,7 +84,6 @@ UBICACIONES: dict[str, tuple[str, ...]] = {
 }
 
 LISTAS = ListasCerradas(
-    ubicaciones=("Esto no se usa: D-4",),
     urgencias=(Opcion("Urgente", "urgente"), Opcion("Seguridad", "seguridad")),
     listados=(Opcion("Primer listado", "primero"), Opcion("Segundo listado", "segundo")),
 )

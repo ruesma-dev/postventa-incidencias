@@ -1230,7 +1230,8 @@
         "No se escribe nada en Sigrid",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "blocked",
+      "blocked_by": "Bloque 1, T2 con la opción (b) (implementer, 2026-11-06): el dominio está en verde (146 tests de F-071 y 586 con los de dominio de F-036 y F-056), pero el mínimo en los llamadores no basta. La importación no tiene ubicaciones de Sigrid hasta T8, y la migración de F-036 depende de las opciones de grupo: 230 tests en rojo en 12 ficheros. Nuevas salidas (d), (e) y (c) en progress/impl_F-071.md, «T2 con la opción (b)». Trabajo guardado en el commit «F-071 T2 (a medias)».",
       "sdd": true,
       "rigor": "critico",
       "priority": 1,

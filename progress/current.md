@@ -1,7 +1,11 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-071 · `in_progress` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> ## F-071 · `blocked` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> **Bloqueada otra vez en T2 (2026-11-06):** con (b) el dominio queda en verde, pero la suite no: hay 230 rojos en 12
+> ficheros, porque la importación no tiene ubicaciones de Sigrid hasta T8 y la migración de F-036 depende de los grupos.
+> Propuestas (d) juntar el GREEN de los Bloques 1–3 (recomendada), (e) adelantar la lectura de T8 y T9, o (c), en
+> `progress/impl_F-071.md`, «T2 con la opción (b)». Trabajo en el commit «F-071 T2 (a medias)». T3 sin lanzar.
 > **Desbloqueada: opción (b) autorizada por el humano el 2026-11-06** (T2 con el mínimo imprescindible en los
 > llamadores para mantener la suite en verde; T3 con la suite en verde). Lo de abajo es el bloqueo ya resuelto.
 > **Bloque 1 (implementer, 2026-11-05): T1 RED hecha (`89a01d1`); T2 y T3 bloqueadas.** T2 cambia solo el dominio

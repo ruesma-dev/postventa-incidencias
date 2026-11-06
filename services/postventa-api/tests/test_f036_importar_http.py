@@ -52,7 +52,7 @@ from domain.models.errores import (
     PeticionDeImportacionInvalida,
 )
 from domain.models.importacion import (
-    UNIDAD_FUERA_DE_LISTA,
+    ya_no_esta_en_sigrid,
     ErrorDeFila,
     EstadoFilaImportada,
     EstadoImportacion,
@@ -278,7 +278,7 @@ def test_f036_r33_la_importacion_parcial_es_200_con_errores_y_excel(monkeypatch)
         "avisos": [],
     }
     assert cuerpo["errores"] == [
-        {"fila": 3, "columna": "Unidad", "problema": UNIDAD_FUERA_DE_LISTA}
+        {"fila": 3, "columna": "Unidad", "problema": ya_no_esta_en_sigrid("Unidad")}
     ]
     assert cuerpo["total_errores"] == 1
 

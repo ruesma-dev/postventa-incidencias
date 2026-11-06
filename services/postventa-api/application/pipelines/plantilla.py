@@ -56,8 +56,11 @@ from domain.models.plantilla_incidencias import (
     OpcionProveedor,
     TextosPlantilla,
     normalizar_codigo_obra,
+    oficios_del_desplegable,
     opciones_de_oficio,
     opciones_de_proveedor,
+    pares_del_desplegable,
+    ubicaciones_de_la_plantilla,
 )
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.equivalencias import EquivalenciasPort
@@ -141,10 +144,16 @@ def generar_plantilla(
     codigo = normalizar_codigo_obra(codigo_obra)
     catalogo = leer_catalogo(catalogo_obra, codigo)
     opciones = opciones_de_la_obra(catalogo, equivalencias)
+    # F-071 T2, provisional hasta T8 (Bloque 3): el desplegable ya es el de
+    # Sigrid por código (el que valida la importación), pero las ubicaciones
+    # de Sigrid aún no se leen aquí (R1 es de T8) y los grupos se siguen
+    # leyendo sin usarse en el libro (R2 es de T8).
+    oficios = oficios_del_desplegable(catalogo)
     contenido = generador.generar(
         catalogo=catalogo,
-        opciones_oficio=opciones.oficios,
-        opciones_proveedor=opciones.proveedores,
+        oficios=oficios,
+        pares=pares_del_desplegable(catalogo, oficios),
+        ubicaciones=ubicaciones_de_la_plantilla(catalogo.unidades, {}),
         listas=listas,
         textos=textos,
         generada_at=ahora,

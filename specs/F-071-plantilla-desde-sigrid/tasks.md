@@ -91,7 +91,7 @@
     mayúscula).
   Cada test `test_f071_rN_…`. Traza RED pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_casado_con_lista.py tests/test_f071_dominio_opciones.py tests/test_f071_dominio_importacion.py` en rojo por `ImportError`/aserción, nunca por sintaxis
-- [ ] **T2 · GREEN**: `domain/models/casado_con_lista.py` (lo movido sin
+- [x] **T2 · GREEN** (en verde con la opción (d), 2026-11-06): `domain/models/casado_con_lista.py` (lo movido sin
   cambiar una letra y `casar_con_lista`), `normalizacion.py` (solo imports),
   `plantilla_incidencias.py`, `importacion.py`, `errores.py`
   (`version_anterior`). **Alcance ampliado (opción (b), humano 2026-11-06)**:
@@ -103,7 +103,7 @@
   que cambien, **citando** en `progress/impl_F-071.md` cada aserción cambiada
   y el R que la sustituye. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_casado_con_lista.py tests/test_f071_dominio_opciones.py tests/test_f071_dominio_importacion.py tests/test_f036_plantilla_dominio.py tests/test_f036_importacion_dominio.py tests/test_f060_*` en verde
-- [ ] **T3 · mutación del bloque**: `python -m harness.mutacion --feature F-071
+- [x] **T3 · mutación del bloque** (campaña conjunta de los Bloques 1–3 del 2026-11-06, opción (d): `progress/mutacion_F-071.md`; 1 hueco cerrado con test, 3 equivalentes pendientes de aceptación del humano): `python -m harness.mutacion --feature F-071
   --base ed935ad --timeout 1800` sobre lo del bloque; matar los
   supervivientes con tests nuevos o justificarlos uno a uno. |
   Verificación: `progress/mutacion_F-071.md` con 0 supervivientes sin justificación
@@ -133,7 +133,7 @@
   citas. Medir con `scripts/contar_elementos_xml_f036.py` la plantilla de
   R20 y anotar el número. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_generador.py tests/test_f071_configuracion.py tests/test_f036_excel_generador.py tests/test_f036_excel_lector.py tests/test_f036_configuracion_plantilla.py` en verde
-- [ ] **T6 · mutación del bloque**: como T3, `--salida
+- [x] **T6 · mutación del bloque** (campaña conjunta de los Bloques 1–3 del 2026-11-06, opción (d): `progress/mutacion_F-071.md`; 1 hueco cerrado con test, 3 equivalentes pendientes de aceptación del humano): como T3, `--salida
   progress/mutacion_F-071_bloque2.md`. |
   Verificación: el informe con 0 supervivientes sin justificación
 
@@ -160,7 +160,7 @@
   `test_f036_plantilla_http.py`, `test_f036_importar_http.py`,
   `tests/utiles_revision.py` con citas. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_pipelines.py tests/test_f071_http.py tests/test_f036_pipeline_importacion.py tests/test_f036_plantilla_http.py tests/test_f036_importar_http.py` en verde
-- [ ] **T10 · mutación del bloque**: como T3, `--salida
+- [x] **T10 · mutación del bloque** (campaña conjunta de los Bloques 1–3 del 2026-11-06, opción (d): `progress/mutacion_F-071.md`; 1 hueco cerrado con test, 3 equivalentes pendientes de aceptación del humano): como T3, `--salida
   progress/mutacion_F-071_bloque3.md`. |
   Verificación: el informe con 0 supervivientes sin justificación
 

@@ -941,3 +941,211 @@ nombran como historia y se dejan.
 Comprobación: `test_f036_alcance_cerrado.py`, `test_f036_arquitectura.py` y
 `test_f036_documentacion.py` dan 114 passed, 7 skipped in 19.88s.
 
+## Tanda 2 · `bash harness/init.sh` (implementer, 2026-11-06)
+
+Lanzado tal cual sobre `266e384` (T9 ya hecha), y **en verde**, código de
+salida 0:
+
+```
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 87 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+115 passed in 67.34s (0:01:07)
+[OK] pytest en verde (con medición de cobertura)
+9860 passed, 447 skipped in 3939.76s (1:05:39)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 232 líneas cambiadas cubiertas (232/232, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-071-plantilla-desde-sigrid
+```
+
+Esta vez los dos tests de tiempo del lector (r117 y r118) **han pasado**
+dentro de la suite: no ha hecho falta repetirlos solos ni se han tocado sus
+umbrales. La suite tarda 1 h 05 min porque la máquina está cargada con las
+suites de otros proyectos.
+
+## Tanda 2 · Mutación de los Bloques 1 a 3 (T3, T6 y T10 juntas) (implementer, 2026-11-06)
+
+Comando, el de `tasks.md`, con la suite en verde (`init.sh` de arriba) sobre
+`c633a14`:
+
+```
+python -m harness.mutacion --feature F-071 --base ed935ad --timeout 1800
+```
+
+Alcance: 14 ficheros, 773 líneas de producción (`ed935ad..feature/F-071-…`),
+**66 mutantes**, 8 workers. Informe del arnés:
+`progress/mutacion_F-071.md`.
+
+**Resultado del arnés** (sobre `c633a14`, antes del test de `d0dc548`):
+
+```
+66 mutantes evaluados, 62 muertos, 4 supervivientes, 0 timeouts en 26408.9 s
+```
+
+| Métrica | Valor |
+|---|---|
+| Mutantes generados / evaluados | 66 / 66 |
+| Muertos | 62 |
+| Supervivientes | 4: `excel_openpyxl.py:401` (+3), `:405` (+1), `:405` (−2), `:426` (+=4) |
+| Timeouts | 0, tras repasar en serie los 14 que agotaron el reloj en paralelo (los 14 con veredicto) |
+| Tiempo | 26408.9 s (7 h 20 min), 8 workers |
+
+**Tras el análisis:**
+
+- **1 hueco real**, cerrado con un test en `d0dc548`: el superviviente `:405`
+  con `+1`, el 48 de la pasada paralela.
+- **3 equivalentes**, pendientes de que el humano los acepte por escrito:
+  `:405` con `−2`, `:401` y `:426`.
+- **Ningún hueco sin cerrar.**
+
+El análisis de cada uno está también en `progress/mutacion_F-071.md`, y allí
+no queda ningún `PENDIENTE`.
+
+### Los timeouts, por qué y cómo se zanjaron
+
+En la pasada paralela, **14 mutantes agotaron los 1800 s**:
+
+- 2 de `domain/models/plantilla_incidencias.py` (505 y 506);
+- 12 de `infrastructure/documentos/excel_openpyxl.py` (401–438).
+
+No colgaban: con 8 suites completas a la vez y la máquina cargada por otros
+proyectos, la suite pasa de la hora (`init.sh` sola tardó 1 h 05 min). Encima,
+los tests que cazan el bloque nuevo del generador están en
+`test_f071_generador.py`, casi al final del orden alfabético de la suite, y
+con `-x` no se llega a ellos antes del reloj.
+
+El arnés los repasa en serie. **Además**, y sin esperar a ese repaso, se
+comprobó cada uno **a mano**:
+
+- en un worktree aparte en el scratchpad (`git worktree add --detach` en
+  `HEAD`), sin tocar la carpeta de trabajo;
+- el script `mut_manual.py` aplica la sustitución exacta en su línea, corre el
+  fichero de tests que la debe cazar con `-x` y restaura el original.
+
+**Control.** Sin mutar, `test_f071_dominio_opciones.py` y
+`test_f071_generador.py` dan `64 passed in 41.24s` en el worktree. Y 10 de los
+14 mueren con un fallo que nombra justo lo mutado. Así se ve que los tests
+corren contra el código del worktree.
+
+| # | Línea | Mutación | Test que lo caza, o veredicto | Fallo |
+|---|---|---|---|---|
+| 46 | `plantilla_incidencias.py:506` | `or len(…) > MAX_UBICACION` → `and` | `test_f071_dominio_opciones.py` (1 failed, 31 passed in 1.69s) | `DID NOT RAISE ValueError` |
+| 49 | `plantilla_incidencias.py:505` | `or ubicacion != ubicacion.strip()` → `and` | `test_f071_dominio_opciones.py` (1 failed, 30 passed in 1.32s) | `DID NOT RAISE ValueError` |
+| 50 | `excel_openpyxl.py:416` | `columna + 1` → `+ 2` (nombre de lista en la tabla) | `test_f071_generador.py` (1 failed, 1 passed in 5.63s) | `None no es un rango con nombre` |
+| 51 | `excel_openpyxl.py:413` | `indice + 1` → `+ 2` | ídem (1 failed, 1 passed in 5.05s) | `AssertionError: 9901.0001` (la unidad apunta a otra lista) |
+| 52 | `excel_openpyxl.py:435` | `columna += 1` → `-= 1` | ídem (1 failed, 1 passed in 5.34s) | `Estancia A-03 no es un rango con nombre` |
+| 53 | `excel_openpyxl.py:404` | cabecera de la tabla `row=1` → `row=2` | ídem (1 failed, 7 passed in 11.16s) | `assert {'tabla_ubica...unidad': None} == {}` (la cabecera cae dentro de la tabla) |
+| 56 | `excel_openpyxl.py:403` | `letra_lista = …(columna + 1)` → `+ 2` | ídem (1 failed, 1 passed in 4.95s) | `la tabla tiene que ser de dos columnas` |
+| 57 | `excel_openpyxl.py:434` | `start=1` → `start=2` | ídem (1 failed, 1 passed in 4.44s) | `ubicaciones_1 no es un rango con nombre` |
+| 59 | `excel_openpyxl.py:428` | cabecera de `ubicaciones_ninguna` `row=1` → `row=2` | ídem (1 failed, 3 passed in 6.26s) | `('ubicaciones_ninguna',) == (None,)` |
+| 65 | `excel_openpyxl.py:438` | cabecera de cada lista `row=1` → `row=2` | ídem (1 failed, 12 passed in 23.11s) | `None == 'ubicaciones_1'` |
+| 48 | `excel_openpyxl.py:405` | `fila = PRIMERA_FILA - 1` → `+ 1` | **sobrevivía**: ahora lo caza el test reforzado (ver abajo) (1 failed, 7 passed in 9.58s) | `((None, None), (None, None)) == ((None, None),)` |
+| 47 | `excel_openpyxl.py:405` | `fila = PRIMERA_FILA - 1` → `- 2` | **equivalente** (ver abajo) | — |
+| 61 | `excel_openpyxl.py:401` | `columna = len(LISTAS) + 2` → `+ 3` | **equivalente** (ver abajo) | — |
+| 64 | `excel_openpyxl.py:426` | `columna += 3` → `+= 4` | **equivalente** (ver abajo) | — |
+
+47, 48, 61 y 64 se pasaron además por `test_f071_generador.py`,
+`test_f036_excel_generador.py`, `test_f036_excel_lector.py`,
+`test_f036_pipeline_importacion.py` y `test_f036_plantilla_http.py`. Ninguno
+de esos ficheros los cazó; el código seguía sin el test reforzado:
+
+| # | Resultado |
+|---|---|
+| 47 | 588 passed in 546.23s |
+| 48 | 588 passed in 614.31s |
+| 61 | 588 passed in 501.73s |
+| 64 | 588 passed in 496.41s |
+
+### El superviviente 48: hueco real, cerrado con un test (`d0dc548`)
+
+`fila = PRIMERA_FILA - 1` es el valor de `fila` **solo si no hay unidades**:
+con una o más, el bucle lo pisa. Después,
+`ultima = max(fila, PRIMERA_FILA)`. Con `+ 1`, una obra sin unidades daría el
+rango `tabla_ubicaciones` de **dos** filas en vez de una.
+
+No es visible ni alcanzable en producción: `leer_catalogo` lanza
+`ObraSinUnidades` antes del generador. Pero el generador es un adaptador y no
+debe depender de eso.
+
+`test_f071_r7_obra_sin_unidades_se_genera_con_la_validacion` comprobaba
+`_tabla(wb) == {}`, y `_tabla` descarta las filas vacías: por eso no lo veía.
+Se le añade una aserción:
+
+```python
+assert _celdas(wb, TABLA) == ((None, None),)
+```
+
+Es decir: una sola fila, vacía. Sin mutar pasa (`1 passed in 3.48s`); con el
+mutante falla, como se ve en la tabla.
+
+### Equivalentes, para la aceptación del humano
+
+- **47** · `fila = PRIMERA_FILA - 2`. Solo cuenta sin unidades, y entonces
+  `ultima = max(PRIMERA_FILA - 2, PRIMERA_FILA) = PRIMERA_FILA`: el mismo valor
+  de `ultima` que con `- 1`, luego el mismo libro. Ninguna entrada lo distingue: es
+  **equivalente estricto**.
+- **61** · la tabla empieza una columna más a la derecha (`len(LISTAS) + 3`).
+  Todo se mueve en bloque: la tabla, `ubicaciones_ninguna` y las listas.
+  Queda una columna vacía de más en `_catalogos`, que es una hoja oculta y
+  protegida.
+- **64** · `ubicaciones_ninguna` y las listas empiezan una columna más a la
+  derecha (`columna += 4`). Queda una columna vacía de más entre la tabla y
+  `ubicaciones_ninguna`.
+
+  Por qué 61 y 64 son equivalentes:
+
+  - Todo lo que mira esas celdas va **por nombre de rango**: la fórmula de
+    `Ubicación` (`VLOOKUP` sobre `tabla_ubicaciones`, `INDIRECT` del nombre),
+    el lector y los tests.
+  - `design.md` §7.1 solo pide que vayan «a la derecha» de las cinco listas
+    fijas, y siguen yendo.
+  - Ni el usuario ni la importación pueden distinguir el libro.
+
+  Un test que fijara columnas concretas sobreespecificaría lo que la spec deja
+  libre, y rompería al reordenar sin cambiar nada observable. Por eso **no se
+  añade**.
+
+**Pendiente del humano**: aceptar por escrito 47, 61 y 64 como equivalentes
+(rigor `critico`: `supervivientes_maximos` = 0 salvo justificación aceptada).
+
+## Tanda 2 · `init.sh` final, tras el test de `d0dc548` (implementer, 2026-11-06)
+
+Repetido tal cual sobre el estado final (`046a3ff` más este informe), en verde
+y con código de salida 0:
+
+```
+115 passed in 8.42s
+[OK] pytest en verde (con medición de cobertura)
+9860 passed, 447 skipped in 1502.50s (0:25:02)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 232 líneas cambiadas cubiertas (232/232, umbral 80%, nivel critico)
+```
+
+r117 y r118 pasan también esta vez.
+
+## Evidencias (Bloques 1 a 3, opción (d))
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | servicio api: **9860 passed, 447 skipped**, 0 failed; harness: 115 passed (`init.sh` del estado final) |
+| Cobertura de las líneas cambiadas | **100.0 %**, 232/232 (umbral 80 %, nivel `critico`) |
+| Mutantes generados / supervivientes | **66** generados y evaluados; **62** muertos y **4** supervivientes en la campaña (sobre `c633a14`), 0 timeouts tras repasar 14 en serie. De los 4: **1** cerrado con un test (`d0dc548`, comprobado a mano) y **3** equivalentes **pendientes de aceptación del humano**. Informe: `progress/mutacion_F-071.md` |
+| Tiempo de la suite | 1502.50 s (25 min) en el `init.sh` final; 3939.76 s (1 h 05 min) en el anterior, con la máquina más cargada |
+| Tiempo de la campaña | 26408.9 s (7 h 20 min), 8 workers más el repaso en serie |
+
+## Lo que queda (fuera de esta tanda)
+
+- **Review de los Bloques 1 a 3**: la encarga el líder.
+- **Pendiente del humano**: aceptar por escrito los 3 mutantes equivalentes
+  (`excel_openpyxl.py:401`, `:405` con −2 y `:426`; ver «Equivalentes»).
+- **Bloque 4**:
+  - T11: `docs/ARCHITECTURE.md` (§12 de F-071) y `docs/INTEGRACION.md`, más
+    `test_f071_documentacion.py` y `test_f071_alcance_cerrado.py`. T9 solo
+    tocó la nota de la migración en `docs/ARCHITECTURE.md`.
+  - T12: mutación de la feature entera.
+  - T13 a T18, del líder y del humano.
+- **`azure-apps/postventa_incidencias.md`** (R46): la plantilla deja de
+  consumir la base de equivalencias y pasa a leer las ubicaciones de Sigrid.
+  Lo actualiza el líder al desplegar (`design.md` §3.2).
+

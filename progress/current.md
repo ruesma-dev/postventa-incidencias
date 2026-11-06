@@ -4,7 +4,12 @@
 > ## F-071 · `in_progress` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
 > **Tanda 2 en curso (2026-11-06, implementer):** T7 RED (`80abee2`), T8 GREEN (`862b384`) y T9 adelantada
 > (`266e384`) hechas: plantilla e importación leen las ubicaciones de Sigrid por unidad y no leen las decisiones;
-> migración de F-036 retirada. Faltan `init.sh` en verde y la mutación de los Bloques 1–3; luego review (líder).
+> migración de F-036 retirada. **Tanda 2 terminada**:
+> - `init.sh` en verde: 9860 passed, 447 skipped; cobertura 100 % de 232 líneas.
+> - Mutación de los Bloques 1–3: 66 mutantes, 62 muertos y 4 vivos. De los 4, uno se cierra con un test
+>   (`d0dc548`) y los otros 3 son equivalentes, **pendientes de que el humano los acepte**.
+> - Siguiente: review de los Bloques 1–3 (la encarga el líder) y después el Bloque 4.
+> Detalle en `progress/impl_F-071.md` y `progress/mutacion_F-071.md`.
 > **El humano aceptó por escrito el 2026-11-06 la desviación de §7.3** (dos párrafos); anotada en el informe y en `design.md`.
 > **Tanda 1 hecha (2026-11-06):** T4 RED y T5 GREEN, el generador v2 con `INDIRECT`. Detalle y recuento de rojos en
 > `progress/impl_F-071.md`, «Tanda 1». **Desviación anotada para el humano:** el párrafo de §7.3 («Las listas salen de

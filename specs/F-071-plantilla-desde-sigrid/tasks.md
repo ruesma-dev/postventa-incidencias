@@ -141,7 +141,7 @@
 
 ## Bloque 3 · Aplicación y bordes
 
-- [ ] **T7 · RED**: `tests/test_f071_pipelines.py` (R1 orden catálogo →
+- [x] **T7 · RED**: `tests/test_f071_pipelines.py` (R1 orden catálogo →
   ubicaciones, una lectura cada una, sin `EquivalenciasPort`; R2; R3 y R25
   techo → 409 y fallo → 503 sin fichero ni registro; R24 sin lecturas con
   `ya_importado` ni con un fichero no reconocido, ni con una v1; R40 sin

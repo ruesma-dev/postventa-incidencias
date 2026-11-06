@@ -675,3 +675,77 @@ C:\...\tests\test_f036_lector_aislado.py:442: assert 13.539240299956873 < (3.0 +
 | Cobertura de las líneas cambiadas | no medida: `init.sh` no llega mientras la suite siga en rojo (tanda 2) |
 | Mutantes | sin lanzar, por encargo: una sola campaña al final |
 | Suite completa | sin lanzar, por encargo |
+
+## Tanda 2 · T7 RED (implementer, 2026-11-06)
+
+Antes de empezar, ningún pytest de la tanda 1 seguía vivo: la consulta
+`Win32_Process` sobre `postventa-f071` y `pytest` salió vacía.
+
+Dos ficheros nuevos, con dobles que anotan en una lista común:
+
+- `tests/test_f071_pipelines.py`:
+  - plantilla:
+    - R1: catálogo → una lectura de ubicaciones con el catálogo leído →
+      generador, con `ubicaciones_de_la_plantilla` de lo leído;
+    - R2: sin `equivalencias` en la firma; oficios y pares por código;
+    - R3: techo → `CatalogoSinVerificar` y fallo → `CatalogoNoDisponible`,
+      sin generador;
+    - R44: `caplog` solo con recuentos.
+  - importación:
+    - R24: firma `paso_catalogo(contexto, catalogo_obra, ubicaciones)`, el
+      orden, una lectura, el contexto sin grupos y `paso_importacion` sin
+      `opciones_de_la_obra`; con `ya_importado`, ninguna lectura;
+    - R25: el fallo sube sin validar ni registrar;
+    - R40: el Excel de errores con las mismas ubicaciones y opciones, sin
+      segunda lectura, en v2 y con las filas tal cual;
+    - R44: la línea «catálogo leído» con recuentos y nada más.
+- `tests/test_f071_http.py`:
+  - plantilla:
+    - `descargar_plantilla` sin `equivalencias` y con `ubicaciones=`;
+    - por defecto, `construir_fuente_de_ubicaciones` de
+      `interface_adapters/api/revision.py`, construida después del
+      catálogo;
+    - `GET /api/plantilla` con 409 y 503 y sin fichero (R1–R3).
+  - importación:
+    - `importar_excel` sin `equivalencias` y con `ubicaciones=`, y el orden
+      completo de las llamadas;
+    - una v1 da 400 `version_anterior` con el motivo literal, por el handler
+      y por la ruta, sin Sigrid ni escritura;
+    - la fuente se construye solo después de reconocer y nunca con un
+      fichero que no es la plantilla, con una v1 ni con `ya_importado`;
+    - `POST /api/importaciones` con 409 y 503 sin registrar (R23–R25).
+
+Comando:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f071_pipelines.py tests/test_f071_http.py -p no:cacheprovider -q --tb=line
+```
+
+Salida real (líneas `E` y resumen; cortadas a 200 caracteres):
+
+```
+================================== FAILURES ===================================
+E   TypeError: generar_plantilla() got an unexpected keyword argument 'ubicaciones'
+E   assert 'equivalencias' not in mappingproxy(OrderedDict({'codigo_obra': <Parameter "codigo_obra: 'object'">, 'catalogo_obra': <Parameter "catalogo_ob...tas: 'ListasCerradas'">, 'textos': <Parame...
+E   AssertionError: assert ['contexto', ...quivalencias'] == ['contexto', ...'ubicaciones']
+E   AttributeError: 'Ubicaciones' object has no attribute 'ultimas_decisiones'
+E   assert 'equivalencias' not in mappingproxy(OrderedDict({'obra': <Parameter "obra: 'Any'">, 'catalogo_obra': <Parameter "catalogo_obra: 'CatalogoObra...ter "configuracion: 'ConfiguracionPlantill...
+E   TypeError: descargar_plantilla() got an unexpected keyword argument 'ubicaciones'
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'pg_password'
+E   assert 'equivalencias' not in mappingproxy(OrderedDict({'ficheros': <Parameter "ficheros: 'Sequence[tuple[str, bytes]]'">, 'usuario_oid': <Parameter...rmalizar': <Parameter "normalizar: 'Callab...
+E   TypeError: importar_excel() got an unexpected keyword argument 'ubicaciones'
+=========================== short test summary info ===========================
+24 failed, 2 passed in 29.86s
+```
+
+**Por qué falla.** La mayoría de los rojos son `TypeError`, no una aserción:
+la firma nueva (`ubicaciones=`, sin `equivalencias=`) todavía no existe. El
+fallo es justo lo que se prueba, y lo confirman las aserciones de firma
+(`'equivalencias' not in …`) y de orden (`['contexto', … 'equivalencias'] ==
+['contexto', … 'ubicaciones']`). Dos rojos salen del borde que aún construye
+las equivalencias (`SimpleNamespace … pg_password`).
+
+**Los 2 que ya pasan**: `test_f071_r24_sin_reconocer_no_se_construye_la_fuente`,
+en sus dos casos. Un fichero que no es la plantilla, o una v1 (T2), ya se
+rechazan antes de Sigrid. Se fijan para que T8 no construya la fuente antes de
+reconocer el fichero.

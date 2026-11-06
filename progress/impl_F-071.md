@@ -358,3 +358,92 @@ seguidas: **tanda 1**, T4 (RED) y T5 (GREEN, el generador v2); **tanda 2**, T7,
 T8 y T9. Entre una y otra la suite puede quedar en rojo, y así queda escrito. Al
 final: `bash harness/init.sh` en verde, mutación de todo lo cambiado (T3, T6 y
 T10 en una sola campaña) y una sola review.
+
+## Tanda 1 · T4 RED (implementer, 2026-11-06)
+
+Dos ficheros nuevos, sobre el `.xlsx` generado y reabierto con `openpyxl` y
+sobre el YAML real:
+
+- `tests/test_f071_generador.py`: R4, R5 (la fórmula se **resuelve** como
+  Excel: `VLOOKUP` exacto en la tabla, `IFERROR` → `ubicaciones_ninguna`,
+  `INDIRECT` al rango), R6, R7 (unidad sin ubicaciones, obra sin ninguna y obra
+  sin unidades; nunca `textLength`), R8 (una lista por tupla, sin la unión,
+  determinista con cinco barajados), R9 (oculta, protegida, nombres, tabla de
+  dos columnas, disposición tras un separador, texto que empieza por `=`, `+`,
+  `@` y ningún `<f>` en el XML), R10, R11, R13, R14, R15 (el generador también
+  rechaza etiquetas que chocan plegadas, sin el texto en el error), R17, R19,
+  R20 (500 unidades, 50 listas × 60 de 48 caracteres, 200 oficios, 1 000
+  pares, por `LectorPlantillaOpenpyxl` y `reconocer_plantilla`) y R40 (Excel
+  de errores v2, filas tal cual, mismas listas).
+- `tests/test_f071_configuracion.py`: R16, R18, R19 y R21 (YAML real sin
+  `ubicaciones`; `ConfiguracionPlantilla` solo con `listas` y `textos`; la
+  clave en `tmp_path` con lista, vacía o nula → `ConfiguracionPlantillaInvalida`
+  con «`ubicaciones`», «Sigrid» y «F-071»).
+
+Dos fallos eran del test, no del código, y se corrigieron antes de anotar la
+traza: el literal del identificador (es
+`ruesma.postventa-incidencias.plantilla-incidencias`) y el orden de R14 dentro
+de un oficio (sin nombre va primero: `plegar("")`, como fija T1).
+
+Comando (desde `services/postventa-api`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f071_generador.py tests/test_f071_configuracion.py -p no:cacheprovider -q --tb=line
+```
+
+Salida real (líneas `E` y resumen):
+
+```
+E   assert 'lista_ubicaciones' == 'INDIRECT(IFE...es_ninguna"))'
+E   AssertionError: tabla_ubicaciones_de_unidad no es un rango con nombre
+E   AssertionError: tabla_ubicaciones_de_unidad no es un rango con nombre
+E   AssertionError: ubicaciones_ninguna no es un rango con nombre
+E   AssertionError: tabla_ubicaciones_de_unidad no es un rango con nombre
+E   AssertionError: tabla_ubicaciones_de_unidad no es un rango con nombre
+E   AssertionError: tabla_ubicaciones_de_unidad no es un rango con nombre
+E   assert 'tabla_ubicaciones_de_unidad' in {'lista_oficios': <openpyxl.workbook.defined_name.DefinedName object>\nParameters:\nname='lista_oficios', comment=None, ...nctionGroupId=None, shortcutKe...
+E   AssertionError: tabla_ubicaciones_de_unidad no es un rango con nombre
+E   AssertionError: lista_ubicaciones
+E   assert 'lista_ubicaciones' not in {'lista_unidades': <openpyxl.workbook.defined_name.DefinedName object>\nParameters:\nname='lista_unidades', comment=None...nctionGroupId=None, shortcutKey=None...
+E   AssertionError: assert ['lista_unida...ta_urgencias'] == ['lista_unida...sta_listados']
+E   AssertionError: ubicaciones_1 no es un rango con nombre
+E   AssertionError: assert 'General (toda la unidad)' not in 'General (toda la unidad)'
+E   Failed: DID NOT RAISE ValueError
+E   Failed: DID NOT RAISE ValueError
+E   AssertionError: Ubicación: «Cocina» no es indicativo
+E   assert 0 == 50
+E   assert 'lista_ubicaciones' == 'INDIRECT(IFE...es_ninguna"))'
+E   AssertionError: assert 'primero la unidad' in 'Elige del desplegable dónde está el defecto. Si es de toda la vivienda, elige «General (toda la unidad)».'
+E   ValueError: not enough values to unpack (expected 1, got 0)
+E   AssertionError: Elige del desplegable dónde está el defecto. Si es de toda la vivienda, elige «General (toda la unidad)».
+E   AssertionError: assert 'código de Sigrid' in 'Opcional. Elige del desplegable el oficio que tiene que arreglarlo. Si no lo sabes, déjalo en blanco.'
+E   AssertionError: assert {'Baño 2', 'C...a la unidad)'} == {'Estancia (e...e su unidad)'}
+E   AssertionError: assert 'ubicaciones' not in {'ubicaciones': [{'etiqueta': 'General (toda la unidad)', 'origen': [], 'revisar': 'Añadida en T6: la muestra usa GENE...e solo las filas que no entr...
+E   AssertionError: assert {'listas', 't..._por_revisar'} == {'listas', 'textos'}
+E   AssertionError: assert '`ubicaciones`' in 'config/plantilla_incidencias.yaml: ubicaciones: «Estancia A-01» no sale de ninguna medida y no dice por qué hay que revisarla (`revisar`)'
+E   AssertionError: assert '`ubicaciones`' in 'config/plantilla_incidencias.yaml: ubicaciones: la lista está vacía'
+E   AssertionError: assert '`ubicaciones`' in 'config/plantilla_incidencias.yaml: ubicaciones: tiene que ser una lista de entradas con sus campos'
+29 failed, 9 passed in 46.26s
+```
+
+Los 9 que ya pasan, y por qué no es un hueco:
+
+```
+PASSED tests/test_f071_generador.py::test_f071_r8_determinista_en_cualquier_orden_de_llegada
+PASSED tests/test_f071_generador.py::test_f071_r9_nombres_de_rango_fijos_y_que_no_son_celdas
+PASSED tests/test_f071_generador.py::test_f071_r4_unidad_sin_cambio
+PASSED tests/test_f071_generador.py::test_f071_r13_lista_oficios_una_por_codigo_con_su_codigo
+PASSED tests/test_f071_generador.py::test_f071_r14_lista_proveedores_un_par_por_pareja
+PASSED tests/test_f071_generador.py::test_f071_r17_version_2_en_los_metadatos
+PASSED tests/test_f071_configuracion.py::test_f071_r16_urgencias_y_listados_del_yaml_con_sus_codigos
+PASSED tests/test_f071_configuracion.py::test_f071_r16_instrucciones_no_dicen_que_urgencia_o_listado_salgan_de_sigrid
+PASSED tests/test_f071_configuracion.py::test_f071_r18_mensajes_e_instrucciones_caben_en_255
+```
+
+- R13, R14, R17: los dejó en verde T2 (`bb93d19`: etiquetas por código y
+  `VERSION_PLANTILLA = 2`); aquí se fijan **en el libro**.
+- R4: `Unidad` no cambia (el requisito es justamente ese).
+- R8 determinista y R9 nombres: el libro de hoy ya es determinista y sus
+  nombres (`lista_*`) cumplen la forma; con T5 se aplican a los nombres nuevos.
+- R16 y R18 (255): el YAML de hoy ya los cumple; se fijan para que T5 no los
+  rompa.

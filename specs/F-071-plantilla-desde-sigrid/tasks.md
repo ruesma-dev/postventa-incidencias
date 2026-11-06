@@ -112,7 +112,7 @@
 
 ## Bloque 2 · El generador y la configuración
 
-- [ ] **T4 · RED**: `tests/test_f071_generador.py` (sobre el `.xlsx`
+- [x] **T4 · RED**: `tests/test_f071_generador.py` (sobre el `.xlsx`
   generado y abierto con `openpyxl`: R5–R7 con la fórmula elegida en D-1,
   `sqref` `B2:B1001`, `allowBlank`, estilo «detener»; R8, R9 —nombres,
   tabla, `ubicaciones_ninguna`, sin `lista_ubicaciones`, texto que empieza

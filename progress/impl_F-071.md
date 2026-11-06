@@ -492,7 +492,11 @@ PASSED tests/test_f071_configuracion.py::test_f071_r18_mensajes_e_instrucciones_
 - `domain/ports/hoja_calculo.py`: sin cambios en T5. La firma ya era la final
   desde T2.
 
-### Desviación respecto a §7.3 (para que la acepte el humano)
+### Desviación respecto a §7.3 (aceptada por el humano el 2026-11-06)
+
+> **Aceptada por escrito por el humano el 2026-11-06**: el párrafo de
+> «Instrucciones» queda partido en dos, tal como lo dejó T5. El texto final es
+> el de los dos párrafos de abajo; `design.md` §7.3 lo anota.
 
 §7.3 pide un párrafo nuevo en «Instrucciones»: «Las listas salen de Sigrid el
 día que descargas la plantilla. La de «Ubicación» depende…». Tiene **dos
@@ -749,3 +753,152 @@ las equivalencias (`SimpleNamespace … pg_password`).
 en sus dos casos. Un fichero que no es la plantilla, o una v1 (T2), ya se
 rechazan antes de Sigrid. Se fijan para que T8 no construya la fuente antes de
 reconocer el fichero.
+
+## Tanda 2 · T8 GREEN (implementer, 2026-11-06)
+
+### Qué cambió
+
+- `application/pipelines/plantilla.py`: `generar_plantilla(codigo, *,
+  catalogo_obra, ubicaciones, generador, listas, textos, ahora)`. Lee el
+  catálogo y, **después** y una sola vez, `ubicaciones(catalogo)` (R1). Ya no
+  lee las decisiones (R2). Pasa al generador `oficios`, `pares` y
+  `ubicaciones_de_la_plantilla(...)` de verdad, y los errores de la lectura de
+  ubicaciones suben sin fichero (R3).
+  - Alias nuevo `FuenteUbicacionesValidas`, el mismo tipo que
+    `revision.FuenteDeUbicaciones`: importarlo de allí haría un ciclo,
+    `design.md` §6.3.
+  - `recuento_de_ubicaciones` (para los logs, R44).
+  - La línea de log gana `listas_ubicaciones` y `unidades_sin_ubicaciones`.
+  - `opciones_de_la_obra` **se queda**: la usa la revisión (§6.3, R43).
+- `application/pipelines/paso_importacion.py`: `paso_catalogo(contexto,
+  catalogo_obra, ubicaciones)`.
+  - Lee el catálogo y, después, las ubicaciones, una vez cada uno; luego los
+    oficios y los pares por código (R24).
+  - Deja una línea de log «F-071 catálogo leído», solo con recuentos (R44).
+  - Ya no importa `opciones_de_la_obra` ni `EquivalenciasPort`.
+  - El Excel de errores usa lo del contexto, sin otra lectura (R40). Eso ya
+    era así desde T6.
+- `application/pipelines/contexto_importacion.py`: fuera `grupos_oficio`,
+  `grupos_proveedor`, `opciones_oficio`, `opciones_proveedor` y sus imports
+  (§3.2). Fuera también el comentario de «provisional hasta T8».
+- `interface_adapters/api/plantilla.py`: `descargar_plantilla(obra, *,
+  catalogo_obra, ubicaciones, generador, configuracion, ahora)`.
+  - Sin `equivalencias` y sin `construir_equivalencias`.
+  - La fuente por defecto es `revision.construir_fuente_de_ubicaciones(
+    obtener_ajustes())`, la misma de la importación. Se construye **después**
+    del catálogo.
+  - El import de `interface_adapters.api.revision` va **dentro** de la
+    función, porque `revision.py` importa este módulo y arriba haría un ciclo.
+- `interface_adapters/api/importar.py`: `importar_excel(..., ubicaciones=None,
+  ...)`.
+  - Sin `equivalencias` y sin `construir_equivalencias`.
+  - La fuente se construye solo en la rama que ha reconocido el fichero y no
+    estaba ya importado, después del catálogo (R24).
+- `function_app.py`: solo los docstrings de las dos rutas. La plantilla ya no
+  lee la base, y el 409 cubre también las ubicaciones al techo. La
+  importación nombra `version_anterior`.
+  - El mapeo de errores no cambia: `version_anterior` es un
+    `FicheroNoEsPlantilla` y ya da 400 con `{error, codigo}`.
+  - El `except` de la plantilla para `ConfiguracionPgIncompleta` y
+    `PersistenciaNoDisponible` se deja. No hace daño, y quitarlo no lo pide la
+    spec.
+- `tests/utiles_importacion.py`: doble nuevo `UbicacionesEnMemoria`, que anota
+  `"ubicaciones"` y el catálogo que se le pide.
+  - Mapa `UBICACIONES_0677`, inventado: Villa 1 tiene «Almacén» y «Cocina»;
+    Villa 2, «Almacén»; Villa 3, ninguna.
+
+### Lo que se deja como estaba (design §6.2)
+
+La normalización de F-060 que corre **tras** importar (`_normalizar_de_verdad`)
+sigue construyendo su propia fuente de ubicaciones y leyéndolas otra vez.
+«Una sola vez» en R24 se refiere a la lectura con la que **valida la
+importación**: `test_f071_r24_*` lo fija y `test_f036_r62_el_excel_de_errores_usa_el_mismo_catalogo_y_opciones` cuenta
+`"ubicaciones" == 1` hasta el Excel de errores. Lo que haga la normalización
+posterior es F-060 y se deja.
+
+### Tests adaptados (cada aserción con su R de F-071)
+
+**`tests/test_f036_pipeline_importacion.py`**
+
+| Test o ayudante | Era | Ahora | R |
+|---|---|---|---|
+| `ORDEN_COMPLETO` | `equivalencias.ultimas_decisiones` tras el catálogo | `ubicaciones` | R24 |
+| `Mundo` | `paso_catalogo(..., equivalencias)` | `paso_catalogo(..., ubicaciones)`; las decisiones siguen en el doble para probar que no se piden | R24 |
+| `MALA` | unidad en minúsculas («viviendas bloque villa 2») | `UNIDAD_FUERA` («Viviendas Bloque Villa 9»): la de minúsculas ahora casa y entra con aviso | R36, R37 |
+| `_libro` (y `test_f036_r42_…`, `plantilla_version`) | `version` 1 | 2 | R22 |
+| `test_f036_r21_un_fichero_que_no_es_la_plantilla_…` | `version=2` → `version_no_soportada` | `version=1` → `version_anterior` y `version=3` → `version_no_soportada` | R23 |
+| `test_f036_t17_leer_el_catalogo_sin_reconocer_…`, `test_f036_t17_el_catalogo_exige_libro_y_obra_a_la_vez`, la tabla de pasos repetidos | `EquivalenciasEnMemoria` | `UbicacionesEnMemoria` | R24 |
+| `test_f036_t17_el_catalogo_se_lee_con_la_obra_de_los_metadatos` | pide decisiones de oficio de la obra | `ubicaciones.catalogos == [catalogo()]` y `equivalencias.pedidas == []` | R24 |
+| `test_f036_t17_si_la_base_no_da_los_grupos_no_se_escribe_nada` → `…si_las_ubicaciones_no_se_leen_no_se_escribe_nada` | base caída → nada escrito | ubicaciones al techo o caídas → nada escrito, sin generador | R25 |
+| `test_f036_t17_el_paso_de_catalogo_deja_grupos_y_opciones` → `…deja_oficios_pares_y_ubicaciones` | grupos y 3 opciones agrupadas | 4 oficios y 4 pares por código, aunque haya «mismo»; las ubicaciones de la fuente; ya no hay campos de grupos | R12–R14, R24 |
+| `test_f036_r92_…_el_oficio_del_grupo_entra_ambiguo` → `…_el_oficio_entra_con_su_codigo` | «Mamparas» del grupo, `ambiguo` | «Mamparas (0085)» → código 0085, no ambiguo, nombre de Sigrid | R12, R32, R35 |
+| `test_f036_r94_…_el_par_resuelve_el_proveedor` → `…_resuelve_oficio_y_proveedor` | oficio ambiguo, proveedor P002 | par «Mampara (0166) · … (P002)» → 0166 y P002, ninguno ambiguo | R33, R35 |
+| `test_f036_r92_…_el_nombre_suelto_ya_no_vale` → `…_cada_codigo_sigue_valiendo` | con la decisión, «Mampara» era un error | «Mampara (0166)» vale con y sin decisión | R12 |
+| `test_f036_r82_una_decision_distinto_anula_la_componente_entera` | por la importación | la misma regla, directamente sobre `opciones_de_la_obra`, que solo usa ya la revisión | R24, §6.3 |
+| `test_f036_r62_el_excel_de_errores_usa_el_mismo_catalogo_y_opciones` | `opciones_oficio`/`opciones_proveedor` del contexto | `oficios` y `pares` del contexto (identidad), `ubicaciones` iguales a las de la fuente, y una sola lectura | R40 |
+| `_plantilla` | `equivalencias=` | `ubicaciones=` | R1 |
+| `test_f036_r1_la_plantilla_lee_el_catalogo_los_grupos_y_genera` → `…las_ubicaciones_y_genera` | catálogo, decisiones, generador | catálogo, `ubicaciones`, generador; decisiones no pedidas | R1, R2 |
+| `test_f036_r92_la_plantilla_ofrece_un_oficio_por_grupo_confirmado` → `…por_codigo_aunque_haya_grupo` | 3 oficios agrupados; se reimporta «Mamparas» | 4 por código; el último par con códigos; se reimporta «Mamparas (0085)» | R12, R14, R40 |
+| `test_f036_r10_r11_si_algo_falla_no_hay_plantilla` | caso de la base de decisiones | dos casos de ubicaciones: al techo y caída | R3 |
+| `test_f036_r12_la_plantilla_de_una_obra_sin_oficios_…` | `opciones_oficio`/`opciones_proveedor` | `oficios`/`pares` vacíos | R12, R14 |
+
+**`tests/test_f036_plantilla_http.py`**
+
+| Test o ayudante | Era | Ahora | R |
+|---|---|---|---|
+| `Dobles`, `_con_dobles` y las dos de `t18_…` con puertos | `equivalencias=` | `ubicaciones=` (`UbicacionesEnMemoria`) | R1 |
+| `test_f036_r1_la_plantilla_lee_sigrid_en_ese_momento` | decisiones ×2 | `ubicaciones` ×2 | R1, R2 |
+| `test_f036_r92_la_plantilla_lleva_un_oficio_por_grupo_confirmado` → `…por_codigo_aunque_haya_grupo` | «Mamparas» sí, «Mampara» no | «Mamparas (0085)» y «Mampara (0166)», los dos | R12 |
+| `test_f036_r9_con_la_obra_mal_no_se_construye_ningun_adaptador` | `construir_equivalencias` prohibido | `revision.construir_fuente_de_ubicaciones` prohibido | R1 |
+| `test_f036_r11_sin_sigrid_o_sin_base_es_503` → `test_f036_r11_sin_sigrid_es_503` | dos casos de la base (caída, sin configurar) | un caso: ubicaciones caídas → 503 | R2, R3 |
+| `test_f036_r11_r48_fuera_de_dev_y_pro_…` | sustituía `construir_equivalencias` | nada que sustituir: el catálogo se niega primero | R1 |
+| `test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad` | catálogo y equivalencias | catálogo y, después, `revision.construir_fuente_de_ubicaciones` | R1, §3.2 |
+
+**`tests/test_f036_importar_http.py`**
+
+| Test o ayudante | Era | Ahora | R |
+|---|---|---|---|
+| `Dobles.puertos` | `equivalencias` | `ubicaciones` | R24 |
+| `MALA`, `test_f036_r65_…` (`A2`) | unidad en minúsculas | `UNIDAD_FUERA` | R36, R37 |
+| `test_f036_r93_el_oficio_ambiguo_se_avisa` → `…con_un_grupo_guardado_el_oficio_entra_sin_aviso` | grupo → aviso | «Mamparas (0085)» → nueva, sin avisos; decisiones no pedidas | R12, R24, R35 |
+| `_libro` | `version` 1 | 2 | R22 |
+| `test_f036_r17_r20_…[version]` | `version=2` | `version=3`; la v1 está en `test_f071_http.py` | R23 |
+| `test_f036_r11_r40_sin_sigrid_o_sin_base_es_503_sin_excel` | caso de la base de decisiones | ubicaciones caídas → 503 sin Excel | R24, R25 |
+| `test_f036_t18_sin_puertos_inyectados_…` | `construir_equivalencias` tercero | `construir_fuente_de_ubicaciones` tercero (`vistos[:3]`: lo que construya después la normalización de F-060 es §6.2) | R24 |
+| `test_f036_r21_sin_puertos_…`, `test_f036_r39_sin_puertos_…`, `test_f036_t18_con_la_peticion_mal_…` | `construir_equivalencias` prohibido | `construir_fuente_de_ubicaciones` prohibido | R24 |
+
+**`tests/test_f060_importar_normaliza.py`**: el `Mundo` y el oráculo
+`_sin_normalizar` pasan `ubicaciones=` en vez de `equivalencias=` (R24). La
+fuente es `UbicacionesQueCuentan` con `UBICACIONES_AL_IMPORTAR = {U1:
+("Almacén",)}`: es con lo que valida la importación (las filas llevan
+«Almacén»). La de la normalización (`LISTAS_DE_SIGRID`) queda como estaba
+(§6.2). Las aserciones de F-060 cortan la lista de llamadas **después** de
+`generador.generar`, así que no cambia ninguna.
+
+**`tests/test_f060_importacion_diferida.py`**: en los fragmentos del hijo, la
+clase `Equivalencias` se sustituye por una función `ubicaciones(catalogo)`
+que devuelve `{}`, pasada como `ubicaciones=` a `descargar_plantilla` y a
+`importar_excel` (R1, R24).
+
+**`tests/test_f053_importado_at_utc.py`**: sin cambios. Usa los `Dobles` de
+`test_f036_importar_http.py` y pasa con ellos.
+
+### Comprobación de T8
+
+Sin `harness/init.sh` todavía (va al final de la tanda), por ficheros:
+
+| Ficheros | Resultado |
+|---|---|
+| `test_f071_pipelines.py`, `test_f071_http.py` (los RED de T7), solos y recién aplicado el código | 26 passed in 62.23s |
+| `test_f036_importar_http.py` | 58 passed in 75.81s |
+| `test_f060_importacion_diferida.py`, `test_f060_importar_normaliza.py`, `test_f060_tiempos.py` | 140 passed in 342.02s |
+| `test_f036_pipeline_importacion.py`, `test_f036_plantilla_http.py`, `test_f053_importado_at_utc.py`, `test_f071_pipelines.py`, `test_f071_http.py`, `test_f036_alcance_cerrado.py` (con los cambios de T9 aún sin aplicar) | 178 passed, 7 skipped in 192.61s |
+
+`tests/utiles_revision.py`, que `tasks.md` T8 nombra, **no ha hecho falta
+tocarlo**: su `UbicacionesQueCuentan` ya tiene la forma de la fuente y se
+reutiliza tal cual en `test_f060_importar_normaliza.py`. Para los tests de
+F-036, la fuente nueva es `UbicacionesEnMemoria`, en `utiles_importacion.py`.
+
+Antes de adaptar los tests, la corrida conjunta de esos ficheros con el código
+de T8 daba `227 failed, 1056 passed, 71 skipped in 566.18s`: todos en los seis
+ficheros de arriba, ninguno fuera.

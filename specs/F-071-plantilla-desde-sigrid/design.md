@@ -416,6 +416,15 @@ la lista de ubicaciones ya no se configura aquí; sale de Sigrid, por unidad
   depende de la unidad de la fila: elige primero la unidad. Si cambias la
   unidad, vuelve a elegir la ubicación. Si el sitio no está en la lista, deja
   la ubicación en blanco y explícalo en «Detalle».»
+  > **Texto final (aceptado por el humano el 2026-11-06):** el de **dos
+  > párrafos** seguidos, no el de arriba (mide 276 caracteres, más que el
+  > tope de 255, y «Las listas» incluiría Urgencia y Listado, contra R16):
+  > «Los desplegables de unidad, ubicación, oficio y proveedor salen de Sigrid
+  > el día que descargas la plantilla.» y «La lista de «Ubicación» depende de
+  > la unidad de la fila: elige primero la unidad. Si cambias la unidad,
+  > vuelve a elegir la ubicación. Si el sitio no está en la lista, deja la
+  > ubicación en blanco y explícalo en «Detalle».» Detalle en
+  > `progress/impl_F-071.md`, «Desviación respecto a §7.3».
 - Ejemplos: `Ubicación: "Estancia (elígela de la lista de su unidad)"`;
   ninguno con «General (toda la unidad)».
 

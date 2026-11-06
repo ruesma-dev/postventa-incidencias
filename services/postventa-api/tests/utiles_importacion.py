@@ -2,7 +2,9 @@
 """Utilidades de los tests de la importación de F-036 (T17, T18).
 
 Dobles **en memoria** de los puertos que usa la importación —bandeja,
-decisiones de equivalencia y catálogo de Sigrid— y dos envoltorios que anotan
+decisiones de equivalencia, catálogo de Sigrid y, desde F-071, la fuente de
+las ubicaciones válidas de cada unidad (`UbicacionesEnMemoria`)— y dos
+envoltorios que anotan
 las llamadas del lector y del generador de verdad. Todos escriben en una lista
 común de `llamadas`, y así un test puede fijar **el orden** de los pasos sin
 mirar dentro de ellos.
@@ -27,6 +29,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from domain.models.equivalencias import Catalogo, DecisionPar
+from domain.models.plantilla_incidencias import CatalogoObra
 from domain.models.importacion import (
     EstadoFilaImportada,
     EstadoImportacion,
@@ -174,6 +177,42 @@ class EquivalenciasEnMemoria:
 
     def registrar(self, *, decisiones: tuple[DecisionPar, ...]) -> None:
         raise AssertionError("la importación no registra decisiones")
+
+
+# --- las ubicaciones válidas de Sigrid (F-071) ---------------------------------
+
+#: Las ubicaciones de Sigrid de cada unidad de la 0677 inventada: «Almacén», la
+#: de las filas de ejemplo, es válida en Villa 1 y Villa 2; Villa 3 no tiene.
+UBICACIONES_0677: Mapping[str, tuple[str, ...]] = {
+    "0677.03VILLA 1.": ("Almacén", "Cocina"),
+    "0677.03VILLA 2.": ("Almacén",),
+}
+
+
+class UbicacionesEnMemoria:
+    """La fuente de las ubicaciones válidas (F-071 R24): un mapa por unidad.
+
+    Anota `"ubicaciones"` en cada lectura y el catálogo con el que se pidió.
+    """
+
+    def __init__(
+        self,
+        llamadas: list[str],
+        mapa: Mapping[str, tuple[str, ...]] | None = None,
+        *,
+        fallo: Exception | None = None,
+    ) -> None:
+        self.llamadas = llamadas
+        self.mapa = dict(UBICACIONES_0677 if mapa is None else mapa)
+        self._fallo = fallo
+        self.catalogos: list[CatalogoObra] = []
+
+    def __call__(self, catalogo: CatalogoObra) -> Mapping[str, tuple[str, ...]]:
+        self.llamadas.append("ubicaciones")
+        self.catalogos.append(catalogo)
+        if self._fallo is not None:
+            raise self._fallo
+        return self.mapa
 
 
 # --- la bandeja ---------------------------------------------------------------

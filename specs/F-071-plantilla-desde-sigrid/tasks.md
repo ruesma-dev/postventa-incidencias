@@ -152,7 +152,7 @@
   motivo; el borde usa `construir_fuente_de_ubicaciones` de
   `interface_adapters/api/revision.py`). Traza RED pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_pipelines.py tests/test_f071_http.py` en rojo por aserción
-- [ ] **T8 · GREEN**: `application/pipelines/plantilla.py`,
+- [x] **T8 · GREEN**: `application/pipelines/plantilla.py`,
   `contexto_importacion.py`, `paso_importacion.py`,
   `interface_adapters/api/plantilla.py`, `interface_adapters/api/importar.py`
   y, si hace falta, el docstring de la ruta en `function_app.py`

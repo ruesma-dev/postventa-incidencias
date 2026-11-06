@@ -14,7 +14,10 @@ El libro (§3.1):
   datos desbloqueadas salvo `Errores` (§3.3).
 - `Instrucciones`: la obra, los textos del YAML (§3.4) y los ejemplos (R5).
 - `_catalogos` (`veryHidden`): una columna por lista y un rango con nombre por
-  cada una, que es de donde beben los desplegables.
+  cada una, que es de donde beben los desplegables. A la derecha, tras una
+  columna en blanco, lo de `Ubicación` (F-071, `design.md` §4.2): la tabla
+  «unidad → lista», la celda vacía `ubicaciones_ninguna` y una columna por
+  lista distinta de ubicaciones de Sigrid.
 - `_plantilla` (`veryHidden`): los metadatos que reconoce el importador (R6).
 
 **Nada se escribe como fórmula** (R7): toda celda de texto se fuerza a texto,
@@ -33,7 +36,13 @@ se imprime. En «Instrucciones», la obra en una banda burdeos, el título con
 su línea, los párrafos con el alto calculado y la tabla de ejemplos con su
 cabecera. Las hojas `veryHidden` no llevan formato. Es **solo aspecto**
 (R126): no cambia ni una celda, hoja, validación, protección ni metadato de
-los que lee el importador, y la versión sigue en 1.
+los que lee el importador (F-036 dejó la versión en 1).
+
+**La versión 2** (F-071): todos los desplegables salen de Sigrid salvo
+`Urgencia` y `Listado`. `Oficio` y `Proveedor`, una entrada por código y por
+pareja, con los códigos en la etiqueta (R12–R15); `Ubicación`, **dependiente
+de la `Unidad` de la fila** (R5–R10): una sola validación de lista para
+`B2:B1001` con `INDIRECT` sobre el nombre de la lista de esa unidad.
 """
 
 from __future__ import annotations
@@ -78,6 +87,7 @@ from domain.models.plantilla_incidencias import (
     TextosPlantilla,
     UbicacionesDeLaPlantilla,
     etiquetas_de_unidades,
+    plegar,
 )
 from domain.ports.hoja_calculo import FilaPlantilla
 
@@ -115,15 +125,30 @@ MAX_FILAS_METADATOS = 10
 #: Columnas que se escriben: todas las de la cabecera menos la de errores.
 COLUMNAS_DE_DATOS: tuple[str, ...] = tuple(c for c in CABECERA if c != COLUMNA_ERRORES)
 
-#: Las columnas con desplegable y el rango con nombre de cada lista (R3).
+#: Las columnas con desplegable fijo y el rango con nombre de cada lista (R3).
+#: `Ubicación` no está: su lista depende de la unidad (F-071, R9; abajo).
 LISTAS: Mapping[str, str] = {
     "Unidad": "lista_unidades",
-    "Ubicación": "lista_ubicaciones",
     "Oficio": "lista_oficios",
     "Proveedor": "lista_proveedores",
     "Urgencia": "lista_urgencias",
     "Listado": "lista_listados",
 }
+
+# --- `Ubicación`, dependiente de la unidad (F-071, `design.md` §4.2; D-1 = a1) --
+#: La tabla de dos columnas «etiqueta de la unidad → nombre de su lista».
+TABLA_UBICACIONES = "tabla_ubicaciones_de_unidad"
+#: Una celda vacía: lo que ofrece una unidad vacía, desconocida o sin
+#: ubicaciones (R6, R7).
+UBICACIONES_NINGUNA = "ubicaciones_ninguna"
+#: `ubicaciones_<k>`, `k` = 1, 2… en el orden de `UbicacionesDeLaPlantilla`.
+#: No es una referencia de celda: `ubicaciones` no es una columna de Excel.
+PREFIJO_UBICACIONES = "ubicaciones_"
+#: La validación de `B2:B1001` (R10): Excel la ajusta fila a fila (`$A2`).
+FORMULA_UBICACION = (
+    f"INDIRECT(IFERROR(VLOOKUP($A{PRIMERA_FILA},{TABLA_UBICACIONES},2,FALSE),"
+    f'"{UBICACIONES_NINGUNA}"))'
+)
 
 #: Longitudes de los textos libres (R4).
 LONGITUDES: Mapping[str, tuple[int, int]] = {
@@ -255,6 +280,16 @@ def _texto(celda: Cell, valor: str | None) -> None:
         celda.quotePrefix = True
 
 
+def _exigir_distintas(etiquetas: Iterator[str]) -> None:
+    """Dos opciones que Excel confundiría al teclear no generan fichero (F-071, R15).
+
+    Sin nombrar la etiqueta: es texto de Sigrid y el error puede acabar en un log.
+    """
+    plegadas = [plegar(e) for e in etiquetas]
+    if len(set(plegadas)) != len(plegadas):
+        raise ValueError("dos opciones del desplegable dan la misma etiqueta")
+
+
 def _utc(instante: datetime) -> str:
     if instante.utcoffset() is None:
         raise ValueError("el instante de generación tiene que llevar zona horaria")
@@ -289,6 +324,8 @@ class GeneradorPlantillaOpenpyxl:
     ) -> bytes:
         generada_utc = _utc(generada_at)
         _comprobar_filas(filas)
+        _exigir_distintas(o.etiqueta for o in oficios)
+        _exigir_distintas(p.etiqueta for p in pares)
         libro = Workbook()
         incidencias = libro.active
         incidencias.title = HOJA_INCIDENCIAS
@@ -300,15 +337,13 @@ class GeneradorPlantillaOpenpyxl:
             "Unidad": tuple(
                 o.etiqueta for o in etiquetas_de_unidades(catalogo.unidades)
             ),
-            # F-071 T2, provisional hasta T5 (Bloque 2): la unión de la obra
-            # como lista plana; el desplegable dependiente es de T5.
-            "Ubicación": ubicaciones.union(),
             "Oficio": tuple(o.etiqueta for o in oficios),
             "Proveedor": tuple(p.etiqueta for p in pares),
             "Urgencia": tuple(o.etiqueta for o in listas.urgencias),
             "Listado": tuple(o.etiqueta for o in listas.listados),
         }
         self._catalogos(libro, catalogos, valores_de_listas)
+        self._ubicaciones(libro, catalogos, catalogo, ubicaciones)
         self._incidencias(incidencias, valores_de_listas, textos.mensajes, filas)
         self._instrucciones(
             instrucciones,
@@ -346,6 +381,70 @@ class GeneradorPlantillaOpenpyxl:
                 libro.defined_names[nombre] = DefinedName(nombre, attr_text=referencia)
         ws.sheet_state = "veryHidden"
         ws.protection.sheet = True
+
+    @staticmethod
+    def _ubicaciones(
+        libro: Workbook,
+        ws: Worksheet,
+        catalogo: CatalogoObra,
+        ubicaciones: UbicacionesDeLaPlantilla,
+    ) -> None:
+        """Lo que lee la validación de `Ubicación` (F-071, R8, R9; `design.md` §4.2).
+
+        A la derecha de las listas fijas y tras una columna en blanco: la tabla
+        «etiqueta de la unidad → nombre de su lista», en el orden del
+        desplegable de `Unidad`; la celda vacía `ubicaciones_ninguna`; y una
+        columna por lista distinta, con su nombre en la fila 1. Todo como texto
+        (R7 de F-036). Sin unidades, la tabla es una fila vacía: el nombre
+        existe y `VLOOKUP` no encuentra nada.
+        """
+        columna = len(LISTAS) + 2  # la siguiente a la de separación
+        letra_unidad = get_column_letter(columna)
+        letra_lista = get_column_letter(columna + 1)
+        _texto(ws.cell(row=1, column=columna), TABLA_UBICACIONES)
+        fila = PRIMERA_FILA - 1
+        for fila, opcion in enumerate(
+            etiquetas_de_unidades(catalogo.unidades), start=PRIMERA_FILA
+        ):
+            indice = ubicaciones.lista_de_unidad.get(opcion.codigo)
+            nombre = (
+                UBICACIONES_NINGUNA
+                if indice is None
+                else f"{PREFIJO_UBICACIONES}{indice + 1}"
+            )
+            _texto(ws.cell(row=fila, column=columna), opcion.etiqueta)
+            _texto(ws.cell(row=fila, column=columna + 1), nombre)
+        ultima = max(fila, PRIMERA_FILA)
+        libro.defined_names[TABLA_UBICACIONES] = DefinedName(
+            TABLA_UBICACIONES,
+            attr_text=(
+                f"'{HOJA_CATALOGOS}'!${letra_unidad}${PRIMERA_FILA}"
+                f":${letra_lista}${ultima}"
+            ),
+        )
+
+        columna += 3  # tras las dos de la tabla
+        letra = get_column_letter(columna)
+        _texto(ws.cell(row=1, column=columna), UBICACIONES_NINGUNA)
+        libro.defined_names[UBICACIONES_NINGUNA] = DefinedName(
+            UBICACIONES_NINGUNA,
+            attr_text=f"'{HOJA_CATALOGOS}'!${letra}${PRIMERA_FILA}",
+        )
+
+        for k, lista in enumerate(ubicaciones.listas, start=1):
+            columna += 1
+            letra = get_column_letter(columna)
+            nombre = f"{PREFIJO_UBICACIONES}{k}"
+            _texto(ws.cell(row=1, column=columna), nombre)
+            for fila, valor in enumerate(lista, start=PRIMERA_FILA):
+                _texto(ws.cell(row=fila, column=columna), valor)
+            libro.defined_names[nombre] = DefinedName(
+                nombre,
+                attr_text=(
+                    f"'{HOJA_CATALOGOS}'!${letra}${PRIMERA_FILA}"
+                    f":${letra}${PRIMERA_FILA + len(lista) - 1}"
+                ),
+            )
 
     @staticmethod
     def _incidencias(
@@ -584,8 +683,12 @@ def _validacion(
 
     Una lista vacía (obra sin oficios, R12, o sin proveedores en `obrofc`) no
     puede ser un desplegable: la columna solo admite quedarse en blanco.
+    `Ubicación` es siempre la lista dependiente de la unidad (F-071, R10),
+    también si ninguna unidad tiene ubicaciones: `ubicaciones_ninguna` existe.
     """
-    if columna in LONGITUDES:
+    if columna == "Ubicación":
+        dv = DataValidation(type="list", formula1=FORMULA_UBICACION)
+    elif columna in LONGITUDES:
         minimo, maximo = LONGITUDES[columna]
         dv = DataValidation(
             type="textLength",

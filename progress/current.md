@@ -2,6 +2,10 @@
 # Sesión activa
 
 > ## F-071 · `in_progress` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> **Tanda 1 hecha (2026-11-06):** T4 RED y T5 GREEN, el generador v2 con `INDIRECT`. Detalle y recuento de rojos en
+> `progress/impl_F-071.md`, «Tanda 1». **Desviación anotada para el humano:** el párrafo de §7.3 («Las listas salen de
+> Sigrid…», 276 caracteres) va partido en dos y dice «Los desplegables de unidad, ubicación, oficio y proveedor salen de
+> Sigrid…», porque «las listas» incluiría Urgencia y Listado, y R16 pide no decir que salen de Sigrid. Queda la tanda 2.
 > **Opción (d) aprobada por el humano el 2026-11-06:** un solo GREEN para los Bloques 1–3 (T2 ya hecha, T5 y T8, con T9
 > adelantada), en dos tandas seguidas. Tanda 1: T4/T5 (generador v2). Tanda 2: T7/T8 y T9. Entre tandas la suite puede
 > estar en rojo. Al final: `init.sh` en verde, mutación de todo lo cambiado y una sola review. Lo de abajo ya está resuelto.

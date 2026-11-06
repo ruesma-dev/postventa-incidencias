@@ -124,7 +124,7 @@
   y sin «General»/«Otra»/«en la revisión»; R21 YAML con `ubicaciones` en
   `tmp_path` → `ConfiguracionPlantillaInvalida`). Traza RED pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f071_generador.py tests/test_f071_configuracion.py` en rojo por aserción
-- [ ] **T5 · GREEN**: `domain/ports/hoja_calculo.py` (firma),
+- [x] **T5 · GREEN**: `domain/ports/hoja_calculo.py` (firma),
   `infrastructure/documentos/excel_openpyxl.py`,
   `infrastructure/documentos/plantilla_yaml.py`,
   `config/plantilla_incidencias.yaml` (`design.md` §7). Adaptar

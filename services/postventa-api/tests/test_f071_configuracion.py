@@ -108,7 +108,10 @@ def test_f071_r18_instrucciones_dicen_que_depende_de_la_unidad(
     assert "«Detalle»" in parrafo
     instrucciones = list(real.textos.instrucciones)
     previo = next(i for i, p in enumerate(instrucciones) if p.startswith("Todo lo que tiene desplegable"))
-    assert instrucciones[previo + 1] == parrafo, "va tras «Todo lo que tiene desplegable…»"
+    # `design.md` §7.3 lo da como un párrafo de 276 caracteres; partido en dos
+    # para caber en 255 (T4), el de Sigrid primero y este detrás.
+    assert "salen de Sigrid el día que descargas la plantilla" in instrucciones[previo + 1]
+    assert instrucciones[previo + 2] == parrafo, "va tras «Todo lo que tiene desplegable…»"
 
 
 def test_f071_r18_ningun_texto_nombra_general_otra_ni_la_revision(

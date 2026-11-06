@@ -447,3 +447,231 @@ PASSED tests/test_f071_configuracion.py::test_f071_r18_mensajes_e_instrucciones_
   nombres (`lista_*`) cumplen la forma; con T5 se aplican a los nombres nuevos.
 - R16 y R18 (255): el YAML de hoy ya los cumple; se fijan para que T5 no los
   rompa.
+
+
+## Tanda 1 · T5 GREEN (implementer, 2026-11-06)
+
+### Qué cambió
+
+- `infrastructure/documentos/excel_openpyxl.py` (§7.1):
+  - `LISTAS` pierde `Ubicación`. Las cinco fijas siguen en A–E, cada una con
+    su nombre.
+  - `_ubicaciones` (nuevo) escribe en `_catalogos`, después de la columna F en
+    blanco:
+    - la tabla `tabla_ubicaciones_de_unidad` en G:H, con la etiqueta de la
+      unidad en el orden del desplegable y el nombre de su lista;
+    - `ubicaciones_ninguna`, que es I2, una celda vacía;
+    - `ubicaciones_<k>` desde la J, con el nombre en la fila 1.
+
+    Todo se escribe con `_texto`. Si la obra no tiene unidades, la tabla es una
+    fila vacía: el nombre existe y `VLOOKUP` no encuentra nada.
+  - `_validacion`: `Ubicación` es siempre una lista con
+    `INDIRECT(IFERROR(VLOOKUP($A2,tabla_ubicaciones_de_unidad,2,FALSE),"ubicaciones_ninguna"))`
+    (89 caracteres), y nunca la rama `textLength = 0`.
+  - `_exigir_distintas` (R15): si dos etiquetas de `Oficio` o de `Proveedor`
+    son iguales plegadas, el generador da `ValueError` y no escribe el
+    fichero. El error no lleva el texto.
+  - Se quitó la unión provisional de T2.
+  - El docstring explica la versión 2.
+- `infrastructure/documentos/plantilla_yaml.py` (§7.2):
+  - se quitan `_ubicaciones`, `ubicaciones_por_revisar` y el campo provisional
+    `ConfiguracionPlantilla.ubicaciones` (R21);
+  - si la raíz trae la clave `ubicaciones` (con lista, vacía o nula), la carga
+    da `ConfiguracionPlantillaInvalida` con «`ubicaciones`: la lista de
+    ubicaciones ya no se configura aquí; sale de Sigrid, por unidad (F-071)»;
+  - `_ejemplos` ya no comprueba `Ubicación`, y sigue comprobando `Urgencia` y
+    `Listado`;
+  - fuera los imports de `MAX_UBICACION` y `plegar`, que ya no se usaban.
+- `config/plantilla_incidencias.yaml` (§7.3):
+  - fuera la sección `ubicaciones` y su párrafo de cabecera; en su lugar va la
+    línea del diseño;
+  - los mensajes de `Ubicación` (entrada y error) y la entrada de `Oficio`, con
+    el texto exacto de §7.3;
+  - los tres ejemplos llevan `Ubicación: "Estancia (elígela de la lista de su
+    unidad)"`; ninguno lleva «General».
+- `domain/ports/hoja_calculo.py`: sin cambios en T5. La firma ya era la final
+  desde T2.
+
+### Desviación respecto a §7.3 (para que la acepte el humano)
+
+§7.3 pide un párrafo nuevo en «Instrucciones»: «Las listas salen de Sigrid el
+día que descargas la plantilla. La de «Ubicación» depende…». Tiene **dos
+problemas**:
+
+1. **Mide 276 caracteres**, y T4 pide «mensajes e instrucciones ≤ 255».
+2. **«Las listas» incluye Urgencia y Listado**, y R16 dice que «Instrucciones»
+   no debe decir que esas salen de Sigrid.
+
+Se escribe en **dos párrafos** seguidos, tras «Todo lo que tiene
+desplegable…»:
+
+- «Los desplegables de unidad, ubicación, oficio y proveedor salen de Sigrid
+  el día que descargas la plantilla.»
+- «La lista de «Ubicación» depende de la unidad de la fila: elige primero la
+  unidad. Si cambias la unidad, vuelve a elegir la ubicación. Si el sitio no
+  está en la lista, deja la ubicación en blanco y explícalo en «Detalle».»
+
+El contenido de R18 sigue igual. Si el humano prefiere el texto literal, el
+cambio es de una línea en el YAML y otra en
+`test_f071_configuracion.py::test_f071_r16_…` (la aserción «las listas
+salen»). Ese test de T4 se ajustó después del RED por el corte en dos: ahora
+busca el párrafo de Sigrid en `previo + 1` y el de «Ubicación» en
+`previo + 2`. El cambio es de 4 líneas.
+
+### Tests de F-036 adaptados (cada aserción con su R de F-071)
+
+**`tests/test_f036_excel_generador.py`**
+
+| Test o ayudante | Era | Ahora | R |
+|---|---|---|---|
+| importaciones | `opciones` (grupos) | `oficios_del_desplegable`, `pares_del_desplegable`, `ubicaciones_de_la_plantilla` | R12–R14 |
+| `COLUMNAS_DE_LISTA_FIJA` (nuevo) | — | las tasadas sin `Ubicación` | R9, R10 |
+| `_esperadas` | grupos; `Ubicación` = `listas.ubicaciones` | por código y pareja; sin `Ubicación`; `decisiones` ignorado | R12–R14, R9 |
+| `test_f036_r3_el_desplegable_sale_de_la_hoja_de_catalogos` | 6 columnas | 5, sin `Ubicación` | R9 |
+| `test_f036_r6_metadatos_de_la_plantilla` | `version` 1 | 2 | R17 |
+| `test_f036_r7_lo_que_empieza_por_igual_se_conserva_como_texto` | «=Carpintería», par sin códigos | «=Carpintería (0046)», «=Carpintería (0046) · @Proveedor Ejemplo (P1)» | R13, R14 |
+| `test_f036_r92_una_entrada_por_grupo_de_oficio` | 3 entradas por grupo con «mismo» | 4 por código, iguales a sin decisiones | R12 (D-14) |
+| `test_f036_r92_sin_grupos_un_oficio_por_codigo` | nombres solos | nombres con código | R12, R13 |
+| `test_f036_r71_r92_los_pares_empiezan_por_la_etiqueta_del_oficio` | 3 pares por grupo | 4 pares por pareja, con los dos códigos | R14 |
+| `test_f036_r62_mismo_libro_que_la_plantilla_con_los_mismos_desplegables` | 6 listas comparadas | 5 listas, y la fórmula de `Ubicación` igual | R9, R40 |
+| `LISTAS` | 6, con `lista_ubicaciones` | 5 | R9 |
+| `_generar_con` | firma vieja (`opciones_oficio`, …) | firma v2 | §5.2 del puerto |
+| `test_f036_s3_1_catalogos_una_columna_por_lista_con_su_nombre` | fila 1 = las 6 | las 5 primeras y F en blanco | R9 |
+| `test_f036_r126_los_rangos_con_nombre_de_las_listas_resuelven_a_lo_mismo` | nombres = las 6 | las 5 + tabla + `ubicaciones_ninguna` | R9 |
+| `test_f036_r125_ni_las_hojas_ni_el_libro_llevan_impresion_en_el_xml` | `definedName` = 6 + filtro | 5 + tabla + ninguna + filtro | R9 |
+| `test_f036_r126_misma_version_e_identificador` | `version` 1 | 2 | R17 |
+
+**`tests/test_f036_excel_lector.py`**
+
+| Test o ayudante | Era | Ahora | R |
+|---|---|---|---|
+| `test_f036_r6_r17_metadatos_leidos`, `test_f036_r6_metadatos_por_clave_y_no_por_posicion`, `test_f036_r126_ida_y_vuelta_de_la_plantilla_rellena_con_formato` | `version` 1 | 2 | R17 |
+| `test_f036_r18_version_2_no_soportada` → `test_f036_r18_version_3_no_soportada` | la 2, no soportada | la 3 (la 2 es la soportada; la 1 es `version_anterior`, en `test_f071_dominio_importacion`) | R17, R23 |
+| `_validar` | grupos, firma vieja | oficios y pares v2, `ubicaciones_por_unidad=UBICACIONES` (Villa 1: Cocina; Villa 2: Cocina, Salón; inventadas) | R12–R14, R29 |
+| `BUENA` | «Carpintería de madera», par sin códigos | con códigos | R13, R14 |
+
+**`tests/test_f036_lector_aislado.py`**: en
+`test_f036_r126_ida_y_vuelta_por_el_lector_aislado_con_el_hijo_real` y
+`test_f036_r126_los_formatos_anteriores_por_el_lector_aislado_con_el_hijo_real`,
+`version` pasa de 1 a 2 (R17).
+
+**`tests/test_f036_configuracion_plantilla.py`**
+
+- **Retirados** según `design.md` §3.2 («ninguna se borra sin sustituta salvo
+  las de la lista del YAML (R21)»). Sustituto:
+  `test_f071_configuracion.py::test_f071_r21_*`.
+  - Fijaban la lista real:
+    - `test_f036_t6_ubicaciones_hasta_48_y_sin_repetidas`;
+    - `test_f036_t6_d3_cada_ubicacion_medida_va_a_una_sola`;
+    - `test_f036_t6_d3_las_fusiones_del_diseno`;
+    - `test_f036_t6_d3_la_normalizacion_no_cambia_de_sitio`;
+    - `test_f036_t6_d3_cuarenta_de_medidas_y_las_anadidas_marcadas`;
+    - `test_f036_t25_las_anadidas_son_exactamente_las_de_t6_y_t25`;
+    - `test_f036_t25_las_anadidas_en_t25_dicen_de_donde_vienen`;
+    - `test_f036_t25_orden_del_desplegable_general_alfabetico_y_otra`.
+  - Fijaban la validación de la sección:
+    - `test_f036_t6_ubicacion_de_mas_de_48`;
+    - `test_f036_t6_ubicacion_de_48_se_admite`;
+    - `test_f036_t6_dos_ubicaciones_iguales_normalizadas` (4 casos);
+    - `test_f036_t6_ubicacion_vacia_o_con_blancos` (7 casos);
+    - `test_f036_t6_sin_ubicaciones`;
+    - `test_f036_t6_ubicacion_que_no_es_mapping`;
+    - `test_f036_t6_origen_repetido_en_dos_ubicaciones`;
+    - `test_f036_t6_origen_mal_formado` (3 casos);
+    - `test_f036_t6_anadida_sin_motivo_de_revision`.
+  - Con ellos salen las constantes `UBICACIONES_MEDIDAS_0677`,
+    `FUSIONES_DEL_DISENO`, `ANADIDAS_T6` y `ANADIDAS_T25`.
+  - El sitio de cada bloque lleva un comentario que lo dice.
+- **Adaptados**:
+  - `test_f036_r5_dos_o_tres_ejemplos_validos`: la `Ubicación` del ejemplo es
+    la indicativa; antes era una de la lista del YAML (R19).
+  - `test_f036_t6_ejemplo_invalido`: fuera el caso `{"Ubicación": "Sótano de
+    nadie"}`. Ahora ese valor se admite y lo fija el test nuevo
+    `test_f036_t6_la_ubicacion_del_ejemplo_no_se_comprueba` (§7.2, R19).
+  - Docstring del módulo.
+- **Sin tocar**: `tests/utiles_plantilla.py`, que ya generaba v2 desde T2.
+  `tests/test_f036_migracion_contenido.py` sigue leyendo
+  `CONFIG.ubicaciones`; T9 lo retira (tanda 2, R45).
+
+### R20 · la obra grande, medida
+
+Datos: 500 unidades, 50 listas de 60 ubicaciones de 48 caracteres, 200
+oficios y 1 000 pares. El fichero se generó con el ayudante del test, se
+guardó **en el scratchpad** (fuera del repositorio) y se midió con
+`scripts/contar_elementos_xml_f036.py`:
+
+```
+bytes 67205 entradas 12 descomprimido 839836
+Elementos XML: 29085
+Presupuesto (R117): 300000
+Un quinto del presupuesto: 60000
+Veredicto: por debajo de un quinto del presupuesto
+```
+
+Contra los topes:
+
+| Medida | Valor | Tope |
+|---|---|---|
+| Tamaño | 66 KiB | 2 MiB |
+| Entradas ZIP | 12 | 500 |
+| Descomprimido | 0,8 MiB | 17 MiB |
+| Elementos XML | 29 085 | 300 000 |
+
+`LectorPlantillaOpenpyxl` la lee y `reconocer_plantilla` la reconoce
+(`test_f071_r20_…`).
+
+### Comprobación de la tanda (solo generador, configuración y lector)
+
+Por encargo **no** se lanza la suite completa, ni la mutación ni la review.
+Comando (desde `services/postventa-api`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f071_generador.py tests/test_f071_configuracion.py tests/test_f036_excel_generador.py tests/test_f036_excel_lector.py tests/test_f036_configuracion_plantilla.py tests/test_f036_lector_aislado.py -p no:cacheprovider -q --tb=line
+```
+
+Resultado real:
+
+```
+E   assert 1.2027556999819353 < 1.0
+C:\...\tests\test_f036_excel_lector.py:1562: assert 1.2027556999819353 < 1.0
+E   assert 13.539240299956873 < (3.0 + 10.0)
+C:\...\tests\test_f036_lector_aislado.py:442: assert 13.539240299956873 < (3.0 + 10.0)
+2 failed, 757 passed, 7 skipped in 686.40s (0:11:26)
+```
+
+- **Los 2 rojos son de tiempo**, no de la tanda:
+  - `test_f036_r117_los_ficheros_de_la_review_3_se_rechazan_en_menos_de_un_segundo`;
+  - `test_f036_r118_los_hostiles_de_todas_las_reviews_a_tiempo_y_con_el_padre_acotado`.
+
+  Los dos leen ficheros hostiles hechos a mano, no lo que escribe el
+  generador. Pasaron en la pasada anterior de los dos ficheros del lector, y
+  lanzados solos dan `23 passed, 390 deselected in 119.10s`. La máquina
+  estaba cargada: había suites de pytest de otros cinco proyectos en marcha
+  y una pasada mía anterior que `TaskStop` no llegó a cerrar. No la maté: el
+  clasificador de permisos lo denegó y se deja que acabe sola.
+- **En estos seis ficheros no queda ningún rojo de lógica.**
+- **Rojos que se esperan fuera de estos ficheros, hasta la tanda 2**: no se
+  han medido, por encargo. La última medida de la suite entera es la de T2.
+  - **Importación** (T7/T8):
+    - `test_f060_importar_normaliza`;
+    - `test_f036_pipeline_importacion`;
+    - `test_f036_importar_http`;
+    - `test_f053_importado_at_utc`;
+    - `test_f036_plantilla_http`.
+
+    La importación todavía no lee las ubicaciones de Sigrid ni pasa las
+    nuevas a `paso_catalogo`, y `generar_plantilla` las pasa vacías.
+  - **Migración** (T9): `test_f036_migracion` y
+    `test_f036_migracion_contenido`. Este último lee además
+    `CONFIG.ubicaciones`, que ya no existe. T9 retira los dos (R45).
+
+### Evidencias (tanda 1, parcial)
+
+| Evidencia | Valor |
+|---|---|
+| Tests de la tanda (6 ficheros) | 757 passed, 7 skipped, 2 failed por tiempo (en verde lanzados solos), 686,4 s |
+| Tests nuevos de F-071 en la tanda | 38 (25 del generador y 13 de la configuración), todos en verde |
+| R20 · obra grande | 66 KiB, 12 entradas, 0,8 MiB descomprimido, 29 085 elementos XML |
+| Cobertura de las líneas cambiadas | no medida: `init.sh` no llega mientras la suite siga en rojo (tanda 2) |
+| Mutantes | sin lanzar, por encargo: una sola campaña al final |
+| Suite completa | sin lanzar, por encargo |

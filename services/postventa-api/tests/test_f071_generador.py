@@ -281,6 +281,9 @@ def test_f071_r7_obra_sin_unidades_se_genera_con_la_validacion() -> None:
     wb = abrir(_generar(_catalogo(unidades=()), {}))
     assert TABLA in wb.defined_names
     assert _tabla(wb) == {}
+    # Una sola fila, vacía: la primera de datos, sin otra de más por debajo
+    # (superviviente 48 de la campaña de los Bloques 1–3).
+    assert _celdas(wb, TABLA) == ((None, None),)
     (dv,) = _validaciones_de_b(wb["Incidencias"])
     assert (dv.type, dv.formula1) == ("list", FORMULA_UBICACION)
 

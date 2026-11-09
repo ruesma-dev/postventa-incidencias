@@ -1149,3 +1149,207 @@ r117 y r118 pasan también esta vez.
   consumir la base de equivalencias y pasa a leer las ubicaciones de Sigrid.
   Lo actualiza el líder al desplegar (`design.md` §3.2).
 
+
+## Bloque 4 · T11 (implementer, 2026-11-09)
+
+Base fija `ed935ad`. Worktree `postventa-f071`, rama
+`feature/F-071-plantilla-desde-sigrid`. Sin `.env` en el worktree (solo
+`.env.example`): todo se ejecutó sin él.
+
+### Qué cambió
+
+- **`docs/ARCHITECTURE.md`** (R46, `design.md` §12):
+  - «La plantilla»: reescrita. Todos los desplegables salen de Sigrid salvo
+    urgencia y listado (YAML; urgencia hasta la lista interna del humano,
+    listado hasta F-072); versión 2; la ubicación depende de la unidad
+    (`tabla_ubicaciones_de_unidad`, `ubicaciones_ninguna`, `INDIRECT`; una fila
+    sin unidad no ofrece ninguna); el oficio y el proveedor van por código; los
+    grupos de equivalencia ya no se aplican; no lee PostgreSQL; ninguna lectura
+    nueva; al log solo recuentos.
+  - «La importación»: v1 rechazada con `version_anterior`; lectura de las
+    ubicaciones de cada unidad en el paso 3; comparación exacta y, si no, la
+    misma regla de F-060 (`casado_con_lista.py`) en las seis columnas tasadas;
+    ubicación contra las de la unidad de su fila; ya no hay `oficio_ambiguo`
+    de entrada (lo ya importado se resuelve al revisar); Excel de errores v2
+    con las mismas ubicaciones. Se quitó «No hay casado aproximado».
+  - «La lectura aislada»: la viñeta del script de migración dice que se retiró.
+  - «La agrupación…»: en pasado lo que era de la plantilla, y **enmienda del
+    2026-11-09 (F-071)**: ya no se aplica a la plantilla ni a la importación;
+    sirve a la revisión de lo ya importado (`opciones_de_la_obra`).
+  - «Dónde vive cada pieza»: `casado_con_lista.py` (y por qué existe),
+    `UbicacionesValidasPort` y `ubicaciones_validas.py` reutilizados; la nota
+    de la migración retirada (de T9) se queda.
+  - «Lo que no hace la revisión»: la lista de ubicaciones del YAML ya no existe.
+  - Fuera de la lista de §12, tres frases que F-071 dejaba falsas, corregidas
+    en una línea cada una sin quitar lo que fijan otros tests: «Validar contra
+    el catálogo de hoy» (la lista del YAML «desde F-071 ya no existe»), la
+    entrada de F-060 («ofrecía … hasta F-071») y su «No toca la plantilla»
+    (F-058 la absorbió F-071; se mantiene «F-058», que fija
+    `test_f060_documentacion.py`). Y la fila de `sigrid-api` de la tabla de
+    sistemas: «Desde F-071…».
+- **`docs/INTEGRACION.md`** (R46):
+  - §1, fila de `sigrid-api`: «Desde F-071…» y `F-071` en la columna «Desde».
+  - §1 «Con F-056»: «Lo que no cambia» pasa a «Lo que no cambiaba con F-056»
+    y apunta a F-071 (se mantiene `config/plantilla_incidencias.yaml`, que fija
+    `test_f056_documentacion.py`).
+  - §1, subsección nueva **«Con F-071 · la tercera lectura, también en la
+    plantilla»**, entre la de F-060 y la de F-065: ninguna lectura nueva;
+    cuándo (descarga: una vez, 3 `sql/read`; importación: una vez y antes de
+    validar, nunca con `ya_importado` ni con un fichero que no es la plantilla
+    o es v1; con la de F-060 después, **hasta cuatro** `sql/read` por
+    importación, comprobado en `interface_adapters/api/importar.py`, que
+    construye otra fuente en `_normalizar_de_verdad`); lo que cambia en la
+    plantilla; la plantilla ya no lee PostgreSQL; la lista del YAML ya no
+    existe (`ConfiguracionPlantillaInvalida` si vuelve la clave); techo,
+    errores, logs y volumen; ninguna variable, dependencia, tabla ni DDL; no
+    pide nada al dueño de `sigrid-api`.
+  - §4 «Las de F-036»: el YAML guarda urgencias y listados; la lista de
+    ubicaciones se retiró en F-071.
+  - §8: fila de `GET /api/plantilla` (sin «con los grupos de oficios
+    confirmados»; ubicaciones por unidad, por código, sin grupos, sin
+    PostgreSQL), fila de `POST /api/importaciones` (`version_anterior`) y el
+    párrafo de `oficios.html` (el JSON lo usaba la migración retirada).
+- **`services/postventa-api/tests/test_f071_documentacion.py`** (nuevo, R46):
+  27 tests. Lee del código la versión, `version_anterior`, los nombres de la
+  validación dependiente, las claves del YAML, el módulo nuevo y los
+  retirados; fija las frases de cada sección, lo que ya no deben decir, y el
+  barrido de valores y correos (`hallazgos` de
+  `test_f005_integracion_sin_secretos.py`) sobre lo nuevo.
+- **`services/postventa-api/tests/test_f071_alcance_cerrado.py`** (nuevo, R42,
+  R43, R45): 55 tests, con el patrón de `test_f060_alcance_cerrado.py` (base
+  fija `ed935ad`, las tres guardas de F-030). **Sin `git`**: huella `sha256`
+  fija de las tres consultas de Sigrid; ninguna pieza de F-071 nombra
+  escrituras o ventanas, importa un adaptador de escritura ni lee el entorno;
+  la migración ausente, los dos scripts que se quedan presentes, y nadie en
+  `services/` nombra la migración (salvo los tres tests que lo vigilan).
+  **Contra la base**: ni un fichero intocable de §3.4 (sigrid, persistencia,
+  front, revisión, volcado, equivalencias, lectura aislada,
+  `config/settings.py`), ningún `.sql`, ningún manifiesto de dependencias, las
+  mismas rutas en `function_app.py`, las dos consultas iguales carácter a
+  carácter y sus huellas leídas de la base, la parte lectora de
+  `excel_openpyxl.py` idéntica y en el generador solo lo declarado (§7.1), y
+  los cinco ficheros de la migración borrados. Cada regla tiene su test de
+  «caza».
+
+### Decisiones
+
+- **La cabecera de `docs/INTEGRACION.md` no se tocó.** La spec (§12) no la
+  pide y `test_f065_documentacion.py` fija «Fecha: 2026-10-31» y «Última
+  feature que lo tocó: F-065»; cambiarla obligaría a tocar ese test, fuera del
+  alcance declarado en §3.2. La subsección nueva lleva su propia fecha
+  («Añadida el 2026-11-09 por F-071, implementada en su rama y sin
+  desplegar»). **Pendiente para el líder al desplegar**, junto con
+  `azure-apps/postventa_incidencias.md`: poner la cabecera en F-071 y ampliar
+  sin relajar el test de F-065, como hizo F-060 con el de F-056.
+- Las frases de R46 se comprueban sin mirar mayúsculas (`_dice`), porque abren
+  viñetas en negrita («**La ubicación depende de la unidad**»).
+- `PIEZAS_DE_F071` deja fuera `errores.py` y `function_app.py`, que son de
+  todo el servicio (F-071 solo añade un código y dos docstrings); las rutas de
+  `function_app.py` sí se comparan con la base.
+
+### Fase RED
+
+`test_f071_documentacion.py`, escrito antes de tocar los documentos:
+
+```
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_f071_documentacion.py
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_plantilla_dice_que_todo_sale_de_sigrid_salvo_urgencia_y_listado
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_plantilla_dice_que_la_ubicacion_depende_de_la_unidad
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_plantilla_dice_oficio_y_proveedor_por_codigo_sin_grupos
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_plantilla_ya_no_dice_lo_de_antes
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_importacion_dice_lo_nuevo
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_importacion_ya_no_dice_que_no_hay_casado
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_lectura_aislada_ya_no_nombra_el_script_de_migracion
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_agrupacion_ya_no_se_aplica_a_la_plantilla
+FAILED tests/test_f071_documentacion.py::test_f071_r46_donde_vive_cada_pieza_nombra_el_casado_y_la_migracion_retirada
+FAILED tests/test_f071_documentacion.py::test_f071_r46_lo_que_no_hace_la_revision_dice_que_la_lista_del_yaml_ya_no_existe
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_fila_de_sigrid_api_de_la_arquitectura_nombra_f071
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_seccion_uno_tiene_la_lectura_de_f071_en_su_sitio
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_seccion_uno_describe_cuando_se_lee
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_seccion_uno_dice_lo_que_cambia_en_la_plantilla
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_fila_de_sigrid_api_de_la_seccion_uno_nombra_f071
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_lectura_de_f056_ya_no_dice_que_la_plantilla_ofrece_el_yaml
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_seccion_cuatro_ya_no_dice_que_la_lista_de_ubicaciones_es_del_yaml
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_fila_de_la_plantilla_de_la_seccion_ocho_dice_lo_nuevo
+FAILED tests/test_f071_documentacion.py::test_f071_r46_la_fila_de_la_importacion_de_la_seccion_ocho_dice_la_v1
+FAILED tests/test_f071_documentacion.py::test_f071_t11_las_claves_del_barrido_son_las_de_los_textos_nuevos
+FAILED tests/test_f071_documentacion.py::test_f071_r46_lo_nuevo_no_lleva_valores_ni_correos[La plantilla]
+FAILED tests/test_f071_documentacion.py::test_f071_r46_lo_nuevo_no_lleva_valores_ni_correos[La importaci\xf3n]
+FAILED tests/test_f071_documentacion.py::test_f071_r46_lo_nuevo_no_lleva_valores_ni_correos[La agrupaci\xf3n]
+FAILED tests/test_f071_documentacion.py::test_f071_r46_lo_nuevo_no_lleva_valores_ni_correos[D\xf3nde vive cada pieza]
+FAILED tests/test_f071_documentacion.py::test_f071_r46_lo_nuevo_no_lleva_valores_ni_correos[Lo que no hace la revisi\xf3n]
+FAILED tests/test_f071_documentacion.py::test_f071_r46_lo_nuevo_no_lleva_valores_ni_correos[\xa71 Con F-071]
+26 failed, 1 passed in 1.71s
+```
+
+Dos de los errores, tal cual:
+
+```
+E           AssertionError: «La plantilla» sigue diciendo «Las ubicaciones son una lista cerrada versionada»
+E       AssertionError: no se encuentra la sección «### Con F-071 · la tercera lectura, también en la plantilla»
+```
+
+El que pasaba es `test_f071_t11_los_controles_leen_algo_del_codigo`, que solo
+lee el código. Con los documentos ya escritos quedaron tres en rojo por
+mayúsculas («**La ubicación…**» en negrita); se resolvió con `_dice`, sin
+tocar las frases.
+
+`test_f071_alcance_cerrado.py` vigila algo que ya se cumple, así que su rojo
+se provocó: un `.sql` falso en `infrastructure/persistencia/sql/`, con
+`git add -N` para que entre en el diff; se borró después (`git rm --cached` y
+`rm`; `git status` limpio salvo lo de T11):
+
+```
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_f071_alcance_cerrado.py -k "intocable or sql"
+E       AssertionError: assert ['services/po...ojo_f071.sql'] == []
+E         Left contains one more item: 'services/postventa-api/infrastructure/persistencia/sql/99_rojo_f071.sql'
+E       AssertionError: assert ['services/po...ojo_f071.sql'] == []
+E         Left contains one more item: 'services/postventa-api/infrastructure/persistencia/sql/99_rojo_f071.sql'
+FAILED tests/test_f071_alcance_cerrado.py::test_f071_r43_la_rama_no_toca_lo_intocable
+FAILED tests/test_f071_alcance_cerrado.py::test_f071_r42_la_rama_no_trae_ni_cambia_ningun_sql
+2 failed, 5 passed, 48 deselected in 1.88s
+```
+
+Y un rojo real en la primera pasada: el control de R45 cazó que
+`test_f071_documentacion.py` nombra los scripts retirados (lo hace para
+comprobar que no existen), así que se añadió a `PUEDEN_NOMBRAR_LA_MIGRACION`:
+
+```
+FAILED tests/test_f071_alcance_cerrado.py::test_f071_r45_ningun_fichero_del_servicio_nombra_la_migracion
+1 failed, 54 passed in 14.15s
+```
+
+### Verificación
+
+La verificación de T11:
+
+```
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_f071_documentacion.py tests/test_f071_alcance_cerrado.py
+82 passed in 9.97s
+```
+
+Y todos los tests de documentación, alcance, arquitectura, integración y sin
+secretos del servicio, sin `.env` (antes de T11: 1023 passed, 316 skipped):
+
+```
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/ -k "documentacion or alcance_cerrado or arquitectura or sin_secretos or integracion"
+1114 passed, 316 skipped, 8855 deselected in 336.29s (0:05:36)
+```
+
+Los 316 saltados son los controles de diff de otras features, que solo corren
+en su rama (guardas de F-030).
+
+### Evidencias (T11)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests de T11 | **82 passed** (27 de documentación, 55 de alcance), 9,97 s |
+| Tests de documentos y alcance del servicio | **1114 passed, 316 skipped**, 0 failed, 336,29 s |
+| Cobertura de las líneas cambiadas | T11 no cambia código de producción (solo documentos y tests): la mide `init.sh` en T12 |
+| Mutantes | T11 no cambia código de producción: no hay mutantes nuevos; la campaña de la feature entera es T12 |
+
+### Lo que queda
+
+- **T12 (líder)**: `bash harness/init.sh` y la mutación de la feature entera.
+- **Al desplegar (líder)**: la cabecera de `docs/INTEGRACION.md` (ver
+  «Decisiones») y `azure-apps/postventa_incidencias.md` (R46).

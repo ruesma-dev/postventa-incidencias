@@ -2,6 +2,11 @@
 # Sesión activa
 
 > ## F-071 · `in_progress` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> **Bloque 4 · T11 hecha (2026-11-09, implementer):** `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` al día (R46),
+> con `test_f071_documentacion.py` y `test_f071_alcance_cerrado.py` (R42, R43, R45) en verde. La cabecera de
+> `INTEGRACION.md` (fecha y «Última feature que lo tocó») **no se tocó**: la fija `test_f065_documentacion.py` y la spec
+> no la pide; queda para el líder al desplegar, con `azure-apps/`. Siguiente: T12 (líder). Detalle en
+> `progress/impl_F-071.md`, «Bloque 4 · T11».
 > **Tanda 2 en curso (2026-11-06, implementer):** T7 RED (`80abee2`), T8 GREEN (`862b384`) y T9 adelantada
 > (`266e384`) hechas: plantilla e importación leen las ubicaciones de Sigrid por unidad y no leen las decisiones;
 > migración de F-036 retirada. **Tanda 2 terminada**:

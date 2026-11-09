@@ -173,7 +173,7 @@
   las menciones que los exijan (`test_f036_arquitectura.py`,
   `test_f036_documentacion.py` si los nombran). |
   Verificación: `.venv/Scripts/python.exe -m pytest` del servicio entero en verde
-- [ ] **T11**: `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` (`design.md`
+- [x] **T11** (hecha el 2026-11-09; traza en `progress/impl_F-071.md`, «Bloque 4 · T11»): `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` (`design.md`
   §12), `tests/test_f071_documentacion.py` (R46) y
   `tests/test_f071_alcance_cerrado.py` (R42, R43, R45: con la base fija, ni un
   fichero de `infrastructure/sigrid/`, `infrastructure/persistencia/`, la

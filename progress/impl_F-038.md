@@ -2368,3 +2368,65 @@ mergeada»). Es su comportamiento de siempre, no de este cambio.
   `bandeja.html`. La copia y `docs/INTEGRACION.md` divergen desde antes en ~200 líneas (notas propias de la copia y
   adaptaciones); igualarlas es trabajo aparte.
 - Siguiente: **T7**, la verificación en producción.
+
+## T7 · Verificación en producción (líder en el Chrome del humano, 2026-11-09)
+
+Front publicado (SWA de dev). Sin nombres, correos ni identificadores. **En
+Sigrid no se escribió nada**; en nuestra base, solo la fila de prueba de la
+0677, que **acaba `descartada`**.
+
+1. **Antes** (`24_ubicacion_sigrid.ps1 -CodigoObra 0677`, lo lanzó el humano):
+   PASA. 15 unidades, 0 sin tipología, 3 tipologías (las 3 con
+   `prmtpl.ubica`), 58 ubicaciones en las tipologías, 44 usadas y las 44
+   casan exactas; reclamaciones cubiertas **1261 / 1261**.
+2. **Carga** · aceptado por el humano el 2026-11-09 como «cumple salvo cuando
+   `sigrid-api` estrena instancia (hasta 13 s)». El render del front es de
+   62–282 ms; lo lento es `GET /api/revision`, cuyas 3 lecturas de Sigrid van
+   en serie y cada una tarda unos 4 s cuando `sigrid-api` estrena instancia
+   (unos 3,5 s de espera más unos 0,75 s de la primera conexión SQL). Lo
+   recogen **F-073** (las tres lecturas en paralelo) y **F-074** (instancia
+   siempre preparada en `sigrid-api`, mejora futura de prioridad baja).
+3. **Fila de prueba** «PRUEBA F-038 - DESCARTAR» en la Villa 1, sin ubicación,
+   con oficio, desde la plantilla del día. Importación: 1 leída, 1 nueva,
+   0 duplicadas, 0 ya en la bandeja, 0 con error.
+   - Sale con «Falta la ubicación» y «Aprobar» deshabilitado («No se puede
+     aprobar: Falta la ubicación»).
+   - En el formulario, el desplegable de ubicación es **exactamente** el de la
+     Villa 1 (35). Con «Cuarto de plancha» puesta, al cambiar a la Villa 2
+     (otra tipología, sin esa ubicación) se vacía con el aviso «Esta ubicación
+     no es de la nueva unidad: se ha quitado.». Se volvió a la Villa 1.
+   - Editar (ubicación «cocina») → `editada`; el historial dice «Editada por
+     <correo de quien prueba> · Ubicación».
+   - Aprobar → `aprobada`, «Aprobada por <correo> el …», y solo ofrece
+     «Editar» y «Descartar» (R11).
+   - Editar otra vez (detalle) → `editada`; descartar con motivo «prueba» y
+     «Sí, descartarla» → `descartada`, solo «Recuperar»; recuperar →
+     `editada`; tras los pasos 6 y 7, descartar otra vez → **`descartada`**.
+   - El resumen se ajustó en cada paso sin recargar (sin ubicación 1 → 0;
+     aprobadas 0 → 1 → 0; descartadas 0 → 1 → 0 → 1).
+   - Observación menor: con el detalle abierto, el historial no se refresca
+     solo tras guardar; al cerrar y reabrir el detalle sale bien.
+4. **Revisiones del sistema y fuera de lista** (sin guardar nada): con el
+   filtro `editada`, las 100 primeras dicen «Revisada por el sistema
+   (ubicación puesta en el texto exacto de Sigrid) el …» (R22). Una fila
+   `nueva` con la ubicación fuera de lista abre el formulario con la ubicación
+   conservada y marcada «(no está en la lista de Sigrid de hoy)» (R24);
+   cancelado. Hoy las fuera de lista son 184, no 38: entraron las
+   incidencias reales de la obra.
+5. **Volcado, solo lectura** (0626): con `volcada`, 1 de 1, «Volcada a
+   Sigrid · Ya no se revisa aquí», con la línea «Volcada como RS26.10/0074 por
+   … el 19/10/2026 09:22» (hora de Madrid) y sin ningún botón de acción
+   (R21); el historial se lee; `en_duda` responde «0 de 0». No se pulsó nada.
+   La 0626 tiene además 1 incidencia `aprobada` (no se tocó).
+6. **Concurrencia**: la fila de prueba en dos pestañas; guardar en una y luego
+   en la otra → «Otra persona la ha cambiado. Se ha vuelto a cargar la
+   lista.».
+7. **Guarda de salida**: verificada con un `beforeunload` simulado (el diálogo
+   real del navegador bloquea la herramienta del líder): sin formulario y con
+   el formulario sin cambios no pide confirmación; con un cambio sin guardar,
+   sí. **Pendiente del humano**: el clic real en otra pestaña de la barra.
+8. Desde `importar.html` de la 0677, «Revisar esta obra en la bandeja de
+   revisión» abre `bandeja.html` con la 0677 puesta, en la misma pestaña.
+9. Almacenamiento local, de sesión, cookies e IndexedDB del sitio vacíos; en
+   la consola, solo el aviso de Tailwind CDN, sin correos ni `oid`.
+10. **Después**: pendiente del humano (repetir el paso 1).

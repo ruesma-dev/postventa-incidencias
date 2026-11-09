@@ -2375,10 +2375,10 @@ Front publicado (SWA de dev). Sin nombres, correos ni identificadores. **En
 Sigrid no se escribió nada**; en nuestra base, solo la fila de prueba de la
 0677, que **acaba `descartada`**.
 
-1. **Antes** (`24_ubicacion_sigrid.ps1 -CodigoObra 0677`, lo lanzó el humano):
-   PASA. 15 unidades, 0 sin tipología, 3 tipologías (las 3 con
-   `prmtpl.ubica`), 58 ubicaciones en las tipologías, 44 usadas y las 44
-   casan exactas; reclamaciones cubiertas **1261 / 1261**.
+1. **Antes** (`24_ubicacion_sigrid.ps1 -CodigoObra 0677`, lanzado por el
+   humano el 2026-10-21): PASA, 15 unidades, 6 sin reclamaciones,
+   **1310 reclamaciones** (Villa 1: 219, 12: 23, 13: 213, 2: 169, 3: 141,
+   4: 196, 5: 54, 6: 34, 7: 261; las demás, 0).
 2. **Carga** · aceptado por el humano el 2026-11-09 como «cumple salvo cuando
    `sigrid-api` estrena instancia (hasta 13 s)». El render del front es de
    62–282 ms; lo lento es `GET /api/revision`, cuyas 3 lecturas de Sigrid van
@@ -2433,4 +2433,11 @@ Sigrid no se escribió nada**; en nuestra base, solo la fila de prueba de la
    revisión» abre `bandeja.html` con la 0677 puesta, en la misma pestaña.
 9. Almacenamiento local, de sesión, cookies e IndexedDB del sitio vacíos; en
    la consola, solo el aviso de Tailwind CDN, sin correos ni `oid`.
-10. **Después**: pendiente del humano (repetir el paso 1).
+10. **Después** (humano, 2026-11-09): PASA, 15 unidades, 5 sin
+   reclamaciones, **1393 reclamaciones** (+83: Villa 1 +21, 13 +11, 15 +2,
+   2 +13, 3 +14, 4 +21, 5 +1; 12, 6 y 7 iguales). **No se cumple a la letra**
+   («los recuentos no cambian»): entre la foto de antes y la de después pasaron
+   19 días de trabajo real de Posventa en Sigrid. Lo que sí consta es que la
+   bandeja de la 0677 tiene **0 volcadas** y que en esta verificación no se
+   pulsó nada del volcado: ninguna de esas 83 sale de la página.
+   Pendiente: aceptación escrita del humano.

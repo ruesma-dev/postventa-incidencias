@@ -249,3 +249,32 @@ lleva los dos párrafos literales (`config/plantilla_incidencias.yaml:35-36`) y 
 Lanzada por el reviewer en el worktree, sin caché (`.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider -x`
 desde `services/postventa-api`): **`9860 passed, 447 skipped in 825.97s (0:13:45)`**, código de salida 0. Coincide
 con el `init.sh` final del implementer (9860 passed, 447 skipped).
+
+## Re-review 2026-11-09 (Bloques 1 a 3, solo C-1)
+
+- **Veredicto:** **APPROVED** (Bloques 1 a 3).
+- **Nivel de rigor:** `critico` (declarado en `harness/features.json`); exige fase RED, cobertura,
+  mutación con cero supervivientes salvo aceptación escrita del humano, y «Evidencias». Todo lo demás
+  quedó verificado en la review anterior (`8d5a3ed`); esta pasada solo cierra C-1.
+- **Código sin cambios desde la review:** `git diff 8d5a3ed..HEAD -- services tests` sale **vacío**.
+  Desde `8d5a3ed` solo entran `1c12464` (backlog: altas de F-073/F-074, `BACKLOG.md` y
+  `harness/features.json`) y `7d411e0` (`progress/current.md`, `progress/mutacion_F-071.md`). La
+  campaña y la suite independiente de la review anterior siguen valiendo: la producción no ha cambiado.
+- **C-1 resuelto:** `progress/mutacion_F-071.md:55`, `:75` y `:86` (supervivientes 1, 3 y 4:
+  `excel_openpyxl.py:401` `+3`, `:405` `−2`, `:426` `+=4`) dicen ahora «**aceptado por escrito por
+  el humano el 2026-11-09**», y `progress/current.md` lo recoge con la misma fecha. El superviviente 2
+  (`:405` aritmético) sigue cerrado por el test de `d0dc548`. Ningún análisis en `PENDIENTE`.
+- **C4 bis:** el `[ ]` de «cero supervivientes sin aceptación escrita del humano» pasa a **`[x]`**. El
+  resto de C1–C5, C3 bis y C4 bis quedan como en la review anterior, todos `[x]` o `N/A` justificado.
+- **Tests de F-071 relanzados por el reviewer** (sin `.env`, desde `services/postventa-api`,
+  `.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_f071_*.py`):
+  **`210 passed in 58.25s`**. `init.sh` no se ejecuta aquí: lo lanza el líder, por encargo.
+
+### Observación nueva (no bloquea)
+
+- **O-4 · `progress/impl_F-071.md:1108-1109` sigue diciendo «Pendiente del humano».** C-1 pedía anotar
+  la aceptación también ahí y no se hizo. No bloquea: la fuente que mira C4 bis es
+  `progress/mutacion_F-071.md`, y está al día. Que el implementer lo actualice en su próxima tanda
+  (Bloque 4) para que el informe no parezca abierto.
+
+Siguen vigentes O-1, O-2 y O-3 (a resolver en T11) y la propuesta de automejora de la review anterior.

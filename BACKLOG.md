@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **71 features**, 41 abiertas, 30 terminadas.
+Resumen: **73 features**, 43 abiertas, 30 terminadas.
 
 En curso: **F-071**.
 
@@ -26,6 +26,7 @@ Bloqueadas: **F-038, F-040, F-066**.
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 7 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
 | F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 7 | pendiente | critico | `feature/F-062-gestionar-volcadas` |
 | F-063 | Normalizar el código de obra: un cero delante cuando empieza por tres cifras | 7 | pendiente | critico | `feature/F-063-normalizar-codigo-obra` |
+| F-073 | La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez | 7 | pendiente | estandar | `feature/F-073-revision-lee-sigrid-en-paralelo` |
 | F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 8 | pendiente | critico | `feature/F-058-plantilla-ubicaciones-sigrid` |
 | F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 9 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
 | F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 10 | pendiente | critico | `feature/F-052-secretos-ajustes` |
@@ -54,6 +55,7 @@ Bloqueadas: **F-038, F-040, F-066**.
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 131 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 132 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 138 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
+| F-074 | Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío | 150 | pendiente | documental |  |
 
 ## Terminadas
 
@@ -169,6 +171,12 @@ Alta del 2026-10-20 por decisión del humano al conciliar F-038 (Q-6: «la idea 
 estado **pendiente** · prioridad 7 · rigor `critico` · SDD sí · rama `feature/F-063-normalizar-codigo-obra`
 
 Alta del 2026-10-20 por petición del humano. Los códigos de obra de Sigrid llevan cuatro cifras (0626, 0677), pero la gente teclea 626. Regla pedida: si el código son tres cifras, se añade un 0 delante (626 → 0626); y si empieza por tres cifras seguidas de otra cosa, también (lectura del líder, pendiente de confirmar con el humano: 626A → 0626A). Hoy domain/models/plantilla_incidencias.py::normalizar_codigo_obra solo aplica nombrado.normalizar_codigo (guiones y blancos) y valida longitud y caracteres; la usan la plantilla, la importación, la bandeja, la revisión, las equivalencias, la normalización y el volcado. Al especificar: si se rellena en un único sitio (esa función) o también en el front (campo «Código de obra»); qué pasa con lo ya guardado con tres cifras en postventa.* (¿hay filas?); que no se confunda con el relleno a tres cifras de las villas (F-049) ni con los tramos de codigos_del_parte; y comprobar contra Sigrid que no existe ninguna obra cuyo código real empiece por tres cifras sin el 0.
+
+### F-073 · La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez
+
+estado **pendiente** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-073-revision-lee-sigrid-en-paralelo`
+
+Alta del 2026-11-09 por decisión del humano, tras medir en producción la carga de bandeja.html?obra=0677 (285 incidencias). La página pinta en menos de 0,3 s; lo lento es GET /api/revision, de 0,4 a 15 s. La línea «F-060 tiempos del listado» y App Insights de sigrid-api lo explican: el listado hace tres lecturas a Sigrid seguidas (catalogo.leer_unidades, catalogo.leer_oficios y ubicaciones), cada una de unos 0,1 s, pero cuando sigrid-api estrena instancia esa lectura tarda unos 4 s (unos 3,5 s antes de que sigrid-api la atienda y 0,75 s de su primera conexión SQL); si coinciden dos o tres, la carga pasa de 8 a 13 s. Lo nuestro (base, cálculo, serializar) no pasa de 0,2 s. El arreglo: lanzar las tres lecturas a la vez en interface_adapters/api/revision.py y su caso de uso, sin cambiar el contrato ni el front. Sin caché del catálogo (descartada por el riesgo de datos viejos). La causa de raíz, en sigrid-api, queda en F-074.
 
 ### F-058 · La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad
 
@@ -337,6 +345,12 @@ El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco 
 estado **pendiente** · prioridad 138 · rigor `estandar` · SDD no · rama `feature/F-029-scripts-infra-comillas`
 
 DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO ARRANCAN: se estrellan en la primera línea que ejecutan, y ninguno de los dos se ha ejecutado NUNCA. El defecto es el mismo que el 2026-09-15 tumbó a infra/12_traza_cierre_local.ps1: se invoca al intérprete con `& $python -c "<programa>"` y PowerShell 5.1 destroza el entrecomillado del programa antes de que llegue a Python. DÓNDE: infra/07_alta_usuario_sigrid.ps1, líneas 161 y 248; y infra/17_traza_grafico_local.ps1, línea 196. EL ARREGLO YA EXISTE EN EL REPOSITORIO, escrito y probado: la función `Invoke-PythonDelServicio` de infra/08_lectura_sigrid_comun.ps1, que es la que arregló al `12`. No hay que inventar nada: hay que aplicarla en los tres sitios y EJECUTAR los dos scripts, que es justo lo que no se hizo con el código anterior. POR QUÉ IMPORTA, aunque sea prioridad baja: bloquea dos verificaciones de F-009 que quedaron abiertas al cerrarla. (a) El `07_` es el que hace el COUNT(*) de `-VerificarAhora` sobre dbo.usu, o sea LA PRIMERA LÍNEA DE T23 (hueco 3 de progress/cierre_F-009.md §3: R31, R33 y R34). (b) El `17_` es el que se invoca en la PRECONDICIÓN AÑADIDA DE T24, la del gráfico adjuntado (R2 de F-012). Si algún día se recorren esos huecos, esto es lo primero que hay que arreglar. LECCIÓN QUE LO ACOMPAÑA, del §10.2 del guion del bloque 8: tres de los cuatro scripts de lectura no funcionaban porque estaban escritos y nunca ejecutados. Arreglar estos dos sin lanzarlos vuelve a crear el mismo problema con otro nombre. AVISO SOBRE LAS PUERTAS DEL ARNÉS: cobertura y mutación miden SOLO Python (carencia 1.7.13 del arnés, portada a arnes-base), así que aquí no aportan nada y la evidencia tiene que ser la ejecución real de los dos scripts contra lecturas, con su salida pegada. Origen: progress/guion_bloque8_F-009.md §10.6 y progress/cierre_F-009.md §5.
+
+### F-074 · Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío
+
+estado **pendiente** · prioridad 150 · rigor `documental` · SDD no
+
+Alta del 2026-11-09 por decisión del humano, como mejora futura de baja prioridad, no relevante ahora. Cuando sigrid-api reparte una petición a una instancia nueva, la petición espera unos 3,5 s a que arranque y otros 0,75 s a su primera conexión SQL (medido el 2026-11-09 en App Insights de sigrid-api). Dejar una instancia siempre preparada quitaría esa espera para todos los clientes de sigrid-api. NO se hace en este repositorio: es un cambio de configuración del proyecto sigrid-api, con coste en Azure, que decide el humano. Aquí solo se anota.
 
 ### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
 

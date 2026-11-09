@@ -1255,6 +1255,37 @@
       "rigor": "critico",
       "priority": 2,
       "branch": "feature/F-072-tipo-reclamacion-sigrid"
+    },
+    {
+      "id": "F-073",
+      "title": "La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez",
+      "description": "Alta del 2026-11-09 por decisión del humano, tras medir en producción la carga de bandeja.html?obra=0677 (285 incidencias). La página pinta en menos de 0,3 s; lo lento es GET /api/revision, de 0,4 a 15 s. La línea «F-060 tiempos del listado» y App Insights de sigrid-api lo explican: el listado hace tres lecturas a Sigrid seguidas (catalogo.leer_unidades, catalogo.leer_oficios y ubicaciones), cada una de unos 0,1 s, pero cuando sigrid-api estrena instancia esa lectura tarda unos 4 s (unos 3,5 s antes de que sigrid-api la atienda y 0,75 s de su primera conexión SQL); si coinciden dos o tres, la carga pasa de 8 a 13 s. Lo nuestro (base, cálculo, serializar) no pasa de 0,2 s. El arreglo: lanzar las tres lecturas a la vez en interface_adapters/api/revision.py y su caso de uso, sin cambiar el contrato ni el front. Sin caché del catálogo (descartada por el riesgo de datos viejos). La causa de raíz, en sigrid-api, queda en F-074.",
+      "acceptance": [
+        "Las tres lecturas a Sigrid del listado de revisión salen a la vez, no una tras otra, y un test lo fija sin red",
+        "La respuesta de GET /api/revision no cambia (mismo contrato y mismos datos)",
+        "Si una lectura falla, el error es el mismo que hoy y las otras no dejan nada a medias",
+        "La línea «F-060 tiempos del listado» sigue saliendo con sus tramos",
+        "Medido en producción: con una lectura lenta de sigrid-api la carga no pasa de unos 5 s",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 7,
+      "branch": "feature/F-073-revision-lee-sigrid-en-paralelo"
+    },
+    {
+      "id": "F-074",
+      "title": "Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío",
+      "description": "Alta del 2026-11-09 por decisión del humano, como mejora futura de baja prioridad, no relevante ahora. Cuando sigrid-api reparte una petición a una instancia nueva, la petición espera unos 3,5 s a que arranque y otros 0,75 s a su primera conexión SQL (medido el 2026-11-09 en App Insights de sigrid-api). Dejar una instancia siempre preparada quitaría esa espera para todos los clientes de sigrid-api. NO se hace en este repositorio: es un cambio de configuración del proyecto sigrid-api, con coste en Azure, que decide el humano. Aquí solo se anota.",
+      "acceptance": [
+        "El humano decide si se hace y lo encarga en el proyecto sigrid-api",
+        "Medido después: las lecturas a sigrid-api no tienen esperas de unos 4 s al estrenar instancia"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "documental",
+      "priority": 150
     }
   ]
 }

@@ -228,8 +228,8 @@ NUEVOS_DE_F036 = (
     "interface_adapters/api/bandeja.py",
     "interface_adapters/api/equivalencias.py",
     "scripts/medir_catalogos_f036.py",
-    "scripts/migracion_f036.py",
-    "scripts/migrar_excel_f036.py",
+    # F-071 R45: `scripts/migracion_f036.py` y `scripts/migrar_excel_f036.py`,
+    # retirados (cumplieron; constancia en `docs/ARCHITECTURE.md`).
     "scripts/contar_elementos_xml_f036.py",  # T37 (séptima enmienda)
 )
 
@@ -347,12 +347,16 @@ def test_f036_la_lista_de_ficheros_de_f036_existe_entera():
 
 
 def test_f036_r46_los_bloques_7_y_8_tambien_estan_en_el_control():
-    """Cambio 5 de la review 1: la migración y el front, mirados sin docstrings."""
+    """Cambio 5 de la review 1: el front, mirado sin docstrings.
+
+    F-071 R45: la migración del Bloque 8 se retira; ya no hay script que mirar,
+    y que no vuelva a aparecer sin pasar por aquí lo fija la última aserción.
+    """
     piezas = _todo_el_codigo_de_f036()
 
     for script in ("scripts/migracion_f036.py", "scripts/migrar_excel_f036.py"):
-        assert script in NUEVOS_DE_F036
-        assert script in piezas
+        assert not (RAIZ_DEL_SERVICIO / script).exists()
+        assert script not in NUEVOS_DE_F036
     for front in (
         "services/postventa-front/importar.html",
         "services/postventa-front/oficios.html",

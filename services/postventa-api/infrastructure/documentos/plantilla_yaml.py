@@ -1,15 +1,14 @@
 # services/postventa-api/infrastructure/documentos/plantilla_yaml.py
 """Carga y valida `config/plantilla_incidencias.yaml` (F-036, `design.md` §3.4).
 
-El YAML trae lo que la plantilla no lee de Sigrid: la lista cerrada de
-ubicaciones, las urgencias, los listados y los textos que lee la propiedad.
-Se valida **entero al cargar**: un fichero roto tiene que tumbar el arranque
-del handler, no generar una plantilla cuyo desplegable ofrezca un valor que
-luego el importador rechace (la comparación es exacta, §4.3).
+El YAML trae lo que la plantilla no lee de Sigrid: las urgencias, los
+listados y los textos que lee la propiedad. Se valida **entero al cargar**: un
+fichero roto tiene que tumbar el arranque del handler, no generar una
+plantilla cuyo desplegable ofrezca un valor que luego el importador rechace.
 
-Cada ubicación declara de qué `rcp.resubi` medidas sale (`origen`, D-3); las
-que no salen de ninguna llevan `revisar` con el motivo y quedan en
-`ubicaciones_por_revisar` para que las revise el humano.
+Las ubicaciones **ya no** están aquí (F-071, R21): salen de Sigrid, por
+unidad, al descargar la plantilla. Un YAML que todavía traiga la clave
+`ubicaciones` no carga, para que nadie crea que esa lista sigue mandando.
 
 La ruta es fija (R49: F-036 no añade variables de entorno) y se resuelve
 **relativa al servicio**, nunca al `cwd`, como la de los prompts.
@@ -28,14 +27,12 @@ from domain.models.plantilla_incidencias import (
     CABECERA,
     COLUMNA_ERRORES,
     MAX_DESCRIPCION,
-    MAX_UBICACION,
     Listado,
     ListasCerradas,
     MensajeColumna,
     Opcion,
     TextosPlantilla,
     Urgencia,
-    plegar,
 )
 
 #: Raíz del servicio: este fichero vive en `<servicio>/infrastructure/documentos/`.
@@ -68,7 +65,6 @@ _CAMPOS_MENSAJE = (
 class ConfiguracionPlantilla:
     listas: ListasCerradas
     textos: TextosPlantilla
-    ubicaciones_por_revisar: tuple[str, ...]  # añadidas sin medir: las revisa el humano
 
 
 def _falla(motivo: str) -> ConfiguracionPlantillaInvalida:
@@ -86,50 +82,6 @@ def _lista_de_mappings(valor: object, donde: str) -> list[Mapping]:
     if not isinstance(valor, list) or not all(isinstance(e, Mapping) for e in valor):
         raise _falla(f"{donde}: tiene que ser una lista de entradas con sus campos")
     return valor
-
-
-def _ubicaciones(crudo: object) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    entradas = _lista_de_mappings(crudo, "ubicaciones")
-    if not entradas:
-        raise _falla("ubicaciones: la lista está vacía")
-    etiquetas: list[str] = []
-    por_revisar: list[str] = []
-    vistas: dict[str, str] = {}
-    origenes: set[str] = set()
-    for entrada in entradas:
-        etiqueta = _texto(entrada.get("etiqueta"), "ubicaciones")
-        if etiqueta != " ".join(etiqueta.split()):
-            raise _falla(f"ubicaciones: «{etiqueta}» lleva espacios de más")
-        if len(etiqueta) > MAX_UBICACION:
-            raise _falla(
-                f"ubicaciones: «{etiqueta}» pasa de {MAX_UBICACION} caracteres"
-            )
-        clave = plegar(etiqueta).rstrip(".,;: ")
-        if clave in vistas:
-            raise _falla(
-                f"ubicaciones: «{etiqueta}» está repetida (como «{vistas[clave]}»)"
-            )
-        vistas[clave] = etiqueta
-        origen = entrada.get("origen", [])
-        if not isinstance(origen, list) or not all(
-            isinstance(o, str) and o.strip() for o in origen
-        ):
-            raise _falla(
-                f"ubicaciones: el origen de «{etiqueta}» no es una lista de textos"
-            )
-        for o in origen:
-            if o in origenes:
-                raise _falla(f"ubicaciones: el origen «{o}» está en dos ubicaciones")
-            origenes.add(o)
-        if not origen:
-            if not str(entrada.get("revisar") or "").strip():
-                raise _falla(
-                    f"ubicaciones: «{etiqueta}» no sale de ninguna medida y no dice "
-                    "por qué hay que revisarla (`revisar`)"
-                )
-            por_revisar.append(etiqueta)
-        etiquetas.append(etiqueta)
-    return tuple(etiquetas), tuple(por_revisar)
 
 
 def _opciones(
@@ -158,8 +110,9 @@ def _ejemplos(crudo: object, listas: ListasCerradas) -> tuple[Mapping[str, str],
         raise _falla(
             f"textos.ejemplos: tienen que ser de {MIN_EJEMPLOS} a {MAX_EJEMPLOS}"
         )
+    # `Ubicación`, `Oficio` y `Proveedor` salen de Sigrid (F-071): sus
+    # ejemplos son textos indicativos (R19) y no se comprueban contra lista.
     permitidas = {
-        "Ubicación": listas.ubicaciones,
         "Urgencia": tuple(o.etiqueta for o in listas.urgencias),
         "Listado": tuple(o.etiqueta for o in listas.listados),
     }
@@ -242,9 +195,12 @@ def cargar_plantilla_yaml(
     crudo = yaml.safe_load(camino.read_text(encoding="utf-8"))
     if not isinstance(crudo, Mapping):
         raise _falla("la raíz tiene que ser un mapping")
-    ubicaciones, por_revisar = _ubicaciones(crudo.get("ubicaciones"))
+    if "ubicaciones" in crudo:
+        raise _falla(
+            "`ubicaciones`: la lista de ubicaciones ya no se configura aquí; "
+            "sale de Sigrid, por unidad (F-071)"
+        )
     listas = ListasCerradas(
-        ubicaciones=ubicaciones,
         urgencias=_opciones(
             crudo.get("urgencias"), "urgencias", tuple(u.value for u in Urgencia)
         ),
@@ -255,5 +211,4 @@ def cargar_plantilla_yaml(
     return ConfiguracionPlantilla(
         listas=listas,
         textos=_textos(crudo.get("textos"), listas),
-        ubicaciones_por_revisar=por_revisar,
     )

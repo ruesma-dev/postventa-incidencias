@@ -695,11 +695,12 @@
         "Cada parte creado lleva los mismos campos que el alta manual de docs/referencia/04_alta_incidencia_sigrid.md",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "rigor": "critico",
       "priority": 6,
-      "branch": "feature/F-040-volcado-sigrid"
+      "branch": "feature/F-040-volcado-sigrid",
+      "blocked_by": "Aparcada por el humano el 2026-11-05 para hacer F-071 (urgente). No hay fallo. Hecho y en dev (ed935ad): Bloque 1, T4, T5.1, T5.2, T6a (enlaces a bandeja.html, APPROVED; M4 y M5 aceptados por escrito por el humano el 2026-11-05). Decisiones del humano 2026-11-05: miga de pan de bandeja.html como texto sin enlace; tarjeta del inicio a «En producción». Al retomar: T5.3 (clic del humano con la ventana cerrada), T5.4 solo DESPUÉS de F-072 (tipo de reclamación), T5.6, resto de T6, T6 bis, T7."
     },
     {
       "id": "F-041",
@@ -977,7 +978,7 @@
       "rigor": "critico",
       "priority": 8,
       "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
-      "blocked_by": null
+      "blocked_by": "Absorbida por F-071 (decisión del humano 2026-11-05, Q-11). No se implementa por su cuenta: se cierra cuando F-071 esté done; su rama se conserva como archivo y el worktree postventa-f058 se retira entonces."
     },
     {
       "id": "F-059",
@@ -1215,6 +1216,76 @@
       "rigor": "critico",
       "priority": 3,
       "branch": "feature/F-070-obra-sin-cero-inicial"
+    },
+    {
+      "id": "F-071",
+      "title": "La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad",
+      "description": "Alta del 2026-11-04 por petición del humano, URGENTE: «el excel que descarga debe extraer TODAS las opciones de TODOS los desplegables de lo que hay en el momento en sigrid. esta feature es urgente. lo mismo oficios, etc.». Problema real en la obra 0677 (Mirasierra): la plantilla de F-036 saca las ubicaciones de una lista FIJA (config/plantilla_incidencias.yaml, 44 etiquetas con «General (toda la unidad)» inventada), igual para todas las unidades, mientras la bandeja (F-056) valida contra prmtpl.ubica de la tipología de CADA unidad: se elige «Escalera» o «General» en el Excel y la bandeja dice «La ubicación no está en la lista». Segundo síntoma: el desplegable de Oficio agrupa oficios equivalentes (R86, R92 de F-036) y la fila importada queda oficio_ambiguo («Elige el código del oficio: hay varios en la obra»). Alcance: cada desplegable sale de Sigrid al descargar (unidad, ubicación dependiente de la unidad de la fila, oficio con su código, par oficio–proveedor de obrofc); la importación vuelve a leer Sigrid y valida contra lo de ese momento; lo que se elige en el Excel entra resuelto (sin oficio_ambiguo ni proveedor_ambiguo). Urgencia y listado: la spec dice qué hay en Sigrid (rcp.texurg es texto libre; auxtrcp son los tipos de reclamación) y lo deja como pregunta al humano. Absorbe F-058 (su spec y su prueba del desplegable dependiente, en el worktree postventa-f058). Versión de la plantilla a 2. Solo backend (postventa-api). Spec en specs/F-071-plantilla-desde-sigrid/ y preguntas en progress/spec_F-071.md.",
+      "acceptance": [
+        "La plantilla de una obra lleva en sus desplegables de Unidad, Ubicación, Oficio y Proveedor lo que hay en Sigrid en el momento de descargarla, sin listas fijas ni opciones inventadas",
+        "La Ubicación de cada fila ofrece solo las ubicaciones de la tipología de la unidad de esa fila",
+        "El Oficio y el Proveedor elegidos en el Excel entran en la bandeja con su código de Sigrid: ninguna fila de una plantilla nueva entra como oficio_ambiguo ni proveedor_ambiguo",
+        "La importación valida cada fila contra Sigrid en el momento de importar; lo que no casa vuelve en el Excel de errores con su motivo",
+        "Una plantilla de la versión anterior se rechaza con un motivo claro",
+        "No se escribe nada en Sigrid",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "in_progress",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 1,
+      "branch": "feature/F-071-plantilla-desde-sigrid"
+    },
+    {
+      "id": "F-072",
+      "title": "El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado",
+      "description": "Alta del 2026-11-05 por decisión del humano (Q-3 de F-071, «toca lo que sea»). Hoy la columna «Listado» de la plantilla ofrece dos valores fijos del YAML (Primer listado / Segundo listado), la bandeja los guarda pero el volcado manda SIEMPRE el tipo 0002 (PRIMER LISTADO POSTVENTA, constante TIPO_RECLAMACION en domain/models/volcado.py): una incidencia de segundo listado entraría en Sigrid como primer listado. Alcance: la plantilla ofrece los tipos vigentes de dbo.auxtrcp (vía sigrid-api, lectura) al descargar; la importación valida contra los de ese momento y guarda el código; la bandeja lo guarda en columna nueva (DDL solo en el schema postventa); la revisión lo enseña y deja cambiarlo; el volcado manda el código elegido. En blanco = 0002, como hoy (decisión del humano 2026-11-05). Orden fijado por el humano: F-071 -> F-072 -> retomar F-040; el primer volcado real (T5.4 de F-040) no se hace antes de F-072.",
+      "acceptance": [
+        "La columna Listado de la plantilla ofrece los tipos de reclamación vigentes en Sigrid (auxtrcp sin fecha de baja) en el momento de la descarga",
+        "La importación valida el tipo contra Sigrid en ese momento, con la regla de mayúsculas de F-060/F-071, y guarda su código",
+        "Un tipo en blanco se guarda y se vuelca como 0002",
+        "La revisión de la bandeja enseña el tipo y deja cambiarlo antes de aprobar",
+        "El volcado manda a Sigrid el código del tipo guardado, no una constante",
+        "El DDL va solo en el schema propio postventa y es re-ejecutable",
+        "Ninguna escritura en Sigrid desde local ni desde tests",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 2,
+      "branch": "feature/F-072-tipo-reclamacion-sigrid"
+    },
+    {
+      "id": "F-073",
+      "title": "La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez",
+      "description": "Alta del 2026-11-09 por decisión del humano, tras medir en producción la carga de bandeja.html?obra=0677 (285 incidencias). La página pinta en menos de 0,3 s; lo lento es GET /api/revision, de 0,4 a 15 s. La línea «F-060 tiempos del listado» y App Insights de sigrid-api lo explican: el listado hace tres lecturas a Sigrid seguidas (catalogo.leer_unidades, catalogo.leer_oficios y ubicaciones), cada una de unos 0,1 s, pero cuando sigrid-api estrena instancia esa lectura tarda unos 4 s (unos 3,5 s antes de que sigrid-api la atienda y 0,75 s de su primera conexión SQL); si coinciden dos o tres, la carga pasa de 8 a 13 s. Lo nuestro (base, cálculo, serializar) no pasa de 0,2 s. El arreglo: lanzar las tres lecturas a la vez en interface_adapters/api/revision.py y su caso de uso, sin cambiar el contrato ni el front. Sin caché del catálogo (descartada por el riesgo de datos viejos). La causa de raíz, en sigrid-api, queda en F-074.",
+      "acceptance": [
+        "Las tres lecturas a Sigrid del listado de revisión salen a la vez, no una tras otra, y un test lo fija sin red",
+        "La respuesta de GET /api/revision no cambia (mismo contrato y mismos datos)",
+        "Si una lectura falla, el error es el mismo que hoy y las otras no dejan nada a medias",
+        "La línea «F-060 tiempos del listado» sigue saliendo con sus tramos",
+        "Medido en producción: con una lectura lenta de sigrid-api la carga no pasa de unos 5 s",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 7,
+      "branch": "feature/F-073-revision-lee-sigrid-en-paralelo"
+    },
+    {
+      "id": "F-074",
+      "title": "Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío",
+      "description": "Alta del 2026-11-09 por decisión del humano, como mejora futura de baja prioridad, no relevante ahora. Cuando sigrid-api reparte una petición a una instancia nueva, la petición espera unos 3,5 s a que arranque y otros 0,75 s a su primera conexión SQL (medido el 2026-11-09 en App Insights de sigrid-api). Dejar una instancia siempre preparada quitaría esa espera para todos los clientes de sigrid-api. NO se hace en este repositorio: es un cambio de configuración del proyecto sigrid-api, con coste en Azure, que decide el humano. Aquí solo se anota.",
+      "acceptance": [
+        "El humano decide si se hace y lo encarga en el proyecto sigrid-api",
+        "Medido después: las lecturas a sigrid-api no tienen esperas de unos 4 s al estrenar instancia"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "documental",
+      "priority": 150
     }
   ]
 }

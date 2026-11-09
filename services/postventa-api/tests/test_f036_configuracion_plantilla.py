@@ -2,15 +2,11 @@
 """F-036 · T6: la configuración de la plantilla (`design.md` §3.4).
 
 El YAML versionado trae las listas cerradas que no salen de Sigrid
-(ubicaciones, urgencias, listados) y los textos que lee la propiedad, que
-rellena **sin formación** (decisión 5). Lo que se fija aquí:
+(urgencias, listados) y los textos que lee la propiedad, que rellena **sin
+formación** (decisión 5). Lo que se fija aquí:
 
-- que el YAML **real** carga y cumple lo que exige §3.4: ubicaciones de hasta
-  48 caracteres, sin dos iguales normalizadas, y códigos de urgencia y listado
-  que son los del dominio;
-- que las ubicaciones salen de **las 44 `rcp.resubi` medidas en la 0677**
-  (D-3, `progress/explore_F-036.md`), cada una llevada a una sola ubicación, y
-  que lo añadido sin medir va marcado para que lo revise el humano;
+- que el YAML **real** carga y cumple lo que exige §3.4: códigos de urgencia y
+  listado que son los del dominio (las ubicaciones ya no están: F-071, R21);
 - que los textos dicen lo que pide R5 (y R12 y §3.5) y caben en los límites de
   Excel para los mensajes de validación;
 - que el cargador **revienta al arrancar** ante un YAML roto, en vez de generar
@@ -33,7 +29,6 @@ from domain.models.plantilla_incidencias import (
     CABECERA,
     COLUMNA_ERRORES,
     MAX_DESCRIPCION,
-    MAX_UBICACION,
     Listado,
     ListasCerradas,
     Opcion,
@@ -52,64 +47,6 @@ from infrastructure.documentos.plantilla_yaml import (
 
 SERVICIO = Path(__file__).resolve().parents[1]
 YAML_REAL = SERVICIO / "config" / "plantilla_incidencias.yaml"
-
-# Las 44 `rcp.resubi` distintas de la 0677, tal cual las midió T2 (2026-09-29,
-# `progress/explore_F-036.md`), con sus erratas de origen.
-UBICACIONES_MEDIDAS_0677 = (
-    "jardín",
-    "cocina",
-    "escalera",
-    "salón",
-    "Garaje",
-    "baño 1",
-    "dormitorio 1",
-    "distribuidor p. baja",
-    "dormitorio 3",
-    "almacén",
-    "dormitorio 4",
-    "sala/estudio",
-    "dormitorio 2",
-    "terraza planta 2",
-    "terraza 1",
-    "baño 7",
-    "baño 2",
-    "bao 3",
-    "office",
-    "Cuarto de plancha",
-    "vestíbulo sótano",
-    "lavandería",
-    "terraza 3",
-    "baño 6",
-    "baño 4",
-    "terraza instalaciones",
-    "aseo",
-    "distribuidor p. 1",
-    "baño 5",
-    "vestidor 3",
-    "baño 3",
-    "cuarto plancha",
-    "cuarto instalaciones",
-    "lavanderçia/tendedero",
-    "patio trasero",
-    "terraza instaciones",
-    "vestíbulo p. baja",
-    "vestidor 1",
-    "comedor",
-    "patio delantero",
-    "despacho",
-    "ascensor",
-    "terraza 4",
-    "trastero",
-)
-
-# Las fusiones que `design.md` §3.4 nombra: variantes del mismo sitio.
-FUSIONES_DEL_DISENO = (
-    ("baño 3", "bao 3"),
-    ("cuarto plancha", "Cuarto de plancha"),
-    ("terraza instalaciones", "terraza instaciones"),
-    ("lavandería", "lavanderçia/tendedero"),
-)
-
 
 @pytest.fixture(scope="module")
 def real() -> ConfiguracionPlantilla:
@@ -157,98 +94,10 @@ def test_f036_t6_ruta_relativa_al_servicio_no_al_cwd(
     assert cargar_plantilla_yaml(YAML_REAL) == real
 
 
-def test_f036_t6_ubicaciones_hasta_48_y_sin_repetidas(
-    real: ConfiguracionPlantilla,
-) -> None:
-    ubicaciones = real.listas.ubicaciones
-    assert all(0 < len(u) <= MAX_UBICACION for u in ubicaciones)
-    assert all(u == u.strip() and "  " not in u for u in ubicaciones)
-    plegadas = [plegar(u) for u in ubicaciones]
-    assert len(set(plegadas)) == len(plegadas)
-
-
-def test_f036_t6_d3_cada_ubicacion_medida_va_a_una_sola(crudo: dict) -> None:
-    origenes = [o for e in crudo["ubicaciones"] for o in e.get("origen", [])]
-    assert sorted(origenes) == sorted(UBICACIONES_MEDIDAS_0677)
-    assert len(UBICACIONES_MEDIDAS_0677) == 44
-
-
-def test_f036_t6_d3_las_fusiones_del_diseno(crudo: dict) -> None:
-    destino = {
-        o: e["etiqueta"] for e in crudo["ubicaciones"] for o in e.get("origen", [])
-    }
-    for una, otra in FUSIONES_DEL_DISENO:
-        assert destino[una] == destino[otra]
-
-
-def test_f036_t6_d3_la_normalizacion_no_cambia_de_sitio(crudo: dict) -> None:
-    # Normalizar es mayúscula inicial, tildes y variantes del mismo sitio: el
-    # número de la estancia y la estancia misma no cambian.
-    for entrada in crudo["ubicaciones"]:
-        for origen in entrada.get("origen", []):
-            assert re.findall(r"\d+", origen) == re.findall(r"\d+", entrada["etiqueta"])
-            assert entrada["etiqueta"][0].isupper()
-
-
-def test_f036_t6_d3_cuarenta_de_medidas_y_las_anadidas_marcadas(
-    crudo: dict, real: ConfiguracionPlantilla
-) -> None:
-    medidas = [e for e in crudo["ubicaciones"] if e.get("origen")]
-    anadidas = [e for e in crudo["ubicaciones"] if not e.get("origen")]
-    assert len(medidas) == 40  # 44 medidas menos 4 fusiones
-    assert all(str(e.get("revisar", "")).strip() for e in anadidas)
-    assert real.ubicaciones_por_revisar == tuple(e["etiqueta"] for e in anadidas)
-    assert "General (toda la unidad)" in real.ubicaciones_por_revisar
-    assert real.listas.ubicaciones == tuple(e["etiqueta"] for e in crudo["ubicaciones"])
-
-
-#: Las ubicaciones que no salen de ninguna medida, en el orden del desplegable:
-#: las dos de T6 y las seis que decidió el humano en la PARADA T25.
-ANADIDAS_T6 = ("General (toda la unidad)", "Otra (explicar en el detalle)")
-ANADIDAS_T25 = (
-    "Baño del dormitorio 1",
-    "Baño del dormitorio 2",
-    "Baño del dormitorio 3",
-    "Baño del dormitorio 4",
-    "Pasillo",
-    "Terraza",
-)
-
-
-def test_f036_t25_las_anadidas_son_exactamente_las_de_t6_y_t25(
-    real: ConfiguracionPlantilla,
-) -> None:
-    assert sorted(real.ubicaciones_por_revisar) == sorted(ANADIDAS_T6 + ANADIDAS_T25)
-
-
-def test_f036_t25_las_anadidas_en_t25_dicen_de_donde_vienen(crudo: dict) -> None:
-    por_etiqueta = {e["etiqueta"]: e for e in crudo["ubicaciones"]}
-    for etiqueta in ANADIDAS_T25:
-        assert por_etiqueta[etiqueta]["origen"] == []
-        assert "T25" in por_etiqueta[etiqueta]["revisar"], etiqueta
-
-
-def test_f036_t25_orden_del_desplegable_general_alfabetico_y_otra(
-    real: ConfiguracionPlantilla,
-) -> None:
-    ubicaciones = real.listas.ubicaciones
-    assert ubicaciones[0] == "General (toda la unidad)"
-    assert ubicaciones[-1] == "Otra (explicar en el detalle)"
-    medio = list(ubicaciones[1:-1])
-    # Las de T25, cada una en su sitio alfabético entre las medidas.
-    for antes, despues in (
-        ("Baño 7", "Baño del dormitorio 1"),
-        ("Baño del dormitorio 1", "Baño del dormitorio 2"),
-        ("Baño del dormitorio 2", "Baño del dormitorio 3"),
-        ("Baño del dormitorio 3", "Baño del dormitorio 4"),
-        ("Baño del dormitorio 4", "Cocina"),
-        ("Office", "Pasillo"),
-        ("Pasillo", "Patio delantero"),
-        ("Sala/estudio", "Salón"),
-        ("Salón", "Terraza"),
-        ("Terraza", "Terraza 1"),
-    ):
-        assert medio.index(antes) + 1 == medio.index(despues), (antes, despues)
+# F-071, R21 (`design.md` §3.2: «salvo las de la lista del YAML»): la lista de
+# ubicaciones salió del YAML y estos tests, que la fijaban, se retiraron. La
+# lista de cada uno está en `progress/impl_F-071.md`, tanda 1. La clave
+# `ubicaciones` tumba la carga: lo fija `test_f071_configuracion.py`.
 
 
 def test_f036_t6_urgencias_y_listados_son_los_del_dominio(
@@ -331,7 +180,12 @@ def test_f036_r5_dos_o_tres_ejemplos_validos(real: ConfiguracionPlantilla) -> No
         assert set(ejemplo) <= set(CABECERA) - {COLUMNA_ERRORES}
         assert ejemplo["Unidad"] and ejemplo["Descripción corta"]
         assert len(ejemplo["Descripción corta"]) <= MAX_DESCRIPCION
-        assert ejemplo.get("Ubicación") in (None, *real.listas.ubicaciones)
+        # F-071, R19: la ubicación del ejemplo es indicativa (era una de la
+        # lista del YAML, que ya no existe, R21).
+        assert ejemplo.get("Ubicación") in (
+            None,
+            "Estancia (elígela de la lista de su unidad)",
+        )
         assert ejemplo.get("Urgencia") in (None, *urgencias)
         assert ejemplo.get("Listado") in (None, *listados)
     assert any(e.get("Urgencia") for e in ejemplos)  # uno enseña la columna Urgencia
@@ -407,78 +261,10 @@ def test_f036_t6_raiz_que_no_es_un_mapping(tmp_path: Path, contenido: str) -> No
         cargar_plantilla_yaml(ruta)
 
 
-def test_f036_t6_ubicacion_de_mas_de_48(tmp_path: Path, crudo: dict) -> None:
-    motivo = _roto(
-        tmp_path, crudo, lambda d: d["ubicaciones"][1].update(etiqueta="x" * 49)
-    )
-    assert "48" in motivo
-
-
-def test_f036_t6_ubicacion_de_48_se_admite(tmp_path: Path, crudo: dict) -> None:
-    datos = copy.deepcopy(crudo)
-    datos["ubicaciones"][1]["etiqueta"] = "x" * 48
-    assert (
-        "x" * 48 in cargar_plantilla_yaml(_escribir(tmp_path, datos)).listas.ubicaciones
-    )
-
-
-@pytest.mark.parametrize("otra", ["almacen", "ALMACÉN", "Almacén", "Almacén."])
-def test_f036_t6_dos_ubicaciones_iguales_normalizadas(
-    tmp_path: Path, crudo: dict, otra: str
-) -> None:
-    def cambio(d: dict) -> None:
-        d["ubicaciones"][1]["etiqueta"] = "Almacén"
-        d["ubicaciones"].append({"etiqueta": otra, "origen": [], "revisar": "x"})
-
-    assert "repetida" in _roto(tmp_path, crudo, cambio)
-
-
-@pytest.mark.parametrize(
-    "etiqueta", ["", "   ", " Cocina", "Cocina ", "Baño  1", None, 3]
-)
-def test_f036_t6_ubicacion_vacia_o_con_blancos(
-    tmp_path: Path, crudo: dict, etiqueta: object
-) -> None:
-    _roto(tmp_path, crudo, lambda d: d["ubicaciones"][1].update(etiqueta=etiqueta))
-
-
-def test_f036_t6_sin_ubicaciones(tmp_path: Path, crudo: dict) -> None:
-    assert "ubicaciones" in _roto(tmp_path, crudo, lambda d: d.update(ubicaciones=[]))
-
-
-def test_f036_t6_ubicacion_que_no_es_mapping(tmp_path: Path, crudo: dict) -> None:
-    assert "ubicaciones" in _roto(
-        tmp_path, crudo, lambda d: d["ubicaciones"].append("Cocina 2")
-    )
-
-
-def test_f036_t6_origen_repetido_en_dos_ubicaciones(
-    tmp_path: Path, crudo: dict
-) -> None:
-    def cambio(d: dict) -> None:
-        d["ubicaciones"][2]["origen"] = list(d["ubicaciones"][2]["origen"]) + [
-            d["ubicaciones"][1]["origen"][0]
-        ]
-
-    assert "origen" in _roto(tmp_path, crudo, cambio)
-
-
-@pytest.mark.parametrize("origen", ["cocina", [3], [""]])
-def test_f036_t6_origen_mal_formado(
-    tmp_path: Path, crudo: dict, origen: object
-) -> None:
-    assert "origen" in _roto(
-        tmp_path, crudo, lambda d: d["ubicaciones"][1].update(origen=origen)
-    )
-
-
-def test_f036_t6_anadida_sin_motivo_de_revision(tmp_path: Path, crudo: dict) -> None:
-    motivo = _roto(
-        tmp_path,
-        crudo,
-        lambda d: d["ubicaciones"].append({"etiqueta": "Nueva", "origen": []}),
-    )
-    assert "revisar" in motivo
+# F-071, R21 (`design.md` §3.2: «salvo las de la lista del YAML»): la lista de
+# ubicaciones salió del YAML y estos tests, que la fijaban, se retiraron. La
+# lista de cada uno está en `progress/impl_F-071.md`, tanda 1. La clave
+# `ubicaciones` tumba la carga: lo fija `test_f071_configuracion.py`.
 
 
 @pytest.mark.parametrize("seccion", ["urgencias", "listados"])
@@ -563,7 +349,8 @@ def test_f036_t6_ejemplos_uno_o_cuatro(tmp_path: Path, crudo: dict) -> None:
         {"Unidad": ""},
         {"Descripción corta": ""},
         {"Descripción corta": "d" * 129},
-        {"Ubicación": "Sótano de nadie"},
+        # F-071, §7.2 y R19: `Ubicación` ya no se comprueba contra lista; lo
+        # fija `test_f036_t6_la_ubicacion_del_ejemplo_no_se_comprueba`.
         {"Urgencia": "urgente"},
         {"Listado": "Tercer listado"},
     ],
@@ -572,6 +359,17 @@ def test_f036_t6_ejemplo_invalido(tmp_path: Path, crudo: dict, cambio: dict) -> 
     assert "ejemplo" in _roto(
         tmp_path, crudo, lambda d: d["textos"]["ejemplos"][0].update(cambio)
     )
+
+
+def test_f036_t6_la_ubicacion_del_ejemplo_no_se_comprueba(
+    tmp_path: Path, crudo: dict
+) -> None:
+    # F-071, §7.2 y R19: era un ejemplo inválido («no está en su lista»); la
+    # lista salió de Sigrid y el ejemplo es un texto indicativo.
+    datos = copy.deepcopy(crudo)
+    datos["textos"]["ejemplos"][0]["Ubicación"] = "Sótano de nadie"
+    config = cargar_plantilla_yaml(_escribir(tmp_path, datos))
+    assert config.textos.ejemplos[0]["Ubicación"] == "Sótano de nadie"
 
 
 def test_f036_t6_ejemplo_que_no_es_mapping(tmp_path: Path, crudo: dict) -> None:

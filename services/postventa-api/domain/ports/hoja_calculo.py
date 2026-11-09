@@ -23,9 +23,10 @@ from domain.models.importacion import LibroLeido
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
     ListasCerradas,
-    OpcionOficio,
-    OpcionProveedor,
+    OpcionOficioSigrid,
+    ParSigrid,
     TextosPlantilla,
+    UbicacionesDeLaPlantilla,
 )
 
 
@@ -52,8 +53,9 @@ class GeneradorPlantillaPort(Protocol):
         self,
         *,
         catalogo: CatalogoObra,
-        opciones_oficio: tuple[OpcionOficio, ...],
-        opciones_proveedor: tuple[OpcionProveedor, ...],
+        oficios: tuple[OpcionOficioSigrid, ...],
+        pares: tuple[ParSigrid, ...],
+        ubicaciones: UbicacionesDeLaPlantilla,
         listas: ListasCerradas,
         textos: TextosPlantilla,
         generada_at: datetime,

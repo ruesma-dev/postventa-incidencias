@@ -33,8 +33,10 @@ from domain.models.errores import CodigoDeObraInvalido
 from domain.models.nombrado import normalizar_codigo
 
 IDENTIFICADOR_PLANTILLA = "ruesma.postventa-incidencias.plantilla-incidencias"
-VERSION_PLANTILLA = 1
-VERSIONES_SOPORTADAS: frozenset[int] = frozenset({1})
+VERSION_PLANTILLA = 2  # F-071: listas de Sigrid, ubicación por unidad (R17)
+VERSIONES_SOPORTADAS: frozenset[int] = frozenset({VERSION_PLANTILLA})
+#: La de F-036: se rechaza con su propio motivo (F-071, R23).
+VERSION_ANTERIOR = 1
 COLUMNA_ERRORES = "Errores (lo rellena el sistema)"
 CABECERA: tuple[str, ...] = (
     "Unidad",
@@ -140,9 +142,63 @@ class OpcionProveedor:
 
 @dataclass(frozen=True)
 class ListasCerradas:
-    ubicaciones: tuple[str, ...]
+    """Las listas que no salen de Sigrid (F-071, R16, R22): urgencias y listados.
+
+    Las ubicaciones ya no están aquí: salen de Sigrid, por unidad
+    (`UbicacionesPorUnidad`).
+    """
+
     urgencias: tuple[Opcion, ...]
     listados: tuple[Opcion, ...]
+
+
+@dataclass(frozen=True)
+class OpcionOficioSigrid:
+    """Una entrada del desplegable de `Oficio` de la plantilla v2 (F-071, R12, R13).
+
+    Un código de oficio de `obrofc` de la obra, sin agrupar. `nombre` es el de
+    Sigrid recortado (`None` si no tiene): lo que se guarda en la bandeja
+    (R32), no la etiqueta.
+    """
+
+    etiqueta: str  # "<nombre> (<código>)" o "<código>"
+    codigo: str
+    nombre: str | None
+
+
+@dataclass(frozen=True)
+class ParSigrid:
+    """Una entrada del desplegable de `Proveedor` de la plantilla v2 (F-071, R14).
+
+    Una pareja distinta (oficio, proveedor) de `obrofc` de la obra.
+    """
+
+    etiqueta: str  # "<etiqueta del oficio> · <nombre> (<código>)"
+    oficio: OpcionOficioSigrid
+    proveedor_codigo: str
+    proveedor_nombre: str | None
+
+
+#: Las ubicaciones válidas de cada unidad leídas de Sigrid (F-056 §16.3):
+#: `{unidad_codigo: ubicaciones}`, en el orden de Sigrid.
+UbicacionesPorUnidad = Mapping[str, tuple[str, ...]]
+
+
+@dataclass(frozen=True)
+class UbicacionesDeLaPlantilla:
+    """Las listas de ubicaciones del libro y la de cada unidad (F-071, R8).
+
+    `listas`: las tuplas distintas y no vacías, en orden de primera aparición
+    por código de unidad. `lista_de_unidad`: el índice en `listas` de cada
+    unidad, o `None` si no tiene ubicaciones.
+    """
+
+    listas: tuple[tuple[str, ...], ...]
+    lista_de_unidad: Mapping[str, int | None]
+
+    def union(self) -> tuple[str, ...]:
+        """Todas las ubicaciones de la obra, sin repetidos exactos y en orden."""
+        return tuple(dict.fromkeys(u for lista in self.listas for u in lista))
 
 
 @dataclass(frozen=True)
@@ -350,3 +406,113 @@ def _exigir_distintas(etiquetas: Iterable[str]) -> None:
     plegadas = [plegar(e) for e in etiquetas]
     if len(set(plegadas)) != len(plegadas):
         raise ValueError("dos opciones del desplegable dan la misma etiqueta")
+
+
+# --------------------------------------------------------------------------
+# F-071 · las opciones de la plantilla v2, todas de Sigrid
+# --------------------------------------------------------------------------
+
+
+def _nombre_recortado(nombre: str | None) -> str | None:
+    return (nombre or "").strip() or None
+
+
+def _con_codigo(nombre: str | None, codigo: str) -> str:
+    return codigo if nombre is None else f"{nombre} ({codigo})"
+
+
+def oficios_del_desplegable(catalogo: CatalogoObra) -> tuple[OpcionOficioSigrid, ...]:
+    """Las opciones de `Oficio` de la plantilla v2: un código por entrada (R12, R13).
+
+    Ordenadas por código y **sin grupos** de equivalencia (D-14): no se
+    reciben. El nombre es el primero no vacío de ese código, recortado; la
+    etiqueta, `<nombre> (<código>)` o, sin nombre, el código. Si dos etiquetas
+    chocan plegadas, `ValueError` (R15).
+    """
+    nombres: dict[str, str | None] = {}
+    for oficio in catalogo.oficios:
+        if nombres.get(oficio.codigo) is None:
+            nombres[oficio.codigo] = _nombre_recortado(oficio.nombre)
+    opciones = tuple(
+        OpcionOficioSigrid(
+            etiqueta=_con_codigo(nombres[codigo], codigo),
+            codigo=codigo,
+            nombre=nombres[codigo],
+        )
+        for codigo in sorted(nombres)
+    )
+    _exigir_distintas(o.etiqueta for o in opciones)
+    return opciones
+
+
+def pares_del_desplegable(
+    catalogo: CatalogoObra, oficios: tuple[OpcionOficioSigrid, ...]
+) -> tuple[ParSigrid, ...]:
+    """Las opciones de `Proveedor` de la plantilla v2: una por pareja de `obrofc` (R14).
+
+    Una por cada pareja distinta (oficio, proveedor) con proveedor y con un
+    oficio de `oficios`. El nombre del proveedor es el primero no vacío,
+    recortado. En el orden de `oficios` y, dentro de cada uno, por nombre
+    plegado y código. Si dos etiquetas chocan plegadas, `ValueError` (R15).
+    """
+    posicion = {o.codigo: i for i, o in enumerate(oficios)}
+    nombres: dict[tuple[str, str], str | None] = {}
+    for fila in catalogo.proveedores:
+        if fila.proveedor_codigo is None or fila.oficio_codigo not in posicion:
+            continue
+        pareja = (fila.oficio_codigo, fila.proveedor_codigo)
+        if nombres.get(pareja) is None:
+            nombres[pareja] = _nombre_recortado(fila.proveedor_nombre)
+    ordenadas = sorted(
+        nombres,
+        key=lambda p: (posicion[p[0]], plegar(nombres[p] or ""), p[1]),
+    )
+    pares = tuple(
+        ParSigrid(
+            etiqueta=(
+                f"{oficios[posicion[oficio]].etiqueta}{SEPARADOR_PAR}"
+                f"{_con_codigo(nombres[(oficio, proveedor)], proveedor)}"
+            ),
+            oficio=oficios[posicion[oficio]],
+            proveedor_codigo=proveedor,
+            proveedor_nombre=nombres[(oficio, proveedor)],
+        )
+        for oficio, proveedor in ordenadas
+    )
+    _exigir_distintas(p.etiqueta for p in pares)
+    return pares
+
+
+def ubicaciones_de_la_plantilla(
+    unidades: Iterable[UnidadPosventa], por_unidad: UbicacionesPorUnidad
+) -> UbicacionesDeLaPlantilla:
+    """Las listas de ubicaciones del libro y la de cada unidad (R8, D-2).
+
+    Unidades por código; cada tupla no vacía **distinta** (igualdad exacta)
+    es una lista, en orden de primera aparición; una unidad sin entrada o con
+    la tupla vacía no tiene lista (`None`). Lo de unidades que no están en
+    `unidades` se ignora. Una ubicación vacía, con blancos en los extremos o
+    de más de `MAX_UBICACION` es `ValueError`, sin el texto en el mensaje (el
+    texto de Sigrid no va a un log, R44).
+    """
+    listas: dict[tuple[str, ...], int] = {}
+    lista_de_unidad: dict[str, int | None] = {}
+    for unidad in sorted(unidades, key=lambda u: u.codigo):
+        ubicaciones = tuple(por_unidad.get(unidad.codigo, ()))
+        for ubicacion in ubicaciones:
+            if (
+                not ubicacion
+                or ubicacion != ubicacion.strip()
+                or len(ubicacion) > MAX_UBICACION
+            ):
+                raise ValueError(
+                    "una ubicación de Sigrid está vacía, lleva blancos en los "
+                    f"extremos o pasa de {MAX_UBICACION} caracteres"
+                )
+        if not ubicaciones:
+            lista_de_unidad[unidad.codigo] = None
+            continue
+        lista_de_unidad[unidad.codigo] = listas.setdefault(ubicaciones, len(listas))
+    return UbicacionesDeLaPlantilla(
+        listas=tuple(listas), lista_de_unidad=lista_de_unidad
+    )

@@ -3,27 +3,30 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **69 features**, 39 abiertas, 30 terminadas.
+Resumen: **73 features**, 43 abiertas, 30 terminadas.
 
-En curso: **F-040**.
+En curso: **F-071**.
 
-Bloqueadas: **F-038, F-066**.
+Bloqueadas: **F-038, F-040, F-066**.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
+| F-071 | La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad | 1 | en curso | critico | `feature/F-071-plantilla-desde-sigrid` |
+| F-072 | El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado | 2 | pendiente | critico | `feature/F-072-tipo-reclamacion-sigrid` |
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | bloqueada | critico | `feature/F-038-bandeja-revision` |
 | F-070 | Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos | 3 | pendiente | critico | `feature/F-070-obra-sin-cero-inicial` |
 | F-066 | Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar | 4 | bloqueada | critico | `feature/F-066-mudanza-posventa` |
 | F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | 5 | spec lista | critico | `feature/F-064-bandeja-con-sigrid` |
 | F-067 | Registrar incidencias desde el PDF de repasos del cliente (backend): un PDF por unidad, casado de ubicaciones, prioridades y oficios, y fotos a SharePoint | 5 | pendiente | critico | `feature/F-067-pdf-repasos-cliente` |
 | F-068 | Página de carga del PDF de repasos en el portal: elegir la unidad y casar a mano ubicaciones, prioridades y oficios | 5 | pendiente | estandar | `feature/F-068-pagina-pdf-repasos` |
-| F-040 | Volcar a Sigrid las incidencias aprobadas | 6 | en curso | critico | `feature/F-040-volcado-sigrid` |
+| F-040 | Volcar a Sigrid las incidencias aprobadas | 6 | bloqueada | critico | `feature/F-040-volcado-sigrid` |
 | F-069 | Fotos de las incidencias del PDF de repasos a Sigrid como gráfico | 6 | pendiente | critico | `feature/F-069-fotos-repasos-sigrid` |
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 7 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
 | F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 7 | pendiente | critico | `feature/F-062-gestionar-volcadas` |
 | F-063 | Normalizar el código de obra: un cero delante cuando empieza por tres cifras | 7 | pendiente | critico | `feature/F-063-normalizar-codigo-obra` |
+| F-073 | La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez | 7 | pendiente | estandar | `feature/F-073-revision-lee-sigrid-en-paralelo` |
 | F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 8 | pendiente | critico | `feature/F-058-plantilla-ubicaciones-sigrid` |
 | F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 9 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
 | F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 10 | pendiente | critico | `feature/F-052-secretos-ajustes` |
@@ -52,6 +55,7 @@ Bloqueadas: **F-038, F-066**.
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 131 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 132 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 138 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
+| F-074 | Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío | 150 | pendiente | documental |  |
 
 ## Terminadas
 
@@ -89,6 +93,18 @@ Bloqueadas: **F-038, F-066**.
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 134 | critico |
 
 ## Detalle
+
+### F-071 · La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad
+
+estado **en curso** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-071-plantilla-desde-sigrid`
+
+Alta del 2026-11-04 por petición del humano, URGENTE: «el excel que descarga debe extraer TODAS las opciones de TODOS los desplegables de lo que hay en el momento en sigrid. esta feature es urgente. lo mismo oficios, etc.». Problema real en la obra 0677 (Mirasierra): la plantilla de F-036 saca las ubicaciones de una lista FIJA (config/plantilla_incidencias.yaml, 44 etiquetas con «General (toda la unidad)» inventada), igual para todas las unidades, mientras la bandeja (F-056) valida contra prmtpl.ubica de la tipología de CADA unidad: se elige «Escalera» o «General» en el Excel y la bandeja dice «La ubicación no está en la lista». Segundo síntoma: el desplegable de Oficio agrupa oficios equivalentes (R86, R92 de F-036) y la fila importada queda oficio_ambiguo («Elige el código del oficio: hay varios en la obra»). Alcance: cada desplegable sale de Sigrid al descargar (unidad, ubicación dependiente de la unidad de la fila, oficio con su código, par oficio–proveedor de obrofc); la importación vuelve a leer Sigrid y valida contra lo de ese momento; lo que se elige en el Excel entra resuelto (sin oficio_ambiguo ni proveedor_ambiguo). Urgencia y listado: la spec dice qué hay en Sigrid (rcp.texurg es texto libre; auxtrcp son los tipos de reclamación) y lo deja como pregunta al humano. Absorbe F-058 (su spec y su prueba del desplegable dependiente, en el worktree postventa-f058). Versión de la plantilla a 2. Solo backend (postventa-api). Spec en specs/F-071-plantilla-desde-sigrid/ y preguntas en progress/spec_F-071.md.
+
+### F-072 · El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado
+
+estado **pendiente** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-072-tipo-reclamacion-sigrid`
+
+Alta del 2026-11-05 por decisión del humano (Q-3 de F-071, «toca lo que sea»). Hoy la columna «Listado» de la plantilla ofrece dos valores fijos del YAML (Primer listado / Segundo listado), la bandeja los guarda pero el volcado manda SIEMPRE el tipo 0002 (PRIMER LISTADO POSTVENTA, constante TIPO_RECLAMACION en domain/models/volcado.py): una incidencia de segundo listado entraría en Sigrid como primer listado. Alcance: la plantilla ofrece los tipos vigentes de dbo.auxtrcp (vía sigrid-api, lectura) al descargar; la importación valida contra los de ese momento y guarda el código; la bandeja lo guarda en columna nueva (DDL solo en el schema postventa); la revisión lo enseña y deja cambiarlo; el volcado manda el código elegido. En blanco = 0002, como hoy (decisión del humano 2026-11-05). Orden fijado por el humano: F-071 -> F-072 -> retomar F-040; el primer volcado real (T5.4 de F-040) no se hace antes de F-072.
 
 ### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
 
@@ -128,7 +144,7 @@ Alta del 2026-10-27 por decisión del humano, partida de F-067 por el límite de
 
 ### F-040 · Volcar a Sigrid las incidencias aprobadas
 
-estado **en curso** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
+estado **bloqueada** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre. Añadido el 2026-09-24 por petición del humano: el volcado es MASIVO. Llega un Excel (F-036) y hay que replicar, fila a fila y escribiendo en lote, el alta manual que hoy hace Posventa en Sigrid, documentada en docs/referencia/04_alta_incidencia_sigrid.md: ficha de la unidad de posventa → Reclamaciones → Nueva; serie RS<año2>.<mes>/ (Reclamaciones postventa, el código lo pone Sigrid); descripción; tipo de reclamación (sale 3 por defecto, Posventa pone 0002 PRIMER LISTADO POSTVENTA en el primer listado); oficio del catálogo; ubicación, forma de comunicación, descripciones corta y larga, propietario y persona que reclama; y los intervinientes (oficio + proveedor de la obra, F-039). NO vale sql/write a mano (además tope de 20 sentencias por petición): sigue haciendo falta el endpoint de dominio en sigrid-api, y debe admitir lotes. Preguntas abiertas para la spec (sección final de docs/referencia/04_alta_incidencia_sigrid.md): qué es el tipo 3 y qué regla elige entre 2 y 3; qué tablas escribe el alta (se mide contra el ERP, no se supone); qué oficio lleva el parte cuando hay varios intervinientes y quién marca Causante; de dónde salen propietario y persona que reclama en un alta masiva. Actualizado por el líder el 2026-09-25: sigrid-api YA TIENE el endpoint de dominio, POST /api/sigrid/partes-reclamacion (su F-006; azure-apps/sigrid_api.md §8.9), pensado para este consumidor: alta EN LOTE de partes 708 de UNA obra, una transacción por parte, dry-run por defecto; la idempotencia la da referencia_externa con prefijo PVI- (guardada en conext RCPCLI); tipo por defecto 0002 PRIMER LISTADO POSTVENTA; oficio e intervinientes resueltos contra los oficios de la obra (obrofc); propietario y persona copiados de la UPV; forma de comunicación por defecto Escrita. Responde 200 con el estado de cada parte (previsto, creado, idempotente, rechazado, no_procesado) y su motivo. NO pasa a PTE, ni crea tareas, correos ni fotos. Responde a varias de las preguntas abiertas de docs/referencia/04_alta_incidencia_sigrid.md (tablas, tipo por defecto, propietario); queda abierta la regla para elegir entre tipo 0002 y 0003. Doble llave de escritura en sigrid-api: SIGRID_DOMAIN_WRITE_ENABLED y SIGRID_RECLAMACION_WRITE_ENABLED. ACTUALIZADO POR EL LÍDER EL 2026-10-06: el endpoint ya no bloquea. azure-apps/sigrid_api.md §8.9 y su tabla de consumidores: sigrid/partes-reclamacion está desplegado, verificado y ABIERTO desde el 2026-09-25 (SIGRID_RECLAMACION_WRITE_ENABLED=true; escritura real autorizada de un parte en la obra 0626 y repetición idempotente). Lo que falta para F-040 es de este repositorio: F-056 (aprobar, con las candidatas al volcado) y F-038 (la página). PARTIDA EL 2026-10-07 (D-1, decisión del humano): esta ficha es el panel de volcado en bandeja.html (ensayar, confirmar con el número de partes, volcar de trozo en trozo, parar al primer fallo, aviso de pasar a PTE a mano) y el cierre de sus placeholders del portal; el backend es F-059. Spec aprobada (2026-10-07; Q-1 siempre 0002, Q-2 causante false, Q-3 PTE a mano, Q-4 obra 0626, Q-5 fuera, Q-6 sí, Q-7 cualquiera de posventa-usuarios, Q-8 más adelante): specs/F-040-volcado-sigrid/. PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. EN CURSO desde el 2026-10-27 por decisión del humano («vamos a parar la actual y empezar ya con f40»): Posventa ha importado por Excel las incidencias de la VILLA 15 de la 0677 (los PDF de repasos) y quiere volcarlas a Sigrid. Rama nueva desde dev f7f63da en el worktree postventa-f040; la rama antigua queda como archivo/F-040-spec-2026-10-07 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (F-059 tal como se cerró, bandeja.html de F-038, F-060); si cambia una decisión aprobada, vuelve al humano. DECISIONES DEL HUMANO SOBRE LA CONCILIACIÓN (2026-10-28): C-2, el volcado de la VILLA 15 NO es una tarea de la ficha (lo hará el humano cuando el panel esté operativo); C-4, hay que sincronizar antes de registrar: un botón «Registrar» que primero trae las incidencias de Sigrid de la obra y las cruza con las aprobadas (F-065), enseña qué va, qué ya existe y qué choca, y solo después ensaya y vuelca; C-1, C-3, C-5 y C-6, como recomendó el spec-author. Orden: F-065 primero, F-040 después. DESBLOQUEADA el 2026-10-31 al cerrar F-065. Incluye T-A18 de F-065 (aplazada por el humano): en el primer ensayo real de la 0677, comprobar que una incidencia que da choca sale excluida con conflicto_sin_confirmar sin confirmar y prevista confirmada, y la línea F-065 guarda del ensayo en Application Insights sin códigos RS ni texto. EN CURSO desde el 2026-10-31: T0, la rama trae dev 7cc0bbb (base fija) y el spec-author concilia R60-R62 y design §1.1, §3.1-§3.3 con el contrato implementado de F-065.
 
@@ -155,6 +171,12 @@ Alta del 2026-10-20 por decisión del humano al conciliar F-038 (Q-6: «la idea 
 estado **pendiente** · prioridad 7 · rigor `critico` · SDD sí · rama `feature/F-063-normalizar-codigo-obra`
 
 Alta del 2026-10-20 por petición del humano. Los códigos de obra de Sigrid llevan cuatro cifras (0626, 0677), pero la gente teclea 626. Regla pedida: si el código son tres cifras, se añade un 0 delante (626 → 0626); y si empieza por tres cifras seguidas de otra cosa, también (lectura del líder, pendiente de confirmar con el humano: 626A → 0626A). Hoy domain/models/plantilla_incidencias.py::normalizar_codigo_obra solo aplica nombrado.normalizar_codigo (guiones y blancos) y valida longitud y caracteres; la usan la plantilla, la importación, la bandeja, la revisión, las equivalencias, la normalización y el volcado. Al especificar: si se rellena en un único sitio (esa función) o también en el front (campo «Código de obra»); qué pasa con lo ya guardado con tres cifras en postventa.* (¿hay filas?); que no se confunda con el relleno a tres cifras de las villas (F-049) ni con los tramos de codigos_del_parte; y comprobar contra Sigrid que no existe ninguna obra cuyo código real empiece por tres cifras sin el 0.
+
+### F-073 · La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez
+
+estado **pendiente** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-073-revision-lee-sigrid-en-paralelo`
+
+Alta del 2026-11-09 por decisión del humano, tras medir en producción la carga de bandeja.html?obra=0677 (285 incidencias). La página pinta en menos de 0,3 s; lo lento es GET /api/revision, de 0,4 a 15 s. La línea «F-060 tiempos del listado» y App Insights de sigrid-api lo explican: el listado hace tres lecturas a Sigrid seguidas (catalogo.leer_unidades, catalogo.leer_oficios y ubicaciones), cada una de unos 0,1 s, pero cuando sigrid-api estrena instancia esa lectura tarda unos 4 s (unos 3,5 s antes de que sigrid-api la atienda y 0,75 s de su primera conexión SQL); si coinciden dos o tres, la carga pasa de 8 a 13 s. Lo nuestro (base, cálculo, serializar) no pasa de 0,2 s. El arreglo: lanzar las tres lecturas a la vez en interface_adapters/api/revision.py y su caso de uso, sin cambiar el contrato ni el front. Sin caché del catálogo (descartada por el riesgo de datos viejos). La causa de raíz, en sigrid-api, queda en F-074.
 
 ### F-058 · La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad
 
@@ -323,6 +345,12 @@ El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco 
 estado **pendiente** · prioridad 138 · rigor `estandar` · SDD no · rama `feature/F-029-scripts-infra-comillas`
 
 DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO ARRANCAN: se estrellan en la primera línea que ejecutan, y ninguno de los dos se ha ejecutado NUNCA. El defecto es el mismo que el 2026-09-15 tumbó a infra/12_traza_cierre_local.ps1: se invoca al intérprete con `& $python -c "<programa>"` y PowerShell 5.1 destroza el entrecomillado del programa antes de que llegue a Python. DÓNDE: infra/07_alta_usuario_sigrid.ps1, líneas 161 y 248; y infra/17_traza_grafico_local.ps1, línea 196. EL ARREGLO YA EXISTE EN EL REPOSITORIO, escrito y probado: la función `Invoke-PythonDelServicio` de infra/08_lectura_sigrid_comun.ps1, que es la que arregló al `12`. No hay que inventar nada: hay que aplicarla en los tres sitios y EJECUTAR los dos scripts, que es justo lo que no se hizo con el código anterior. POR QUÉ IMPORTA, aunque sea prioridad baja: bloquea dos verificaciones de F-009 que quedaron abiertas al cerrarla. (a) El `07_` es el que hace el COUNT(*) de `-VerificarAhora` sobre dbo.usu, o sea LA PRIMERA LÍNEA DE T23 (hueco 3 de progress/cierre_F-009.md §3: R31, R33 y R34). (b) El `17_` es el que se invoca en la PRECONDICIÓN AÑADIDA DE T24, la del gráfico adjuntado (R2 de F-012). Si algún día se recorren esos huecos, esto es lo primero que hay que arreglar. LECCIÓN QUE LO ACOMPAÑA, del §10.2 del guion del bloque 8: tres de los cuatro scripts de lectura no funcionaban porque estaban escritos y nunca ejecutados. Arreglar estos dos sin lanzarlos vuelve a crear el mismo problema con otro nombre. AVISO SOBRE LAS PUERTAS DEL ARNÉS: cobertura y mutación miden SOLO Python (carencia 1.7.13 del arnés, portada a arnes-base), así que aquí no aportan nada y la evidencia tiene que ser la ejecución real de los dos scripts contra lecturas, con su salida pegada. Origen: progress/guion_bloque8_F-009.md §10.6 y progress/cierre_F-009.md §5.
+
+### F-074 · Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío
+
+estado **pendiente** · prioridad 150 · rigor `documental` · SDD no
+
+Alta del 2026-11-09 por decisión del humano, como mejora futura de baja prioridad, no relevante ahora. Cuando sigrid-api reparte una petición a una instancia nueva, la petición espera unos 3,5 s a que arranque y otros 0,75 s a su primera conexión SQL (medido el 2026-11-09 en App Insights de sigrid-api). Dejar una instancia siempre preparada quitaría esa espera para todos los clientes de sigrid-api. NO se hace en este repositorio: es un cambio de configuración del proyecto sigrid-api, con coste en Azure, que decide el humano. Aquí solo se anota.
 
 ### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
 

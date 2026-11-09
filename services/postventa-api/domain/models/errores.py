@@ -1198,6 +1198,7 @@ CODIGOS_FICHERO_NO_ES_PLANTILLA: frozenset[str] = frozenset(
         "fichero_sospechoso",
         "no_es_la_plantilla",
         "formato_antiguo",
+        "version_anterior",  # F-071, R23: la plantilla v1
         "version_no_soportada",
         "cabecera_distinta",
         "demasiadas_filas",

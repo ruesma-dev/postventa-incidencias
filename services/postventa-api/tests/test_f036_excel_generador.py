@@ -35,6 +35,9 @@ from domain.models.plantilla_incidencias import (
     ProveedorEnObra,
     UnidadPosventa,
     etiquetas_de_unidades,
+    oficios_del_desplegable,
+    pares_del_desplegable,
+    ubicaciones_de_la_plantilla,
 )
 from domain.ports.hoja_calculo import FilaPlantilla
 from infrastructure.documentos import excel_openpyxl
@@ -47,11 +50,13 @@ from tests.utiles_plantilla import (
     configuracion,
     generar,
     mismo,
-    opciones,
 )
 
 HOJAS = ["Incidencias", "Instrucciones", "_catalogos", "_plantilla"]
 COLUMNAS_TASADAS = ("Unidad", "Ubicación", "Oficio", "Proveedor", "Urgencia", "Listado")
+#: F-071, R9 y R10: `Ubicación` ya no bebe de un rango con nombre fijo, sino de
+#: la lista de la unidad de la fila (`INDIRECT`); la fijan `test_f071_generador`.
+COLUMNAS_DE_LISTA_FIJA = tuple(c for c in COLUMNAS_TASADAS if c != "Ubicación")
 COLUMNAS_DE_DATOS = tuple(c for c in CABECERA if c != COLUMNA_ERRORES)
 
 
@@ -109,12 +114,16 @@ def _textos_de(ws) -> list[str]:
 
 
 def _esperadas(columna: str, cat=None, decisiones=()) -> tuple[str, ...]:
+    # F-071, R12: las decisiones de equivalencia ya no cambian el desplegable.
+    del decisiones
     cat = cat or catalogo()
-    oficios, pares = opciones(cat, decisiones)
+    # F-071, R12–R14: un oficio por código y un par por pareja (eran los grupos).
+    oficios = oficios_del_desplegable(cat)
+    pares = pares_del_desplegable(cat, oficios)
     listas = configuracion().listas
     return {
         "Unidad": tuple(o.etiqueta for o in etiquetas_de_unidades(cat.unidades)),
-        "Ubicación": listas.ubicaciones,
+        # F-071, R9: sin `Ubicación` (era `listas.ubicaciones`, del YAML).
         "Oficio": tuple(o.etiqueta for o in oficios),
         "Proveedor": tuple(p.etiqueta for p in pares),
         "Urgencia": tuple(o.etiqueta for o in listas.urgencias),
@@ -332,7 +341,7 @@ def test_f036_r3_desplegable_detener_en_filas_2_a_1001_con_mensajes(
     assert (dv.errorTitle, dv.error) == (mensaje.titulo_error, mensaje.error)
 
 
-@pytest.mark.parametrize("columna", COLUMNAS_TASADAS)
+@pytest.mark.parametrize("columna", COLUMNAS_DE_LISTA_FIJA)  # F-071, R9 (sin Ubicación)
 def test_f036_r3_el_desplegable_sale_de_la_hoja_de_catalogos(columna: str) -> None:
     wb = _plantilla()
     assert _lista_del_desplegable(wb, columna) == _esperadas(columna)
@@ -443,7 +452,7 @@ def test_f036_r6_metadatos_de_la_plantilla() -> None:
     metadatos = _metadatos(_plantilla())
     assert metadatos == {
         "identificador": IDENTIFICADOR_PLANTILLA,
-        "version": 1,
+        "version": 2,  # F-071, R17 (era 1)
         "obra_codigo": "0677",
         "generada_at_utc": "2026-09-29T08:30:00+00:00",
     }
@@ -535,9 +544,10 @@ def test_f036_r7_lo_que_empieza_por_igual_se_conserva_como_texto() -> None:
             assert celda.value == valor
             assert celda.data_type == "s"
     assert _lista_del_desplegable(wb, "Unidad") == tuple(sorted_unidades_peligrosas())
-    assert _lista_del_desplegable(wb, "Oficio") == ("=Carpintería",)
+    # F-071, R13 y R14: con el código (era «=Carpintería» y su par sin códigos).
+    assert _lista_del_desplegable(wb, "Oficio") == ("=Carpintería (0046)",)
     assert _lista_del_desplegable(wb, "Proveedor") == (
-        "=Carpintería · @Proveedor Ejemplo",
+        "=Carpintería (0046) · @Proveedor Ejemplo (P1)",
     )
     assert wb["Instrucciones"]["A1"].value == "0677 · =Obra"
 
@@ -585,20 +595,29 @@ def test_f036_r12_obra_sin_unidades_unidad_sin_opciones() -> None:
 
 
 def test_f036_r92_una_entrada_por_grupo_de_oficio() -> None:
+    # F-071, R12 (D-14): con una decisión «mismo» guardada, la plantilla ya no
+    # agrupa; era una entrada por grupo («Mamparas» por 0085 y 0166).
     decisiones = (mismo("0085", "0166"),)
     wb = abrir(generar(decisiones=decisiones))
     oficios = _lista_del_desplegable(wb, "Oficio")
-    assert oficios == ("Carpintería de madera", "Mamparas", "Albañilería")
+    assert oficios == (
+        "Carpintería de madera (0046)",
+        "Mamparas (0085)",
+        "Albañilería (0133)",
+        "Mampara (0166)",
+    )
     assert oficios == _esperadas("Oficio", decisiones=decisiones)
+    assert oficios == _lista_del_desplegable(_plantilla(), "Oficio")
 
 
 def test_f036_r92_sin_grupos_un_oficio_por_codigo() -> None:
     wb = _plantilla()
+    # F-071, R12 y R13: por código y con el código (eran los nombres solos).
     assert _lista_del_desplegable(wb, "Oficio") == (
-        "Carpintería de madera",
-        "Mamparas",
-        "Albañilería",
-        "Mampara",
+        "Carpintería de madera (0046)",
+        "Mamparas (0085)",
+        "Albañilería (0133)",
+        "Mampara (0166)",
     )
 
 
@@ -608,10 +627,13 @@ def test_f036_r71_r92_los_pares_empiezan_por_la_etiqueta_del_oficio() -> None:
     oficios = _lista_del_desplegable(wb, "Oficio")
     pares = _lista_del_desplegable(wb, "Proveedor")
     assert pares == _esperadas("Proveedor", decisiones=decisiones)
+    # F-071, R14: un par por pareja (oficio, proveedor), con los dos códigos;
+    # eran tres pares por grupo de oficio, sin códigos.
     assert pares == (
-        "Carpintería de madera · Carpinterías Ejemplo S.L.",
-        "Carpintería de madera · Juan Ejemplo Ejemplo",
-        "Mamparas · Mamparas Ejemplo S.A.",
+        "Carpintería de madera (0046) · Carpinterías Ejemplo S.L. (P001)",
+        "Carpintería de madera (0046) · Juan Ejemplo Ejemplo (P003)",
+        "Mamparas (0085) · Mamparas Ejemplo S.A. (P002)",
+        "Mampara (0166) · Mamparas Ejemplo S.A. (P002)",
     )
     assert all(p.split(" · ")[0] in oficios for p in pares)
 
@@ -626,10 +648,16 @@ def test_f036_r62_mismo_libro_que_la_plantilla_con_los_mismos_desplegables() -> 
     errores = _errores()
     assert errores.sheetnames == HOJAS
     assert tuple(c.value for c in errores["Incidencias"][1]) == CABECERA
-    for columna in COLUMNAS_TASADAS:
+    for columna in COLUMNAS_DE_LISTA_FIJA:  # F-071, R9 (sin Ubicación)
         assert _lista_del_desplegable(errores, columna) == _lista_del_desplegable(
             plantilla, columna
         )
+    # F-071, R40: la de `Ubicación`, la misma fórmula.
+    assert (
+        _validacion(errores["Incidencias"], "Ubicación").formula1
+        == _validacion(plantilla["Incidencias"], "Ubicación").formula1
+    )
+    for columna in COLUMNAS_TASADAS:
         dv = _validacion(errores["Incidencias"], columna)
         assert dv.errorStyle == "stop"
 
@@ -789,9 +817,9 @@ ANCHOS = {
     "H": 16,
     "I": 50,
 }
+# F-071, R9: sin `lista_ubicaciones`.
 LISTAS = (
     "lista_unidades",
-    "lista_ubicaciones",
     "lista_oficios",
     "lista_proveedores",
     "lista_urgencias",
@@ -815,7 +843,11 @@ def test_f036_r7_los_textos_llevan_el_prefijo_de_comilla() -> None:
 
 def test_f036_s3_1_catalogos_una_columna_por_lista_con_su_nombre() -> None:
     wb = _plantilla()
-    assert tuple(c.value for c in wb["_catalogos"][1]) == LISTAS
+    # F-071, R9: las cinco fijas siguen en A–E; detrás, tras una columna en
+    # blanco, lo de `Ubicación` (era la fila 1 entera).
+    fila_1 = tuple(c.value for c in wb["_catalogos"][1])
+    assert fila_1[: len(LISTAS)] == LISTAS
+    assert fila_1[len(LISTAS)] is None
     for indice, nombre in enumerate(LISTAS):
         ((hoja, rango),) = list(wb.defined_names[nombre].destinations)
         letra = get_column_letter(indice + 1)
@@ -896,11 +928,13 @@ def _reglas(ws) -> list[tuple[str, list]]:
 def _generar_con(textos, *, filas=(), importacion_origen=None) -> bytes:
     """Como `generar`, con otros textos (párrafos y ejemplos de prueba)."""
     cat = catalogo()
-    oficios, pares = opciones(cat)
+    # F-071: la firma v2 del puerto (oficios, pares y ubicaciones de Sigrid).
+    oficios = oficios_del_desplegable(cat)
     return GeneradorPlantillaOpenpyxl().generar(
         catalogo=cat,
-        opciones_oficio=oficios,
-        opciones_proveedor=pares,
+        oficios=oficios,
+        pares=pares_del_desplegable(cat, oficios),
+        ubicaciones=ubicaciones_de_la_plantilla(cat.unidades, {}),
         listas=configuracion().listas,
         textos=textos,
         generada_at=INSTANTE,
@@ -1538,10 +1572,14 @@ def test_f036_r125_ni_las_hojas_ni_el_libro_llevan_impresion_en_el_xml(contenido
         # atributo en él (review 8, R8-2).
         assert set(re.findall(rb"<pageSetUpPr\b[^>]*>", xml)) <= {b"<pageSetUpPr />"}, nombre
     assert b"_xlnm.Print_" not in cuaderno
-    # Los nombres definidos: los seis de las listas y el del filtro, nada más.
+    # Los nombres definidos: los de las listas fijas, los de `Ubicación` (la
+    # tabla y `ubicaciones_ninguna`: la obra de prueba no trae ubicaciones) y el
+    # del filtro, nada más. F-071, R9: eran los seis de las listas.
     nombres = re.findall(rb'<definedName name="([^"]+)"', cuaderno)
     assert sorted(nombres) == sorted(
-        [n.encode() for n in LISTAS] + [b"_xlnm._FilterDatabase"]
+        [n.encode() for n in LISTAS]
+        + [b"tabla_ubicaciones_de_unidad", b"ubicaciones_ninguna"]
+        + [b"_xlnm._FilterDatabase"]
     )
 
 
@@ -1617,8 +1655,13 @@ def test_f036_r126_los_rangos_con_nombre_de_las_listas_resuelven_a_lo_mismo() ->
             letra = get_column_letter(indice + 1)
             assert hoja == "_catalogos"
             assert rango.startswith(f"${letra}$2:${letra}$")
-        # Los seis de las listas y ninguno más a nivel de libro.
-        assert set(wb.defined_names) == set(LISTAS)
+        # Los cinco de las listas fijas, la tabla y `ubicaciones_ninguna` (la
+        # obra de prueba no trae ubicaciones), y ninguno más a nivel de libro.
+        # F-071, R9: eran los seis de las listas, con `lista_ubicaciones`.
+        assert set(wb.defined_names) == set(LISTAS) | {
+            "tabla_ubicaciones_de_unidad",
+            "ubicaciones_ninguna",
+        }
 
 
 def test_f036_r126_validaciones_proteccion_filtro_paneles_y_formato_de_texto() -> None:
@@ -1647,7 +1690,7 @@ def test_f036_r126_validaciones_proteccion_filtro_paneles_y_formato_de_texto() -
 def test_f036_r126_misma_version_e_identificador() -> None:
     for wb in (_plantilla(), _errores()):
         metadatos = _metadatos(wb)
-        assert metadatos["version"] == 1
+        assert metadatos["version"] == 2  # F-071, R17 (era 1)
         assert metadatos["identificador"] == IDENTIFICADOR_PLANTILLA
 
 

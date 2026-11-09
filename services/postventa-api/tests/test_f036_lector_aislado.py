@@ -1958,7 +1958,7 @@ def test_f036_r126_ida_y_vuelta_por_el_lector_aislado_con_el_hijo_real(
     assert libro == LectorPlantillaOpenpyxl().leer(contenido=contenido())
     assert libro.cabecera == CABECERA
     assert [f.numero for f in libro.filas] == numeros
-    assert (libro.version, libro.obra_codigo) == (1, "0677")
+    assert (libro.version, libro.obra_codigo) == (2, "0677")  # F-071, R17 (era 1)
     assert libro.datos_fuera_del_tope is False
     assert len(_textos(libro)) == len(numeros)
 
@@ -1985,7 +1985,7 @@ def test_f036_r126_los_formatos_anteriores_por_el_lector_aislado_con_el_hijo_rea
     libro = LectorPlantillaAislado(entorno="test").leer(contenido=contenido)
     assert libro == LectorPlantillaOpenpyxl().leer(contenido=contenido)
     assert libro == LectorPlantillaOpenpyxl().leer(contenido=original())
-    assert (libro.version, libro.obra_codigo) == (1, "0677")
+    assert (libro.version, libro.obra_codigo) == (2, "0677")  # F-071, R17 (era 1)
     if original is _plantilla_rellena:
         validas, con_error = _validar(libro)
         assert con_error == ()

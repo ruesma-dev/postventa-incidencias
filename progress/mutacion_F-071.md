@@ -52,7 +52,7 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 
 > La tabla, `ubicaciones_ninguna` y las listas empiezan una columna más a la derecha, en bloque: queda una columna vacía de más en `_catalogos`, una hoja oculta y protegida.
 > Por qué ningún test lo caza: todo lo que mira esas celdas va **por nombre de rango**: la fórmula de `Ubicación` (`VLOOKUP` sobre `tabla_ubicaciones` e `INDIRECT` del nombre que devuelve), el lector y los tests. `design.md` §7.1 solo pide que la tabla, `ubicaciones_ninguna` y las listas vayan «a la derecha» de las cinco listas fijas, sin columnas concretas, y siguen yendo. Pasado además, sin test que lo cace, por `test_f071_generador.py`, `test_f036_excel_generador.py`, `test_f036_excel_lector.py`, `test_f036_pipeline_importacion.py` y `test_f036_plantilla_http.py` (588 passed).
-> Decisión: **mutante equivalente**, pendiente de la aceptación por escrito del humano (rigor `critico`). Un test que fijara columnas sobreespecificaría lo que la spec deja libre y rompería al reordenar sin cambiar nada observable; no se añade.
+> Decisión: **mutante equivalente**, **aceptado por escrito por el humano el 2026-11-09** (rigor `critico`). Un test que fijara columnas sobreespecificaría lo que la spec deja libre y rompería al reordenar sin cambiar nada observable; no se añade.
 
 ### 2. `services/postventa-api/infrastructure/documentos/excel_openpyxl.py:405` [aritmetico]
 
@@ -72,7 +72,7 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 #### Análisis (implementer, 2026-11-06)
 
 > Por qué ningún test lo caza: solo cuenta sin unidades, y entonces `ultima = max(PRIMERA_FILA - 2, PRIMERA_FILA) = PRIMERA_FILA`, lo mismo que con `- 1`. Ninguna entrada da un libro distinto. Con el test nuevo de `d0dc548` sigue vivo (`25 passed in 31.24s`), como debe.
-> Decisión: **mutante equivalente estricto**, pendiente de la aceptación por escrito del humano (rigor `critico`).
+> Decisión: **mutante equivalente estricto**, **aceptado por escrito por el humano el 2026-11-09** (rigor `critico`).
 
 ### 4. `services/postventa-api/infrastructure/documentos/excel_openpyxl.py:426` [entero]
 
@@ -83,5 +83,5 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 
 > `ubicaciones_ninguna` y las listas empiezan una columna más a la derecha: queda una columna vacía de más entre la tabla y `ubicaciones_ninguna`, en la hoja oculta y protegida.
 > Por qué ningún test lo caza: todo lo que mira esas celdas va **por nombre de rango**: la fórmula de `Ubicación` (`VLOOKUP` sobre `tabla_ubicaciones` e `INDIRECT` del nombre que devuelve), el lector y los tests. `design.md` §7.1 solo pide que la tabla, `ubicaciones_ninguna` y las listas vayan «a la derecha» de las cinco listas fijas, sin columnas concretas, y siguen yendo. Pasado además, sin test que lo cace, por `test_f071_generador.py`, `test_f036_excel_generador.py`, `test_f036_excel_lector.py`, `test_f036_pipeline_importacion.py` y `test_f036_plantilla_http.py` (588 passed).
-> Decisión: **mutante equivalente**, pendiente de la aceptación por escrito del humano (rigor `critico`), por lo mismo que el 1.
+> Decisión: **mutante equivalente**, **aceptado por escrito por el humano el 2026-11-09** (rigor `critico`), por lo mismo que el 1.
 

@@ -10,6 +10,8 @@
 >   (`d0dc548`) y los otros 3 son equivalentes, **pendientes de que el humano los acepte**.
 > - Siguiente: review de los Bloques 1–3 (la encarga el líder) y después el Bloque 4.
 > Detalle en `progress/impl_F-071.md` y `progress/mutacion_F-071.md`.
+> **El humano aceptó por escrito el 2026-11-09 los 3 mutantes equivalentes** (`excel_openpyxl.py:401` `+3`, `:405` `−2`,
+> `:426` `+=4`; C-1 de la review): siguiente, re-review de los Bloques 1–3 y luego el Bloque 4 (T11, T12).
 > **El humano aceptó por escrito el 2026-11-06 la desviación de §7.3** (dos párrafos); anotada en el informe y en `design.md`.
 > **Tanda 1 hecha (2026-11-06):** T4 RED y T5 GREEN, el generador v2 con `INDIRECT`. Detalle y recuento de rojos en
 > `progress/impl_F-071.md`, «Tanda 1». **Desviación anotada para el humano:** el párrafo de §7.3 («Las listas salen de

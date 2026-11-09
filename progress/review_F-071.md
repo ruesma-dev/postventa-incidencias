@@ -278,3 +278,135 @@ con el `init.sh` final del implementer (9860 passed, 447 skipped).
   (Bloque 4) para que el informe no parezca abierto.
 
 Siguen vigentes O-1, O-2 y O-3 (a resolver en T11) y la propuesta de automejora de la review anterior.
+
+## Review final del código (Bloque 4) · 2026-11-09
+
+- **Veredicto:** **APPROVED** (código de la feature entera, Bloques 1 a 4; el Bloque 5 —despliegue y
+  verificación manual, T13–T18— queda fuera).
+- **Reviewer:** subagente reviewer, 2026-11-09. Worktree `postventa-f071`, rama
+  `feature/F-071-plantilla-desde-sigrid`, HEAD `1e07f9d`. Base fija `ed935ad`.
+- **Nivel de rigor:** `critico` (declarado en `harness/features.json`). Exige fase RED con la salida
+  real, cobertura de lo cambiado, mutación con cero supervivientes salvo aceptación escrita del humano,
+  «Evidencias» y mutantes de orden a mano.
+
+### Lo que entró desde la re-review (`78445f5..1e07f9d`)
+
+Solo `1e07f9d` (T11): `docs/ARCHITECTURE.md`, `docs/INTEGRACION.md`, `progress/current.md`,
+`progress/impl_F-071.md`, `tasks.md` y dos tests nuevos (`test_f071_documentacion.py`, 27;
+`test_f071_alcance_cerrado.py`, 55). **Ningún fichero de producción**: la campaña de mutación, la
+cobertura y la suite independiente de las reviews anteriores siguen valiendo para el código.
+
+### Comprobado (resultados reales, sin `.env`)
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh` | **No ejecutado por el reviewer** (lo prohíbe el encargo). El líder lo lanzó sobre `1e07f9d`: verde, 9942 passed, 447 skipped, `PUERTA COBERTURA` `[OK]` 100 % de 232 líneas (nivel `critico`). Es T12 |
+| Tests de T11 | `pytest tests/test_f071_documentacion.py tests/test_f071_alcance_cerrado.py -rs`: **82 passed**, ningún salto en la rama |
+| Todos los de F-071 y los de documentación vecinos | `pytest tests/test_f071_*.py tests/test_f036_*documentacion*.py tests/test_f056_documentacion.py tests/test_f065_documentacion.py`: **508 passed** en 70 s |
+| Alcance y sin secretos vecinos | `test_f036_alcance_cerrado.py`, `test_f060_documentacion.py` y `test_f005_integracion_sin_secretos.py` con los de T11: **161 passed, 7 skipped** (controles de diff de otras ramas, guardas de F-030) |
+| R43 a mano | `git diff --stat ed935ad HEAD` sobre `infrastructure/sigrid/`, `infrastructure/persistencia/`, `sql/`, `services/postventa-front/`, `config/settings.py`, `requirements.txt`, revisión, equivalencias y sus puertos: **vacío** |
+| Mutación, recálculo puro | `harness.alcance.alcance_de_feature('F-071', base='ed935ad')`: **14 ficheros, 773 líneas**; `generar_mutantes` sobre ellas: **66**. Coincide con `progress/mutacion_F-071.md`. Campaña **no reejecutada: 440 min según el informe** (26 408,9 s); además el código no ha cambiado desde ella |
+| R45 a mano | `ed935ad` contiene `scripts/migrar_excel_f036.py` y es antecesor de `HEAD`: la constancia de `ARCHITECTURE.md` («sigue en `dev` hasta `ed935ad`») es cierta |
+| Afirmaciones de los documentos contra el código | `interface_adapters/api/plantilla.py:76,82` solo construye el catálogo y la fuente de ubicaciones (no lee PostgreSQL); `importar.py:204-206` lee las dos del catálogo y la de ubicaciones, y `:307` construye otra fuente para la normalización de F-060: «hasta cuatro `sql/read` por importación» es correcto |
+| Secretos, GUIDs, correos, IPs, nombres, `print` | Barrido de las líneas añadidas en `1e07f9d`: **nada**. El test de documentación además pasa `hallazgos()` de F-005 y un patrón de correo por cada sección nueva |
+
+### T11 contra la spec
+
+- **R46** (`design.md` §12): «La plantilla», «La importación», «La agrupación…» (con la enmienda del
+  2026-11-09), «Dónde vive cada pieza» (`casado_con_lista.py` y la migración retirada) y «Lo que no
+  hace la revisión» dicen lo que pide R46; `INTEGRACION.md` §1 (fila de `sigrid-api` y subsección
+  nueva «Con F-071» entre F-060 y F-065), §1 «Con F-056», §4 y §8 también. Cada frase está fijada por
+  un test, y también lo que **ya no** deben decir. `azure-apps/` es del líder al desplegar (R46), fuera.
+- **R42**: huella `sha256` fija de las tres consultas, más su comparación carácter a carácter contra la
+  base; ninguna pieza de F-071 nombra escrituras ni ventanas, importa un adaptador de escritura ni lee
+  el entorno; mismas rutas en `function_app.py`; ningún `.sql` ni manifiesto tocado.
+- **R43**: directorios y ficheros de §3.4 sin tocar, parte lectora de `excel_openpyxl.py` idéntica y en
+  el generador solo lo declarado en §7.1.
+- **R45**: los cinco ficheros borrados en la rama y ausentes del árbol, los dos scripts que se quedan
+  presentes, nadie en `services/` los nombra. **Cierra O-3**: el `.yaml` de correcciones está ahora en
+  `RETIRADOS`.
+- Cada regla de los controles tiene su test de «caza» y uno de «lee algo»; la fase RED de T11 está
+  pegada (26 failed antes de escribir los documentos; rojo provocado con un `.sql` falso para los de
+  alcance, retirado después).
+
+### Checkpoints (feature entera hasta el Bloque 4)
+
+**C1**
+- [x] `init.sh` en verde: ejecutado por el líder sobre `1e07f9d` (9942 passed, 447 skipped); no por el
+  reviewer, por encargo.
+- [x] Ficheros del arnés presentes.
+
+**C2**
+- [x] Una sola feature `in_progress` (F-071).
+- [x] Rama `feature/F-071-plantilla-desde-sigrid`.
+- [x] `progress/current.md` describe la sesión de F-071 (al día con T11).
+- [x] Features `done` con resumen en `history.md`: sin cambios en este rango.
+
+**C3**
+- [x] Hexagonal: sin cambios de producción desde la review de los Bloques 1–3, que lo verificó.
+- [x] Primera línea con la ruta en los dos tests nuevos; los dos documentos conservan su cabecera.
+- [x] Sin `print()`, sin TODOs sin contexto, sin secretos.
+- [x] Unidad de trabajo / archivado / manuscrito / firmado / reprocesar: N/A justificado, son reglas del
+  flujo de partes, que F-071 no toca.
+- [x] Ningún estado de Sigrid hardcodeado: F-071 no escribe en Sigrid.
+- [x] Ningún parte escaneado ni PDF en git.
+
+**C3 bis**
+- [x] N/A justificado: F-071 no incorpora documentos de fuera a `docs/referencia/`.
+
+**C4**
+- [x] Cada requisito con su test: R1–R41 y R44 (tabla de la review de los Bloques 1–3), R42, R43, R45
+  (`test_f071_alcance_cerrado.py`) y R46 (`test_f071_documentacion.py`). R47 es `MANUAL (humano)`, T16.
+- [x] Sin red ni BBDD: los controles nuevos solo leen ficheros y llaman a `git` local de solo lectura.
+- [x] Verificaciones `MANUAL (humano)` listadas: T14 y T16 en `tasks.md`.
+
+**C4 bis**
+- [x] `rigor: critico` declarado.
+- [x] Fase RED con la salida real: T1, T4, T7 (Bloques 1–3) y T11 (`progress/impl_F-071.md`,
+  «Bloque 4 · T11», «Fase RED»).
+- [x] Cobertura: `[OK]` 100 % de 232 líneas (`init.sh` del líder sobre `1e07f9d`).
+- [x] Mutación: informe de la herramienta; alcance (773) y mutantes (66) recalculados hoy y coinciden;
+  código de producción sin cambios desde la campaña.
+- [x] Muertos: campaña no reejecutada (440 min según el informe); recálculo puro, más los 4
+  supervivientes y los 6 mutantes de orden a mano de la review de los Bloques 1–3.
+- [x] Coste por mutante no sospechoso (≈ 3 201 s con 8 workers).
+- [x] Cero supervivientes sin aceptación: 1 cerrado con test (`d0dc548`) y 3 equivalentes aceptados
+  por escrito por el humano el 2026-11-09 (`progress/mutacion_F-071.md`).
+- [x] «Evidencias»: Bloques 1–3 (`progress/impl_F-071.md`, tanda 2) y T11 («Evidencias (T11)», que
+  remite a `init.sh` para cobertura y mutación porque T11 no cambia producción: justificado).
+- [x] Guarda por definiciones: `test_f071_r43_en_el_generador_solo_cambia_lo_declarado` y
+  `test_f071_r43_la_parte_lectora_del_generador_es_la_de_la_base` comparan por definición contra la base.
+- [x] Ningún N/A sin justificar.
+- [x] Orden (regla 7): verificado en la review de los Bloques 1–3 (6 mutantes de orden); sin cambios de
+  producción desde entonces. Sigue O-1 (abajo).
+
+**C4 ter**
+- [x] N/A justificado: no hay `harness/rutas_sensibles.json` en el repositorio.
+
+**C5 (hasta el Bloque 4)**
+- [x] T1–T11 `[x]` con sus commits `F-071 Tn:` (T11: `1e07f9d`). T12 es este paso: la marca el líder
+  con su `init.sh` y este veredicto. T13–T18 son del Bloque 5, fuera.
+- [x] `git status` limpio antes de este informe.
+- [x] `features.json`: F-071 `in_progress`, `critico`, coherente.
+
+### Para el líder (no bloquean)
+
+1. **T12**: marcarla `[x]` en `tasks.md` y anotar en `progress/impl_F-071.md` el `init.sh` sobre
+   `1e07f9d` (9942 passed, 447 skipped, cobertura 100 % de 232) y que la campaña de mutación de la
+   feature entera es la de `progress/mutacion_F-071.md` (el código no cambió después), como pide su
+   «Verificación».
+2. **O-4 sigue abierta**: `progress/impl_F-071.md:1108-1109` todavía dice «Pendiente del humano»
+   sobre los equivalentes 47, 61 y 64, aceptados el 2026-11-09. Una línea al anotar T12.
+3. **O-1 sigue abierta** (opcional, ya aceptada como observación): el orden catálogo → ubicaciones en
+   `importar.py:204-206` solo lo caza un test de F-036.
+4. **Al desplegar** (ya anotado por el implementer): la cabecera de `docs/INTEGRACION.md` (fecha y
+   «Última feature que lo tocó», fijada por `test_f065_documentacion.py`) y
+   `azure-apps/postventa_incidencias.md` (R46).
+5. **O-5, nueva (fuera del alcance de F-071)**: la fila de `sigrid-api` de `docs/ARCHITECTURE.md` y la
+   subsección «Con F-071» de `INTEGRACION.md` hablan de 1.000 filas por petición. Es el techo que el
+   código aplica a estas lecturas (`catalogo_sin_verificar`), así que lo que dice F-071 es correcto;
+   pero el `CLAUDE.md` transversal dice que la instancia desplegada sirve hasta 500.000 (leído el
+   2026-09-30). Aclarar que 1.000 es el techo de este cliente y no el de la pasarela sería una ficha
+   aparte.
+
+O-3 **cerrada** por T11; O-2 queda como estaba (aceptada por el humano con D-1).

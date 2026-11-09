@@ -2440,4 +2440,8 @@ Sigrid no se escribió nada**; en nuestra base, solo la fila de prueba de la
    19 días de trabajo real de Posventa en Sigrid. Lo que sí consta es que la
    bandeja de la 0677 tiene **0 volcadas** y que en esta verificación no se
    pulsó nada del volcado: ninguna de esas 83 sale de la página.
-   Pendiente: aceptación escrita del humano.
+   **Aceptado por escrito por el humano el 2026-11-09** («sí a todo»): las
+   83 de más son actividad real de Posventa; la página no volcó nada.
+
+**T7 cerrada (2026-11-09).** Siguiente: T8, cuando F-038 vuelva a estar en
+curso (antes se cierra F-071, por decisión del humano).

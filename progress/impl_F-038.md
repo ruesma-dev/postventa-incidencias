@@ -2424,7 +2424,11 @@ Sigrid no se escribió nada**; en nuestra base, solo la fila de prueba de la
 7. **Guarda de salida**: verificada con un `beforeunload` simulado (el diálogo
    real del navegador bloquea la herramienta del líder): sin formulario y con
    el formulario sin cambios no pide confirmación; con un cambio sin guardar,
-   sí. **Pendiente del humano**: el clic real en otra pestaña de la barra.
+   sí. Después, **con clics reales** (a petición del humano): con un cambio
+   sin guardar en el detalle, el clic en «Entrada» de la barra **no sale** de
+   la bandeja (la navegación se cancela y el cambio sigue ahí; el diálogo
+   nativo no se ve en la captura de la herramienta); tras «Cancelar» el
+   formulario, el mismo clic sale a Entrada sin preguntar.
 8. Desde `importar.html` de la 0677, «Revisar esta obra en la bandeja de
    revisión» abre `bandeja.html` con la 0677 puesta, en la misma pestaña.
 9. Almacenamiento local, de sesión, cookies e IndexedDB del sitio vacíos; en

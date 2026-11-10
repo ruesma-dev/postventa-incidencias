@@ -1353,3 +1353,35 @@ en su rama (guardas de F-030).
 - **T12 (líder)**: `bash harness/init.sh` y la mutación de la feature entera.
 - **Al desplegar (líder)**: la cabecera de `docs/INTEGRACION.md` (ver
   «Decisiones») y `azure-apps/postventa_incidencias.md` (R46).
+
+## Bloque 5 · Despliegue y verificación (2026-11-10)
+
+- **T13 (líder)**: merge a `dev` en `c201f29` desde el worktree de `dev`
+  (antes se restauraron 789 ficheros con solo finales de línea cambiados;
+  el diff sin CR salía vacío). `bash harness/init.sh` en `dev`, verde:
+  API 9932 passed / 457 skipped; front 910 passed / 7 skipped.
+- **T14 (humano)**: backend publicado desde una copia limpia de `dev`
+  (`c201f29`) el 2026-11-10, «The deployment was successful!». Las cuatro
+  comprobaciones del script: 1 · `GET /api/health` 200: **sí** (desde el
+  front publicado). 2, 3 y 4: pendientes del humano.
+- **T15 (líder)**: `azure-apps/postventa_incidencias.md` refrescado con los
+  cambios de T11 en `docs/INTEGRACION.md` (commit local `ce71f04`, sin push).
+- **T16 (líder en el Chrome del humano, autorizado en el chat)**, obra 0677:
+  1. Plantilla v2 descargada (versión 2 en `_plantilla`). En Excel, por
+     automatización: «Cuarto de plancha» vale en la Villa 1 y **no** en la
+     Villa 2 (otra tipología); con la fila sin unidad la lista es
+     `ubicaciones_ninguna`, vacía. Excel acepta un texto tecleado en esa fila
+     sin unidad: es el riesgo de `design.md` §4.2, aceptado en T0 porque la
+     importación lo rechaza. Ni «General» ni «Otra» en ninguna lista.
+  2. `GET /api/revision?obra=0677`: `catalogo.ubicaciones` coincide unidad a
+     unidad con la plantilla (35 en once villas, 31 en la 15, 37 en la 2, la 3
+     y la 5); `catalogo.oficios`, 38 con su código, como las 38 opciones de
+     `Oficio`; 38 pares, como `Proveedor`.
+  3. Dos filas «PRUEBA F-071 - DESCARTAR»: importación `parcial`; la A
+     (Villa 1 con «cuarto plancha» pegada, de otra tipología) vuelve con
+     «esa ubicación no es de la unidad de esta fila…»; la B (Villa 2, Garaje,
+     Electricidad 0011 y su proveedor) entra con sus códigos y sin ningún
+     motivo («varios códigos» incluido). Descartada la B con motivo.
+  4. Plantilla v1 (del 2026-11-04, con una fila): «Esta plantilla es de una
+     versión anterior…»; en la bandeja no entra nada (total 287, igual).
+- **Nada en Sigrid.** La bandeja de la 0677 acaba con 0 aprobadas.

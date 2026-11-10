@@ -1,7 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-071 · `in_progress` · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> ## F-038 · `in_progress` · 2026-11-10 · retomada por decisión del humano
+> T7 cerrada el 2026-11-09 (verificación en producción; pasos 2 y 10 con aceptación escrita del humano), en la rama
+> `feature/F-038-bandeja-revision` (worktree `postventa-f038`). Siguiente: el spec-author concilia T8 y T10 con `dev`
+> (F-040 T6a ya hizo la pestaña, los pasos 02 y 03 y la tarjeta; quedan el «llegará con F-038» de `importar.html`,
+> los botones de maqueta de `index.html`, ARCHITECTURE «En producción» y F-038 → done); luego T8, T9, T10 y T11.
+> **El estado del backlog pasa a llevarse en la rama de F-038.**
+
+> ## F-071 · `done` · 2026-11-10 · mergeada en `dev` `c201f29`, backend publicado y verificado (T16)
+> Detalle en `progress/history.md` y `progress/impl_F-071.md` «Bloque 5». Pendientes del humano: comprobaciones 2–4
+> de T14; cerrar F-058 y retirar su worktree si lo aprueba.
+
+> ## F-071 · (histórico de la sesión) · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
 > **Bloque 4 · T11 hecha (2026-11-09, implementer):** `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` al día (R46),
 > con `test_f071_documentacion.py` y `test_f071_alcance_cerrado.py` (R42, R43, R45) en verde. La cabecera de
 > `INTEGRACION.md` (fecha y «Última feature que lo tocó») **no se tocó**: la fija `test_f065_documentacion.py` y la spec

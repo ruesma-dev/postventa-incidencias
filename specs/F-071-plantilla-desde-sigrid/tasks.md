@@ -190,11 +190,11 @@
 
 ## Bloque 5 · Despliegue y verificación en producción
 
-- [ ] **T13 · líder**: merge normal de la rama a `dev` **desde un worktree
+- [x] **T13 · líder**: merge normal de la rama a `dev` **desde un worktree
   aparte** (la rama ya está sobre `dev`, T0 bis; R-6 resuelto). El push, el
   humano. |
   Verificación: `git log dev` con el merge; `bash harness/init.sh` en verde en `dev`
-- [ ] **T14 · MANUAL (humano)**: publicar el backend desde una copia limpia de
+- [x] **T14 · MANUAL (humano)**: publicar el backend desde una copia limpia de
   `dev`, en la raíz del repositorio principal:
   ```
   git worktree add --detach ..\postventa-publicar dev
@@ -205,13 +205,13 @@
   funcionaba falla, volver a publicar el commit anterior con el mismo
   mecanismo. |
   Verificación: MANUAL (humano) — el commit publicado anotado
-- [ ] **T15 · líder**: poner al día
+- [x] **T15 · líder**: poner al día
   `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md` (R46:
   la lectura de ubicaciones también en la plantilla; la plantilla ya no lee
   PostgreSQL; la lista del YAML y los grupos fuera de la plantilla), commit
   local en `azure-apps`. |
   Verificación: `git -C C:\Users\pgris\PycharmProjects\azure-apps log -1`
-- [ ] **T16 · MANUAL (humano)**: verificación en producción, obra **0677**
+- [x] **T16 · MANUAL (humano)**: verificación en producción, obra **0677**
   (R47), sin datos personales en las notas:
   1. Desde `importar.html`, descargar la plantilla de la 0677. Abrirla en
      Excel. En la fila 2 elegir una unidad; en la 3, otra de **otra
@@ -233,7 +233,7 @@
      de una versión anterior…», sin nada nuevo en la bandeja.
   Anotar el resultado de cada paso en `progress/impl_F-071.md`. |
   Verificación: MANUAL (humano) — los cuatro pasos anotados con su resultado real
-- [ ] **T17 · líder**: `progress/history.md` (resumen), `progress/current.md`,
+- [x] **T17 · líder**: `progress/history.md` (resumen), `progress/current.md`,
   F-071 a `done` en `harness/features.json` **solo con T18 en verde y la
   review final APPROVED** (regla dura de `CLAUDE.md`); F-058 ya consta como
   absorbida (Q-11, el líder el 2026-11-05): cerrar su ficha y retirar el

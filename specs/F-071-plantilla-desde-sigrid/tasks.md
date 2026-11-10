@@ -240,5 +240,5 @@
   worktree `postventa-f058` si el humano lo aprueba. Siguiente feature: F-072,
   luego retomar F-040 (Q-3). |
   Verificación: `python harness/backlog.py --comprobar` sin diferencias
-- [ ] **T18**: Ejecutar `bash harness/init.sh` en verde. |
+- [x] **T18**: Ejecutar `bash harness/init.sh` en verde. |
   Verificación: `bash harness/init.sh`

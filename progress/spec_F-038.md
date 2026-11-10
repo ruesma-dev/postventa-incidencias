@@ -228,3 +228,60 @@ Aplicadas (solo texto de la spec, marca «Precisado 2026-10-20 (review del Bloqu
 ## Decidido por el humano · 2026-10-20 (O-B1t-1)
 
 R21.4 ampliado con un texto para cada uno de los siete códigos de lote de `sigrid_api.md` §8.9 (tabla código → texto; los dos de configuración dicen «avisa a sistemas»); `design.md` §2.4 al día; nueva **T4 quater** en el Bloque 1 ter (RED y verde de `textoMotivoVolcado`, con el cambio a propósito de la aserción `obra_no_encontrada` de C-B1t-2) y «Parar. Review corta».
+
+## Conciliación del cierre con dev · 2026-11-10 (base `d54f481`)
+
+Encargo del líder: conciliar T8 y T10 con lo que F-040 T6a (merge `ddebcee`,
+verificada en producción en `8045f26`) ya hizo en `dev`. Reescritos T8 a T11
+de `tasks.md` (Bloque 4) y marcada T7 como cerrada (2026-11-09, según
+`progress/impl_F-038.md`). Sin cambios en `requirements.md` ni en `design.md`.
+
+**Ya hecho por F-040 T6a (no se repite):** en `index.html`, `partes.html`,
+`importar.html` y `oficios.html`, pestaña y pasos 02 y 03 a `bandeja.html` sin
+marca; la tarjeta de la portada ya enlaza `bandeja.html`; `enlace` en
+`Portal.SECCIONES` y `Portal.marcadaEnConstruccion`.
+
+**Sigue pendiente (T8):** `bandeja` → `parcial`; las marcas de la pestaña y de
+los pasos 02 y 03 **en `bandeja.html`** (la única página que las conserva); el
+envoltorio de sección de `#/bandeja` con su tarjeta «En producción» y los
+bloques de F-039, F-040 y F-043; el chip de la tarjeta de la portada; los siete
+restos de F-038 (los tres botones de `index.html` hacia la línea 470, tres
+entradas de `PLACEHOLDERS`, el bloque de `MaquetaDatos`) y su título de
+`TITULOS_FICHAS`; `docs/ARCHITECTURE.md` y el `README.md`; F-038 → `done`.
+
+**Sobre F-038 → `done`:** la spec lo asigna a T8 de forma explícita (R17,
+D-11, `design.md` §3.2) y no puede separarse: con F-038 sin `done`, R29 exige
+un resto y R62 `construccion`; con F-038 `done`, R28 exige cero restos y R62
+`parcial`. Un commit que quitara los restos sin el `done` (o al revés) deja la
+raíz en rojo. Se queda en T8.
+
+**Hallazgos del `grep` que la spec del 2026-10-20 no nombraba** (ya en T8,
+sin cambio de decisión):
+
+- `tests_js/f040_enlace_bandeja.test.js` (de T6a) fija que la sección «sigue
+  en construcción» y que `marcadaEnConstruccion("bandeja", "bandeja.html")` es
+  `true`. Es lo que T6a escribió atado a R62; con F-038 `done` cambia. Cambio a
+  propósito de F-040 T6a, declarado en T8.
+- En `tests/test_f035_paginas.py`, además de los tres controles mudados en
+  T1 bis, otros tres controles usan el recuadro de `bandeja` como ejemplo
+  (R64 «una sección que deja de estar en construcción sobra», el estropeo «un
+  data-en-construccion sin rs-obras» y `_RECUADRO_BANDEJA` de R65): pasan a
+  `incidencias`.
+- R39 de F-035 («exactamente una fila de la bandeja usa el tipo 0003») depende
+  de las filas de ejemplo que se van: si ninguna de las que se mudan a F-039
+  usa el tipo 0003, el implementer para.
+- `azure-apps/postventa_incidencias.md` sigue diciendo «F-038 mergeada y sin
+  publicar todavía»: T10 lo pone al día entero (el líder).
+
+### Preguntas para el humano (T8 no empieza sin respuesta)
+
+Dos textos que dejan de ser ciertos con F-038 `done` y que **ninguna decisión
+aprobada cubre**. No los he metido en T8 sin más porque el primero contradice
+la letra de R14 y el segundo es un texto aprobado de F-035 que fija un test.
+En `tasks.md` van marcados [Q-11] y [Q-12]: con un sí, entran; con un no, se
+quitan.
+
+| Id | Pregunta | Recomendación | Alternativa |
+|---|---|---|---|
+| **Q-11** | `importar.html`, bloque 3: «Solo lectura: revisar, corregir o descartar incidencias llegará con F-038.» (y el comentario de la cabecera, «… es F-038»). R14 dice «ningún otro cambio en esa página» (O-B1b-4: implementer y reviewer lo dejaron para T8 o F-057). ¿Se cambia en el cierre? | **Sí, en T8**: «Solo lectura: para revisar, corregir o descartar, la bandeja de revisión (abajo).», o simplemente «Solo lectura.», sin tocar nada más de la página ni `js/importacion.js`. Precisión de R14, no cambio de lo que hace la página | Dejarlo para **F-057**, que rehace esa tabla (la frase queda falsa en producción hasta entonces) |
+| **Q-12** | La entradilla de la portada (F-035, fijada por `ENTRADILLA_DE_INICIO`): «Funcionan ya la entrada de incidencias (…) y el circuito de partes firmados. El resto del ciclo está en construcción…». Con la bandeja «En producción» deja de ser cierta. ¿Se cambia? | **Sí, en T8**: añadir la revisión, p. ej. «Funcionan ya la entrada de incidencias (importar el Excel de la obra y los oficios repetidos), la bandeja de revisión y el circuito de partes firmados. El resto del ciclo está en construcción: lo enseñamos con datos inventados para que veáis cómo será.»; `ENTRADILLA_DE_INICIO` cambia con ella | Dejarla como está (incompleta, no falsa del todo) |

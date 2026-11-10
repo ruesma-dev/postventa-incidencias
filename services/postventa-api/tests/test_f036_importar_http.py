@@ -3,9 +3,10 @@
 
 La ruta de verdad de `function_app` —`multipart/form-data` construido a mano,
 con el fichero y `usuario_oid`— y el handler entero por debajo, con la
-bandeja, el catálogo de Sigrid y las decisiones de equivalencia sustituidos
-por dobles en memoria; el lector y el generador son los de verdad, sobre
-libros en memoria (R59).
+bandeja, el catálogo de Sigrid y la fuente de las ubicaciones de cada unidad
+(desde F-071, en lugar de las decisiones de equivalencia) sustituidos por
+dobles en memoria; el lector y el generador son los de verdad, sobre libros en
+memoria (R59).
 
 | Caso | Código |
 |---|---|
@@ -13,7 +14,7 @@ libros en memoria (R59).
 | más de 2 MiB (R15) | 413, sin abrirlo |
 | no es la plantilla (R16–R20) | 400 `{error, codigo}`, sin Sigrid ni base (R21) |
 | la obra no está, es ambigua o el catálogo al techo | 409 `{error, codigo}` |
-| Sigrid o la base (R11, R40) | 503 |
+| Sigrid o la base (R11, R40; F-071 R25: también las ubicaciones) | 503 |
 | importada (R43), parcial con errores (R33, R65) o ya importada (R39) | 200 |
 
 Ni un dato real; ningún GUID literal (`UUID(int=n)`).
@@ -52,7 +53,7 @@ from domain.models.errores import (
     PeticionDeImportacionInvalida,
 )
 from domain.models.importacion import (
-    UNIDAD_FUERA_DE_LISTA,
+    ya_no_esta_en_sigrid,
     ErrorDeFila,
     EstadoFilaImportada,
     EstadoImportacion,
@@ -89,6 +90,7 @@ from tests.utiles_importacion import (
     EquivalenciasEnMemoria,
     GeneradorQueAnota,
     LectorQueAnota,
+    UbicacionesEnMemoria,
     fichero,
     fila,
 )
@@ -101,7 +103,10 @@ OID = "oid-inventado-de-quien-sube"
 NOMBRE = "incidencias de Fulanita de Tal.xlsx"
 DESCRIPCION = "Grieta en el tabique del salón"
 BUENA = fila(unidad=VILLA_1, ubicacion="Almacén", descripcion=DESCRIPCION)
-MALA = fila(unidad="viviendas bloque villa 2", descripcion="Puerta que no cierra")
+#: F-071 R36: la unidad en minúsculas (la mala de F-036) ya casa con su opción;
+#: la mala es una unidad que no está en Sigrid (R37).
+UNIDAD_FUERA = "Viviendas Bloque Villa 9"
+MALA = fila(unidad=UNIDAD_FUERA, descripcion="Puerta que no cierra")
 
 #: Las claves de la respuesta 200 (R43), sin `excel_errores`.
 CLAVES = {
@@ -140,7 +145,9 @@ class Dobles:
         self.bandeja = BandejaEnMemoria(self.llamadas)
         self.lector = LectorQueAnota(self.llamadas)
         self.catalogo = CatalogoEnMemoria(self.llamadas)
+        # F-071 R24: las decisiones siguen en la base, pero no se pasan ni se leen.
         self.equivalencias = EquivalenciasEnMemoria(self.llamadas, decisiones)
+        self.ubicaciones = UbicacionesEnMemoria(self.llamadas)
         self.generador = GeneradorQueAnota(self.llamadas)
         self._ids = itertools.count(1)
 
@@ -149,7 +156,7 @@ class Dobles:
             "bandeja": self.bandeja,
             "lector": self.lector,
             "catalogo_obra": self.catalogo,
-            "equivalencias": self.equivalencias,
+            "ubicaciones": self.ubicaciones,  # F-071 R24 (antes, `equivalencias`)
             "generador": self.generador,
             "ahora": AHORA,
             "nuevo_id": lambda: UUID(int=next(self._ids)),
@@ -278,7 +285,7 @@ def test_f036_r33_la_importacion_parcial_es_200_con_errores_y_excel(monkeypatch)
         "avisos": [],
     }
     assert cuerpo["errores"] == [
-        {"fila": 3, "columna": "Unidad", "problema": UNIDAD_FUERA_DE_LISTA}
+        {"fila": 3, "columna": "Unidad", "problema": ya_no_esta_en_sigrid("Unidad")}
     ]
     assert cuerpo["total_errores"] == 1
 
@@ -291,7 +298,7 @@ def test_f036_r65_el_excel_de_errores_viaja_en_base64_con_su_nombre(monkeypatch)
     assert excel["nombre"] == "incidencias_0677_errores_20260930-0815.xlsx"
     contenido = base64.b64decode(excel["contenido_b64"], validate=True)
     hoja = abrir(contenido)[HOJA_INCIDENCIAS]
-    assert hoja["A2"].value == "viviendas bloque villa 2"
+    assert hoja["A2"].value == UNIDAD_FUERA  # F-071 R36, R37
     assert hoja["A3"].value is None
 
 
@@ -349,17 +356,19 @@ def test_f036_r34_los_avisos_viajan_con_su_fila(monkeypatch):
     assert "Urgencia" in fila_["avisos"][0] or "urgencia" in fila_["avisos"][0]
 
 
-def test_f036_r93_el_oficio_ambiguo_se_avisa(monkeypatch):
+def test_f036_r93_con_un_grupo_guardado_el_oficio_entra_sin_aviso(monkeypatch):
+    """F-071 R12, R35 (antes: el oficio del grupo entraba ambiguo y con aviso)."""
     decisiones = (mismo("0085", "0166"),)
     dobles = Dobles(decisiones=decisiones)
-    con_grupo = fila(unidad=VILLA_1, descripcion="Mampara rota", oficio="Mamparas")
+    con_grupo = fila(unidad=VILLA_1, descripcion="Mampara rota", oficio="Mamparas (0085)")
 
     cuerpo = _cuerpo(
         _subir(monkeypatch, dobles, fichero(con_grupo, decisiones=decisiones))
     )
 
     assert cuerpo["filas"][0]["estado"] == "nueva"
-    assert cuerpo["filas"][0]["avisos"]
+    assert cuerpo["filas"][0]["avisos"] == []
+    assert dobles.equivalencias.pedidas == []  # F-071 R24
 
 
 def test_f036_r39_el_mismo_fichero_completo_responde_ya_importado(monkeypatch):
@@ -594,7 +603,7 @@ def test_f036_r15_justo_2_mib_se_abre():
 def _libro(**campos) -> LibroLeido:
     base = {
         "identificador": IDENTIFICADOR_PLANTILLA,
-        "version": 1,
+        "version": 2,  # F-071 R22: la versión vigente (antes, 1)
         "obra_codigo": "0677",
         "cabecera": CABECERA,
         "filas": (),
@@ -635,7 +644,9 @@ def test_f036_r16_un_fichero_que_no_es_xlsx_es_400_con_su_codigo(
             "formato_antiguo",
             "formato antiguo",
         ),
-        (_libro(version=2), "version_no_soportada", "versión"),
+        # F-071 R23: una distinta de 1 y 2 (antes, `version=2`); la v1 tiene
+        # su propio caso, `version_anterior`, en `test_f071_http.py`.
+        (_libro(version=3), "version_no_soportada", "versión"),
         (
             _libro(cabecera=("Unidad", "Descripción corta")),
             "cabecera_distinta",
@@ -718,10 +729,8 @@ def test_f036_t18_la_obra_de_la_plantilla_que_no_cuadra_es_409(
     [
         ("catalogo", CatalogoNoDisponible("la pasarela no responde")),
         ("catalogo", ConfiguracionSigridIncompleta("falta SIGRID_API_BASE_URL")),
-        (
-            "equivalencias",
-            PersistenciaNoDisponible("ultimas_decisiones: OperationalError"),
-        ),
+        # F-071 R25 (antes, la base de las decisiones caída: ya no se lee, R24).
+        ("ubicaciones", CatalogoNoDisponible("la pasarela no responde")),
         (
             "bandeja",
             PersistenciaNoDisponible("registrar_importacion: OperationalError"),
@@ -736,8 +745,8 @@ def test_f036_r11_r40_sin_sigrid_o_sin_base_es_503_sin_excel(monkeypatch, donde,
     dobles = Dobles()
     if donde == "catalogo":
         dobles.catalogo = CatalogoEnMemoria(dobles.llamadas, fallo=fallo)
-    elif donde == "equivalencias":
-        dobles.equivalencias = EquivalenciasEnMemoria(dobles.llamadas, fallo=fallo)
+    elif donde == "ubicaciones":
+        dobles.ubicaciones = UbicacionesEnMemoria(dobles.llamadas, fallo=fallo)
     elif donde == "bandeja":
         dobles.bandeja = BandejaEnMemoria(dobles.llamadas, fallo_al_registrar=fallo)
     else:
@@ -806,16 +815,18 @@ def test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad(monkeypatch
     )
     monkeypatch.setattr(
         modulo,
-        "construir_equivalencias",
-        fabrica("equivalencias", dobles.equivalencias),
+        "construir_fuente_de_ubicaciones",
+        fabrica("ubicaciones", dobles.ubicaciones),
     )
 
     cuerpo = importar_excel([(NOMBRE, fichero(BUENA, MALA))], OID)
 
-    assert vistos == [
+    # F-071 R24: la fuente de ubicaciones, después del catálogo (antes,
+    # `construir_equivalencias`).
+    assert vistos[:3] == [
         ("bandeja", AJUSTES),
         ("catalogo", AJUSTES),
-        ("equivalencias", AJUSTES),
+        ("ubicaciones", AJUSTES),
     ]
     assert cuerpo["estado"] == "parcial"
     assert "excel_errores" in cuerpo
@@ -837,7 +848,8 @@ def test_f036_r21_sin_puertos_un_fichero_que_no_es_la_plantilla_no_construye_sig
     monkeypatch.setattr(modulo, "obtener_ajustes", lambda: AJUSTES)
     monkeypatch.setattr(modulo, "construir_bandeja", lambda ajustes: dobles.bandeja)
     monkeypatch.setattr(modulo, "construir_catalogo_obra", prohibido)
-    monkeypatch.setattr(modulo, "construir_equivalencias", prohibido)
+    # F-071 R24 (antes, `construir_equivalencias`).
+    monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", prohibido)
 
     from domain.models.errores import FicheroNoEsPlantilla
 
@@ -857,7 +869,8 @@ def test_f036_r39_sin_puertos_el_atajo_no_construye_sigrid(monkeypatch):
     monkeypatch.setattr(modulo, "obtener_ajustes", lambda: AJUSTES)
     monkeypatch.setattr(modulo, "construir_bandeja", lambda ajustes: dobles.bandeja)
     monkeypatch.setattr(modulo, "construir_catalogo_obra", prohibido)
-    monkeypatch.setattr(modulo, "construir_equivalencias", prohibido)
+    # F-071 R24 (antes, `construir_equivalencias`).
+    monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", prohibido)
 
     cuerpo = importar_excel([(NOMBRE, contenido)], OID)
 
@@ -871,7 +884,7 @@ def test_f036_t18_con_la_peticion_mal_no_se_construye_nada(monkeypatch):
     for nombre in (
         "construir_bandeja",
         "construir_catalogo_obra",
-        "construir_equivalencias",
+        "construir_fuente_de_ubicaciones",  # F-071 R24 (antes, `construir_equivalencias`)
     ):
         monkeypatch.setattr(modulo, nombre, prohibido)
 

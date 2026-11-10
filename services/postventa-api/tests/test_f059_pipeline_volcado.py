@@ -75,6 +75,7 @@ from domain.models.volcado import (
     parte_de,
     referencia_de,
 )
+from domain.ports.catalogo_obra import LecturaCatalogo
 from domain.ports.volcado import FamiliaDeRespuesta
 
 from tests.utiles_revision import (
@@ -142,6 +143,15 @@ def ID(n: int) -> UUID:
 # --------------------------------------------------------------------------
 
 
+class SinReclamacionesEnSigrid:
+    """El lector de la guarda de F-065 (R44), vacío: ninguna reclamación en
+    Sigrid, así que el ensayo de F-059 sigue probando lo mismo (§15.6 de F-065).
+    No anota nada en `llamadas`: las secuencias de F-059 no cambian."""
+
+    def leer(self, *, codigo_obra: str, tip: int, unidades: Any = None) -> LecturaCatalogo:
+        return LecturaCatalogo((), False)
+
+
 class Mundo:
     def __init__(self, *ns: int, **por_incidencia: dict[str, Any]) -> None:
         self.llamadas: list[str] = []
@@ -171,6 +181,8 @@ class Mundo:
         return pipeline.ensayar(
             PeticionDeEnsayo(obra_codigo=obra, quien=quien, incidencias=tuple(ID(n) for n in ns)),
             ahora=ahora,
+            reclamaciones=SinReclamacionesEnSigrid(),
+            tip=708,
             **self.puertos(),
         )
 

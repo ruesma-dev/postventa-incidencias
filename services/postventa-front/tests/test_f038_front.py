@@ -69,7 +69,10 @@ MIGAS_DE_BANDEJA = (("index.html", "Portal de posventa"), ("./#/bandeja", "Bande
 PIE_DE_BANDEJA = "Construcciones Ruesma · Posventa · bandeja de revisión."
 
 #: Los scripts propios de la página, en orden de dependencia (R1, R15).
-SCRIPTS_DE_BANDEJA = ["js/config.js", "js/traza.js", "js/api.js", "js/revision.js"]
+# Enmienda del 2026-10-31 · F-040 T2: eran cuatro; el panel de volcado añade
+# `js/volcado.js`, el último (compone su panel sobre `appRevision`, `design.md`
+# §3.3 y §5 de F-040). Los cuatro de antes, en el mismo orden.
+SCRIPTS_DE_BANDEJA = ["js/config.js", "js/traza.js", "js/api.js", "js/revision.js", "js/volcado.js"]
 
 #: La frase de la cabecera (`design.md` §2.2, punto 1).
 FRASE_DE_LA_CABECERA = (
@@ -420,7 +423,12 @@ def test_f038_r10_control_la_confirmacion_en_el_html_salta():
     assert "confirmado" in _sin_comentarios_html(copia)
 
 
-_FILTROS_DEL_PANEL = re.compile(r"^(?:obra|filtros\.\w+)$")
+# Enmienda del 2026-10-31 · F-040 T2: el panel de volcado trae dos campos que
+# no son de la revisión de una fila —la casilla de lo que choca y el número
+# tecleado para confirmar el volcado (R52, R62 de F-040)—; tienen su propia
+# puerta, que prueba `tests/test_f040_front.py`. Se nombran uno a uno, no
+# `volcado.*`: un campo nuevo cualquiera sigue saltando.
+_FILTROS_DEL_PANEL = re.compile(r"^(?:obra|filtros\.\w+|volcado\.incluidas\[fila\.incidencia_id\]|volcado\.tecleado)$")
 
 
 def campos_fuera_de_su_puerta(html: str) -> list[str]:
@@ -514,12 +522,19 @@ def test_f038_r13_un_solo_beforeunload_que_solo_lee():
 
 
 def problemas_r14(html: str) -> list[str]:
-    """El enlace de la bandeja de `importar.html` a `bandeja.html` (R14). Vacío = correcto."""
+    """El enlace de la bandeja de `importar.html` a `bandeja.html` (R14). Vacío = correcto.
+
+    F-040 T6a (decisión del humano, 2026-11-04): la pestaña «Bandeja de
+    revisión» de la barra y los pasos 02 y 03 de la tira también llevan a
+    `bandeja.html`; los vigilan R70 y R85 de F-035 y no cuentan aquí. Fuera de
+    la barra y de la tira, sigue habiendo un solo enlace.
+    """
     doc = leer_html_texto(html)
     enlaces = [
         e
         for e in doc.elementos()
-        if "bandeja.html" in e.atributos.get("href", "") or "bandeja.html" in e.atributos.get(":href", "")
+        if ("bandeja.html" in e.atributos.get("href", "") or "bandeja.html" in e.atributos.get(":href", ""))
+        and not any("data-barra-portal" in n.atributos or "data-recorrido" in n.atributos for n in e.ancestros())
     ]
     if len(enlaces) != 1:
         return [f"importar.html: {len(enlaces)} enlaces a bandeja.html; tiene que haber uno"]
@@ -554,8 +569,9 @@ def test_f038_r14_importar_enlaza_a_la_bandeja_de_su_obra_en_la_misma_pestana():
 @pytest.mark.parametrize(
     ("estropear", "senal"),
     [
-        (lambda h: re.sub(r'(<a href="bandeja\.html")', r'\1 target="_blank"', h, count=1), "misma pestaña"),
-        (lambda h: re.sub(r'<a href="bandeja\.html"', '<button type="button" href="bandeja.html"', h, count=1).replace(
+        # F-040 T6a: el primer `<a href="bandeja.html"` es ya la pestaña de la barra; el de R14 se busca por su :href.
+        (lambda h: re.sub(r'(<a href="bandeja\.html")( :href)', r'\1 target="_blank"\2', h, count=1), "misma pestaña"),
+        (lambda h: re.sub(r'<a href="bandeja\.html"( :href)', r'<button type="button" href="bandeja.html"\1', h, count=1).replace(
             f"{TEXTO_DEL_ENLACE_DE_IMPORTAR}</a>", f"{TEXTO_DEL_ENLACE_DE_IMPORTAR}</button>", 1), "no un <a>"),
         (lambda h: h.replace("<td x-text=\"fila.ubicacion || '—'\"></td>",
                              "<td x-text=\"fila.ubicacion || '—'\"></td><td><a href=\"bandeja.html\">x</a></td>", 1),

@@ -105,16 +105,23 @@
         <p class="rs-texto">
           Cargar solo lee: nada cambia hasta que pulses una acción en una incidencia.
         </p>
+        <!-- Enmienda del 2026-10-31 · F-040, review del Bloque 1 (C-B1-1): la
+             obra, los dos filtros y «Cargar» de F-038 quedan también deshabilitados
+             con el panel de volcado ocupado (volcadoOcupado(): una sincronización,
+             un ensayo o un volcado en marcha). Cambiar de obra a mitad de una
+             serie soltaba la serie: la guarda de salida dejaba de preguntar,
+             «Registrar» volvía a habilitarse y el resultado se perdía (R53, R55,
+             R56 de F-040). Sin serie en marcha, nada cambia para F-038. -->
         <div class="mt-4 flex flex-wrap items-end gap-3">
           <label class="flex w-40 flex-col gap-1">
             <span class="rs-campo__etiqueta">Código de obra</span>
-            <input type="text" x-model="obra" autocomplete="off"
+            <input type="text" x-model="obra" autocomplete="off" :disabled="volcadoOcupado()"
                    @keydown.enter.prevent="cargar()"
                    class="rs-campo">
           </label>
           <label class="flex flex-col gap-1">
             <span class="rs-campo__etiqueta">Estado</span>
-            <select x-model="filtros.estado" @change="cambiarFiltro()" class="rs-campo">
+            <select x-model="filtros.estado" @change="cambiarFiltro()" :disabled="volcadoOcupado()" class="rs-campo">
               <option value="activas">Activas (todo menos descartadas y volcadas)</option>
               <option value="todas">Todas</option>
               <option value="nueva">Nuevas</option>
@@ -126,10 +133,10 @@
             </select>
           </label>
           <label class="flex items-center gap-2 rs-texto">
-            <input type="checkbox" x-model="filtros.conMotivos" @change="cambiarFiltro()">
+            <input type="checkbox" x-model="filtros.conMotivos" @change="cambiarFiltro()" :disabled="volcadoOcupado()">
             Solo las que tienen algo que corregir
           </label>
-          <button type="button" @click="cargar()" :disabled="!obra.trim() || cargando"
+          <button type="button" @click="cargar()" :disabled="!obra.trim() || cargando || volcadoOcupado()"
                   class="rs-btn rs-btn--primario">Cargar</button>
           <span x-show="cargando" class="rs-nota">Leyendo la bandeja y Sigrid…</span>
         </div>
@@ -176,6 +183,302 @@
           </details>
         </section>
       </template>
+
+      <!-- ── F-040 · El panel de volcado a Sigrid (R50–R62) ─────────────────
+           Dentro del ÚNICO x-data de la página (appRevision, F-035 R70): su
+           estado vive en `volcado` y sus métodos los añade js/volcado.js
+           (Volcado.conPanel). Nada sale a la red sin un clic: al cargar la
+           obra solo se lee el panel (GET /api/volcado). El orden es fijo:
+           Registrar (mirar Sigrid), Ensayar, Volcar; y volcar pide un
+           segundo clic y teclear el número de partes. -->
+      <section id="volcado" x-show="consulta && obraCargada" class="rs-panel">
+        <h2 class="rs-rotulo">Volcado a Sigrid</h2>
+        <p class="mt-2 rs-nota">
+          Solo lo aprobado se vuelca. «Registrar» mira en Sigrid qué hay ya de esta obra y «Ensayar» comprueba qué se crearía:
+          ni lo uno ni lo otro crea nada. Solo «Volcar», con su confirmación, crea partes en Sigrid.
+        </p>
+
+        <p x-show="volcado.error" class="mt-3 rs-aviso rs-aviso--error" x-text="volcado.error"></p>
+
+        <template x-if="volcado.panel">
+          <dl class="mt-3 flex flex-wrap gap-x-8 gap-y-2 rs-texto">
+            <div>
+              <dt class="rs-campo__etiqueta">Aprobadas</dt>
+              <dd class="rs-texto--fuerte" x-text="volcado.panel.aprobadas"></dd>
+            </div>
+            <div>
+              <dt class="rs-campo__etiqueta">En duda</dt>
+              <dd class="rs-texto--fuerte" x-text="volcado.panel.enDuda"></dd>
+            </div>
+            <div>
+              <dt class="rs-campo__etiqueta">Ya volcadas</dt>
+              <dd class="rs-texto--fuerte" x-text="volcado.panel.volcadas"></dd>
+            </div>
+            <div>
+              <dt class="rs-campo__etiqueta">Para volcar</dt>
+              <dd class="rs-texto--fuerte" x-text="volcado.panel.texto"></dd>
+            </div>
+          </dl>
+        </template>
+
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button type="button" @click="registrar()" :disabled="!volcadoPuedeRegistrar()"
+                  class="rs-btn rs-btn--primario" x-text="volcadoTextoRegistrar()">Registrar</button>
+        </div>
+
+        <p x-show="volcado.parada" class="mt-3 rs-aviso rs-aviso--atencion" x-text="volcado.parada"></p>
+
+        <div x-show="volcado.enVuelo && volcado.progreso.m > 0" class="mt-3">
+          <p class="rs-nota" x-text="'Trozo ' + volcado.progreso.k + ' de ' + volcado.progreso.m"></p>
+          <div class="rs-progreso mt-2"><div class="rs-progreso__barra" :style="`width: ${volcado.progreso.m ? Math.round(100 * volcado.progreso.k / volcado.progreso.m) : 0}%`"></div></div>
+        </div>
+
+        <!-- R60, R61, R62 · Lo que dice Sigrid, en tres grupos. Lo que ya existe
+             no tiene ningún control; lo que choca, una casilla por incidencia
+             (y ninguna si el veredicto es desconocido). -->
+        <template x-if="volcado.grupos">
+          <div class="mt-4">
+            <h3 class="rs-rotulo">Lo que dice Sigrid</h3>
+
+            <details class="mt-3 rs-panel rs-panel--suave">
+              <summary class="rs-texto">
+                <span class="rs-chip rs-chip--ok" x-text="'Va: ' + volcado.grupos.totales.va"></span>
+                se creará en Sigrid si lo ensayas y lo vuelcas.
+              </summary>
+              <ul class="mt-2 flex flex-wrap gap-2">
+                <template x-for="cuenta in volcado.grupos.recuento.va" :key="cuenta.unidad_codigo">
+                  <li class="rs-chip rs-chip--neutro" x-text="cuenta.nombre + ': ' + cuenta.n"></li>
+                </template>
+              </ul>
+              <ul class="mt-2 space-y-1">
+                <template x-for="fila in volcado.grupos.va" :key="fila.incidencia_id">
+                  <li class="rs-texto">
+                    <span class="rs-texto--fuerte" x-text="fila.unidadNombre"></span>
+                    <span x-text="fila.descripcion || 'sin descripción'"></span>
+                    <span x-show="fila.seEnlaza" class="rs-chip rs-chip--info" x-text="fila.marca"></span>
+                  </li>
+                </template>
+              </ul>
+            </details>
+
+            <details class="mt-3 rs-panel rs-panel--suave">
+              <summary class="rs-texto">
+                <span class="rs-chip rs-chip--neutro" x-text="'Ya existe: ' + volcado.grupos.totales.ya_existe"></span>
+                ya está en Sigrid: no se manda.
+              </summary>
+              <ul class="mt-2 flex flex-wrap gap-2">
+                <template x-for="cuenta in volcado.grupos.recuento.ya_existe" :key="cuenta.unidad_codigo">
+                  <li class="rs-chip rs-chip--neutro" x-text="cuenta.nombre + ': ' + cuenta.n"></li>
+                </template>
+              </ul>
+              <ul class="mt-2 space-y-1">
+                <template x-for="fila in volcado.grupos.ya_existe" :key="fila.incidencia_id">
+                  <li class="rs-texto">
+                    <span class="rs-texto--fuerte" x-text="fila.unidadNombre"></span>
+                    <span x-text="fila.descripcion || 'sin descripción'"></span>
+                    <span class="rs-chip rs-chip--neutro" x-text="fila.sigrid_cods.join(', ')"></span>
+                  </li>
+                </template>
+              </ul>
+            </details>
+
+            <div class="mt-3 rs-panel rs-panel--atencion">
+              <p class="rs-texto">
+                <span class="rs-chip rs-chip--atencion" x-text="'Choca: ' + volcado.grupos.totales.choca"></span>
+                se parece a algo que ya hay en Sigrid. Míralo: solo se manda lo que marques.
+              </p>
+              <ul class="mt-2 flex flex-wrap gap-2">
+                <template x-for="cuenta in volcado.grupos.recuento.choca" :key="cuenta.unidad_codigo">
+                  <li class="rs-chip rs-chip--neutro" x-text="cuenta.nombre + ': ' + cuenta.n"></li>
+                </template>
+              </ul>
+              <ul class="mt-2 space-y-1">
+                <template x-for="fila in volcado.grupos.choca" :key="fila.incidencia_id">
+                  <li class="mt-2 rs-texto">
+                    <p>
+                      <span class="rs-texto--fuerte" x-text="fila.unidadNombre"></span>
+                      <span x-text="fila.descripcion || 'sin descripción'"></span>
+                      <span x-show="fila.ubicacion" class="rs-nota" x-text="fila.ubicacion"></span>
+                    </p>
+                    <ul class="mt-1 space-y-1">
+                      <template x-for="reclamacion in fila.reclamaciones" :key="reclamacion.cod">
+                        <li class="rs-nota">
+                          <span class="rs-texto--fuerte" x-text="reclamacion.cod"></span>
+                          <span x-text="reclamacion.unidadNombre || ''"></span>
+                          <span x-text="reclamacion.oficio_nombre || ''"></span>
+                          <span x-text="reclamacion.descripcion || ''"></span>
+                          <span class="rs-chip rs-chip--neutro" x-text="reclamacion.porqueTexto"></span>
+                        </li>
+                      </template>
+                    </ul>
+                    <template x-if="fila.incluible">
+                      <label class="mt-1 rs-campo">
+                        <input type="checkbox" x-model="volcado.incluidas[fila.incidencia_id]"
+                               :disabled="volcado.fase !== 'sincronizado' || volcado.enVuelo">
+                        <span class="rs-texto" x-text="fila.textoInclusion"></span>
+                      </label>
+                    </template>
+                    <p x-show="!fila.incluible" class="mt-1 rs-nota rs-nota--atencion">Sigrid ha dado un veredicto que esta página no conoce: no se puede incluir.</p>
+                  </li>
+                </template>
+              </ul>
+            </div>
+
+            <p x-show="volcado.grupos.sinSincronizar.length" class="mt-3 rs-aviso rs-aviso--atencion"
+               x-text="volcado.grupos.sinSincronizar.length + ' aprobada(s) no salen en lo que ha mirado Sigrid: no se ensayan. Vuelve a registrar.'"></p>
+
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button type="button" @click="ensayar()" :disabled="!volcadoPuedeEnsayar()"
+                      class="rs-btn rs-btn--secundario">Ensayar</button>
+            </div>
+          </div>
+        </template>
+
+        <!-- R51, R52, R62 · Lo que se crearía, sin crear nada. -->
+        <template x-if="volcado.vistaEnsayo">
+          <div class="mt-4">
+            <h3 class="rs-rotulo">El ensayo: lo que se crearía</h3>
+            <ul class="mt-2 flex flex-wrap gap-2">
+              <li class="rs-chip rs-chip--ok" x-text="'Se crearían: ' + volcado.vistaEnsayo.resumen.previstos"></li>
+              <li class="rs-chip rs-chip--neutro" x-text="'Ya creados: ' + volcado.vistaEnsayo.resumen.idempotentes"></li>
+              <li class="rs-chip rs-chip--atencion" x-text="'Rechazados: ' + volcado.vistaEnsayo.resumen.rechazados"></li>
+              <li class="rs-chip rs-chip--atencion" x-text="'Sin procesar: ' + volcado.vistaEnsayo.resumen.no_procesados"></li>
+              <li class="rs-chip rs-chip--neutro" x-text="'Excluidas: ' + volcado.vistaEnsayo.resumen.excluidas"></li>
+            </ul>
+            <p x-show="volcadoCuentaAtras()" class="mt-2 rs-nota rs-nota--info"
+               x-text="'El ensayo caduca en ' + volcadoCuentaAtras()"></p>
+            <div class="mt-3 rs-desplazable">
+              <table class="rs-tabla">
+                <thead>
+                  <tr>
+                    <th>Unidad</th>
+                    <th>Oficio</th>
+                    <th>Proveedor</th>
+                    <th>Ubicación</th>
+                    <th>Descripción</th>
+                    <th>Tipo</th>
+                    <th>Qué pasaría</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="fila in volcado.vistaEnsayo.filas" :key="fila.incidencia_id">
+                    <tr>
+                      <td x-text="fila.unidad"></td>
+                      <td x-text="fila.oficio"></td>
+                      <td x-text="fila.proveedor"></td>
+                      <td x-text="fila.ubicacion"></td>
+                      <td x-text="fila.descripcion"></td>
+                      <td x-text="fila.tipo"></td>
+                      <td>
+                        <span class="rs-chip rs-chip--neutro" x-text="fila.etiqueta"></span>
+                        <span x-show="fila.sigrid_cod" x-text="fila.sigrid_cod"></span>
+                        <span x-show="fila.motivo" class="rs-nota" x-text="fila.motivo"></span>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <ul x-show="volcado.vistaEnsayo.excluidas.length" class="mt-3 space-y-1">
+              <template x-for="excluida in volcado.vistaEnsayo.excluidas" :key="excluida.incidencia_id">
+                <li class="rs-nota">
+                  <span class="rs-texto--fuerte" x-text="volcadoNombre(excluida.incidencia_id)"></span>
+                  <span x-text="excluida.texto"></span>
+                  <span x-show="excluida.sigrid_cod" x-text="excluida.sigrid_cod"></span>
+                </li>
+              </template>
+            </ul>
+            <template x-if="volcado.guarda && volcado.guarda.hayCambios">
+              <div class="mt-3 rs-aviso rs-aviso--atencion">
+                <p>Algo ha cambiado en Sigrid desde que registraste: esto no se manda. Vuelve a registrar.</p>
+                <ul class="mt-2 space-y-1">
+                  <template x-for="excluida in volcado.guarda.excluidas" :key="excluida.incidencia_id">
+                    <li x-show="excluida.cambio" class="rs-nota">
+                      <span class="rs-texto--fuerte" x-text="volcadoNombre(excluida.incidencia_id)"></span>
+                      <span x-text="excluida.texto"></span>
+                      <span x-text="excluida.sigrid_cod"></span>
+                    </li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <!-- R52 · Volcar: el primer clic abre la confirmación; el segundo, con
+             el número de partes tecleado, escribe en Sigrid. -->
+        <template x-if="volcado.ensayos.length && volcado.vistaEnsayo">
+          <div class="mt-4">
+            <div class="flex flex-wrap gap-2">
+              <button type="button" @click="pedirVolcado()" :disabled="!volcadoPuedeVolcar() || volcado.confirmando"
+                      class="rs-btn rs-btn--peligro" x-text="'Volcar ' + volcado.vistaEnsayo.n + ' partes'">Volcar</button>
+            </div>
+            <template x-if="volcado.confirmando">
+              <div class="mt-3 rs-panel rs-panel--atencion">
+                <p class="rs-texto--fuerte" x-text="volcadoConfirmacion()"></p>
+                <label class="mt-2 rs-campo">
+                  <span class="rs-campo__etiqueta">Número de partes</span>
+                  <input type="text" inputmode="numeric" autocomplete="off" x-model="volcado.tecleado">
+                </label>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" @click="volcar()" :disabled="!volcadoPuedeVolcar() || !volcadoConfirmacionValida()"
+                          class="rs-btn rs-btn--peligro">Volcar en Sigrid</button>
+                  <button type="button" @click="cancelarVolcado()" :disabled="volcado.enVuelo"
+                          class="rs-btn rs-btn--texto">No volcar</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <!-- R53, R59 · Lo que ha pasado. -->
+        <template x-if="volcado.resultado">
+          <div class="mt-4">
+            <h3 class="rs-rotulo">Resultado del volcado</h3>
+            <ul class="mt-2 flex flex-wrap gap-2">
+              <li class="rs-chip rs-chip--ok" x-text="'Creados: ' + volcado.resultado.resumen.creados"></li>
+              <li class="rs-chip rs-chip--neutro" x-text="'Ya estaban: ' + volcado.resultado.resumen.idempotentes"></li>
+              <li class="rs-chip rs-chip--atencion" x-text="'Rechazados: ' + volcado.resultado.resumen.rechazados"></li>
+              <li class="rs-chip rs-chip--atencion" x-text="'Sin procesar: ' + volcado.resultado.resumen.no_procesados"></li>
+              <li class="rs-chip rs-chip--atencion" x-text="'En duda: ' + volcado.resultado.resumen.en_duda"></li>
+              <li class="rs-chip rs-chip--neutro" x-text="'Excluidas: ' + volcado.resultado.resumen.excluidas"></li>
+              <li class="rs-chip rs-chip--neutro" x-text="'Sin volcar: ' + volcado.resultado.resumen.sin_mandar"></li>
+            </ul>
+            <p x-show="volcado.aviso" class="mt-3 rs-aviso rs-aviso--info" x-text="volcado.aviso"></p>
+            <ul class="mt-3 space-y-1">
+              <template x-for="hecho in volcado.resultado.creados" :key="hecho.incidencia_id">
+                <li class="rs-texto"><span x-text="volcadoNombre(hecho.incidencia_id)"></span> · <span class="rs-texto--fuerte" x-text="hecho.sigrid_cod"></span></li>
+              </template>
+              <template x-for="hecho in volcado.resultado.yaCreados" :key="hecho.incidencia_id">
+                <li class="rs-texto"><span x-text="volcadoNombre(hecho.incidencia_id)"></span> · ya estaba: <span x-text="hecho.sigrid_cod"></span></li>
+              </template>
+              <template x-for="hecho in volcado.resultado.rechazados" :key="hecho.incidencia_id">
+                <li class="rs-nota rs-nota--atencion"><span x-text="volcadoNombre(hecho.incidencia_id)"></span> · rechazado: <span x-text="hecho.texto"></span></li>
+              </template>
+              <template x-for="hecho in volcado.resultado.noProcesados" :key="hecho.incidencia_id">
+                <li class="rs-nota rs-nota--atencion"><span x-text="volcadoNombre(hecho.incidencia_id)"></span> · sin procesar: <span x-text="hecho.texto"></span></li>
+              </template>
+              <template x-for="hecho in volcado.resultado.excluidas" :key="hecho.incidencia_id">
+                <li class="rs-nota"><span x-text="volcadoNombre(hecho.incidencia_id)"></span> · <span x-text="hecho.texto"></span></li>
+              </template>
+              <template x-for="id in volcado.resultado.enDuda" :key="id">
+                <li class="rs-nota rs-nota--atencion"><span x-text="volcadoNombre(id)"></span> · en duda: vuelve a registrar y a volcar para aclararlo, no duplica.</li>
+              </template>
+              <template x-for="id in volcado.resultado.sinMandar" :key="id">
+                <li class="rs-nota"><span x-text="volcadoNombre(id)"></span> · sin volcar.</li>
+              </template>
+            </ul>
+            <ul x-show="volcado.resultado.avisos.length" class="mt-3 space-y-1">
+              <template x-for="aviso in volcado.resultado.avisos" :key="aviso.incidencia_id">
+                <li class="rs-nota rs-nota--atencion">
+                  Posible duplicado: <span x-text="volcadoNombre(aviso.incidencia_id)"></span> ya se creó antes como
+                  <span x-text="aviso.sigrid_cod_anterior"></span> y ahora como <span x-text="aviso.sigrid_cod"></span>.
+                </li>
+              </template>
+            </ul>
+          </div>
+        </template>
+      </section>
 
       <!-- ── La lista (R4) y «Cargar más» (R7) ────────────────────────────
            Una fila por incidencia; el detalle se abre en su sitio (no es un
@@ -414,7 +717,10 @@
   </div>
 
   <!-- R13 · La guarda de salida de ESTA página (D-12): con un formulario con
-       cambios sin guardar, salir pide confirmación; sin cambios, nada. Solo
+       cambios sin guardar, salir pide confirmación; sin cambios, nada.
+       F-040 R55 la amplía (la misma, no otra): también pregunta con una serie
+       de ensayos o de volcados en marcha (Volcado.hayVolcadoEnMarcha); sin el
+       módulo del panel, solo mira la edición. Solo
        lee el estado del componente (Alpine.$data y
        Revision.hayEdicionSinGuardar); si no puede leerlo, no pregunta. No
        reutiliza la guarda de salida del circuito, que está cerrada (R81 de
@@ -426,7 +732,8 @@
         var raiz = document.querySelector('[x-data="appRevision()"]');
         preguntar = Boolean(
           raiz && window.Alpine && window.Revision &&
-          window.Revision.hayEdicionSinGuardar(window.Alpine.$data(raiz))
+          (window.Revision.hayEdicionSinGuardar(window.Alpine.$data(raiz)) ||
+            Boolean(window.Volcado && window.Volcado.hayVolcadoEnMarcha(window.Alpine.$data(raiz))))
         );
       } catch (error) {
         preguntar = false;
@@ -441,5 +748,6 @@
   <script src="js/traza.js"></script>
   <script src="js/api.js"></script>
   <script src="js/revision.js"></script>
+  <script src="js/volcado.js"></script>
 </body>
 </html>

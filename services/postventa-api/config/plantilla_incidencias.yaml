@@ -1,125 +1,14 @@
 # services/postventa-api/config/plantilla_incidencias.yaml
 #
-# Listas cerradas y textos de la plantilla de incidencias (F-036, design.md 3.4).
+# Listas cerradas y textos de la plantilla de incidencias (F-036, design.md 3.4;
+# F-071, design.md 7.3).
 # Lo carga y valida infrastructure/documentos/plantilla_yaml.py al arrancar.
 #
 # SIN nombres de proveedor ni de persona: este fichero va en git.
 #
-# UBICACIONES (D-3). Salen de las 44 rcp.resubi distintas de la obra 0677
-# medidas en T2 el 2026-09-29 (progress/explore_F-036.md). Cada entrada dice en
-# `origen` de que valores medidos sale; las que no salen de ninguno llevan
-# `revisar` con el motivo y las tiene que revisar el humano. Normalizar es:
-# mayuscula inicial, tildes, variantes del mismo sitio unidas y abreviaturas
-# desplegadas. La tabla "original -> normalizada" esta en progress/impl_F-036.md.
-# Las añadidas en T25 (Baño del dormitorio N, Pasillo, Terraza) las decidió el
-# humano al revisar la migración (progress/current.md).
-# El orden es el del desplegable.
-
-ubicaciones:
-  - etiqueta: General (toda la unidad)
-    origen: []
-    revisar: "Añadida en T6: la muestra usa GENERALES para defectos de toda la vivienda y ninguna medida lo cubre."
-  - etiqueta: Almacén
-    origen: [almacén]
-  - etiqueta: Ascensor
-    origen: [ascensor]
-  - etiqueta: Aseo
-    origen: [aseo]
-  - etiqueta: Baño 1
-    origen: [baño 1]
-  - etiqueta: Baño 2
-    origen: [baño 2]
-  - etiqueta: Baño 3
-    origen: [baño 3, bao 3]
-  - etiqueta: Baño 4
-    origen: [baño 4]
-  - etiqueta: Baño 5
-    origen: [baño 5]
-  - etiqueta: Baño 6
-    origen: [baño 6]
-  - etiqueta: Baño 7
-    origen: [baño 7]
-  - etiqueta: Baño del dormitorio 1
-    origen: []
-    revisar: "Añadida en T25 por decisión del humano: la muestra separa el baño de cada dormitorio (DORMITORIO N BAÑO) y ninguna medida dice qué Baño N es."
-  - etiqueta: Baño del dormitorio 2
-    origen: []
-    revisar: "Añadida en T25 por decisión del humano: la muestra separa el baño de cada dormitorio (DORMITORIO N BAÑO) y ninguna medida dice qué Baño N es."
-  - etiqueta: Baño del dormitorio 3
-    origen: []
-    revisar: "Añadida en T25 por decisión del humano: la muestra separa el baño de cada dormitorio (DORMITORIO N BAÑO) y ninguna medida dice qué Baño N es."
-  - etiqueta: Baño del dormitorio 4
-    origen: []
-    revisar: "Añadida en T25 por decisión del humano: la muestra separa el baño de cada dormitorio (DORMITORIO N BAÑO) y ninguna medida dice qué Baño N es."
-  - etiqueta: Cocina
-    origen: [cocina]
-  - etiqueta: Comedor
-    origen: [comedor]
-  - etiqueta: Cuarto de instalaciones
-    origen: [cuarto instalaciones]
-  - etiqueta: Cuarto de plancha
-    origen: [Cuarto de plancha, cuarto plancha]
-  - etiqueta: Despacho
-    origen: [despacho]
-  - etiqueta: Distribuidor planta 1
-    origen: [distribuidor p. 1]
-  - etiqueta: Distribuidor planta baja
-    origen: [distribuidor p. baja]
-  - etiqueta: Dormitorio 1
-    origen: [dormitorio 1]
-  - etiqueta: Dormitorio 2
-    origen: [dormitorio 2]
-  - etiqueta: Dormitorio 3
-    origen: [dormitorio 3]
-  - etiqueta: Dormitorio 4
-    origen: [dormitorio 4]
-  - etiqueta: Escalera
-    origen: [escalera]
-  - etiqueta: Garaje
-    origen: [Garaje]
-  - etiqueta: Jardín
-    origen: [jardín]
-  - etiqueta: Lavandería
-    origen: [lavandería, lavanderçia/tendedero]
-  - etiqueta: Office
-    origen: [office]
-  - etiqueta: Pasillo
-    origen: []
-    revisar: "Añadida en T25 por decisión del humano: la muestra usa PASILLO y ninguna medida lo cubre."
-  - etiqueta: Patio delantero
-    origen: [patio delantero]
-  - etiqueta: Patio trasero
-    origen: [patio trasero]
-  - etiqueta: Sala/estudio
-    origen: [sala/estudio]
-  - etiqueta: Salón
-    origen: [salón]
-  - etiqueta: Terraza
-    origen: []
-    revisar: "Añadida en T25 por decisión del humano: la muestra usa TERRAZA sin decir cuál; genérica, junto a las numeradas."
-  - etiqueta: Terraza 1
-    origen: [terraza 1]
-  - etiqueta: Terraza 3
-    origen: [terraza 3]
-  - etiqueta: Terraza 4
-    origen: [terraza 4]
-  - etiqueta: Terraza planta 2
-    origen: [terraza planta 2]
-  - etiqueta: Terraza de instalaciones
-    origen: [terraza instalaciones, terraza instaciones]
-  - etiqueta: Trastero
-    origen: [trastero]
-  - etiqueta: Vestidor 1
-    origen: [vestidor 1]
-  - etiqueta: Vestidor 3
-    origen: [vestidor 3]
-  - etiqueta: Vestíbulo planta baja
-    origen: [vestíbulo p. baja]
-  - etiqueta: Vestíbulo sótano
-    origen: [vestíbulo sótano]
-  - etiqueta: Otra (explicar en el detalle)
-    origen: []
-    revisar: "Añadida en T6: con una lista cerrada, quien rellena necesita una salida para un sitio que no está; sin ella elegiría uno cualquiera."
+# Las ubicaciones, los oficios y los proveedores no están aquí: salen de Sigrid
+# al descargar la plantilla (F-071). Urgencias y listados sí, porque Sigrid no
+# tiene catálogo de ellos que la bandeja use.
 
 # Los codigos tienen que ser los de los Enum del dominio (Urgencia, Listado).
 # Urgencia vacia = normal (D-4). Listado: sin traducir a tipo de Sigrid (D-5).
@@ -143,6 +32,8 @@ textos:
     - "Escribe una incidencia por fila: un solo defecto en cada fila. Si en un sitio hay dos defectos, usa dos filas."
     - "Elige la unidad en cada fila, aunque sea la misma que la de arriba: la unidad no se copia de la fila de arriba."
     - "Todo lo que tiene desplegable se elige del desplegable: no lo escribas ni lo pegues desde otro sitio, porque el valor tiene que ser exactamente el de la lista."
+    - "Los desplegables de unidad, ubicación, oficio y proveedor salen de Sigrid el día que descargas la plantilla."
+    - "La lista de «Ubicación» depende de la unidad de la fila: elige primero la unidad. Si cambias la unidad, vuelve a elegir la ubicación. Si el sitio no está en la lista, deja la ubicación en blanco y explícalo en «Detalle»."
     - "Las columnas obligatorias son «Unidad» y «Descripción corta». Las demás puedes dejarlas en blanco."
     - "En «Descripción corta» pon qué pasa y dónde, en pocas palabras (hasta 128 caracteres). Todo lo demás que quieras contar va en «Detalle»."
     - "El proveedor es opcional. En «Proveedor» solo salen los de esta obra, cada uno junto a su oficio; algunos oficios no tienen ninguno. Si no sabes quién es, déjalo en blanco."
@@ -157,16 +48,16 @@ textos:
   # Filas de ejemplo para la hoja «Instrucciones» (nunca en «Incidencias»).
   ejemplos:
     - Unidad: "Vivienda 1 (elígela de la lista)"
-      Ubicación: Cocina
+      Ubicación: "Estancia (elígela de la lista de su unidad)"
       Descripción corta: "La puerta del lavavajillas roza con el mueble de al lado"
       Oficio: "Mobiliario de cocina (elígelo de la lista)"
     - Unidad: "Vivienda 1 (elígela de la lista)"
-      Ubicación: Baño 2
+      Ubicación: "Estancia (elígela de la lista de su unidad)"
       Descripción corta: "La mampara de la ducha se mueve"
       Detalle: "La parte fija no está anclada a la pared y se mueve al tocarla."
       Urgencia: Peligro para la seguridad
     - Unidad: "Vivienda 2 (elígela de la lista)"
-      Ubicación: General (toda la unidad)
+      Ubicación: "Estancia (elígela de la lista de su unidad)"
       Descripción corta: "Mecanismos sueltos en varias habitaciones"
       Listado: Segundo listado
 
@@ -180,9 +71,9 @@ textos:
       error: "Ese valor no está en la lista. Elige la unidad del desplegable, sin escribirla."
     Ubicación:
       titulo_entrada: Ubicación
-      entrada: "Elige del desplegable dónde está el defecto. Si es de toda la vivienda, elige «General (toda la unidad)»."
+      entrada: "Elige primero la unidad: aquí salen solo las ubicaciones de esa unidad en Sigrid. Si cambias la unidad, vuelve a elegir la ubicación. Si el sitio no está, déjala en blanco y explícalo en «Detalle»."
       titulo_error: Ubicación no válida
-      error: "Ese valor no está en la lista. Elige la ubicación del desplegable, sin escribirla."
+      error: "Ese valor no es una ubicación de la unidad de esta fila. Elige primero la unidad y luego la ubicación del desplegable."
     Descripción corta:
       titulo_entrada: Descripción corta (obligatoria)
       entrada: "Qué pasa y dónde, en pocas palabras. Un solo defecto. Lo demás va en «Detalle»."
@@ -195,7 +86,7 @@ textos:
       error: "El detalle admite hasta 2000 caracteres."
     Oficio:
       titulo_entrada: Oficio
-      entrada: "Opcional. Elige del desplegable el oficio que tiene que arreglarlo. Si no lo sabes, déjalo en blanco."
+      entrada: "Opcional. Elige del desplegable el oficio que tiene que arreglarlo; cada uno lleva su código de Sigrid. Si no lo sabes, déjalo en blanco."
       titulo_error: Oficio no válido
       error: "Ese valor no está en la lista. Elige el oficio del desplegable, sin escribirlo."
     Proveedor:

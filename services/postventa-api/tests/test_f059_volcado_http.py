@@ -51,6 +51,7 @@ from domain.models.revision import (
 )
 from domain.models.situacion_volcado import EstadoEvento, ModoVolcado
 from domain.models.volcado import cuerpo_de_parte, parte_de, referencia_de
+from domain.ports.catalogo_obra import LecturaCatalogo
 from domain.ports.volcado import FamiliaDeRespuesta
 from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
 from infrastructure.sigrid import fabrica as fabrica_sigrid
@@ -119,7 +120,7 @@ SECRETOS_DE_LOG = (
     "Baño",
 )
 
-CLAVES_DEL_ENSAYO = {"ensayo_id", "obra", "caduca_at_utc", "resumen", "partes", "excluidas"}
+CLAVES_DEL_ENSAYO = {"ensayo_id", "obra", "caduca_at_utc", "resumen", "partes", "excluidas", "sigrid"}
 CLAVES_DE_PARTE_DEL_ENSAYO = {
     "incidencia_id",
     "revision_id",
@@ -150,6 +151,15 @@ def _completos(**cambios: str) -> Ajustes:
 # --------------------------------------------------------------------------
 # El mundo de la prueba, compuesto por las fábricas del borde
 # --------------------------------------------------------------------------
+
+
+class SinReclamacionesEnSigrid:
+    """El lector de la guarda de F-065 (R44), vacío: ninguna reclamación en
+    Sigrid, así que el ensayo de F-059 sigue probando lo mismo (§15.6 de F-065).
+    No anota nada en `llamadas`: las secuencias de F-059 no cambian."""
+
+    def leer(self, *, codigo_obra: str, tip: int, unidades: Any = None) -> LecturaCatalogo:
+        return LecturaCatalogo((), False)
 
 
 class Mundo:
@@ -183,6 +193,8 @@ def _componer(monkeypatch, mundo: Mundo) -> None:
     monkeypatch.setattr(modulo, "construir_revision", _fabrica(mundo, "revision", "revision"))
     monkeypatch.setattr(modulo, "construir_volcados", _fabrica(mundo, "volcados", "volcados"))
     monkeypatch.setattr(modulo, "construir_repositorio", _fabrica(mundo, "usuarios", "usuarios"))
+    # La guarda de F-065 (R44), vacía: sin anotarla en `construidos`.
+    monkeypatch.setattr(modulo, "construir_reclamaciones_obra", lambda _ajustes: SinReclamacionesEnSigrid())
     # La revisión de F-056, con la misma base (R4).
     monkeypatch.setattr(modulo_revision, "obtener_ajustes", lambda: object())
     monkeypatch.setattr(modulo_revision, "construir_revision", _fabrica(mundo, "revision", "revision"))

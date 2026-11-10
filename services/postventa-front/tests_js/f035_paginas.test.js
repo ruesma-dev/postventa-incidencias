@@ -129,13 +129,32 @@ function pestanasDeLaBarra(html) {
   return pestanas;
 }
 
+//: El `desde` de `enlaceSeccion` de cada página con barra (F-040 T6a: la
+//: marca depende de adónde lleva la pestaña, `Portal.marcadaEnConstruccion`).
+const DESDE_DE_PAGINA = {
+  "index.html": "portal",
+  "partes.html": "circuito",
+  "importar.html": "importar.html",
+  "oficios.html": "oficios.html",
+  "bandeja.html": "bandeja.html",
+};
+
 /**
  * Lo que la barra de ese HTML incumple de R66: lista vacía = correcto.
  * Cada sección de `Portal.SECCIONES` tiene que tener su pestaña; las que
  * están en `construccion` llevan `data-construccion` y su `aria-label`, y
  * ninguna otra lleva ninguno de los dos.
+ *
+ * F-040 T6a (decisión del humano, 2026-11-04), cambio a propósito: «en
+ * construcción» es `Portal.marcadaEnConstruccion(id, desde)`, no
+ * `enConstruccion(id)`. La única diferencia hoy: la pestaña de `bandeja`, que
+ * fuera de `bandeja.html` lleva a la página real y no a la maqueta, va sin
+ * marca; en `bandeja.html` (la actual, sin enlace) la sigue llevando (R2 de
+ * F-038).
  */
-function problemasR66(html, Portal) {
+function problemasR66(html, Portal, pagina) {
+  const desde = DESDE_DE_PAGINA[pagina];
+  assert.ok(desde, `página sin desde: ${pagina}`);
   const pestanas = pestanasDeLaBarra(html);
   const problemas = [];
   for (const seccion of Portal.SECCIONES) {
@@ -151,7 +170,7 @@ function problemasR66(html, Portal) {
     }
     const marcada = "data-construccion" in pestana.atributos;
     const etiquetaAccesible = pestana.atributos["aria-label"];
-    if (Portal.enConstruccion(seccion.id)) {
+    if (Portal.marcadaEnConstruccion(seccion.id, desde)) {
       if (!marcada) problemas.push(`«${seccion.etiqueta}» está en construcción y no lleva data-construccion`);
       if (etiquetaAccesible !== `${seccion.etiqueta} (en construcción)`) {
         problemas.push(`«${seccion.etiqueta}»: aria-label «${etiquetaAccesible}», no «${seccion.etiqueta} (en construcción)»`);
@@ -236,7 +255,7 @@ for (const pagina of PAGINAS_CON_BARRA) {
   test(`f035 R66: en la barra de ${pagina}, data-construccion y aria-label solo en las secciones en construcción`, () => {
     const Portal = portal();
 
-    assert.deepEqual(problemasR66(leer(pagina), Portal), []);
+    assert.deepEqual(problemasR66(leer(pagina), Portal, pagina), []);
   });
 }
 
@@ -261,7 +280,7 @@ test("f035 R66: control: quitar data-construccion de una pestaña de partes.html
   const estropeado = html.replace(/(<a\b[^>]*href="\.\/#\/impresion"[^>]*?)\s+data-construccion\b/, "$1");
 
   assert.notEqual(estropeado, html, "el control no encuentra data-construccion en la pestaña de impresion");
-  const problemas = problemasR66(estropeado, Portal);
+  const problemas = problemasR66(estropeado, Portal, "partes.html");
   assert.equal(problemas.length, 1, problemas.join("\n"));
   assert.match(problemas[0], /Impresión de partes.*data-construccion/);
 });
@@ -273,20 +292,21 @@ test("f035 R66: control: marcar una pestaña que funciona, o cambiar su aria-lab
   const entradaMarcada = html.replace(/<a href="#\/entrada"/, '<a href="#/entrada" data-construccion');
   assert.notEqual(entradaMarcada, html, "el control no encuentra la pestaña de entrada");
   assert.ok(
-    problemasR66(entradaMarcada, Portal).some((p) => p.startsWith("«Entrada» no está en construcción")),
+    problemasR66(entradaMarcada, Portal, "index.html").some((p) => p.startsWith("«Entrada» no está en construcción")),
     "una pestaña que funciona, marcada, tiene que saltar",
   );
 
   const otraEtiqueta = html.replace('aria-label="Coste y venta (en construcción)"', 'aria-label="Coste y venta"');
   assert.notEqual(otraEtiqueta, html, "el control no encuentra el aria-label de Coste y venta");
   assert.ok(
-    problemasR66(otraEtiqueta, Portal).some((p) => p.startsWith("«Coste y venta»: aria-label")),
+    problemasR66(otraEtiqueta, Portal, "index.html").some((p) => p.startsWith("«Coste y venta»: aria-label")),
     "un aria-label sin «(en construcción)» tiene que saltar",
   );
 });
 
 for (const [pagina, viejo, nuevo] of [
-  ["index.html", '<a href="#/bandeja"', '<a href="#/bandeja" :data-construccion="false"'],
+  // F-040 T6a: la pestaña de `bandeja` ya no va a `#/bandeja`; el control se muda a `impresion`.
+  ["index.html", '<a href="#/impresion"', '<a href="#/impresion" :data-construccion="false"'],
   ["index.html", '<a href="#/incidencias"', `<a href="#/incidencias" :aria-label="'Incidencias'"`],
   ["importar.html", '<a href="./#/datos"', '<a href="./#/datos" x-bind:data-construccion="false"'],
   ["importar.html", '<a href="./#/inicio"', `<a href="./#/inicio" x-bind:aria-label="'Inicio'"`],
@@ -299,7 +319,7 @@ for (const [pagina, viejo, nuevo] of [
 
     assert.notEqual(estropeado, html, `el control no encuentra ${viejo} en ${pagina}`);
     assert.ok(
-      problemasR66(estropeado, Portal).some((p) => p.includes("(H-7)")),
+      problemasR66(estropeado, Portal, pagina).some((p) => p.includes("(H-7)")),
       `${pagina}: la forma ligada de un atributo de R66 tiene que saltar`,
     );
   });
@@ -322,6 +342,9 @@ test("f035 R44: enlaceSeccion desde una página de PAGINAS: su sección es la ac
         assert.equal(enlace, null, `${pagina}: «${seccion.id}» es su sección, la actual`);
       } else if (seccion.id === "partes") {
         assert.deepEqual(enlace, { href: "partes.html", nuevaPestana: false }, `${pagina}: partes`);
+      } else if (seccion.id === "bandeja") {
+        // F-040 T6a (decisión del humano, 2026-11-04): a la página real, no a la maqueta.
+        assert.deepEqual(enlace, { href: "bandeja.html", nuevaPestana: false }, `${pagina}: bandeja`);
       } else {
         assert.deepEqual(enlace, { href: `./#/${seccion.id}`, nuevaPestana: false }, `${pagina}: ${seccion.id}`);
       }
@@ -335,7 +358,8 @@ test("f035 R44: enlaceSeccion desde importar.html y oficios.html: Entrada es la 
   for (const pagina of ["importar.html", "oficios.html"]) {
     assert.equal(enlaceSeccion("entrada", pagina), null, pagina);
     assert.deepEqual(enlaceSeccion("inicio", pagina), { href: "./#/inicio", nuevaPestana: false }, pagina);
-    assert.deepEqual(enlaceSeccion("bandeja", pagina), { href: "./#/bandeja", nuevaPestana: false }, pagina);
+    // F-040 T6a: la bandeja, a su página real.
+    assert.deepEqual(enlaceSeccion("bandeja", pagina), { href: "bandeja.html", nuevaPestana: false }, pagina);
     assert.deepEqual(enlaceSeccion("partes", pagina), { href: "partes.html", nuevaPestana: false }, pagina);
   }
 });
@@ -411,11 +435,13 @@ for (const pagina of PAGINAS_REALES_CON_BARRA) {
 //: `bandeja.html`, al revés. Los de las dos de entrada, como estaban.
 const CONTROLES_R70_POR_PAGINA = {
   "importar.html": [
-    ["un href distinto", '<a href="./#/bandeja"', '<a href="#/bandeja"', /va a «#\/bandeja»/],
+    // F-040 T6a: la pestaña de `bandeja` va a bandeja.html; volver a la maqueta salta.
+    ["un href distinto", '<a href="bandeja.html" class="rs-pestana"', '<a href="./#/bandeja" class="rs-pestana"', /va a «\.\/#\/bandeja», no a «bandeja\.html»/],
     ["la pestaña actual como enlace", '<span aria-current="page" class="rs-pestana">Entrada</span>', '<a href="./#/entrada" class="rs-pestana">Entrada</a>', /es la actual/],
   ],
   "oficios.html": [
-    ["un href distinto", '<a href="./#/bandeja"', '<a href="#/bandeja"', /va a «#\/bandeja»/],
+    // F-040 T6a: la pestaña de `bandeja` va a bandeja.html; volver a la maqueta salta.
+    ["un href distinto", '<a href="bandeja.html" class="rs-pestana"', '<a href="./#/bandeja" class="rs-pestana"', /va a «\.\/#\/bandeja», no a «bandeja\.html»/],
     ["la pestaña actual como enlace", '<span aria-current="page" class="rs-pestana">Entrada</span>', '<a href="./#/entrada" class="rs-pestana">Entrada</a>', /es la actual/],
   ],
   "bandeja.html": [

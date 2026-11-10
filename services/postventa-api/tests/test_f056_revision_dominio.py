@@ -141,7 +141,6 @@ UBICACIONES: dict[str, tuple[str, ...]] = {
     U3: (),
 }
 LISTAS = ListasCerradas(
-    ubicaciones=("Baño",),
     urgencias=(Opcion("Urgente", "urgente"), Opcion("Seguridad", "seguridad")),
     listados=(
         Opcion("Primer listado", "primero"),
@@ -893,7 +892,6 @@ def test_f056_r13_listado_no_valido(listado: object) -> None:
 
 def test_f056_r13_urgencia_y_listado_solo_los_que_se_ofrecen() -> None:
     corta = ListasCerradas(
-        ubicaciones=(),
         urgencias=(Opcion("Urgente", "urgente"),),
         listados=(Opcion("Primer listado", "primero"),),
     )

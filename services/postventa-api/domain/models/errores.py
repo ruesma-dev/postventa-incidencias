@@ -118,6 +118,11 @@ ERP de producción y se reparten igual: lo **mal pedido**
 → 503), lo que **no consta** (`EnsayoSinRespuesta`, `VolcadoSinRespuesta` →
 502) y lo que **está en Sigrid sin traza** (`VolcadoSinTraza` → 500).
 
+El de las **reclamaciones de Sigrid en la revisión** (F-065, `design.md` §4)
+es uno solo, `ReclamacionesSinVerificar` (→ 409): la lectura de toda la obra
+llegó al techo de la pasarela o vino `truncated`, y no se cruza nada a medias.
+Lleva el número de filas y nada de ninguna. Lo demás de esa ruta se reutiliza.
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
 """
@@ -1193,6 +1198,7 @@ CODIGOS_FICHERO_NO_ES_PLANTILLA: frozenset[str] = frozenset(
         "fichero_sospechoso",
         "no_es_la_plantilla",
         "formato_antiguo",
+        "version_anterior",  # F-071, R23: la plantilla v1
         "version_no_soportada",
         "cabecera_distinta",
         "demasiadas_filas",
@@ -1577,3 +1583,27 @@ class VolcadoSinTraza(Exception):
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+
+# --------------------------------------------------------------------------
+# F-065 · las reclamaciones de Sigrid en la revisión (`design.md` §4, §9.2)
+# --------------------------------------------------------------------------
+#
+# Uno solo. Los demás de la ruta se reutilizan: `CodigoDeObraInvalido` (400),
+# `BandejaDemasiadoGrande` y `ObraAmbigua` (409), `CatalogoNoDisponible`,
+# `ConfiguracionSigridIncompleta` y los de la base (503).
+
+
+class ReclamacionesSinVerificar(Exception):
+    """La lectura de las reclamaciones de la obra llegó al techo o vino cortada (F-065, R8). **409**.
+
+    Con `truncated`, o con tantas filas como el techo de la pasarela
+    (`TOPE_RECLAMACIONES_OBRA`, 500.000), no se sabe si falta alguna, y un
+    cruce a medias callaría conflictos: no se calcula ninguno. Lleva el número
+    de `filas` leídas y **nada** de ninguna de ellas (R22, R40).
+    """
+
+    def __init__(self, motivo: str, *, filas: int) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.filas = filas

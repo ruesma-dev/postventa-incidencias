@@ -104,6 +104,11 @@ SECCIONES = {
 }
 SECCIONES_DEL_PORTAL = [s for s in SECCIONES if s != "partes"]
 
+#: F-040 T6a (decisión del humano, 2026-11-04): las secciones del portal cuya
+#: pestaña lleva a su página real y no a la maqueta (`enlace` en
+#: `Portal.SECCIONES`). La ruta `#/<id>` sigue existiendo; solo no se enlaza.
+ENLACE_REAL = {"bandeja": "bandeja.html"}
+
 #: Los siete tests del circuito que fijan `index.html` en su constante
 #: `INDEX` (`design.md` §1.2, recuadro). Los únicos que F-035 puede tocar.
 TESTS_CON_INDEX = (
@@ -484,7 +489,7 @@ def test_f035_r3_la_barra_del_portal_enlaza_las_ocho_secciones():
     nav = barra(leer_html(PORTAL), "index.html")
     destinos = sorted(a.atributos.get("href", "") for a in nav.elementos() if a.nombre == "a")
 
-    esperados = {f"#/{s}" for s in SECCIONES_DEL_PORTAL} | {"partes.html"}
+    esperados = {ENLACE_REAL.get(s, f"#/{s}") for s in SECCIONES_DEL_PORTAL} | {"partes.html"}
     assert esperados <= set(destinos), f"faltan enlaces en la barra: {sorted(esperados - set(destinos))}"
 
 
@@ -1513,7 +1518,7 @@ def test_f035_r31_la_barra_del_circuito_navega_en_la_misma_pestana():
     enlaces = [e for e in nav.elementos() if e.nombre == "a"]
 
     assert sorted(a.atributos.get("href", "") for a in enlaces) == sorted(
-        f"./#/{s}" for s in SECCIONES_DEL_PORTAL
+        ENLACE_REAL.get(s, f"./#/{s}") for s in SECCIONES_DEL_PORTAL
     )
     problemas = problemas_r31(doc)
     assert problemas == [], "\n".join(problemas)
@@ -2721,7 +2726,8 @@ def test_f035_r51_cada_pestana_de_la_barra_marca_su_propia_seccion():
         if a.nombre == "a" and a.atributos.get("href", "").startswith("#/")
     ]
 
-    assert len(pestanas) == len(SECCIONES_DEL_PORTAL)
+    # F-040 T6a: la de la bandeja lleva a bandeja.html, otra página, sin :aria-current.
+    assert len(pestanas) == len(SECCIONES_DEL_PORTAL) - len(ENLACE_REAL)
     for a in pestanas:
         id_seccion = a.atributos["href"][2:]
         esperada = f"seccion === '{id_seccion}' ? 'page' : false"

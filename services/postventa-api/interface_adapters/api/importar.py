@@ -20,9 +20,12 @@ nunca dentro de un paso. Los puertos inyectables son la costura de test.
 La bandeja, siempre (el paso 1 busca los bytes en ella). El lector, el
 **aislado** (`LectorPlantillaAislado`, R118): la biblioteca de Excel lee el
 fichero en un proceso hijo con tope de tiempo y de memoria. El catálogo de Sigrid
-y las decisiones de equivalencia, **solo** si el fichero no estaba ya
-importado y se ha reconocido como la plantilla: un fichero que no lo es se
-rechaza sin llegar a Sigrid (R21), y el atajo de R39 no lee Sigrid.
+y, después, la fuente de las ubicaciones válidas de cada unidad (la de F-056,
+`construir_fuente_de_ubicaciones`), **solo** si el fichero no estaba ya
+importado y se ha reconocido como la plantilla: un fichero que no lo es —ni una
+plantilla v1, `version_anterior`— se rechaza sin llegar a Sigrid (R21; F-071
+R23, R24), y el atajo de R39 no lee Sigrid. Desde F-071 la importación no lee
+las decisiones de equivalencia (D-14).
 
 Desde F-060 (`specs/F-060-normalizar-ubicaciones/design.md` §9.2): si la
 importación **registra filas** en la bandeja, después del Excel de errores se
@@ -79,6 +82,7 @@ from application.pipelines.paso_importacion import (
     paso_registro,
     paso_validacion,
 )
+from application.pipelines.plantilla import FuenteUbicacionesValidas
 from application.pipelines.revision import (
     ResultadoNormalizacion,
     normalizar_ubicaciones,
@@ -92,13 +96,11 @@ from domain.models.importacion import EstadoFilaImportada
 from domain.models.plantilla_incidencias import MAX_BYTES_FICHERO, CatalogoObra
 from domain.ports.bandeja import BandejaPort, ResultadoImportacion
 from domain.ports.catalogo_obra import CatalogoObraPort
-from domain.ports.equivalencias import EquivalenciasPort
 from domain.ports.hoja_calculo import GeneradorPlantillaPort, LectorPlantillaPort
 from infrastructure.documentos.lector_aislado import LectorPlantillaAislado
 from infrastructure.documentos.plantilla_yaml import ConfiguracionPlantilla
 from infrastructure.persistencia.fabrica import (
     construir_bandeja,
-    construir_equivalencias,
     construir_revision,
 )
 from infrastructure.sigrid.fabrica import construir_catalogo_obra
@@ -159,7 +161,7 @@ def importar_excel(
     bandeja: BandejaPort | None = None,
     lector: LectorPlantillaPort | None = None,
     catalogo_obra: CatalogoObraPort | None = None,
-    equivalencias: EquivalenciasPort | None = None,
+    ubicaciones: FuenteUbicacionesValidas | None = None,
     generador: GeneradorPlantillaPort | None = None,
     configuracion: ConfiguracionPlantilla | None = None,
     ahora: datetime | None = None,
@@ -200,14 +202,14 @@ def importar_excel(
     if not contexto.ya_importado:
         if catalogo_obra is None:
             catalogo_obra = construir_catalogo_obra(obtener_ajustes())
-        if equivalencias is None:
-            equivalencias = construir_equivalencias(obtener_ajustes())
+        if ubicaciones is None:
+            ubicaciones = construir_fuente_de_ubicaciones(obtener_ajustes())
         config = (
             configuracion
             if configuracion is not None
             else configuracion_de_la_plantilla()
         )
-        contexto = paso_catalogo(contexto, catalogo_obra, equivalencias)
+        contexto = paso_catalogo(contexto, catalogo_obra, ubicaciones)
         contexto = paso_validacion(contexto, config.listas)
         contexto = paso_registro(contexto, bandeja, nuevo_id=nuevo_id)
         # Importación diferida (F-060 M-3): importar `function_app.py` no

@@ -61,6 +61,8 @@ from domain.models.plantilla_incidencias import (
     IDENTIFICADOR_PLANTILLA,
     MAX_BYTES_FICHERO,
     MAX_FILAS,
+    oficios_del_desplegable,
+    pares_del_desplegable,
 )
 from domain.ports.hoja_calculo import FilaPlantilla
 from infrastructure.documentos import excel_openpyxl, lector_aislado
@@ -71,7 +73,6 @@ from tests.utiles_plantilla import (
     catalogo,
     configuracion,
     generar,
-    opciones,
 )
 
 COLUMNAS_DE_DATOS = tuple(c for c in CABECERA if c != COLUMNA_ERRORES)
@@ -436,7 +437,7 @@ def test_f036_r17_con_metadatos_nunca_es_formato_antiguo() -> None:
 def test_f036_r6_r17_metadatos_leidos() -> None:
     libro = _leer(_vacia())
     assert libro.identificador == IDENTIFICADOR_PLANTILLA
-    assert libro.version == 1
+    assert libro.version == 2  # F-071, R17 (era 1)
     assert libro.obra_codigo == "0677"
     assert libro.parece_formato_antiguo is False
     assert reconocer_plantilla(libro) == "0677"
@@ -455,7 +456,7 @@ def test_f036_r6_metadatos_por_clave_y_no_por_posicion() -> None:
     libro = _leer(_modificar(_vacia(), desordenar))
     assert (libro.identificador, libro.version, libro.obra_codigo) == (
         IDENTIFICADOR_PLANTILLA,
-        1,
+        2,  # F-071, R17 (era 1)
         "0677",
     )
 
@@ -479,9 +480,11 @@ def test_f036_r18_la_version_solo_vale_como_numero_entero(valor, esperado) -> No
     assert _leer(_modificar(_vacia(), version)).version == esperado
 
 
-def test_f036_r18_version_2_no_soportada() -> None:
+def test_f036_r18_version_3_no_soportada() -> None:
+    # F-071, R17 y R23: la 2 es la soportada; la que no lo es pasa a ser la 3
+    # (la 1 da `version_anterior`, lo fija `test_f071_dominio_importacion`).
     def version(libro: Workbook) -> None:
-        libro["_plantilla"]["B2"] = 2
+        libro["_plantilla"]["B2"] = 3
 
     with pytest.raises(FicheroNoEsPlantilla) as error:
         reconocer_plantilla(_leer(_modificar(_vacia(), version)))
@@ -668,15 +671,24 @@ def test_f036_r32_valor_de_error_de_excel_se_lee_como_texto() -> None:
 # --------------------------------------------------------------------------
 
 
+#: F-071, R5 y R29: las ubicaciones de cada unidad salen de Sigrid (inventadas).
+UBICACIONES = {
+    "0677.03VILLA 1.": ("Cocina",),
+    "0677.03VILLA 2.": ("Cocina", "Salón"),
+}
+
+
 def _validar(libro: LibroLeido):
     cat = catalogo()
-    oficios, pares = opciones(cat)
+    # F-071, R12–R14: oficios por código y pares por pareja (eran los grupos).
+    oficios = oficios_del_desplegable(cat)
     return validar_filas(
         libro.filas,
         catalogo=cat,
-        opciones_oficio=oficios,
-        opciones_proveedor=pares,
+        oficios=oficios,
+        pares=pares_del_desplegable(cat, oficios),
         listas=configuracion().listas,
+        ubicaciones_por_unidad=UBICACIONES,
     )
 
 
@@ -685,8 +697,9 @@ BUENA = {
     "Ubicación": "Cocina",
     "Descripción corta": "La puerta del lavavajillas roza",
     "Detalle": "Línea 1\nLínea 2",
-    "Oficio": "Carpintería de madera",
-    "Proveedor": "Carpintería de madera · Juan Ejemplo Ejemplo",
+    # F-071, R13 y R14: las etiquetas llevan el código.
+    "Oficio": "Carpintería de madera (0046)",
+    "Proveedor": "Carpintería de madera (0046) · Juan Ejemplo Ejemplo (P003)",
     "Urgencia": "Urgente",
     "Listado": "Segundo listado",
 }
@@ -2299,7 +2312,7 @@ def _textos(libro: LibroLeido) -> list[dict[str, str]]:
 def test_f036_r126_ida_y_vuelta_de_la_plantilla_rellena_con_formato() -> None:
     libro = _leer(_plantilla_rellena())
     assert reconocer_plantilla(libro) == "0677"
-    assert (libro.version, libro.identificador) == (1, IDENTIFICADOR_PLANTILLA)
+    assert (libro.version, libro.identificador) == (2, IDENTIFICADOR_PLANTILLA)  # F-071, R17
     assert libro.cabecera == CABECERA
     assert libro.datos_fuera_del_tope is False
     # Las filas que se escribieron, desde la fila 2 y sin ninguna de más.

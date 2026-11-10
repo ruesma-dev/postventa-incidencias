@@ -2321,3 +2321,55 @@ Lo que enseñó:
 - **Los guiones de consola se pueden ejecutar desde la sesión con Claude in Chrome**, con la sesión ya iniciada por
   el humano; lo que pide teclado o clave (`27_ -Abrir`, `28_`) sigue siendo del humano. Las llamadas largas se lanzan
   sin `await` y se leen después: la herramienta corta a los 45 s.
+
+## F-065 · Revisión con Sigrid en el backend — 2026-10-31
+
+- **Qué quedó.** `GET /api/revision/sigrid?obra=`: lee de `sigrid-api` (`sql/read`, techo 500.000, `truncated` = error)
+  todas las reclamaciones 708 de la obra, las empareja con la bandeja por `PVI-` y cruza el resto (unidad+oficio+
+  ubicación; unidad+descripción parecida), con un bloque `volcado` que da el veredicto por candidata (`va`,
+  `se_enlaza`, `ya_existe`, `choca`). El ensayo de F-059 relee Sigrid por unidades (la **guarda**), excluye
+  `duplicada_en_sigrid` y `conflicto_sin_confirmar` y acepta `conflictos_confirmados`. Sin DDL; `volcar` no cambia.
+- **Cifras.** Mutación final 182/182 (único equivalente R4, a mano, aceptado por el humano); cobertura 100 % (755/755);
+  review final APPROVED. Desplegada el 2026-10-31 desde `dev` `ed590bd`; T-A11 a T-A17 pasan en solo lectura (0677:
+  1359 reclamaciones, p50 0,67 s, máx 4,7 s en frío, 1,3 MB; sin datos personales en los logs).
+- **Aplazado.** T-A18 (ensayo con un `choca`) a F-040, por decisión del humano: no había candidatas aprobadas.
+- **Lecciones.** `init.sh` cae por los tests de tiempo de F-036 con 40–50 procesos Python de otros proyectos en la
+  máquina; aislados pasan, y al bajar la carga sale en verde. El clasificador de permisos no deja al líder leer
+  secretos del Key Vault ni publicar en producción: eso va siempre en un script para el humano.
+
+---
+
+## F-071 · La plantilla saca de Sigrid todos sus desplegables — 2026-11-10
+
+**Cerrada.** Rama `feature/F-071-plantilla-desde-sigrid`, mergeada en `dev`
+`c201f29` y publicada (backend) el 2026-11-10. Rigor `critico`, urgente.
+
+Qué cambió: la plantilla de incidencias (versión 2) saca de Sigrid, al
+descargarla, la unidad, la **ubicación dependiente de la unidad** de cada fila
+(desplegable con `INDIRECT` sobre una tabla de la hoja oculta), el oficio y el
+par oficio · proveedor **por código**; urgencia y listado siguen en el YAML.
+Los grupos de equivalencia ya no se aplican a la plantilla y la plantilla no
+lee PostgreSQL; la lista fija de ubicaciones del YAML desaparece. La
+importación lee las ubicaciones de Sigrid antes de validar y rechaza la
+plantilla v1. Ninguna lectura nueva de `sigrid-api` ni escritura en Sigrid.
+Absorbe F-058.
+
+Evidencias: `init.sh` verde en la rama (9942 passed, cobertura 100 % de 232
+líneas) y en `dev` tras el merge; mutación de los Bloques 1–3 con 66 mutantes,
+1 hueco cerrado con test y 3 equivalentes aceptados por escrito por el humano;
+reviews APPROVED (Bloques 1–3 y final). Verificación en producción (T16) con
+la 0677: los cuatro pasos cumplen (`progress/impl_F-071.md`, «Bloque 5»).
+
+Lo que enseñó:
+
+- **El desplegable dependiente tiene un límite de Excel**: con la fila sin
+  unidad, la lista está vacía pero Excel acepta un texto tecleado. Se aceptó
+  porque la importación lo rechaza (riesgo de `design.md` §4.2).
+- **Un GREEN conjunto de varios bloques** (opción d) evitó una suite en rojo
+  a medias cuando el cambio de dominio rompía a todos sus llamadores.
+- La copia de `dev` acumulaba ficheros «modificados» que solo tenían otros
+  finales de línea: comprobar con un diff sin CR antes de restaurarlos.
+
+Pendiente fuera de la ficha: las comprobaciones 2 a 4 de T14 (App Settings,
+`POST /api/archivar` al host desnudo, restricción de acceso público), del
+humano; cerrar F-058 y retirar su worktree si el humano lo aprueba.

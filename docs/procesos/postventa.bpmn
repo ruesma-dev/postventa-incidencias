@@ -1,0 +1,1403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" id="Definitions_Posventa" targetNamespace="https://ruesma.es/procesos/posventa" exporter="generar_bpmn.py" exporterVersion="1">
+  <bpmn:documentation>Ciclo de posventa de Construcciones Ruesma, desde que llega el listado de incidencias hasta que la incidencia se cierra en Sigrid. Sacado del código de postventa-incidencias (rama dev, 2026-10-20) y de su backlog. Colores: sin color, funciona hoy; ámbar, en curso; azul, previsto.</bpmn:documentation>
+  <bpmn:error id="Error_Plantilla" name="No se puede generar la plantilla" errorCode="plantilla" />
+  <bpmn:error id="Error_NoPlantilla" name="El fichero no es la plantilla" errorCode="400" />
+  <bpmn:error id="Error_Archivo" name="No se archiva" errorCode="archivo" />
+  <bpmn:collaboration id="Collaboration_Posventa">
+    <bpmn:participant id="P_Propiedad" name="Propiedad o cliente" />
+    <bpmn:participant id="P_Ruesma" name="Posventa de Construcciones Ruesma" processRef="Process_Posventa" />
+    <bpmn:participant id="P_Sigrid" name="Sigrid (ERP), a través de sigrid-api" />
+    <bpmn:participant id="P_SharePoint" name="SharePoint: biblioteca de Posventa" />
+    <bpmn:participant id="P_Industrial" name="Industrial (proveedor que repara)" />
+    <bpmn:messageFlow id="MF_Excel" name="Excel de incidencias" sourceRef="P_Propiedad" targetRef="Start_Listado" />
+    <bpmn:messageFlow id="MF_Web" name="Incidencia web" sourceRef="P_Propiedad" targetRef="Start_Web" />
+    <bpmn:messageFlow id="MF_Catalogo" name="Lee el catálogo de la obra" sourceRef="SP_Entrada" targetRef="P_Sigrid" />
+    <bpmn:messageFlow id="MF_Relee" name="Relee el catálogo al aprobar" sourceRef="SP_Revision" targetRef="P_Sigrid" />
+    <bpmn:messageFlow id="MF_Crea" name="Crea los partes en SAT (ref. PVI-)" sourceRef="SP_Volcado" targetRef="P_Sigrid" />
+    <bpmn:messageFlow id="MF_PTE" name="Pasa a PTE" sourceRef="T_PTE" targetRef="P_Sigrid" />
+    <bpmn:messageFlow id="MF_Aviso" name="Aviso al industrial" sourceRef="P_Sigrid" targetRef="P_Industrial" />
+    <bpmn:messageFlow id="MF_Firmados" name="Partes firmados (papel escaneado)" sourceRef="P_Industrial" targetRef="Catch_Remesa" />
+    <bpmn:messageFlow id="MF_Archiva" name="Archiva el PDF firmado" sourceRef="SP_Partes" targetRef="P_SharePoint" />
+    <bpmn:messageFlow id="MF_Cierra" name="Adjunta el parte y cierra (CER)" sourceRef="SP_Partes" targetRef="P_Sigrid" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Posventa" name="Ciclo de posventa" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Posventa">
+      <bpmn:lane id="L_Posventa" name="Persona de Posventa"><bpmn:flowNodeRef>Start_Listado</bpmn:flowNodeRef><bpmn:flowNodeRef>SP_Entrada</bpmn:flowNodeRef><bpmn:flowNodeRef>G_Bandeja</bpmn:flowNodeRef><bpmn:flowNodeRef>SP_Revision</bpmn:flowNodeRef><bpmn:flowNodeRef>SP_Volcado</bpmn:flowNodeRef><bpmn:flowNodeRef>T_PTE</bpmn:flowNodeRef><bpmn:flowNodeRef>T_Imprimir</bpmn:flowNodeRef><bpmn:flowNodeRef>Catch_Remesa</bpmn:flowNodeRef><bpmn:flowNodeRef>SP_Partes</bpmn:flowNodeRef><bpmn:flowNodeRef>T_Coste</bpmn:flowNodeRef><bpmn:flowNodeRef>End_Cerrada</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="L_Portal" name="Portal de posventa (front y postventa-api)"><bpmn:flowNodeRef>Start_Web</bpmn:flowNodeRef></bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_Listado" name="Llega el listado de incidencias de la propiedad (Excel)">
+      <bpmn:outgoing>F_Listado_Entrada</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Start_Listado_Msg" />
+    </bpmn:startEvent>
+    <bpmn:startEvent id="Start_Web" name="Llega una incidencia por la web de clientes (previsto, F-037)">
+      <bpmn:outgoing>F_Web_Bandeja</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Start_Web_Msg" />
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="G_Bandeja" name="">
+      <bpmn:incoming>F_Entrada_Bandeja</bpmn:incoming>
+      <bpmn:incoming>F_Web_Bandeja</bpmn:incoming>
+      <bpmn:outgoing>F_Bandeja_Revision</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="T_PTE" name="04 · Pasar el parte a PTE en Sigrid (a mano)">
+      <bpmn:incoming>F_Volcado_PTE</bpmn:incoming>
+      <bpmn:outgoing>F_PTE_Imprimir</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="T_Imprimir" name="Imprimir los partes para la visita (previsto, F-044)">
+      <bpmn:incoming>F_PTE_Imprimir</bpmn:incoming>
+      <bpmn:outgoing>F_Imprimir_Remesa</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:intermediateCatchEvent id="Catch_Remesa" name="Llegan los partes firmados y escaneados">
+      <bpmn:incoming>F_Imprimir_Remesa</bpmn:incoming>
+      <bpmn:outgoing>F_Remesa_Partes</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Catch_Remesa_Msg" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:userTask id="T_Coste" name="07 · Coste y venta de la posventa (previsto, F-046 y F-047)">
+      <bpmn:incoming>F_Partes_Coste</bpmn:incoming>
+      <bpmn:outgoing>F_Coste_End</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="End_Cerrada" name="Incidencia cerrada en Sigrid (CER)">
+      <bpmn:incoming>F_Coste_End</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataStoreReference id="DS_Bandeja" name="Bandeja de incidencias (PostgreSQL, esquema postventa)" />
+    <bpmn:sequenceFlow id="F_Listado_Entrada" sourceRef="Start_Listado" targetRef="SP_Entrada" />
+    <bpmn:sequenceFlow id="F_Entrada_Bandeja" sourceRef="SP_Entrada" targetRef="G_Bandeja" />
+    <bpmn:sequenceFlow id="F_Web_Bandeja" sourceRef="Start_Web" targetRef="G_Bandeja" />
+    <bpmn:sequenceFlow id="F_Bandeja_Revision" sourceRef="G_Bandeja" targetRef="SP_Revision" />
+    <bpmn:sequenceFlow id="F_Revision_Volcado" name="Aprobadas" sourceRef="SP_Revision" targetRef="SP_Volcado" />
+    <bpmn:sequenceFlow id="F_Volcado_PTE" name="Partes en SAT" sourceRef="SP_Volcado" targetRef="T_PTE" />
+    <bpmn:sequenceFlow id="F_PTE_Imprimir" sourceRef="T_PTE" targetRef="T_Imprimir" />
+    <bpmn:sequenceFlow id="F_Imprimir_Remesa" sourceRef="T_Imprimir" targetRef="Catch_Remesa" />
+    <bpmn:sequenceFlow id="F_Remesa_Partes" sourceRef="Catch_Remesa" targetRef="SP_Partes" />
+    <bpmn:sequenceFlow id="F_Partes_Coste" sourceRef="SP_Partes" targetRef="T_Coste" />
+    <bpmn:sequenceFlow id="F_Coste_End" sourceRef="T_Coste" targetRef="End_Cerrada" />
+    <bpmn:textAnnotation id="N_Revision"><bpmn:text>En curso: el backend está desplegado (F-056); la página bandeja.html es F-038. Previsto: ver también lo que ya hay en Sigrid y los conflictos (F-064).</bpmn:text></bpmn:textAnnotation>
+    <bpmn:textAnnotation id="N_Volcado"><bpmn:text>El backend está desplegado (F-059) y probado en la 0626; el panel es F-040.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:textAnnotation id="N_Gestion"><bpmn:text>Previsto en la gestión: ficha de la incidencia (F-041), No procede con correo (F-042), operaciones en bloque (F-043) y editar o anular las ya volcadas (F-062).</bpmn:text></bpmn:textAnnotation>
+    <bpmn:textAnnotation id="N_Entrada"><bpmn:text>Previsto: código de obra con cero delante (F-063), ubicaciones por unidad en la plantilla (F-058) y una tabla mejor en importar.html (F-057).</bpmn:text></bpmn:textAnnotation>
+    <bpmn:textAnnotation id="N_Partes"><bpmn:text>Previsto: partes sin firma → TER (F-045) y remesas desde un buzón (F-011).</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="A_N_Revision" associationDirection="None" sourceRef="N_Revision" targetRef="SP_Revision" />
+    <bpmn:association id="A_N_Volcado" associationDirection="None" sourceRef="N_Volcado" targetRef="SP_Volcado" />
+    <bpmn:association id="A_N_Gestion" associationDirection="None" sourceRef="N_Gestion" targetRef="T_PTE" />
+    <bpmn:association id="A_N_Entrada" associationDirection="None" sourceRef="N_Entrada" targetRef="SP_Entrada" />
+    <bpmn:association id="A_N_Partes" associationDirection="None" sourceRef="N_Partes" targetRef="SP_Partes" />
+    <bpmn:subProcess id="SP_Entrada" name="01 · Entrada: importar el Excel a la bandeja">
+      <bpmn:incoming>F_Listado_Entrada</bpmn:incoming>
+      <bpmn:outgoing>F_Entrada_Bandeja</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DA_Entrada"><bpmn:targetRef>DS_Bandeja</bpmn:targetRef></bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="E_Start" name="Llega el Excel de la propiedad (o hay que preparar la plantilla)">
+        <bpmn:outgoing>E_F1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:exclusiveGateway id="E_GOficios" name="¿Hay oficios casi iguales por decidir?">
+        <bpmn:incoming>E_F1</bpmn:incoming>
+        <bpmn:outgoing>E_F2</bpmn:outgoing>
+        <bpmn:outgoing>E_F3</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="E_Oficios" name="Decidir oficios repetidos: mismo o distinto (oficios.html)">
+        <bpmn:incoming>E_F2</bpmn:incoming>
+        <bpmn:outgoing>E_F4</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:exclusiveGateway id="E_MOficios" name="">
+        <bpmn:incoming>E_F3</bpmn:incoming>
+        <bpmn:incoming>E_F4</bpmn:incoming>
+        <bpmn:outgoing>E_F5</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="E_Plantilla" name="Elegir la obra y descargar la plantilla">
+        <bpmn:incoming>E_F5</bpmn:incoming>
+        <bpmn:outgoing>E_F6</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:serviceTask id="E_Generar" name="Generar la plantilla con el catálogo de Sigrid de hoy">
+        <bpmn:incoming>E_F6</bpmn:incoming>
+        <bpmn:outgoing>E_F7</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="E_GPlantilla" name="¿Se ha podido generar?">
+        <bpmn:incoming>E_F7</bpmn:incoming>
+        <bpmn:outgoing>E_F8</bpmn:outgoing>
+        <bpmn:outgoing>E_F9</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="E_EndPlantilla" name="Obra no válida, sin unidades o Sigrid no responde">
+        <bpmn:incoming>E_F8</bpmn:incoming>
+        <bpmn:errorEventDefinition id="E_EndPlantilla_Err" errorRef="Error_Plantilla" />
+      </bpmn:endEvent>
+      <bpmn:manualTask id="E_Rellenar" name="La propiedad rellena el Excel (fuera del sistema)">
+        <bpmn:incoming>E_F9</bpmn:incoming>
+        <bpmn:outgoing>E_F10</bpmn:outgoing>
+      </bpmn:manualTask>
+      <bpmn:exclusiveGateway id="E_MImportar" name="">
+        <bpmn:incoming>E_F10</bpmn:incoming>
+        <bpmn:incoming>E_F20</bpmn:incoming>
+        <bpmn:outgoing>E_F11</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="E_Importar" name="Importar el Excel a la bandeja">
+        <bpmn:incoming>E_F11</bpmn:incoming>
+        <bpmn:outgoing>E_F12</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:serviceTask id="E_Comprobar" name="Comprobar la huella, que sea la plantilla y cada fila">
+        <bpmn:incoming>E_F12</bpmn:incoming>
+        <bpmn:outgoing>E_F13</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="E_GYa" name="¿Qué ha pasado?">
+        <bpmn:incoming>E_F13</bpmn:incoming>
+        <bpmn:outgoing>E_F14</bpmn:outgoing>
+        <bpmn:outgoing>E_F15</bpmn:outgoing>
+        <bpmn:outgoing>E_F16</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="E_EndYa" name="Ya importado: enseña el resumen original">
+        <bpmn:incoming>E_F14</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:endEvent id="E_EndNoPlantilla" name="No es la plantilla o pasa de 2 MiB: se rechaza entero">
+        <bpmn:incoming>E_F15</bpmn:incoming>
+        <bpmn:errorEventDefinition id="E_EndNoPlantilla_Err" errorRef="Error_NoPlantilla" />
+      </bpmn:endEvent>
+      <bpmn:serviceTask id="E_Registrar" name="Registrar filas: nuevas, duplicadas en el fichero, ya en la bandeja">
+        <bpmn:incoming>E_F16</bpmn:incoming>
+        <bpmn:outgoing>E_F17</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="E_Normalizar" name="Poner las ubicaciones en el texto exacto de Sigrid (F-060)">
+        <bpmn:incoming>E_F17</bpmn:incoming>
+        <bpmn:outgoing>E_F18</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="E_GErrores" name="¿Filas con error?">
+        <bpmn:incoming>E_F18</bpmn:incoming>
+        <bpmn:outgoing>E_F19</bpmn:outgoing>
+        <bpmn:outgoing>E_F21</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="E_Errores" name="Descargar el Excel de errores y corregirlo">
+        <bpmn:incoming>E_F19</bpmn:incoming>
+        <bpmn:outgoing>E_F20</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:userTask id="E_Ver" name="Ver la bandeja de la obra (solo lectura)">
+        <bpmn:incoming>E_F21</bpmn:incoming>
+        <bpmn:outgoing>E_F22</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:endEvent id="E_End" name="Incidencias en la bandeja">
+        <bpmn:incoming>E_F22</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="E_F1" sourceRef="E_Start" targetRef="E_GOficios" />
+      <bpmn:sequenceFlow id="E_F2" name="Sí" sourceRef="E_GOficios" targetRef="E_Oficios" />
+      <bpmn:sequenceFlow id="E_F3" name="No" sourceRef="E_GOficios" targetRef="E_MOficios" />
+      <bpmn:sequenceFlow id="E_F4" sourceRef="E_Oficios" targetRef="E_MOficios" />
+      <bpmn:sequenceFlow id="E_F5" sourceRef="E_MOficios" targetRef="E_Plantilla" />
+      <bpmn:sequenceFlow id="E_F6" sourceRef="E_Plantilla" targetRef="E_Generar" />
+      <bpmn:sequenceFlow id="E_F7" sourceRef="E_Generar" targetRef="E_GPlantilla" />
+      <bpmn:sequenceFlow id="E_F8" name="No" sourceRef="E_GPlantilla" targetRef="E_EndPlantilla" />
+      <bpmn:sequenceFlow id="E_F9" name="Sí" sourceRef="E_GPlantilla" targetRef="E_Rellenar" />
+      <bpmn:sequenceFlow id="E_F10" sourceRef="E_Rellenar" targetRef="E_MImportar" />
+      <bpmn:sequenceFlow id="E_F11" sourceRef="E_MImportar" targetRef="E_Importar" />
+      <bpmn:sequenceFlow id="E_F12" sourceRef="E_Importar" targetRef="E_Comprobar" />
+      <bpmn:sequenceFlow id="E_F13" sourceRef="E_Comprobar" targetRef="E_GYa" />
+      <bpmn:sequenceFlow id="E_F14" name="Mismo fichero ya importado" sourceRef="E_GYa" targetRef="E_EndYa" />
+      <bpmn:sequenceFlow id="E_F15" name="No es la plantilla" sourceRef="E_GYa" targetRef="E_EndNoPlantilla" />
+      <bpmn:sequenceFlow id="E_F16" name="Nuevo" sourceRef="E_GYa" targetRef="E_Registrar" />
+      <bpmn:sequenceFlow id="E_F17" sourceRef="E_Registrar" targetRef="E_Normalizar" />
+      <bpmn:sequenceFlow id="E_F18" sourceRef="E_Normalizar" targetRef="E_GErrores" />
+      <bpmn:sequenceFlow id="E_F19" name="Sí" sourceRef="E_GErrores" targetRef="E_Errores" />
+      <bpmn:sequenceFlow id="E_F20" name="Reimporta: lo que entró no se duplica" sourceRef="E_Errores" targetRef="E_MImportar" />
+      <bpmn:sequenceFlow id="E_F21" name="No" sourceRef="E_GErrores" targetRef="E_Ver" />
+      <bpmn:sequenceFlow id="E_F22" sourceRef="E_Ver" targetRef="E_End" />
+      <bpmn:textAnnotation id="E_N1"><bpmn:text>Cada fila: nueva, duplicada de la fila N, ya en la bandeja o con error (no entra). La importación puede salir completa o parcial.</bpmn:text></bpmn:textAnnotation>
+      <bpmn:textAnnotation id="E_N2"><bpmn:text>Agrupar oficios no toca Sigrid: cambia cómo la plantilla enseña el desplegable. Un grupo con varios códigos en la obra llega como «oficio ambiguo» y se elige al revisar.</bpmn:text></bpmn:textAnnotation>
+      <bpmn:textAnnotation id="E_N3"><bpmn:text>Previsto: código de obra 626 → 0626 (F-063); ubicaciones por unidad en la plantilla (F-058); tabla con orden y filtros (F-057).</bpmn:text></bpmn:textAnnotation>
+      <bpmn:association id="A_E_N1" associationDirection="None" sourceRef="E_N1" targetRef="E_Registrar" />
+      <bpmn:association id="A_E_N2" associationDirection="None" sourceRef="E_N2" targetRef="E_Oficios" />
+      <bpmn:association id="A_E_N3" associationDirection="None" sourceRef="E_N3" targetRef="E_Plantilla" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SP_Revision" name="02 · Revisar la bandeja: editar, descartar, aprobar">
+      <bpmn:incoming>F_Bandeja_Revision</bpmn:incoming>
+      <bpmn:outgoing>F_Revision_Volcado</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DA_Revision"><bpmn:targetRef>DS_Bandeja</bpmn:targetRef></bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="R_Start" name="Abre la bandeja de revisión de la obra">
+        <bpmn:outgoing>R_F1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:exclusiveGateway id="R_MListar" name="">
+        <bpmn:incoming>R_F1</bpmn:incoming>
+        <bpmn:outgoing>R_F2</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="R_Listar" name="Listar incidencias, resumen y motivos (relee el catálogo de Sigrid)">
+        <bpmn:incoming>R_F2</bpmn:incoming>
+        <bpmn:outgoing>R_F3</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="R_GHace" name="¿Qué hace la persona?">
+        <bpmn:incoming>R_F3</bpmn:incoming>
+        <bpmn:outgoing>R_F4</bpmn:outgoing>
+        <bpmn:outgoing>R_F5</bpmn:outgoing>
+        <bpmn:outgoing>R_F6</bpmn:outgoing>
+        <bpmn:outgoing>R_F7</bpmn:outgoing>
+        <bpmn:outgoing>R_F8</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="R_Editar" name="Editar con el catálogo de hoy (lo que no está, marcado)">
+        <bpmn:incoming>R_F4</bpmn:incoming>
+        <bpmn:outgoing>R_F13</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:userTask id="R_Descartar" name="Descartar, con motivo opcional">
+        <bpmn:incoming>R_F5</bpmn:incoming>
+        <bpmn:outgoing>R_F14</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:userTask id="R_Recuperar" name="Recuperar una descartada">
+        <bpmn:incoming>R_F6</bpmn:incoming>
+        <bpmn:outgoing>R_F15</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:userTask id="R_Aprobar" name="Aprobar">
+        <bpmn:incoming>R_F7</bpmn:incoming>
+        <bpmn:outgoing>R_F9</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:userTask id="R_Termina" name="Terminar la revisión">
+        <bpmn:incoming>R_F8</bpmn:incoming>
+        <bpmn:outgoing>R_F20</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:serviceTask id="R_Comprobar" name="Comprobar contra Sigrid: unidad, ubicación, oficio, proveedor, duplicada">
+        <bpmn:incoming>R_F9</bpmn:incoming>
+        <bpmn:outgoing>R_F10</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="R_GAprobable" name="¿Aprobable?">
+        <bpmn:incoming>R_F10</bpmn:incoming>
+        <bpmn:outgoing>R_F11</bpmn:outgoing>
+        <bpmn:outgoing>R_F12</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="R_EndNoAprob" name="No aprobable: enseña los motivos">
+        <bpmn:incoming>R_F11</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:exclusiveGateway id="R_MGuardar" name="">
+        <bpmn:incoming>R_F12</bpmn:incoming>
+        <bpmn:incoming>R_F13</bpmn:incoming>
+        <bpmn:incoming>R_F14</bpmn:incoming>
+        <bpmn:incoming>R_F15</bpmn:incoming>
+        <bpmn:outgoing>R_F16</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="R_Guardar" name="Guardar la revisión con quién y cuándo">
+        <bpmn:incoming>R_F16</bpmn:incoming>
+        <bpmn:outgoing>R_F17</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="R_GOtra" name="¿Otra persona la cambió antes?">
+        <bpmn:incoming>R_F17</bpmn:incoming>
+        <bpmn:outgoing>R_F18</bpmn:outgoing>
+        <bpmn:outgoing>R_F19</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="R_EndOtra" name="Avisa y vuelve a cargar">
+        <bpmn:incoming>R_F18</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:endEvent id="R_EndBien" name="Guardada: la lista se pone al día">
+        <bpmn:incoming>R_F19</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:endEvent id="R_End" name="Aprobadas: candidatas al volcado">
+        <bpmn:incoming>R_F20</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="R_F1" sourceRef="R_Start" targetRef="R_MListar" />
+      <bpmn:sequenceFlow id="R_F2" sourceRef="R_MListar" targetRef="R_Listar" />
+      <bpmn:sequenceFlow id="R_F3" sourceRef="R_Listar" targetRef="R_GHace" />
+      <bpmn:sequenceFlow id="R_F4" name="Edita" sourceRef="R_GHace" targetRef="R_Editar" />
+      <bpmn:sequenceFlow id="R_F5" name="Descarta" sourceRef="R_GHace" targetRef="R_Descartar" />
+      <bpmn:sequenceFlow id="R_F6" name="Recupera" sourceRef="R_GHace" targetRef="R_Recuperar" />
+      <bpmn:sequenceFlow id="R_F7" name="Aprueba" sourceRef="R_GHace" targetRef="R_Aprobar" />
+      <bpmn:sequenceFlow id="R_F8" name="Termina" sourceRef="R_GHace" targetRef="R_Termina" />
+      <bpmn:sequenceFlow id="R_F9" sourceRef="R_Aprobar" targetRef="R_Comprobar" />
+      <bpmn:sequenceFlow id="R_F10" sourceRef="R_Comprobar" targetRef="R_GAprobable" />
+      <bpmn:sequenceFlow id="R_F11" name="No" sourceRef="R_GAprobable" targetRef="R_EndNoAprob" />
+      <bpmn:sequenceFlow id="R_F12" name="Sí" sourceRef="R_GAprobable" targetRef="R_MGuardar" />
+      <bpmn:sequenceFlow id="R_F13" sourceRef="R_Editar" targetRef="R_MGuardar" />
+      <bpmn:sequenceFlow id="R_F14" sourceRef="R_Descartar" targetRef="R_MGuardar" />
+      <bpmn:sequenceFlow id="R_F15" sourceRef="R_Recuperar" targetRef="R_MGuardar" />
+      <bpmn:sequenceFlow id="R_F16" sourceRef="R_MGuardar" targetRef="R_Guardar" />
+      <bpmn:sequenceFlow id="R_F17" sourceRef="R_Guardar" targetRef="R_GOtra" />
+      <bpmn:sequenceFlow id="R_F18" name="Sí" sourceRef="R_GOtra" targetRef="R_EndOtra" />
+      <bpmn:sequenceFlow id="R_F19" name="No" sourceRef="R_GOtra" targetRef="R_EndBien" />
+      <bpmn:sequenceFlow id="R_F20" sourceRef="R_Termina" targetRef="R_End" />
+      <bpmn:textAnnotation id="R_N1"><bpmn:text>Estados: nueva, editada, aprobada, descartada, volcada y en duda. Las volcadas y en duda se ven con su código de Sigrid, sin acciones (F-038).</bpmn:text></bpmn:textAnnotation>
+      <bpmn:textAnnotation id="R_N2"><bpmn:text>Motivos: unidad fuera de la obra, sin ubicación, ubicación fuera de la lista, sin oficio, oficio ambiguo o fuera de la obra, par fuera de la obra, proveedor ambiguo, duplicada.</bpmn:text></bpmn:textAnnotation>
+      <bpmn:textAnnotation id="R_N3"><bpmn:text>Previsto: ver también las reclamaciones que ya hay en Sigrid y los conflictos (F-064).</bpmn:text></bpmn:textAnnotation>
+      <bpmn:association id="A_R_N1" associationDirection="None" sourceRef="R_N1" targetRef="R_Listar" />
+      <bpmn:association id="A_R_N2" associationDirection="None" sourceRef="R_N2" targetRef="R_Comprobar" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SP_Volcado" name="03 · Volcar a Sigrid lo aprobado">
+      <bpmn:incoming>F_Revision_Volcado</bpmn:incoming>
+      <bpmn:outgoing>F_Volcado_PTE</bpmn:outgoing>
+      <bpmn:dataInputAssociation id="DA_Volcado"><bpmn:sourceRef>DS_Bandeja</bpmn:sourceRef></bpmn:dataInputAssociation>
+      <bpmn:startEvent id="V_Start" name="Abre el panel de volcado (previsto, F-040)">
+        <bpmn:outgoing>V_F1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="V_Candidatas" name="Leer candidatas: aprobadas y en duda">
+        <bpmn:incoming>V_F1</bpmn:incoming>
+        <bpmn:outgoing>V_F2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:userTask id="V_PideEnsayo" name="Pedir el ensayo">
+        <bpmn:incoming>V_F2</bpmn:incoming>
+        <bpmn:outgoing>V_F3</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:serviceTask id="V_Ensayo" name="Ensayo con Sigrid sin escribir; caduca a los 30 min">
+        <bpmn:incoming>V_F3</bpmn:incoming>
+        <bpmn:outgoing>V_F4</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="V_GPrevistos" name="¿Hay partes previstos?">
+        <bpmn:incoming>V_F4</bpmn:incoming>
+        <bpmn:outgoing>V_F5</bpmn:outgoing>
+        <bpmn:outgoing>V_F6</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="V_EndNada" name="Nada que volcar">
+        <bpmn:incoming>V_F5</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:userTask id="V_Confirmar" name="Confirmar el volcado (segundo clic con el número de partes)">
+        <bpmn:incoming>V_F6</bpmn:incoming>
+        <bpmn:outgoing>V_F7</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:exclusiveGateway id="V_GVentana" name="¿Ventana del volcado abierta?">
+        <bpmn:incoming>V_F7</bpmn:incoming>
+        <bpmn:outgoing>V_F8</bpmn:outgoing>
+        <bpmn:outgoing>V_F9</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="V_EndCerrada" name="No se escribe nada (503)">
+        <bpmn:incoming>V_F8</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:exclusiveGateway id="V_GEnsayo" name="¿Ensayo válido: misma persona y menos de 30 min?">
+        <bpmn:incoming>V_F9</bpmn:incoming>
+        <bpmn:outgoing>V_F10</bpmn:outgoing>
+        <bpmn:outgoing>V_F11</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="V_EndEnsayo" name="Hay que ensayar otra vez (409)">
+        <bpmn:incoming>V_F10</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:serviceTask id="V_Anotar" name="Anotar «enviado» antes de llamar">
+        <bpmn:incoming>V_F11</bpmn:incoming>
+        <bpmn:outgoing>V_F12</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="V_Crear" name="Crear los partes en Sigrid (ref. PVI-, sin reintento)">
+        <bpmn:incoming>V_F12</bpmn:incoming>
+        <bpmn:outgoing>V_F13</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="V_GResultado" name="Resultado de cada parte">
+        <bpmn:incoming>V_F13</bpmn:incoming>
+        <bpmn:outgoing>V_F14</bpmn:outgoing>
+        <bpmn:outgoing>V_F15</bpmn:outgoing>
+        <bpmn:outgoing>V_F16</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="V_Volcada" name="Marcar volcada con su código RS…">
+        <bpmn:incoming>V_F14</bpmn:incoming>
+        <bpmn:outgoing>V_F17</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="V_EndVolcada" name="Parte en SAT">
+        <bpmn:incoming>V_F17</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:serviceTask id="V_Rechazada" name="Sigue aprobada, con su motivo">
+        <bpmn:incoming>V_F15</bpmn:incoming>
+        <bpmn:outgoing>V_F18</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="V_EndRechazada" name="Corregir y volver a volcar">
+        <bpmn:incoming>V_F18</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:serviceTask id="V_Duda" name="Marcar en duda">
+        <bpmn:incoming>V_F16</bpmn:incoming>
+        <bpmn:outgoing>V_F19</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="V_EndDuda" name="Reintentar: la referencia no duplica">
+        <bpmn:incoming>V_F19</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="V_F1" sourceRef="V_Start" targetRef="V_Candidatas" />
+      <bpmn:sequenceFlow id="V_F2" sourceRef="V_Candidatas" targetRef="V_PideEnsayo" />
+      <bpmn:sequenceFlow id="V_F3" sourceRef="V_PideEnsayo" targetRef="V_Ensayo" />
+      <bpmn:sequenceFlow id="V_F4" sourceRef="V_Ensayo" targetRef="V_GPrevistos" />
+      <bpmn:sequenceFlow id="V_F5" name="No" sourceRef="V_GPrevistos" targetRef="V_EndNada" />
+      <bpmn:sequenceFlow id="V_F6" name="Sí" sourceRef="V_GPrevistos" targetRef="V_Confirmar" />
+      <bpmn:sequenceFlow id="V_F7" sourceRef="V_Confirmar" targetRef="V_GVentana" />
+      <bpmn:sequenceFlow id="V_F8" name="No" sourceRef="V_GVentana" targetRef="V_EndCerrada" />
+      <bpmn:sequenceFlow id="V_F9" name="Sí" sourceRef="V_GVentana" targetRef="V_GEnsayo" />
+      <bpmn:sequenceFlow id="V_F10" name="No" sourceRef="V_GEnsayo" targetRef="V_EndEnsayo" />
+      <bpmn:sequenceFlow id="V_F11" name="Sí" sourceRef="V_GEnsayo" targetRef="V_Anotar" />
+      <bpmn:sequenceFlow id="V_F12" sourceRef="V_Anotar" targetRef="V_Crear" />
+      <bpmn:sequenceFlow id="V_F13" sourceRef="V_Crear" targetRef="V_GResultado" />
+      <bpmn:sequenceFlow id="V_F14" name="Creado o ya existía" sourceRef="V_GResultado" targetRef="V_Volcada" />
+      <bpmn:sequenceFlow id="V_F17" sourceRef="V_Volcada" targetRef="V_EndVolcada" />
+      <bpmn:sequenceFlow id="V_F18" sourceRef="V_Rechazada" targetRef="V_EndRechazada" />
+      <bpmn:sequenceFlow id="V_F19" sourceRef="V_Duda" targetRef="V_EndDuda" />
+      <bpmn:sequenceFlow id="V_F15" name="Rechazado" sourceRef="V_GResultado" targetRef="V_Rechazada" />
+      <bpmn:sequenceFlow id="V_F16" name="Sin respuesta" sourceRef="V_GResultado" targetRef="V_Duda" />
+      <bpmn:textAnnotation id="V_N1"><bpmn:text>La ventana VOLCADO_HABILITADO se abre para cada volcado con infra/27_ventana_volcado.ps1 y cada despliegue la cierra. El ensayo funciona con ella cerrada.</bpmn:text></bpmn:textAnnotation>
+      <bpmn:textAnnotation id="V_N2"><bpmn:text>Posventa pasa el parte a PTE a mano en Sigrid: es lo que avisa al industrial.</bpmn:text></bpmn:textAnnotation>
+      <bpmn:association id="A_V_N1" associationDirection="None" sourceRef="V_N1" targetRef="V_GVentana" />
+      <bpmn:association id="A_V_N2" associationDirection="None" sourceRef="V_N2" targetRef="V_Volcada" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SP_Partes" name="05 · 06 · Partes firmados: archivar y cerrar en Sigrid">
+      <bpmn:incoming>F_Remesa_Partes</bpmn:incoming>
+      <bpmn:outgoing>F_Partes_Coste</bpmn:outgoing>
+      <bpmn:startEvent id="P_Start" name="Llega la remesa escaneada">
+        <bpmn:outgoing>P_F1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:startEvent id="P_StartBuzon" name="Remesa desde un buzón (previsto, F-011)">
+        <bpmn:outgoing>P_F2</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:exclusiveGateway id="P_MInicio" name="">
+        <bpmn:incoming>P_F1</bpmn:incoming>
+        <bpmn:incoming>P_F2</bpmn:incoming>
+        <bpmn:outgoing>P_F3</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="P_Subir" name="Subir la remesa (PDF, ZIP o carpeta)">
+        <bpmn:incoming>P_F3</bpmn:incoming>
+        <bpmn:outgoing>P_F4</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:serviceTask id="P_Trocear" name="Trocear en partes por el pie «Página N»">
+        <bpmn:incoming>P_F4</bpmn:incoming>
+        <bpmn:outgoing>P_F5</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="P_Leer" name="Leer cada parte con IA: 9 campos y la firma (3 a la vez)">
+        <bpmn:incoming>P_F5</bpmn:incoming>
+        <bpmn:outgoing>P_F6</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="P_Validar" name="Validar y clasificar el parte">
+        <bpmn:incoming>P_F6</bpmn:incoming>
+        <bpmn:outgoing>P_F7</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="P_GDestino" name="¿Cómo sale?">
+        <bpmn:incoming>P_F7</bpmn:incoming>
+        <bpmn:outgoing>P_F8</bpmn:outgoing>
+        <bpmn:outgoing>P_F9</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="P_Revisar" name="Revisar con su PDF, corregir y revalidar">
+        <bpmn:incoming>P_F8</bpmn:incoming>
+        <bpmn:outgoing>P_F10</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:exclusiveGateway id="P_GDecide" name="¿Aprobar o rechazar?">
+        <bpmn:incoming>P_F10</bpmn:incoming>
+        <bpmn:outgoing>P_F11</bpmn:outgoing>
+        <bpmn:outgoing>P_F12</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="P_EndRechazo" name="Parte rechazado, con su motivo">
+        <bpmn:incoming>P_F11</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:exclusiveGateway id="P_MAprobado" name="">
+        <bpmn:incoming>P_F9</bpmn:incoming>
+        <bpmn:incoming>P_F12</bpmn:incoming>
+        <bpmn:outgoing>P_F13</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="P_ArchivarCerrar" name="Archivar y cerrar los aptos (segundo clic)">
+        <bpmn:incoming>P_F13</bpmn:incoming>
+        <bpmn:outgoing>P_F14</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:serviceTask id="P_Archivar" name="Archivar en SharePoint: obra / INCIDENCIAS / unidad / FIRMADOS">
+        <bpmn:incoming>P_F14</bpmn:incoming>
+        <bpmn:outgoing>P_F15</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="P_GArchivo" name="¿Archivado?">
+        <bpmn:incoming>P_F15</bpmn:incoming>
+        <bpmn:outgoing>P_F16</bpmn:outgoing>
+        <bpmn:outgoing>P_F17</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="P_EndArchivo" name="Carpeta dudosa o ventana cerrada: la tanda se detiene">
+        <bpmn:incoming>P_F16</bpmn:incoming>
+        <bpmn:errorEventDefinition id="P_EndArchivo_Err" errorRef="Error_Archivo" />
+      </bpmn:endEvent>
+      <bpmn:exclusiveGateway id="P_GYaCerrada" name="¿La reclamación ya estaba cerrada?">
+        <bpmn:incoming>P_F17</bpmn:incoming>
+        <bpmn:outgoing>P_F18</bpmn:outgoing>
+        <bpmn:outgoing>P_F19</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="P_EndYa" name="No se toca">
+        <bpmn:incoming>P_F18</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:serviceTask id="P_Adjuntar" name="Adjuntar el PDF a Sigrid como «PARTE FIRMADO»">
+        <bpmn:incoming>P_F19</bpmn:incoming>
+        <bpmn:outgoing>P_F20</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="P_MCerrar" name="">
+        <bpmn:incoming>P_F20</bpmn:incoming>
+        <bpmn:incoming>P_F25</bpmn:incoming>
+        <bpmn:outgoing>P_F21</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="P_Cerrar" name="Cerrar la reclamación en Sigrid (CER)">
+        <bpmn:incoming>P_F21</bpmn:incoming>
+        <bpmn:outgoing>P_F22</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="P_GCerrada" name="¿Cerrada?">
+        <bpmn:incoming>P_F22</bpmn:incoming>
+        <bpmn:outgoing>P_F23</bpmn:outgoing>
+        <bpmn:outgoing>P_F24</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="P_Reintentar" name="Reintentar el cierre">
+        <bpmn:incoming>P_F24</bpmn:incoming>
+        <bpmn:outgoing>P_F25</bpmn:outgoing>
+      </bpmn:userTask>
+      <bpmn:endEvent id="P_End" name="Incidencia cerrada (CER)">
+        <bpmn:incoming>P_F23</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="P_F1" sourceRef="P_Start" targetRef="P_MInicio" />
+      <bpmn:sequenceFlow id="P_F2" sourceRef="P_StartBuzon" targetRef="P_MInicio" />
+      <bpmn:sequenceFlow id="P_F3" sourceRef="P_MInicio" targetRef="P_Subir" />
+      <bpmn:sequenceFlow id="P_F4" sourceRef="P_Subir" targetRef="P_Trocear" />
+      <bpmn:sequenceFlow id="P_F5" sourceRef="P_Trocear" targetRef="P_Leer" />
+      <bpmn:sequenceFlow id="P_F6" sourceRef="P_Leer" targetRef="P_Validar" />
+      <bpmn:sequenceFlow id="P_F7" sourceRef="P_Validar" targetRef="P_GDestino" />
+      <bpmn:sequenceFlow id="P_F8" name="Observaciones, ilegible o firma dudosa" sourceRef="P_GDestino" targetRef="P_Revisar" />
+      <bpmn:sequenceFlow id="P_F9" name="Apto: nace aprobado" sourceRef="P_GDestino" targetRef="P_MAprobado" />
+      <bpmn:sequenceFlow id="P_F10" sourceRef="P_Revisar" targetRef="P_GDecide" />
+      <bpmn:sequenceFlow id="P_F11" name="Rechazar" sourceRef="P_GDecide" targetRef="P_EndRechazo" />
+      <bpmn:sequenceFlow id="P_F12" name="Aprobar" sourceRef="P_GDecide" targetRef="P_MAprobado" />
+      <bpmn:sequenceFlow id="P_F13" sourceRef="P_MAprobado" targetRef="P_ArchivarCerrar" />
+      <bpmn:sequenceFlow id="P_F14" sourceRef="P_ArchivarCerrar" targetRef="P_Archivar" />
+      <bpmn:sequenceFlow id="P_F15" sourceRef="P_Archivar" targetRef="P_GArchivo" />
+      <bpmn:sequenceFlow id="P_F16" name="No" sourceRef="P_GArchivo" targetRef="P_EndArchivo" />
+      <bpmn:sequenceFlow id="P_F17" name="Sí" sourceRef="P_GArchivo" targetRef="P_GYaCerrada" />
+      <bpmn:sequenceFlow id="P_F18" name="Sí" sourceRef="P_GYaCerrada" targetRef="P_EndYa" />
+      <bpmn:sequenceFlow id="P_F19" name="No" sourceRef="P_GYaCerrada" targetRef="P_Adjuntar" />
+      <bpmn:sequenceFlow id="P_F20" sourceRef="P_Adjuntar" targetRef="P_MCerrar" />
+      <bpmn:sequenceFlow id="P_F21" sourceRef="P_MCerrar" targetRef="P_Cerrar" />
+      <bpmn:sequenceFlow id="P_F22" sourceRef="P_Cerrar" targetRef="P_GCerrada" />
+      <bpmn:sequenceFlow id="P_F23" name="Sí" sourceRef="P_GCerrada" targetRef="P_End" />
+      <bpmn:sequenceFlow id="P_F24" name="No" sourceRef="P_GCerrada" targetRef="P_Reintentar" />
+      <bpmn:sequenceFlow id="P_F25" sourceRef="P_Reintentar" targetRef="P_MCerrar" />
+      <bpmn:textAnnotation id="P_N1"><bpmn:text>Estados del parte: pendiente, aprobado, rechazado y cerrado. No son los de Sigrid (SAT, PTE, TER, CER).</bpmn:text></bpmn:textAnnotation>
+      <bpmn:textAnnotation id="P_N2"><bpmn:text>Ventanas: archivar usa ARCHIVO_HABILITADO; adjuntar y cerrar, CIERRE_HABILITADO. Con la de cierre cerrada se archiva igual, pero no se toca Sigrid.</bpmn:text></bpmn:textAnnotation>
+      <bpmn:textAnnotation id="P_N3"><bpmn:text>Previsto: un parte sin firma deja la incidencia en TER (F-045).</bpmn:text></bpmn:textAnnotation>
+      <bpmn:association id="A_P_N1" associationDirection="None" sourceRef="P_N1" targetRef="P_Validar" />
+      <bpmn:association id="A_P_N2" associationDirection="None" sourceRef="P_N2" targetRef="P_Archivar" />
+      <bpmn:association id="A_P_N3" associationDirection="None" sourceRef="P_N3" targetRef="P_Adjuntar" />
+    </bpmn:subProcess>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Principal" name="Ciclo de posventa">
+    <bpmndi:BPMNPlane id="BPMNPlane_Principal" bpmnElement="Collaboration_Posventa">
+      <bpmndi:BPMNShape id="P_Propiedad_di" bpmnElement="P_Propiedad" isHorizontal="true"><dc:Bounds x="120" y="40" width="2440" height="70" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Ruesma_di" bpmnElement="P_Ruesma" isHorizontal="true"><dc:Bounds x="120" y="150" width="2440" height="490" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="L_Posventa_di" bpmnElement="L_Posventa" isHorizontal="true"><dc:Bounds x="150" y="150" width="2410" height="300" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="L_Portal_di" bpmnElement="L_Portal" isHorizontal="true"><dc:Bounds x="150" y="450" width="2410" height="190" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Sigrid_di" bpmnElement="P_Sigrid" isHorizontal="true"><dc:Bounds x="120" y="690" width="2440" height="70" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_SharePoint_di" bpmnElement="P_SharePoint" isHorizontal="true"><dc:Bounds x="120" y="800" width="2440" height="70" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Industrial_di" bpmnElement="P_Industrial" isHorizontal="true"><dc:Bounds x="120" y="910" width="2440" height="70" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Listado_di" bpmnElement="Start_Listado">
+        <dc:Bounds x="242" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="195" y="364" width="130" height="54" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP_Entrada_di" bpmnElement="SP_Entrada" isExpanded="false">
+        <dc:Bounds x="400" y="295" width="150" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Web_di" bpmnElement="Start_Web" color:background-color="#e5eaf6" color:border-color="#47609a">
+        <dc:Bounds x="457" y="527" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="405" y="569" width="140" height="54" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Bandeja_di" bpmnElement="G_Bandeja">
+        <dc:Bounds x="665" y="315" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP_Revision_di" bpmnElement="SP_Revision" isExpanded="false" color:background-color="#fbefd6" color:border-color="#9a6408">
+        <dc:Bounds x="830" y="295" width="150" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP_Volcado_di" bpmnElement="SP_Volcado" isExpanded="false" color:background-color="#fbefd6" color:border-color="#9a6408">
+        <dc:Bounds x="1045" y="295" width="150" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_PTE_di" bpmnElement="T_PTE">
+        <dc:Bounds x="1270" y="300" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Imprimir_di" bpmnElement="T_Imprimir" color:background-color="#e5eaf6" color:border-color="#47609a">
+        <dc:Bounds x="1485" y="300" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Catch_Remesa_di" bpmnElement="Catch_Remesa">
+        <dc:Bounds x="1747" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1705" y="364" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP_Partes_di" bpmnElement="SP_Partes" isExpanded="false">
+        <dc:Bounds x="1905" y="295" width="150" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Coste_di" bpmnElement="T_Coste" color:background-color="#e5eaf6" color:border-color="#47609a">
+        <dc:Bounds x="2130" y="300" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Cerrada_di" bpmnElement="End_Cerrada">
+        <dc:Bounds x="2392" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2350" y="364" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DS_Bandeja_di" bpmnElement="DS_Bandeja">
+        <dc:Bounds x="970" y="520" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="915" y="576" width="160" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F_Listado_Entrada_di" bpmnElement="F_Listado_Entrada">
+        <di:waypoint x="278" y="340" />
+        <di:waypoint x="400" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Entrada_Bandeja_di" bpmnElement="F_Entrada_Bandeja">
+        <di:waypoint x="550" y="340" />
+        <di:waypoint x="665" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Web_Bandeja_di" bpmnElement="F_Web_Bandeja">
+        <di:waypoint x="493" y="545" />
+        <di:waypoint x="690" y="545" />
+        <di:waypoint x="690" y="365" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Bandeja_Revision_di" bpmnElement="F_Bandeja_Revision">
+        <di:waypoint x="715" y="340" />
+        <di:waypoint x="830" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Revision_Volcado_di" bpmnElement="F_Revision_Volcado">
+        <di:waypoint x="980" y="340" />
+        <di:waypoint x="1045" y="340" />
+        <bpmndi:BPMNLabel><dc:Bounds x="984" y="310" width="55" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Volcado_PTE_di" bpmnElement="F_Volcado_PTE">
+        <di:waypoint x="1195" y="340" />
+        <di:waypoint x="1270" y="340" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1199" y="310" width="65" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_PTE_Imprimir_di" bpmnElement="F_PTE_Imprimir">
+        <di:waypoint x="1400" y="340" />
+        <di:waypoint x="1485" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Imprimir_Remesa_di" bpmnElement="F_Imprimir_Remesa">
+        <di:waypoint x="1615" y="340" />
+        <di:waypoint x="1747" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Remesa_Partes_di" bpmnElement="F_Remesa_Partes">
+        <di:waypoint x="1783" y="340" />
+        <di:waypoint x="1905" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Partes_Coste_di" bpmnElement="F_Partes_Coste">
+        <di:waypoint x="2055" y="340" />
+        <di:waypoint x="2130" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_Coste_End_di" bpmnElement="F_Coste_End">
+        <di:waypoint x="2260" y="340" />
+        <di:waypoint x="2392" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="N_Revision_di" bpmnElement="N_Revision"><dc:Bounds x="795" y="162" width="210" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_N_Revision_di" bpmnElement="A_N_Revision"><di:waypoint x="900" y="242" /><di:waypoint x="905" y="295" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="N_Volcado_di" bpmnElement="N_Volcado"><dc:Bounds x="1035" y="162" width="200" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_N_Volcado_di" bpmnElement="A_N_Volcado"><di:waypoint x="1135" y="228" /><di:waypoint x="1120" y="295" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="N_Gestion_di" bpmnElement="N_Gestion"><dc:Bounds x="1250" y="162" width="290" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_N_Gestion_di" bpmnElement="A_N_Gestion"><di:waypoint x="1395" y="228" /><di:waypoint x="1335" y="300" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="N_Entrada_di" bpmnElement="N_Entrada"><dc:Bounds x="170" y="470" width="250" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_N_Entrada_di" bpmnElement="A_N_Entrada"><di:waypoint x="295" y="470" /><di:waypoint x="475" y="385" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="N_Partes_di" bpmnElement="N_Partes"><dc:Bounds x="1880" y="162" width="220" height="52" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_N_Partes_di" bpmnElement="A_N_Partes"><di:waypoint x="1990" y="214" /><di:waypoint x="1980" y="295" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Excel_di" bpmnElement="MF_Excel"><di:waypoint x="260" y="110" /><di:waypoint x="260" y="322" /><bpmndi:BPMNLabel><dc:Bounds x="266" y="118" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Web_di" bpmnElement="MF_Web" color:border-color="#47609a"><di:waypoint x="575" y="110" /><di:waypoint x="575" y="495" /><di:waypoint x="475" y="495" /><di:waypoint x="475" y="527" /><bpmndi:BPMNLabel><dc:Bounds x="581" y="118" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Catalogo_di" bpmnElement="MF_Catalogo"><di:waypoint x="520" y="385" /><di:waypoint x="520" y="690" /><bpmndi:BPMNLabel><dc:Bounds x="526" y="524" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Relee_di" bpmnElement="MF_Relee"><di:waypoint x="855" y="385" /><di:waypoint x="855" y="690" /><bpmndi:BPMNLabel><dc:Bounds x="861" y="524" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Crea_di" bpmnElement="MF_Crea"><di:waypoint x="1120" y="385" /><di:waypoint x="1120" y="690" /><bpmndi:BPMNLabel><dc:Bounds x="1126" y="524" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_PTE_di" bpmnElement="MF_PTE"><di:waypoint x="1305" y="380" /><di:waypoint x="1305" y="690" /><bpmndi:BPMNLabel><dc:Bounds x="1311" y="522" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Aviso_di" bpmnElement="MF_Aviso"><di:waypoint x="1375" y="760" /><di:waypoint x="1375" y="910" /><bpmndi:BPMNLabel><dc:Bounds x="1381" y="822" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Firmados_di" bpmnElement="MF_Firmados"><di:waypoint x="1765" y="910" /><di:waypoint x="1765" y="358" /><bpmndi:BPMNLabel><dc:Bounds x="1771" y="878" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Archiva_di" bpmnElement="MF_Archiva"><di:waypoint x="2020" y="385" /><di:waypoint x="2020" y="800" /><bpmndi:BPMNLabel><dc:Bounds x="2026" y="580" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Cierra_di" bpmnElement="MF_Cierra"><di:waypoint x="1940" y="385" /><di:waypoint x="1940" y="690" /><bpmndi:BPMNLabel><dc:Bounds x="1946" y="524" width="96" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DA_Entrada_di" bpmnElement="DA_Entrada"><di:waypoint x="445" y="385" /><di:waypoint x="445" y="505" /><di:waypoint x="980" y="505" /><di:waypoint x="980" y="520" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DA_Revision_di" bpmnElement="DA_Revision"><di:waypoint x="875" y="385" /><di:waypoint x="875" y="545" /><di:waypoint x="970" y="545" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="DA_Volcado_di" bpmnElement="DA_Volcado"><di:waypoint x="1010" y="520" /><di:waypoint x="1010" y="505" /><di:waypoint x="1090" y="505" /><di:waypoint x="1090" y="385" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SP_Entrada">
+    <bpmndi:BPMNPlane id="BPMNPlane_SP_Entrada" bpmnElement="SP_Entrada">
+      <bpmndi:BPMNShape id="E_Start_di" bpmnElement="E_Start">
+        <dc:Bounds x="152" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="100" y="224" width="140" height="54" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_GOficios_di" bpmnElement="E_GOficios">
+        <dc:Bounds x="310" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="275" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Oficios_di" bpmnElement="E_Oficios">
+        <dc:Bounds x="270" y="300" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_MOficios_di" bpmnElement="E_MOficios">
+        <dc:Bounds x="475" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Plantilla_di" bpmnElement="E_Plantilla">
+        <dc:Bounds x="600" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Generar_di" bpmnElement="E_Generar">
+        <dc:Bounds x="765" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_GPlantilla_di" bpmnElement="E_GPlantilla">
+        <dc:Bounds x="970" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="935" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_EndPlantilla_di" bpmnElement="E_EndPlantilla">
+        <dc:Bounds x="977" y="332" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="930" y="374" width="130" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Rellenar_di" bpmnElement="E_Rellenar">
+        <dc:Bounds x="1095" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_MImportar_di" bpmnElement="E_MImportar">
+        <dc:Bounds x="1300" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Importar_di" bpmnElement="E_Importar">
+        <dc:Bounds x="1425" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Comprobar_di" bpmnElement="E_Comprobar">
+        <dc:Bounds x="1590" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_GYa_di" bpmnElement="E_GYa">
+        <dc:Bounds x="1795" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1760" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_EndYa_di" bpmnElement="E_EndYa">
+        <dc:Bounds x="1802" y="482" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1760" y="524" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_EndNoPlantilla_di" bpmnElement="E_EndNoPlantilla">
+        <dc:Bounds x="1967" y="482" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1920" y="524" width="130" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Registrar_di" bpmnElement="E_Registrar">
+        <dc:Bounds x="1920" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Normalizar_di" bpmnElement="E_Normalizar">
+        <dc:Bounds x="2085" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_GErrores_di" bpmnElement="E_GErrores">
+        <dc:Bounds x="2290" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2255" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Errores_di" bpmnElement="E_Errores">
+        <dc:Bounds x="2250" y="330" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_Ver_di" bpmnElement="E_Ver">
+        <dc:Bounds x="2415" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E_End_di" bpmnElement="E_End">
+        <dc:Bounds x="2627" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2585" y="224" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="E_F1_di" bpmnElement="E_F1">
+        <di:waypoint x="188" y="200" />
+        <di:waypoint x="310" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F2_di" bpmnElement="E_F2">
+        <di:waypoint x="335" y="225" />
+        <di:waypoint x="335" y="300" />
+        <bpmndi:BPMNLabel><dc:Bounds x="340" y="228" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F3_di" bpmnElement="E_F3">
+        <di:waypoint x="360" y="200" />
+        <di:waypoint x="475" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="364" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F4_di" bpmnElement="E_F4">
+        <di:waypoint x="400" y="340" />
+        <di:waypoint x="500" y="340" />
+        <di:waypoint x="500" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F5_di" bpmnElement="E_F5">
+        <di:waypoint x="525" y="200" />
+        <di:waypoint x="600" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F6_di" bpmnElement="E_F6">
+        <di:waypoint x="730" y="200" />
+        <di:waypoint x="765" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F7_di" bpmnElement="E_F7">
+        <di:waypoint x="895" y="200" />
+        <di:waypoint x="970" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F8_di" bpmnElement="E_F8">
+        <di:waypoint x="995" y="225" />
+        <di:waypoint x="995" y="332" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1000" y="228" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F9_di" bpmnElement="E_F9">
+        <di:waypoint x="1020" y="200" />
+        <di:waypoint x="1095" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1024" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F10_di" bpmnElement="E_F10">
+        <di:waypoint x="1225" y="200" />
+        <di:waypoint x="1300" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F11_di" bpmnElement="E_F11">
+        <di:waypoint x="1350" y="200" />
+        <di:waypoint x="1425" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F12_di" bpmnElement="E_F12">
+        <di:waypoint x="1555" y="200" />
+        <di:waypoint x="1590" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F13_di" bpmnElement="E_F13">
+        <di:waypoint x="1720" y="200" />
+        <di:waypoint x="1795" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F14_di" bpmnElement="E_F14">
+        <di:waypoint x="1820" y="225" />
+        <di:waypoint x="1820" y="482" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1826" y="350" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F15_di" bpmnElement="E_F15">
+        <di:waypoint x="1838" y="218" />
+        <di:waypoint x="1880" y="260" />
+        <di:waypoint x="1985" y="260" />
+        <di:waypoint x="1985" y="482" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1991" y="380" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F16_di" bpmnElement="E_F16">
+        <di:waypoint x="1845" y="200" />
+        <di:waypoint x="1920" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1849" y="184" width="38" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F17_di" bpmnElement="E_F17">
+        <di:waypoint x="2050" y="200" />
+        <di:waypoint x="2085" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F18_di" bpmnElement="E_F18">
+        <di:waypoint x="2215" y="200" />
+        <di:waypoint x="2290" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F19_di" bpmnElement="E_F19">
+        <di:waypoint x="2315" y="225" />
+        <di:waypoint x="2315" y="330" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2320" y="228" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F20_di" bpmnElement="E_F20">
+        <di:waypoint x="2250" y="370" />
+        <di:waypoint x="1325" y="370" />
+        <di:waypoint x="1325" y="225" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1500" y="376" width="100" height="42" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F21_di" bpmnElement="E_F21">
+        <di:waypoint x="2340" y="200" />
+        <di:waypoint x="2415" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2344" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F22_di" bpmnElement="E_F22">
+        <di:waypoint x="2545" y="200" />
+        <di:waypoint x="2627" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="E_N1_di" bpmnElement="E_N1"><dc:Bounds x="1925" y="40" width="250" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_E_N1_di" bpmnElement="A_E_N1"><di:waypoint x="2050" y="106" /><di:waypoint x="1985" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="E_N2_di" bpmnElement="E_N2"><dc:Bounds x="275" y="480" width="280" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_E_N2_di" bpmnElement="A_E_N2"><di:waypoint x="415" y="480" /><di:waypoint x="335" y="380" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="E_N3_di" bpmnElement="E_N3"><dc:Bounds x="605" y="40" width="280" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_E_N3_di" bpmnElement="A_E_N3"><di:waypoint x="745" y="106" /><di:waypoint x="665" y="160" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SP_Revision">
+    <bpmndi:BPMNPlane id="BPMNPlane_SP_Revision" bpmnElement="SP_Revision">
+      <bpmndi:BPMNShape id="R_Start_di" bpmnElement="R_Start">
+        <dc:Bounds x="152" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="110" y="384" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_MListar_di" bpmnElement="R_MListar">
+        <dc:Bounds x="310" y="335" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Listar_di" bpmnElement="R_Listar">
+        <dc:Bounds x="435" y="320" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_GHace_di" bpmnElement="R_GHace">
+        <dc:Bounds x="640" y="335" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="581" y="295" width="80" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Editar_di" bpmnElement="R_Editar" color:background-color="#fbefd6" color:border-color="#9a6408">
+        <dc:Bounds x="765" y="80" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Descartar_di" bpmnElement="R_Descartar" color:background-color="#fbefd6" color:border-color="#9a6408">
+        <dc:Bounds x="765" y="200" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Recuperar_di" bpmnElement="R_Recuperar" color:background-color="#fbefd6" color:border-color="#9a6408">
+        <dc:Bounds x="765" y="320" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Aprobar_di" bpmnElement="R_Aprobar" color:background-color="#fbefd6" color:border-color="#9a6408">
+        <dc:Bounds x="765" y="440" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Termina_di" bpmnElement="R_Termina" color:background-color="#fbefd6" color:border-color="#9a6408">
+        <dc:Bounds x="765" y="560" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Comprobar_di" bpmnElement="R_Comprobar">
+        <dc:Bounds x="930" y="440" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_GAprobable_di" bpmnElement="R_GAprobable">
+        <dc:Bounds x="1135" y="455" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1086" y="425" width="70" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_EndNoAprob_di" bpmnElement="R_EndNoAprob">
+        <dc:Bounds x="1142" y="622" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1105" y="664" width="110" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_MGuardar_di" bpmnElement="R_MGuardar">
+        <dc:Bounds x="1300" y="215" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Guardar_di" bpmnElement="R_Guardar">
+        <dc:Bounds x="1425" y="200" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_GOtra_di" bpmnElement="R_GOtra">
+        <dc:Bounds x="1630" y="215" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1595" y="271" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_EndOtra_di" bpmnElement="R_EndOtra">
+        <dc:Bounds x="1637" y="72" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1600" y="36" width="110" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_EndBien_di" bpmnElement="R_EndBien">
+        <dc:Bounds x="1802" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1765" y="264" width="110" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_End_di" bpmnElement="R_End">
+        <dc:Bounds x="977" y="622" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="935" y="664" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="R_F1_di" bpmnElement="R_F1">
+        <di:waypoint x="188" y="360" />
+        <di:waypoint x="310" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F2_di" bpmnElement="R_F2">
+        <di:waypoint x="360" y="360" />
+        <di:waypoint x="435" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F3_di" bpmnElement="R_F3">
+        <di:waypoint x="565" y="360" />
+        <di:waypoint x="640" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F4_di" bpmnElement="R_F4">
+        <di:waypoint x="665" y="335" />
+        <di:waypoint x="665" y="120" />
+        <di:waypoint x="765" y="120" />
+        <bpmndi:BPMNLabel><dc:Bounds x="673" y="104" width="38" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F5_di" bpmnElement="R_F5">
+        <di:waypoint x="665" y="335" />
+        <di:waypoint x="665" y="240" />
+        <di:waypoint x="765" y="240" />
+        <bpmndi:BPMNLabel><dc:Bounds x="673" y="224" width="56" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F6_di" bpmnElement="R_F6">
+        <di:waypoint x="690" y="360" />
+        <di:waypoint x="765" y="360" />
+        <bpmndi:BPMNLabel><dc:Bounds x="694" y="344" width="56" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F7_di" bpmnElement="R_F7">
+        <di:waypoint x="665" y="385" />
+        <di:waypoint x="665" y="480" />
+        <di:waypoint x="765" y="480" />
+        <bpmndi:BPMNLabel><dc:Bounds x="673" y="464" width="50" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F8_di" bpmnElement="R_F8">
+        <di:waypoint x="665" y="385" />
+        <di:waypoint x="665" y="600" />
+        <di:waypoint x="765" y="600" />
+        <bpmndi:BPMNLabel><dc:Bounds x="673" y="584" width="50" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F9_di" bpmnElement="R_F9">
+        <di:waypoint x="895" y="480" />
+        <di:waypoint x="930" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F10_di" bpmnElement="R_F10">
+        <di:waypoint x="1060" y="480" />
+        <di:waypoint x="1135" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F11_di" bpmnElement="R_F11">
+        <di:waypoint x="1160" y="505" />
+        <di:waypoint x="1160" y="622" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1165" y="508" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F12_di" bpmnElement="R_F12">
+        <di:waypoint x="1160" y="455" />
+        <di:waypoint x="1160" y="240" />
+        <di:waypoint x="1300" y="240" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1165" y="438" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F13_di" bpmnElement="R_F13">
+        <di:waypoint x="895" y="120" />
+        <di:waypoint x="1325" y="120" />
+        <di:waypoint x="1325" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F14_di" bpmnElement="R_F14">
+        <di:waypoint x="895" y="240" />
+        <di:waypoint x="1300" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F15_di" bpmnElement="R_F15">
+        <di:waypoint x="895" y="360" />
+        <di:waypoint x="1325" y="360" />
+        <di:waypoint x="1325" y="265" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F16_di" bpmnElement="R_F16">
+        <di:waypoint x="1350" y="240" />
+        <di:waypoint x="1425" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F17_di" bpmnElement="R_F17">
+        <di:waypoint x="1555" y="240" />
+        <di:waypoint x="1630" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F18_di" bpmnElement="R_F18">
+        <di:waypoint x="1655" y="215" />
+        <di:waypoint x="1655" y="108" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1660" y="198" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F19_di" bpmnElement="R_F19">
+        <di:waypoint x="1680" y="240" />
+        <di:waypoint x="1802" y="240" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1684" y="224" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="R_F20_di" bpmnElement="R_F20">
+        <di:waypoint x="895" y="600" />
+        <di:waypoint x="936" y="600" />
+        <di:waypoint x="936" y="640" />
+        <di:waypoint x="977" y="640" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="R_N1_di" bpmnElement="R_N1"><dc:Bounds x="110" y="50" width="280" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_R_N1_di" bpmnElement="A_R_N1"><di:waypoint x="250" y="116" /><di:waypoint x="500" y="320" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="R_N2_di" bpmnElement="R_N2"><dc:Bounds x="955" y="710" width="300" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_R_N2_di" bpmnElement="A_R_N2"><di:waypoint x="1105" y="710" /><di:waypoint x="995" y="520" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="R_N3_di" bpmnElement="R_N3"><dc:Bounds x="275" y="580" width="230" height="52" /></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SP_Volcado">
+    <bpmndi:BPMNPlane id="BPMNPlane_SP_Volcado" bpmnElement="SP_Volcado">
+      <bpmndi:BPMNShape id="V_Start_di" bpmnElement="V_Start" color:background-color="#e5eaf6" color:border-color="#47609a">
+        <dc:Bounds x="152" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="110" y="224" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_Candidatas_di" bpmnElement="V_Candidatas">
+        <dc:Bounds x="270" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_PideEnsayo_di" bpmnElement="V_PideEnsayo" color:background-color="#e5eaf6" color:border-color="#47609a">
+        <dc:Bounds x="435" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_Ensayo_di" bpmnElement="V_Ensayo">
+        <dc:Bounds x="600" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_GPrevistos_di" bpmnElement="V_GPrevistos">
+        <dc:Bounds x="805" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="770" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_EndNada_di" bpmnElement="V_EndNada">
+        <dc:Bounds x="812" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="780" y="384" width="100" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_Confirmar_di" bpmnElement="V_Confirmar" color:background-color="#e5eaf6" color:border-color="#47609a">
+        <dc:Bounds x="930" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_GVentana_di" bpmnElement="V_GVentana">
+        <dc:Bounds x="1135" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1105" y="129" width="110" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_EndCerrada_di" bpmnElement="V_EndCerrada">
+        <dc:Bounds x="1142" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1105" y="384" width="110" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_GEnsayo_di" bpmnElement="V_GEnsayo">
+        <dc:Bounds x="1300" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1255" y="115" width="140" height="54" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_EndEnsayo_di" bpmnElement="V_EndEnsayo">
+        <dc:Bounds x="1307" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1270" y="384" width="110" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_Anotar_di" bpmnElement="V_Anotar">
+        <dc:Bounds x="1425" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_Crear_di" bpmnElement="V_Crear">
+        <dc:Bounds x="1590" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_GResultado_di" bpmnElement="V_GResultado">
+        <dc:Bounds x="1795" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1760" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_Volcada_di" bpmnElement="V_Volcada">
+        <dc:Bounds x="1920" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_EndVolcada_di" bpmnElement="V_EndVolcada">
+        <dc:Bounds x="2132" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2090" y="224" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_Rechazada_di" bpmnElement="V_Rechazada">
+        <dc:Bounds x="1920" y="300" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_EndRechazada_di" bpmnElement="V_EndRechazada">
+        <dc:Bounds x="2132" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2095" y="364" width="110" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_Duda_di" bpmnElement="V_Duda">
+        <dc:Bounds x="1920" y="440" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="V_EndDuda_di" bpmnElement="V_EndDuda">
+        <dc:Bounds x="2132" y="462" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2090" y="504" width="120" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="V_F1_di" bpmnElement="V_F1">
+        <di:waypoint x="188" y="200" />
+        <di:waypoint x="270" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F2_di" bpmnElement="V_F2">
+        <di:waypoint x="400" y="200" />
+        <di:waypoint x="435" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F3_di" bpmnElement="V_F3">
+        <di:waypoint x="565" y="200" />
+        <di:waypoint x="600" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F4_di" bpmnElement="V_F4">
+        <di:waypoint x="730" y="200" />
+        <di:waypoint x="805" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F5_di" bpmnElement="V_F5">
+        <di:waypoint x="830" y="225" />
+        <di:waypoint x="830" y="342" />
+        <bpmndi:BPMNLabel><dc:Bounds x="835" y="228" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F6_di" bpmnElement="V_F6">
+        <di:waypoint x="855" y="200" />
+        <di:waypoint x="930" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="859" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F7_di" bpmnElement="V_F7">
+        <di:waypoint x="1060" y="200" />
+        <di:waypoint x="1135" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F8_di" bpmnElement="V_F8">
+        <di:waypoint x="1160" y="225" />
+        <di:waypoint x="1160" y="342" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1165" y="228" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F9_di" bpmnElement="V_F9">
+        <di:waypoint x="1185" y="200" />
+        <di:waypoint x="1300" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1189" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F10_di" bpmnElement="V_F10">
+        <di:waypoint x="1325" y="225" />
+        <di:waypoint x="1325" y="342" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1330" y="228" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F11_di" bpmnElement="V_F11">
+        <di:waypoint x="1350" y="200" />
+        <di:waypoint x="1425" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1354" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F12_di" bpmnElement="V_F12">
+        <di:waypoint x="1555" y="200" />
+        <di:waypoint x="1590" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F13_di" bpmnElement="V_F13">
+        <di:waypoint x="1720" y="200" />
+        <di:waypoint x="1795" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F14_di" bpmnElement="V_F14">
+        <di:waypoint x="1845" y="200" />
+        <di:waypoint x="1920" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1849" y="170" width="65" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F17_di" bpmnElement="V_F17">
+        <di:waypoint x="2050" y="200" />
+        <di:waypoint x="2132" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F18_di" bpmnElement="V_F18">
+        <di:waypoint x="2050" y="340" />
+        <di:waypoint x="2132" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F19_di" bpmnElement="V_F19">
+        <di:waypoint x="2050" y="480" />
+        <di:waypoint x="2132" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F15_di" bpmnElement="V_F15">
+        <di:waypoint x="1820" y="225" />
+        <di:waypoint x="1820" y="340" />
+        <di:waypoint x="1920" y="340" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1828" y="324" width="62" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="V_F16_di" bpmnElement="V_F16">
+        <di:waypoint x="1820" y="225" />
+        <di:waypoint x="1820" y="480" />
+        <di:waypoint x="1920" y="480" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1828" y="464" width="86" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="V_N1_di" bpmnElement="V_N1"><dc:Bounds x="1080" y="470" width="280" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_V_N1_di" bpmnElement="A_V_N1"><di:waypoint x="1220" y="470" /><di:waypoint x="1160" y="225" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="V_N2_di" bpmnElement="V_N2"><dc:Bounds x="1925" y="40" width="240" height="52" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_V_N2_di" bpmnElement="A_V_N2"><di:waypoint x="2045" y="92" /><di:waypoint x="1985" y="160" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SP_Partes">
+    <bpmndi:BPMNPlane id="BPMNPlane_SP_Partes" bpmnElement="SP_Partes">
+      <bpmndi:BPMNShape id="P_Start_di" bpmnElement="P_Start">
+        <dc:Bounds x="152" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="115" y="224" width="110" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_StartBuzon_di" bpmnElement="P_StartBuzon" color:background-color="#e5eaf6" color:border-color="#47609a">
+        <dc:Bounds x="152" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="110" y="364" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_MInicio_di" bpmnElement="P_MInicio">
+        <dc:Bounds x="310" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Subir_di" bpmnElement="P_Subir">
+        <dc:Bounds x="435" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Trocear_di" bpmnElement="P_Trocear">
+        <dc:Bounds x="600" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Leer_di" bpmnElement="P_Leer">
+        <dc:Bounds x="765" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Validar_di" bpmnElement="P_Validar">
+        <dc:Bounds x="930" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_GDestino_di" bpmnElement="P_GDestino">
+        <dc:Bounds x="1135" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1100" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Revisar_di" bpmnElement="P_Revisar">
+        <dc:Bounds x="1095" y="310" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_GDecide_di" bpmnElement="P_GDecide">
+        <dc:Bounds x="1300" y="325" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1270" y="289" width="110" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_EndRechazo_di" bpmnElement="P_EndRechazo">
+        <dc:Bounds x="1307" y="492" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1270" y="534" width="110" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_MAprobado_di" bpmnElement="P_MAprobado">
+        <dc:Bounds x="1465" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_ArchivarCerrar_di" bpmnElement="P_ArchivarCerrar">
+        <dc:Bounds x="1590" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Archivar_di" bpmnElement="P_Archivar">
+        <dc:Bounds x="1755" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_GArchivo_di" bpmnElement="P_GArchivo">
+        <dc:Bounds x="1960" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1925" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_EndArchivo_di" bpmnElement="P_EndArchivo">
+        <dc:Bounds x="1967" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1920" y="384" width="130" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_GYaCerrada_di" bpmnElement="P_GYaCerrada">
+        <dc:Bounds x="2125" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2090" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_EndYa_di" bpmnElement="P_EndYa">
+        <dc:Bounds x="2132" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2105" y="384" width="90" height="20" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Adjuntar_di" bpmnElement="P_Adjuntar">
+        <dc:Bounds x="2250" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_MCerrar_di" bpmnElement="P_MCerrar">
+        <dc:Bounds x="2455" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Cerrar_di" bpmnElement="P_Cerrar">
+        <dc:Bounds x="2580" y="160" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_GCerrada_di" bpmnElement="P_GCerrada">
+        <dc:Bounds x="2785" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2750" y="129" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_Reintentar_di" bpmnElement="P_Reintentar">
+        <dc:Bounds x="2580" y="320" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="P_End_di" bpmnElement="P_End">
+        <dc:Bounds x="2957" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2920" y="224" width="110" height="30" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="P_F1_di" bpmnElement="P_F1">
+        <di:waypoint x="188" y="200" />
+        <di:waypoint x="310" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F2_di" bpmnElement="P_F2">
+        <di:waypoint x="188" y="340" />
+        <di:waypoint x="335" y="340" />
+        <di:waypoint x="335" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F3_di" bpmnElement="P_F3">
+        <di:waypoint x="360" y="200" />
+        <di:waypoint x="435" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F4_di" bpmnElement="P_F4">
+        <di:waypoint x="565" y="200" />
+        <di:waypoint x="600" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F5_di" bpmnElement="P_F5">
+        <di:waypoint x="730" y="200" />
+        <di:waypoint x="765" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F6_di" bpmnElement="P_F6">
+        <di:waypoint x="895" y="200" />
+        <di:waypoint x="930" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F7_di" bpmnElement="P_F7">
+        <di:waypoint x="1060" y="200" />
+        <di:waypoint x="1135" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F8_di" bpmnElement="P_F8">
+        <di:waypoint x="1160" y="225" />
+        <di:waypoint x="1160" y="310" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1166" y="240" width="100" height="42" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F9_di" bpmnElement="P_F9">
+        <di:waypoint x="1185" y="200" />
+        <di:waypoint x="1465" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1189" y="170" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F10_di" bpmnElement="P_F10">
+        <di:waypoint x="1225" y="350" />
+        <di:waypoint x="1300" y="350" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F11_di" bpmnElement="P_F11">
+        <di:waypoint x="1325" y="375" />
+        <di:waypoint x="1325" y="492" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1330" y="378" width="56" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F12_di" bpmnElement="P_F12">
+        <di:waypoint x="1350" y="350" />
+        <di:waypoint x="1490" y="350" />
+        <di:waypoint x="1490" y="225" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1355" y="332" width="50" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F13_di" bpmnElement="P_F13">
+        <di:waypoint x="1515" y="200" />
+        <di:waypoint x="1590" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F14_di" bpmnElement="P_F14">
+        <di:waypoint x="1720" y="200" />
+        <di:waypoint x="1755" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F15_di" bpmnElement="P_F15">
+        <di:waypoint x="1885" y="200" />
+        <di:waypoint x="1960" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F16_di" bpmnElement="P_F16">
+        <di:waypoint x="1985" y="225" />
+        <di:waypoint x="1985" y="342" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1990" y="228" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F17_di" bpmnElement="P_F17">
+        <di:waypoint x="2010" y="200" />
+        <di:waypoint x="2125" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2014" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F18_di" bpmnElement="P_F18">
+        <di:waypoint x="2150" y="225" />
+        <di:waypoint x="2150" y="342" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2155" y="228" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F19_di" bpmnElement="P_F19">
+        <di:waypoint x="2175" y="200" />
+        <di:waypoint x="2250" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2179" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F20_di" bpmnElement="P_F20">
+        <di:waypoint x="2380" y="200" />
+        <di:waypoint x="2455" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F21_di" bpmnElement="P_F21">
+        <di:waypoint x="2505" y="200" />
+        <di:waypoint x="2580" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F22_di" bpmnElement="P_F22">
+        <di:waypoint x="2710" y="200" />
+        <di:waypoint x="2785" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F23_di" bpmnElement="P_F23">
+        <di:waypoint x="2835" y="200" />
+        <di:waypoint x="2957" y="200" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2839" y="184" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F24_di" bpmnElement="P_F24">
+        <di:waypoint x="2810" y="225" />
+        <di:waypoint x="2810" y="360" />
+        <di:waypoint x="2710" y="360" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2816" y="250" width="20" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="P_F25_di" bpmnElement="P_F25">
+        <di:waypoint x="2580" y="360" />
+        <di:waypoint x="2480" y="360" />
+        <di:waypoint x="2480" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="P_N1_di" bpmnElement="P_N1"><dc:Bounds x="770" y="40" width="260" height="52" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_P_N1_di" bpmnElement="A_P_N1"><di:waypoint x="900" y="92" /><di:waypoint x="995" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="P_N2_di" bpmnElement="P_N2"><dc:Bounds x="1780" y="490" width="300" height="66" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_P_N2_di" bpmnElement="A_P_N2"><di:waypoint x="1930" y="490" /><di:waypoint x="1820" y="240" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="P_N3_di" bpmnElement="P_N3"><dc:Bounds x="2275" y="40" width="230" height="52" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A_P_N3_di" bpmnElement="A_P_N3"><di:waypoint x="2390" y="92" /><di:waypoint x="2315" y="160" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

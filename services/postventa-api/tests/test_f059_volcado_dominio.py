@@ -1598,6 +1598,8 @@ def test_f059_r11_r18_los_motivos_de_exclusion() -> None:
         "huella_no_coincide",
         "fuera_del_ensayo",
         "revision_desactualizada",
+        "duplicada_en_sigrid",
+        "conflicto_sin_confirmar",
     ]
 
 

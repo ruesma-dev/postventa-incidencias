@@ -435,6 +435,11 @@ es su pestaña `partes`.
 >   (`data-construccion`, R66), el recuadro `data-en-construccion` con su
 >   rótulo que enmarca todo lo inventado (R63–R65) y la portada sin cifras
 >   inventadas, con los chips «En construcción» / «En producción» (R67).
+>   *F-040 T6a (decisión del humano, 2026-11-04):* la pestaña, los pasos 02
+>   y 03 y la tarjeta de la bandeja llevan a la página real `bandeja.html`
+>   (`enlace` en `Portal.SECCIONES`), no a la maqueta `#/bandeja`, y la
+>   pestaña y los pasos van sin punto (`Portal.marcadaEnConstruccion`)
+>   aunque la sección siga en `construccion`.
 > - **Todo se navega en la misma pestaña** (R73 ajustado), también desde el
 >   circuito: ningún enlace entre páginas del front lleva `target`. La
 >   remesa a medias la protege la **guarda de salida** del circuito
@@ -746,13 +751,39 @@ en `specs/F-036-importar-excel/`.
 ### La plantilla
 
 `GET /api/plantilla?obra=` genera un `.xlsx` para **una** obra con lo que
-Sigrid dice de ella en ese momento: sus unidades de posventa y sus oficios
-con proveedor (`obrofc`). Cada columna que no es texto libre —unidad,
-ubicación, oficio, proveedor, urgencia y listado— es un **desplegable
-cerrado**: el oficio enseña **una entrada por oficio real** (los grupos de
-abajo) y el proveedor, solo los pares oficio · proveedor de la obra. Las
-ubicaciones son una lista cerrada versionada en
-`config/plantilla_incidencias.yaml`. La hoja va protegida, sin contraseña,
+Sigrid dice de ella en ese momento: sus unidades de posventa, sus oficios
+con proveedor (`obrofc`) y, **desde F-071** (2026-11-09), las ubicaciones de
+la tipología de cada unidad (`prmtpl.ubica`, la tercera lectura de F-056).
+Cada columna que no es texto libre —unidad, ubicación, oficio, proveedor,
+urgencia y listado— es un **desplegable cerrado**, y **todos los desplegables
+salen de Sigrid salvo urgencia y listado**, que siguen en
+`config/plantilla_incidencias.yaml` porque Sigrid no tiene un catálogo de
+ellos que la bandeja use (la urgencia, hasta la lista interna de prioridades
+que pasará el humano; el listado, hasta **F-072**). Es la **versión 2** de la
+plantilla:
+
+- **La ubicación depende de la unidad** de la fila: en la hoja oculta
+  `_catalogos` va la tabla `tabla_ubicaciones_de_unidad` (unidad → nombre de
+  su lista), una columna por cada lista distinta y la celda vacía
+  `ubicaciones_ninguna`; la validación de `Ubicación` busca con `INDIRECT` la
+  lista de la unidad de su fila. Una fila sin unidad no ofrece ninguna. El
+  desplegable no borra la ubicación si se cambia la unidad: lo comprueba la
+  importación.
+- **El oficio y el proveedor van por código**: el oficio enseña **una entrada
+  por código** de oficio de la obra, con el código en la etiqueta, y el
+  proveedor, una por cada par oficio · proveedor de `obrofc`, con el oficio y
+  los dos códigos en la etiqueta. Dos oficios de Sigrid casi iguales se ven
+  los dos y se distinguen por su código.
+- **Los grupos de equivalencia ya no se aplican a la plantilla** (abajo, «La
+  agrupación…»): la plantilla **no lee PostgreSQL**, solo Sigrid.
+
+Solo `POST /api/sql/read`, con las tres lecturas que ya existían —unidades,
+oficios de la obra y ubicaciones de las unidades—: **ninguna lectura nueva**,
+ningún endpoint, ninguna variable de entorno y ningún DDL. Al log van solo
+recuentos (listas distintas, unidades sin ubicaciones, opciones de oficio,
+pares), nunca una ubicación ni un nombre. Antes de F-071 las ubicaciones eran
+una lista del YAML igual para todas las filas y el oficio enseñaba una entrada
+por grupo de equivalencia. La hoja va protegida, sin contraseña,
 con una hoja de instrucciones y unos metadatos ocultos —identificador,
 versión y obra— con los que se la reconoce al volver. Todo texto se escribe
 como texto: nada de lo que llegue de Sigrid o de la propiedad se convierte en
@@ -772,24 +803,42 @@ en este orden (`application/pipelines/paso_importacion.py`):
    antiguo hecho a mano se rechaza **entero**, con su motivo, sin leer Sigrid
    ni escribir nada. Antes de abrirlo se comprueba el ZIP, y `openpyxl` lo
    abre con `defusedxml` por debajo, **en un proceso hijo con tope de tiempo
-   y de memoria** (abajo, «La lectura aislada»).
+   y de memoria** (abajo, «La lectura aislada»). **Desde F-071**, una
+   plantilla de la versión 1 (la de las ubicaciones del YAML y los oficios
+   por grupo) también se rechaza entera, con el código `version_anterior`:
+   quien la tenga rellenada descarga la versión 2 y copia sus filas.
 3. **Catálogo.** Se vuelve a leer el de la obra en Sigrid: el que vale es el
-   del momento de importar, no el de la descarga.
-4. **Validación**, fila a fila y con **comparación exacta**: un valor tasado
-   vale si es exactamente una opción de su desplegable —ni otra mayúscula, ni
-   un blanco de más, ni algo parecido—, y el texto libre, si cabe en su tope.
-   Una fórmula, una fecha o un número en una columna tasada es un error. No hay
-   casado aproximado: lo que no es exacto, vuelve.
+   del momento de importar, no el de la descarga. Desde F-071 se leen además
+   las **ubicaciones de cada unidad** (la tercera lectura, una vez), y con
+   `ya_importado` o un fichero que no es la plantilla no se lee nada.
+4. **Validación**, fila a fila. Primero la **comparación exacta**: un valor
+   tasado vale si es exactamente una opción de su desplegable, y el texto
+   libre, si cabe en su tope. Una fórmula, una fecha o un número en una
+   columna tasada es un error. **Desde F-071**, si no es exacto, las columnas
+   tasadas —unidad, ubicación, oficio, proveedor, urgencia y listado— casan
+   con **la misma regla de F-060** (`casado_con_lista.py`: la opción con la
+   misma clave, que solo ignora mayúsculas y los blancos de los extremos, y
+   solo si es **una**), con un aviso que dice qué valor se tomó; nada más
+   parecido que eso. La ubicación se valida **contra las de la unidad de su
+   fila**, y se guarda con el texto exacto de Sigrid: una de otra unidad, o
+   de una unidad sin ubicaciones en Sigrid, vuelve con su motivo; sin unidad
+   válida, se mira contra las de la obra entera sin guardar nada. Un valor
+   que ya no está en Sigrid desde la descarga vuelve diciendo que se elija
+   del desplegable del Excel de errores, que trae las listas de hoy.
 5. **Registro.** Las filas válidas entran en la bandeja en una transacción.
    Dos filas del mismo fichero con la misma clave —obra, unidad, y ubicación y
    descripción normalizadas— entran la primera normal y la otra marcada
    **duplicada** de ella; una clave que ya está en la bandeja de esa obra no
    vuelve a entrar (`ya_en_bandeja`), así que reimportar no duplica nada. Cada
-   oficio se resuelve a un **código concreto** de Sigrid; si su grupo tiene
-   varios códigos en la obra y el proveedor de la fila no lo desempata, entra
-   como `oficio_ambiguo` y el código lo elige una persona al revisar.
+   oficio se resuelve a un **código concreto** de Sigrid: desde F-071 la
+   opción elegida ya **es** un código, y el par de `Proveedor` trae el suyo
+   (si la fila trae un `Oficio` distinto del del par, vuelve con error), así
+   que **ya no hay `oficio_ambiguo` de entrada**. Las filas que entraron así
+   antes de F-071 siguen en la bandeja y se resuelven al revisar, como hasta
+   ahora.
 6. **Excel de errores.** Si alguna fila tiene error, la respuesta lleva un
-   **Excel de errores**: el mismo generador, el mismo catálogo y los mismos
+   **Excel de errores**: el mismo generador, el mismo catálogo —y desde F-071
+   las mismas ubicaciones, en la versión 2, sin otra lectura— y los mismos
    metadatos que la plantilla, **solo** con esas filas, sus valores tal como
    llegaron, las celdas malas marcadas y una columna `Errores` que dice qué
    tiene cada una. Se corrige y se vuelve a importar; lo que ya entró no se
@@ -859,8 +908,9 @@ también lo que la biblioteca analice mañana.
   («El presupuesto de 45 segundos»). Los ficheros de la review 4 costaban
   108 s y 1,6 GB y entraban en la bandeja; ahora son `fichero_sospechoso` en
   24,7–30,2 s, medido en Linux con los topes de producción.
-- **El script de migración** del Excel actual sigue leyendo en proceso: corre
-  en local sobre ficheros conocidos, no sobre una subida.
+- **El script de migración** del Excel actual, que leía en proceso porque
+  corría en local sobre ficheros conocidos, **se retiró en F-071** («Dónde vive
+  cada pieza»). Lo subido se lee siempre en el hijo.
 
 ### La agrupación de oficios casi duplicados
 
@@ -879,11 +929,22 @@ Las decisiones se guardan por pares en `postventa.decisiones_equivalencia`,
 **append-only** como `historico_estado`: manda la última decisión de cada par,
 «Separar» un grupo es guardar «distinto» para uno de sus pares, y una decisión
 vale para todas las obras. Un grupo con una contradicción no se aplica y se
-avisa. Se agrupa **para enseñar**, no para corregir: la plantilla enseña una
-entrada por grupo, pero lo que se guarda en la bandeja sigue siendo un código
-de Sigrid —el que resuelve la fila— o ninguno, con `oficio_ambiguo`. La
-pantalla baja además los grupos vigentes en un JSON, solo con códigos, que usa
-la migración del Excel actual.
+avisa. Se agrupa **para enseñar**, no para corregir: con F-036 la plantilla
+enseñaba una entrada por grupo, pero lo que se guarda en la bandeja sigue
+siendo un código de Sigrid —el que resuelve la fila— o ninguno, con
+`oficio_ambiguo`. La pantalla baja además los grupos vigentes en un JSON, solo
+con códigos, que usaba la migración del Excel actual (retirada en F-071).
+
+> **Enmienda del 2026-11-09 (F-071).** Los grupos de equivalencia **ya no se
+> aplican a la plantilla ni a la importación**: el desplegable de `Oficio`
+> enseña una entrada por código, con el código en la etiqueta, y lo elegido ya
+> es un código, así que lo que agrupaban —dos oficios casi iguales— se
+> distingue a la vista por su código («La plantilla»). Ni la plantilla ni la
+> importación leen `postventa.decisiones_equivalencia`. La agrupación sirve
+> ahora a **la revisión de lo ya importado**: las filas que entraron como
+> `oficio_ambiguo` antes de F-071 enseñan su grupo al revisarlas
+> (`opciones_de_la_obra`, que se queda en `application/pipelines/plantilla.py`
+> solo para la revisión). `oficios.html`, sus dos rutas y la tabla no cambian.
 
 **La costura para las fichas siguientes.** La tabla lleva el discriminador
 `catalogo`, que admite ya `oficio`, `proveedor` y `actividad_oficio`, y las
@@ -896,12 +957,21 @@ esquema ni el mecanismo.
 La misma hexagonal que el resto del servicio:
 
 - **Dominio puro**: `domain/models/plantilla_incidencias.py` (opciones y
-  etiquetas de la plantilla, topes), `importacion.py` (reconocer, validar,
-  resolver oficio y proveedor, clave de duplicado) y `equivalencias.py`.
+  etiquetas de la plantilla, topes; desde F-071, las opciones de oficio y los
+  pares por código y las listas de ubicaciones por unidad),
+  `importacion.py` (reconocer, validar, resolver oficio y proveedor, clave de
+  duplicado), `equivalencias.py` y, **desde F-071**, `casado_con_lista.py`: la
+  regla de casado de F-060 (`clave_de_ubicacion`, `ubicacion_de_sigrid`) movida
+  sin cambiar una letra a una hoja del grafo de imports —para que
+  `importacion.py` la use sin un ciclo; `normalizacion.py` la reexporta con
+  los mismos nombres— más `casar_con_lista` para las demás columnas tasadas.
 - **Puertos**: `CatalogoObraPort`, `GeneradorPlantillaPort` y
-  `LectorPlantillaPort`, `BandejaPort` y `EquivalenciasPort`.
+  `LectorPlantillaPort`, `BandejaPort` y `EquivalenciasPort`; desde F-071 la
+  plantilla y la importación usan además `UbicacionesValidasPort` de F-056
+  (ningún puerto nuevo).
 - **Adaptadores**: `infrastructure/sigrid/catalogo_obra.py` (las dos lecturas,
-  solo `POST /api/sql/read`), `infrastructure/documentos/excel_openpyxl.py`
+  solo `POST /api/sql/read`), `infrastructure/sigrid/ubicaciones_validas.py`
+  (la tercera, la de F-056, sin cambiar), `infrastructure/documentos/excel_openpyxl.py`
   (el único módulo que importa `openpyxl`: el generador, y la lectura que
   corre en el hijo), `infrastructure/documentos/lector_aislado.py` (el lector
   que usa la importación: pasos baratos, semáforo y validación del JSON) y
@@ -914,9 +984,15 @@ La misma hexagonal que el resto del servicio:
   abren en la misma pestaña; el circuito vive en `partes.html` y una guarda
   pide confirmación antes de salir con una remesa a medias (ver la sección del
   portal).
-- **La migración del Excel actual** de la obra piloto:
-  `scripts/migrar_excel_f036.py`, que usa el mismo lector, el mismo generador
-  y la misma validación, y no modifica el original.
+- **La migración del Excel actual** de la obra piloto
+  (`scripts/migrar_excel_f036.py`, `scripts/migracion_f036.py`,
+  `scripts/migracion_f036_correcciones.yaml` y sus tests
+  `test_f036_migracion*.py`) **se retiró en F-071** (R45, D-6): cumplió, y
+  usaba la lista de ubicaciones del YAML y los grupos de equivalencia que la
+  plantilla v2 ya no tiene. Entró con F-036 en `4a0bdaa`
+  y sigue en `dev` hasta `ed935ad`, el último commit que la tiene, por si
+  hiciera falta consultarla. `scripts/medir_catalogos_f036.py` y
+  `scripts/contar_elementos_xml_f036.py` se quedan.
 
 **Dependencias nuevas**: `openpyxl` y `defusedxml`, en `requirements.txt`.
 **Ninguna variable de entorno nueva.**
@@ -1010,7 +1086,8 @@ válidas** de cada unidad, que son las de la **tipología** de esa unidad
 una ubicación de otra unidad de la misma obra no vale, y cambiar la unidad al
 editar vuelve a validar la ubicación. Una unidad sin tipología no admite
 ninguna. No se valida contra la lista de `config/plantilla_incidencias.yaml`,
-que sigue siendo solo la del desplegable de la plantilla.
+que era solo la del desplegable de la plantilla y **desde F-071 ya no existe**:
+la plantilla ofrece las de cada unidad, con esta misma lectura.
 
 Editar devuelve 400 `valores_no_validos` con **todos** los campos que fallan, o
 `sin_cambios` si no cambia nada; los nombres de unidad, oficio y proveedor se
@@ -1127,9 +1204,12 @@ en la sección «Volcado a Sigrid (F-059)».
 - **No tiene pantalla**: la página de revisión, con su paginación, es **F-038**.
 - **No aprueba ni descarta varias a la vez** (F-043), ni propone industrial
   (F-039), ni agrupa proveedores (F-050).
-- **No toca la plantilla Excel**, que sigue ofreciendo la lista de ubicaciones
-  de `config/plantilla_incidencias.yaml`: ofrecer la de cada unidad es una ficha
-  aparte.
+- **No toca la plantilla Excel.** Con F-056 la plantilla ofrecía la lista de
+  ubicaciones de `config/plantilla_incidencias.yaml`, y ofrecer la de cada
+  unidad era una ficha aparte: es **F-071**. Desde ella **la lista de
+  ubicaciones del YAML ya no existe** —la plantilla ofrece las de la unidad de
+  cada fila, con la misma lectura que usa la revisión— y la revisión no
+  cambia: sigue validando por unidad y con comparación exacta.
 
 ## La página de revisión (F-038)
 
@@ -1170,7 +1250,7 @@ la maqueta no pueden hablar con el backend. Diseño:
 ## Normalizar las ubicaciones (F-060)
 
 **Añadida el 2026-10-13 por F-060; desplegada el 2026-10-13 y verificada en el entorno el 2026-10-14.**
-La plantilla de F-036 ofrece las ubicaciones de su YAML y Sigrid guarda las de
+La plantilla de F-036 ofrecía las ubicaciones de su YAML (hasta F-071) y Sigrid guarda las de
 cada tipología con otras mayúsculas: en la 0677, 110 de las 148 incidencias
 con `ubicacion_fuera_de_lista` lo eran **solo por mayúsculas**. Por decisión
 del humano, no se compara sin mayúsculas: la ubicación que coincide **salvo
@@ -1295,7 +1375,9 @@ al objetivo de `design.md` §11.4, y lo que domina son las lecturas lentas de
 - **No compara sin mayúsculas**: editar y aprobar siguen exactos.
 - **No toca la plantilla**: que lo nuevo llegue ya exacto es **F-058**, y
   F-060 sigue haciendo falta después para lo ya importado y las plantillas
-  viejas.
+  viejas. F-058 la absorbió **F-071**: desde ella lo importado entra con el
+  texto exacto de Sigrid y la normalización tras importar no encuentra nada
+  que normalizar en lo recién importado.
 - **No tiene pantalla**: la página de revisión es **F-038**, que la consume sin
   cambios de forma.
 - **No optimiza el listado** más allá de la importación diferida: lo mide, y
@@ -1351,6 +1433,42 @@ POST /api/volcado/volcar       puertas → ensayo vigente → login → escritur
   Si la respuesta entera no se entiende, `sin_respuesta` para todos y 502
   `volcado_sin_respuesta`; si Sigrid respondió y no se pudo guardar, 500
   `volcado_sin_traza` y las incidencias quedan con su `enviado`.
+
+### La guarda del ensayo (F-065)
+
+**Desde F-065**, el ensayo **lee Sigrid una vez más** antes de mandar nada, para
+que la regla del botón «Registrar» de F-040 la garantice el backend: **solo
+`sql/read`**, **por unidades** y **sin la `ficha`** (sí con `con.res` y
+`rcp.resubi`, que el cruce compara y que se quedan en la memoria de la
+petición), **después de la
+selección** y **antes del login** y del lote (`application/pipelines/guarda_sigrid.py`;
+si la selección no deja nada, no lee). Cruza con la misma función que la ruta
+de F-065 (sección siguiente) y da a cada candidata un veredicto del dominio:
+
+```
+se_enlaza   emparejada por PVI- en PTE, SAT, TER o CER     se manda: la pasarela no puede crear otro
+ya_existe   los dos criterios con una abierta (SAT, PTE)   se excluye: duplicada_en_sigrid
+choca       emparejada que no se enlaza, u otro conflicto  se excluye: conflicto_sin_confirmar, salvo confirmada
+va          lo demás, también con avisos                   se manda
+```
+
+**La función es la misma y la lectura no**: la ruta lee toda la obra y la
+guarda solo las unidades de lo que se manda, así que **el bloque `volcado` de la
+ruta y la guarda pueden diferir** con **una referencia `PVI-` en otra unidad**.
+Si es la única, la ruta da `se_enlaza` y la guarda, `va`; si es la de código
+mayor y está anulada, la ruta da `choca` y la guarda, `se_enlaza`. Ese caso lo
+para la pasarela, con `referencia_en_conflicto`.
+
+La regla de la emparejada va **primero**: **solo se enlaza en PTE, SAT, TER o
+CER**; **en NPR, con un estado desconocido o vacío da `choca`**, con solo su
+código y exigiendo la **confirmación explícita** (`conflictos_confirmados`, por
+incidencia y con **todos** los códigos del veredicto), aunque tenga otras
+coincidencias. Los dos motivos, `duplicada_en_sigrid` y
+`conflicto_sin_confirmar`, se suman a los de arriba. Si la lectura falla, tres
+códigos: 503 `sigrid_no_disponible`, 409 `reclamaciones_sin_verificar` y 409
+`obra_ambigua`, sin login, sin lote y sin guardar nada: **Sigrid caída = no se
+ensaya**, y **sin interruptor**. `volcar` y el panel no cambian, ni la tabla: la
+confirmación consta en el log (`F-065 guarda del ensayo`), no en la base.
 
 ### Los seis estados
 
@@ -1472,17 +1590,85 @@ Nuestros partes se reconocen por la referencia `PVI-` en `RCPCLI`
   nombra `sql/write`.
 - **No anula ni modifica** un parte creado: es la UI de Sigrid.
 - **No trocea**: el troceo y la confirmación (segundo clic y número de partes)
-  son de **F-040**, que tampoco existe todavía; hasta entonces, solo se puede
-  usar llamando a las rutas.
+  son del front, **F-040** (sección «El panel de volcado (F-040)»).
 - **No manda la urgencia** ni varios intervinientes por parte (**F-039**).
 - **No es asíncrono**: sin cola; con la referencia idempotente, el troceo
   síncrono basta.
+
+## El panel de volcado (F-040)
+
+**Añadido el 2026-10-31 por F-040 (Bloque 1); sin publicar todavía.** Es la
+cara de las rutas de **F-059** y de la sincronización de **F-065**: el front
+no añade ninguna ruta ni toca el backend.
+
+- **Dónde.** En `bandeja.html`, dentro del componente de la bandeja
+  (`appRevision`): `js/volcado.js` compone su panel sobre él
+  (`Volcado.conPanel`), con su estado bajo `volcado`. `js/revision.js` solo le
+  avisa tras una carga buena de la obra.
+- **Qué consume.** `GET /api/volcado` al cargar (solo lee);
+  `GET /api/revision/sigrid` con «Registrar»; `POST /api/volcado/ensayo` por
+  trozos con «Ensayar»; `POST /api/volcado/volcar`, un ensayo cada vez, tras
+  un segundo clic y teclear el número de partes. Las cuatro, por
+  `js/api.js`; las tres que no son la lectura del panel, sin reintentos.
+- **Qué escribe.** Solo el volcado escribe, y escribe en Sigrid a través del
+  backend (F-059): el front no habla con Sigrid ni con la base.
+- **Lo que no hace.** No pasa nada a PTE (se avisa de que es a mano), no
+  anula ni corrige un parte creado y no guarda la `ficha` de las reclamaciones
+  de Sigrid.
+
+## Las reclamaciones de Sigrid en la revisión (F-065)
+
+**Añadida el 2026-10-30 por F-065; desplegada el 2026-10-31 desde `dev`
+`ed590bd` y verificada en solo lectura (T-A11 a T-A17); T-A18 pendiente.** Hasta aquí la bandeja solo se comparaba consigo misma. `GET
+/api/revision/sigrid?obra=` lee de Sigrid **todas** las reclamaciones de la obra,
+de cualquier estado y fecha, y las cruza con la bandeja. Solo lee: ninguna
+tabla, ninguna variable, ninguna escritura, ninguna caché. Es el **tramo A**: la
+página es **F-064** y el botón «Registrar», **F-040**. Qué consume y qué
+expone, en `docs/INTEGRACION.md` (§1, §4, §6, §7, §8 y §9); el diseño, en
+`specs/F-065-revision-sigrid-backend/`.
+
+### El cruce
+
+En el **dominio puro** y en **una sola función**, `cruzar`
+(`domain/models/sigrid_bandeja.py`), sin red, sin base y sin reloj:
+
+- **Emparejar por `PVI-`.** Una reclamación con la referencia `PVI-<id>` de una
+  incidencia de la obra queda emparejada con ella (`ya_en_sigrid`,
+  `varias_en_sigrid`, y los avisos `volcada_no_encontrada`, `codigo_distinto`,
+  `anulada_en_sigrid` y `referencia_desconocida`). Con varias, manda la de
+  código mayor.
+- **Dos criterios**, sobre las incidencias `nueva`, `editada`, `aprobada` y
+  `en_duda`: `misma_unidad_oficio_ubicacion` y
+  `misma_unidad_descripcion_parecida` (Jaccard, umbral 50 y al menos dos
+  palabras en común). Cada par da un `coincide`: **conflicto** con una
+  reclamación en `SAT` o `PTE`, **aviso** en `TER` o `CER`, y nada en `NPR`.
+- El cruce **no bloquea**: los hallazgos se enseñan y la aprobación no los mira. Quien
+  pone la regla es la guarda del ensayo (sección anterior), con `veredictos`, la
+  misma función en los dos sitios.
+
+### Los datos personales
+
+**Hay datos personales**: la `ficha` de cada reclamación lleva, con una lista
+cerrada, nombres, teléfonos y correos de clientes, porque la página busca y
+filtra por ellos. Salen solo en esta respuesta, con `Cache-Control: no-store`.
+**No se guardan** ni en nuestra base **ni en ningún log**: la línea `F-065
+sigrid de la bandeja` lleva solo la obra, el resultado, tramos, recuentos y
+bytes. Nunca el DNI ni las credenciales de i-Sigrid. Las filas del puerto no
+imprimen sus valores en su `repr`, y ningún error repite una fila.
+
+### Lo que no hace
+
+- **No escribe** en Sigrid ni en la base: la lectura de la base es la de F-056,
+  sin cambiarla.
+- **No toca `GET /api/revision`**, ni su línea de tiempos: es una ruta aparte.
+- **No lee por trozos**: una sola lectura con el techo de 500.000 filas; si
+  llega, 409 `reclamaciones_sin_verificar` y ningún conflicto a medias.
 
 ## Acceso a datos y sistemas externos
 
 | Sistema | Uso | Límites |
 |---|---|---|
-| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). **Desde F-056**, una **tercera lectura** por `sql/read`, con las mismas puertas y el mismo techo: las ubicaciones válidas de la tipología de cada unidad, para validar lo que se edita o se aprueba en la revisión de la bandeja (sección «Revisión de la bandeja (F-056)»). **Desde F-060**, esa tercera lectura se hace también tras cada importación que registra filas y en `POST /api/revision/normalizar`, para normalizar las ubicaciones; ninguna lectura nueva y ninguna escritura (sección «Normalizar las ubicaciones (F-060)»). **Desde F-059**, una **tercera escritura**: la **creación de partes de reclamación** por `POST /api/sigrid/partes-reclamacion`, en lote y con ensayo previo (`commit: false`) de la misma persona; la escritura (`commit: true`) exige además su **propia ventana**, `VOLCADO_HABILITADO`, apagada en el código y **publicada cerrada** en cada despliegue, que no es la del cierre; **no se reintenta**, pero repetirla es seguro porque la pasarela es idempotente por la referencia `PVI-`; y una lectura por `sql/read` para verificar el login de quien vuelca (sección «Volcado a Sigrid (F-059)»). |
+| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). **Desde F-056**, una **tercera lectura** por `sql/read`, con las mismas puertas y el mismo techo: las ubicaciones válidas de la tipología de cada unidad, para validar lo que se edita o se aprueba en la revisión de la bandeja (sección «Revisión de la bandeja (F-056)»). **Desde F-060**, esa tercera lectura se hace también tras cada importación que registra filas y en `POST /api/revision/normalizar`, para normalizar las ubicaciones; ninguna lectura nueva y ninguna escritura (sección «Normalizar las ubicaciones (F-060)»). **Desde F-071**, la tercera lectura se hace también al descargar la plantilla y al importar, antes de validar, para ofrecer y comprobar las ubicaciones de cada unidad; ninguna lectura nueva y ninguna escritura (sección «Entrada de incidencias (F-036)», «La plantilla»). **Desde F-059**, una **tercera escritura**: la **creación de partes de reclamación** por `POST /api/sigrid/partes-reclamacion`, en lote y con ensayo previo (`commit: false`) de la misma persona; la escritura (`commit: true`) exige además su **propia ventana**, `VOLCADO_HABILITADO`, apagada en el código y **publicada cerrada** en cada despliegue, que no es la del cierre; **no se reintenta**, pero repetirla es seguro porque la pasarela es idempotente por la referencia `PVI-`; y una lectura por `sql/read` para verificar el login de quien vuelca (sección «Volcado a Sigrid (F-059)»). **Desde F-065**, una **cuarta lectura** por `sql/read`, con las mismas puertas y otro techo, 500.000 filas: todas las reclamaciones de la obra, con datos personales que no se guardan (sección «Las reclamaciones de Sigrid en la revisión (F-065)»); y la **guarda del ensayo**, la misma lectura por unidades y sin la `ficha`, sin la que no se ensaya. |
 | SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. Identidad **app-only** (client credentials) y `httpx` como cliente, igual que `partes`. El destino es **configuración**: `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID`, `SHAREPOINT_CARPETA_BASE`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TIMEOUT_S`, `GRAPH_REINTENTOS`. | **PUERTA DE ENTORNO**: subir solo se permite con `ENTORNO` en `dev` o `pro` **y** `ARCHIVO_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja subir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature **F-013**, y sale casi gratis porque la ruta es configuración. Qué consumimos y qué se rompe si alguien mueve la biblioteca o revoca el permiso: **`docs/INTEGRACION.md`**. |
 | PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Desde F-036**, también la entrada de incidencias: `importaciones`, `bandeja_incidencias` y `decisiones_equivalencia` (append-only), con texto libre de la propiedad y nombres de proveedor que no salen en ningún log. **Desde F-056**, `revisiones_bandeja` (append-only): una fila por cada acción de revisión, con el `oid` y el correo corporativo de quien actúa, que no salen en ningún log. **Desde F-060**, también revisiones del **sistema** (`sistema:normalizar_ubicacion`), sin DDL nuevo. **Desde F-059**, `volcados_sigrid` (append-only, `16_volcados_sigrid.sql`): un evento por parte y por ensayo o volcado a Sigrid, con el `oid` —que no se lee nunca— y el correo corporativo de quien vuelca, que no salen en ningún log. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
 | Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |

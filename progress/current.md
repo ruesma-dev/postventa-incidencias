@@ -1,12 +1,96 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-066 · `in_progress` · 2026-10-26 · spec APROBADA y cerrada (`f3a3627`) · implementer, Bloque 1
+> ## F-038 · `in_progress` · 2026-11-10 · retomada por decisión del humano
+> T7 cerrada el 2026-11-09 (verificación en producción; pasos 2 y 10 con aceptación escrita del humano), en la rama
+> `feature/F-038-bandeja-revision` (worktree `postventa-f038`). Siguiente: el spec-author concilia T8 y T10 con `dev`
+> (F-040 T6a ya hizo la pestaña, los pasos 02 y 03 y la tarjeta; quedan el «llegará con F-038» de `importar.html`,
+> los botones de maqueta de `index.html`, ARCHITECTURE «En producción» y F-038 → done); luego T8, T9, T10 y T11.
+> **El estado del backlog pasa a llevarse en la rama de F-038.**
+
+> ## F-071 · `done` · 2026-11-10 · mergeada en `dev` `c201f29`, backend publicado y verificado (T16)
+> Detalle en `progress/history.md` y `progress/impl_F-071.md` «Bloque 5». Pendientes del humano: comprobaciones 2–4
+> de T14; cerrar F-058 y retirar su worktree si lo aprueba.
+
+> ## F-071 · (histórico de la sesión) · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> **Bloque 4 · T11 hecha (2026-11-09, implementer):** `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` al día (R46),
+> con `test_f071_documentacion.py` y `test_f071_alcance_cerrado.py` (R42, R43, R45) en verde. La cabecera de
+> `INTEGRACION.md` (fecha y «Última feature que lo tocó») **no se tocó**: la fija `test_f065_documentacion.py` y la spec
+> no la pide; queda para el líder al desplegar, con `azure-apps/`. Siguiente: T12 (líder). Detalle en
+> `progress/impl_F-071.md`, «Bloque 4 · T11».
+> **Tanda 2 en curso (2026-11-06, implementer):** T7 RED (`80abee2`), T8 GREEN (`862b384`) y T9 adelantada
+> (`266e384`) hechas: plantilla e importación leen las ubicaciones de Sigrid por unidad y no leen las decisiones;
+> migración de F-036 retirada. **Tanda 2 terminada**:
+> - `init.sh` en verde: 9860 passed, 447 skipped; cobertura 100 % de 232 líneas.
+> - Mutación de los Bloques 1–3: 66 mutantes, 62 muertos y 4 vivos. De los 4, uno se cierra con un test
+>   (`d0dc548`) y los otros 3 son equivalentes, **pendientes de que el humano los acepte**.
+> - Siguiente: review de los Bloques 1–3 (la encarga el líder) y después el Bloque 4.
+> Detalle en `progress/impl_F-071.md` y `progress/mutacion_F-071.md`.
+> **El humano aceptó por escrito el 2026-11-09 los 3 mutantes equivalentes** (`excel_openpyxl.py:401` `+3`, `:405` `−2`,
+> `:426` `+=4`; C-1 de la review): siguiente, re-review de los Bloques 1–3 y luego el Bloque 4 (T11, T12).
+> **El humano aceptó por escrito el 2026-11-06 la desviación de §7.3** (dos párrafos); anotada en el informe y en `design.md`.
+> **Tanda 1 hecha (2026-11-06):** T4 RED y T5 GREEN, el generador v2 con `INDIRECT`. Detalle y recuento de rojos en
+> `progress/impl_F-071.md`, «Tanda 1». **Desviación anotada para el humano:** el párrafo de §7.3 («Las listas salen de
+> Sigrid…», 276 caracteres) va partido en dos y dice «Los desplegables de unidad, ubicación, oficio y proveedor salen de
+> Sigrid…», porque «las listas» incluiría Urgencia y Listado, y R16 pide no decir que salen de Sigrid. Queda la tanda 2.
+> **Opción (d) aprobada por el humano el 2026-11-06:** un solo GREEN para los Bloques 1–3 (T2 ya hecha, T5 y T8, con T9
+> adelantada), en dos tandas seguidas. Tanda 1: T4/T5 (generador v2). Tanda 2: T7/T8 y T9. Entre tandas la suite puede
+> estar en rojo. Al final: `init.sh` en verde, mutación de todo lo cambiado y una sola review. Lo de abajo ya está resuelto.
+> **Bloqueada otra vez en T2 (2026-11-06):** con (b) el dominio queda en verde, pero la suite no: hay 230 rojos en 12
+> ficheros, porque la importación no tiene ubicaciones de Sigrid hasta T8 y la migración de F-036 depende de los grupos.
+> Propuestas (d) juntar el GREEN de los Bloques 1–3 (recomendada), (e) adelantar la lectura de T8 y T9, o (c), en
+> `progress/impl_F-071.md`, «T2 con la opción (b)». Trabajo en el commit «F-071 T2 (a medias)». T3 sin lanzar.
+> **Desbloqueada: opción (b) autorizada por el humano el 2026-11-06** (T2 con el mínimo imprescindible en los
+> llamadores para mantener la suite en verde; T3 con la suite en verde). Lo de abajo es el bloqueo ya resuelto.
+> **Bloque 1 (implementer, 2026-11-05): T1 RED hecha (`89a01d1`); T2 y T3 bloqueadas.** T2 cambia solo el dominio
+> y rompe a sus llamadores de los Bloques 2 y 3 (`plantilla_yaml.py`, `excel_openpyxl.py`, `paso_importacion.py`,
+> `plantilla.py`, el puerto): suite en rojo, y la mutación de T3 (suite entera) no mediría nada. Opciones (a)/(b)/(c)
+> y recomendación (b) en `progress/impl_F-071.md` «Bloqueo de T2–T3». Decide el líder o el humano.
+>
+> Plantilla de incidencias con TODOS sus desplegables de Sigrid al descargar (petición del humano del 2026-11-04).
+> Spec en `specs/F-071-plantilla-desde-sigrid/` (worktree `postventa-f071`, rama `feature/F-071-plantilla-desde-sigrid`,
+> **rebasada sobre `dev` `ed935ad` el 2026-11-05**). **El estado del backlog se lleva en esta rama mientras esté en curso.**
+> Absorbe F-058. Respuestas del humano (2026-11-05) a Q-1..Q-13 de `progress/spec_F-071.md`: todas según
+> recomendación, con estos matices: **Q-2** la urgencia sigue en el YAML de momento; el humano pasará una lista
+> interna de prioridades que la sustituirá. **Q-3** tipo de reclamación en ficha aparte **F-072**, orden
+> F-071 → F-072 → F-040; en blanco = `0002`. **Q-7** se normalizan mayúsculas en todas las columnas.
+> Siguiente: spec-author incorpora las decisiones; luego T0 (prueba manual de los prototipos, humano) y Bloque 1.
+>
+> F-040 aparcada (`blocked`, sin fallo) el 2026-11-05; motivo y punto de retorno en su `blocked_by`.
+> El humano aceptó por escrito M4 y M5 de T6a, miga de pan sin enlace y tarjeta «En producción» (2026-11-05).
+
+> ## F-065 · `done` · 2026-10-31 · desplegada desde `dev` `ed590bd` y verificada en solo lectura
+> Bloques A1 a A6 aprobados (mutación 182/182, cobertura 100 %, review final APPROVED); merge a `dev` en `ed590bd`,
+> publicada por el humano el 2026-10-31. T-A11 a T-A17 pasan (`progress/impl_F-065.md` «Bloque A7»). **T-A18 aplazada
+> por el humano a F-040** (no había candidatas aprobadas). `azure-apps` al día en local (`03adbd6`), sin push. Para
+> F-064: `motivo` y `urgencia` de la ficha llegan como texto en blanco, no `null` (coherente con la spec).
+
+> ## F-040 · `in_progress` · 2026-10-31 · T0: base fija `dev` `7cc0bbb`; el spec-author concilia con F-065
+> **El estado del backlog se lleva en la rama de F-040 mientras esté en curso** (worktree `postventa-f040`).
+> Spec conciliada con `dev` en `b86e876` (worktree `postventa-f040`). Humano, 2026-10-28: C-2 el volcado de la VILLA 15 no es
+> tarea de la ficha; C-4 botón «Registrar» que sincroniza con Sigrid (F-065) antes de ensayar y volcar; el resto como recomendó
+> el spec-author. Siguiente: traer `dev` (`ed590bd`) a su rama y Bloque 1 (implementer). **Recoge T-A18 de F-065**: en el
+> primer ensayo real de la 0677, una incidencia `choca` sin confirmar sale `conflicto_sin_confirmar` y confirmada `previsto`,
+> con la línea `F-065 guarda del ensayo` sin códigos `RS` ni texto.
+> **2026-10-31 · T0 (spec)**: base fija `f97ec6e`; spec conciliada con el contrato implementado de F-065 (T-A18 como
+> T5 bis). Esperan al humano **P-1 a P-3** (`progress/spec_F-040.md`, «Conciliación con F-065»). Falta `init.sh` (líder).
+> **2026-10-31 · Bloque 1 (implementer)**: T1 RED y T2 GREEN hechos (panel en `bandeja.html`, `js/volcado.js`, cuatro
+> funciones en `js/api.js`, composición en `appRevision`, README y ARCHITECTURE); suites del front en verde. T3 hecha: 82 mutantes
+> a mano, 1 vivo equivalente (V3) para aceptación del humano. Review: CHANGES_REQUESTED (C-B1-1, C-B1-2); corregidas con RED, 12/12 mutantes muertos, a la espera de re-review. Pendiente fuera del encargo: `azure-apps/postventa_incidencias.md` (R58). Detalle en `progress/impl_F-040.md`.
+
+> ## F-066 · `blocked` (aparcada, sin fallo) · 2026-10-27 · espera a que termine F-040
+> **Aparcada por el humano el 2026-10-27** para hacer F-040. Bloque 1 y T3 hechos y APROBADOS (lote versionado
+> `config/mudanza_f066.yaml`, 358 + 10). **Bloque 2 (T4–T6)** implementado en la rama F-066 (`57a3eb0`..`38d1c73`),
+> mutación 27/27 muertos (`progress/mutacion_F-066_bloque2.md`), **sin review**: al retomar, el implementer cierra su
+> informe si no lo dejó, review del Bloque 2 y después Bloque 3. La rama F-066 está en la carpeta principal.
+>
 > Mudanza a Posventa de los 358 partes de la 0677 archivados en IT, y archivado sin cierre de los 10 que quedaron sin
 > archivar (6 aptos; 4 no aptos, tras aprobarlos una persona). Clasificación en solo lectura y decisiones del humano en
-> `progress/explore_mudanza_IT.md` y en la ficha. Rama `feature/F-066-mudanza-posventa` desde `dev` `f7f63da`, en el
-> worktree `postventa-f066`: **el líder trabaja desde ese worktree mientras F-066 esté en curso** (el estado del backlog
-> se lleva en esa rama). Grupo A (T30) cuando el humano quiera.
+> `progress/explore_mudanza_IT.md` y en la ficha. Rama `feature/F-066-mudanza-posventa` desde `dev` `f7f63da`, en la
+> carpeta principal (el worktree `postventa-f066` se retiró el 2026-10-27: no tenía los venv). El estado del backlog
+> se llevó en esa rama hasta el 2026-10-27. Grupo A (T30) cuando el humano quiera. T0: el «F-038 `done`»
+> queda dispensado por el humano (2026-10-26: «Aparcar F-038 y empezar F-066»).
+
 
 > ## F-038 · `blocked` (aparcada, sin fallo) · 2026-10-26 · espera T7 del humano
 > **Aparcada por decisión del humano el 2026-10-26** para empezar F-066 (máximo una `in_progress`). No hay ningún

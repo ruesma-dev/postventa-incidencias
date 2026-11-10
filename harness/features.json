@@ -654,18 +654,17 @@
     {
       "id": "F-038",
       "title": "Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado",
-      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano. APARCADA el 2026-10-26 por decisión del humano para empezar F-066: no hay fallo; solo espera T7 (MANUAL del humano, verificación en producción). Al hacerla, se retoma con T8–T11 (F-066 tendrá que pasar a blocked o estar cerrada: máximo una in_progress).",
+      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano. APARCADA el 2026-10-26 por decisión del humano para empezar F-066: no hay fallo; solo espera T7 (MANUAL del humano, verificación en producción). Al hacerla, se retoma con T8–T11 (F-066 tendrá que pasar a blocked o estar cerrada: máximo una in_progress). RETOMADA el 2026-11-10 por decisión del humano («hay que cerrar f38»), con F-071 done: T7 cerrada el 2026-11-09 (pasos 1 a 10, el 2 y el 10 con aceptación escrita del humano). Queda T8 conciliada con dev (F-040 T6a ya hizo la pestaña, los pasos 02 y 03 y la tarjeta), T9, T10 y T11.",
       "acceptance": [
         "Una incidencia se puede editar, descartar o aprobar, y queda constancia de quién y cuándo",
         "Solo lo aprobado es candidato al volcado",
         "bash harness/init.sh en verde"
       ],
-      "status": "blocked",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 3,
-      "branch": "feature/F-038-bandeja-revision",
-      "blocked_by": "Aparcada por el humano el 2026-10-26 para hacer F-066: espera T7 (MANUAL del humano, verificación en producción de bandeja.html). No hay fallo."
+      "branch": "feature/F-038-bandeja-revision"
     },
     {
       "id": "F-039",
@@ -686,7 +685,7 @@
     {
       "id": "F-040",
       "title": "Volcar a Sigrid las incidencias aprobadas",
-      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre. Añadido el 2026-09-24 por petición del humano: el volcado es MASIVO. Llega un Excel (F-036) y hay que replicar, fila a fila y escribiendo en lote, el alta manual que hoy hace Posventa en Sigrid, documentada en docs/referencia/04_alta_incidencia_sigrid.md: ficha de la unidad de posventa → Reclamaciones → Nueva; serie RS<año2>.<mes>/ (Reclamaciones postventa, el código lo pone Sigrid); descripción; tipo de reclamación (sale 3 por defecto, Posventa pone 0002 PRIMER LISTADO POSTVENTA en el primer listado); oficio del catálogo; ubicación, forma de comunicación, descripciones corta y larga, propietario y persona que reclama; y los intervinientes (oficio + proveedor de la obra, F-039). NO vale sql/write a mano (además tope de 20 sentencias por petición): sigue haciendo falta el endpoint de dominio en sigrid-api, y debe admitir lotes. Preguntas abiertas para la spec (sección final de docs/referencia/04_alta_incidencia_sigrid.md): qué es el tipo 3 y qué regla elige entre 2 y 3; qué tablas escribe el alta (se mide contra el ERP, no se supone); qué oficio lleva el parte cuando hay varios intervinientes y quién marca Causante; de dónde salen propietario y persona que reclama en un alta masiva. Actualizado por el líder el 2026-09-25: sigrid-api YA TIENE el endpoint de dominio, POST /api/sigrid/partes-reclamacion (su F-006; azure-apps/sigrid_api.md §8.9), pensado para este consumidor: alta EN LOTE de partes 708 de UNA obra, una transacción por parte, dry-run por defecto; la idempotencia la da referencia_externa con prefijo PVI- (guardada en conext RCPCLI); tipo por defecto 0002 PRIMER LISTADO POSTVENTA; oficio e intervinientes resueltos contra los oficios de la obra (obrofc); propietario y persona copiados de la UPV; forma de comunicación por defecto Escrita. Responde 200 con el estado de cada parte (previsto, creado, idempotente, rechazado, no_procesado) y su motivo. NO pasa a PTE, ni crea tareas, correos ni fotos. Responde a varias de las preguntas abiertas de docs/referencia/04_alta_incidencia_sigrid.md (tablas, tipo por defecto, propietario); queda abierta la regla para elegir entre tipo 0002 y 0003. Doble llave de escritura en sigrid-api: SIGRID_DOMAIN_WRITE_ENABLED y SIGRID_RECLAMACION_WRITE_ENABLED. ACTUALIZADO POR EL LÍDER EL 2026-10-06: el endpoint ya no bloquea. azure-apps/sigrid_api.md §8.9 y su tabla de consumidores: sigrid/partes-reclamacion está desplegado, verificado y ABIERTO desde el 2026-09-25 (SIGRID_RECLAMACION_WRITE_ENABLED=true; escritura real autorizada de un parte en la obra 0626 y repetición idempotente). Lo que falta para F-040 es de este repositorio: F-056 (aprobar, con las candidatas al volcado) y F-038 (la página). PARTIDA EL 2026-10-07 (D-1, decisión del humano): esta ficha es el panel de volcado en bandeja.html (ensayar, confirmar con el número de partes, volcar de trozo en trozo, parar al primer fallo, aviso de pasar a PTE a mano) y el cierre de sus placeholders del portal; el backend es F-059. Spec aprobada (2026-10-07; Q-1 siempre 0002, Q-2 causante false, Q-3 PTE a mano, Q-4 obra 0626, Q-5 fuera, Q-6 sí, Q-7 cualquiera de posventa-usuarios, Q-8 más adelante): specs/F-040-volcado-sigrid/. PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto.",
+      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre. Añadido el 2026-09-24 por petición del humano: el volcado es MASIVO. Llega un Excel (F-036) y hay que replicar, fila a fila y escribiendo en lote, el alta manual que hoy hace Posventa en Sigrid, documentada en docs/referencia/04_alta_incidencia_sigrid.md: ficha de la unidad de posventa → Reclamaciones → Nueva; serie RS<año2>.<mes>/ (Reclamaciones postventa, el código lo pone Sigrid); descripción; tipo de reclamación (sale 3 por defecto, Posventa pone 0002 PRIMER LISTADO POSTVENTA en el primer listado); oficio del catálogo; ubicación, forma de comunicación, descripciones corta y larga, propietario y persona que reclama; y los intervinientes (oficio + proveedor de la obra, F-039). NO vale sql/write a mano (además tope de 20 sentencias por petición): sigue haciendo falta el endpoint de dominio en sigrid-api, y debe admitir lotes. Preguntas abiertas para la spec (sección final de docs/referencia/04_alta_incidencia_sigrid.md): qué es el tipo 3 y qué regla elige entre 2 y 3; qué tablas escribe el alta (se mide contra el ERP, no se supone); qué oficio lleva el parte cuando hay varios intervinientes y quién marca Causante; de dónde salen propietario y persona que reclama en un alta masiva. Actualizado por el líder el 2026-09-25: sigrid-api YA TIENE el endpoint de dominio, POST /api/sigrid/partes-reclamacion (su F-006; azure-apps/sigrid_api.md §8.9), pensado para este consumidor: alta EN LOTE de partes 708 de UNA obra, una transacción por parte, dry-run por defecto; la idempotencia la da referencia_externa con prefijo PVI- (guardada en conext RCPCLI); tipo por defecto 0002 PRIMER LISTADO POSTVENTA; oficio e intervinientes resueltos contra los oficios de la obra (obrofc); propietario y persona copiados de la UPV; forma de comunicación por defecto Escrita. Responde 200 con el estado de cada parte (previsto, creado, idempotente, rechazado, no_procesado) y su motivo. NO pasa a PTE, ni crea tareas, correos ni fotos. Responde a varias de las preguntas abiertas de docs/referencia/04_alta_incidencia_sigrid.md (tablas, tipo por defecto, propietario); queda abierta la regla para elegir entre tipo 0002 y 0003. Doble llave de escritura en sigrid-api: SIGRID_DOMAIN_WRITE_ENABLED y SIGRID_RECLAMACION_WRITE_ENABLED. ACTUALIZADO POR EL LÍDER EL 2026-10-06: el endpoint ya no bloquea. azure-apps/sigrid_api.md §8.9 y su tabla de consumidores: sigrid/partes-reclamacion está desplegado, verificado y ABIERTO desde el 2026-09-25 (SIGRID_RECLAMACION_WRITE_ENABLED=true; escritura real autorizada de un parte en la obra 0626 y repetición idempotente). Lo que falta para F-040 es de este repositorio: F-056 (aprobar, con las candidatas al volcado) y F-038 (la página). PARTIDA EL 2026-10-07 (D-1, decisión del humano): esta ficha es el panel de volcado en bandeja.html (ensayar, confirmar con el número de partes, volcar de trozo en trozo, parar al primer fallo, aviso de pasar a PTE a mano) y el cierre de sus placeholders del portal; el backend es F-059. Spec aprobada (2026-10-07; Q-1 siempre 0002, Q-2 causante false, Q-3 PTE a mano, Q-4 obra 0626, Q-5 fuera, Q-6 sí, Q-7 cualquiera de posventa-usuarios, Q-8 más adelante): specs/F-040-volcado-sigrid/. PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. EN CURSO desde el 2026-10-27 por decisión del humano («vamos a parar la actual y empezar ya con f40»): Posventa ha importado por Excel las incidencias de la VILLA 15 de la 0677 (los PDF de repasos) y quiere volcarlas a Sigrid. Rama nueva desde dev f7f63da en el worktree postventa-f040; la rama antigua queda como archivo/F-040-spec-2026-10-07 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (F-059 tal como se cerró, bandeja.html de F-038, F-060); si cambia una decisión aprobada, vuelve al humano. DECISIONES DEL HUMANO SOBRE LA CONCILIACIÓN (2026-10-28): C-2, el volcado de la VILLA 15 NO es una tarea de la ficha (lo hará el humano cuando el panel esté operativo); C-4, hay que sincronizar antes de registrar: un botón «Registrar» que primero trae las incidencias de Sigrid de la obra y las cruza con las aprobadas (F-065), enseña qué va, qué ya existe y qué choca, y solo después ensaya y vuelca; C-1, C-3, C-5 y C-6, como recomendó el spec-author. Orden: F-065 primero, F-040 después. DESBLOQUEADA el 2026-10-31 al cerrar F-065. Incluye T-A18 de F-065 (aplazada por el humano): en el primer ensayo real de la 0677, comprobar que una incidencia que da choca sale excluida con conflicto_sin_confirmar sin confirmar y prevista confirmada, y la línea F-065 guarda del ensayo en Application Insights sin códigos RS ni texto. EN CURSO desde el 2026-10-31: T0, la rama trae dev 7cc0bbb (base fija) y el spec-author concilia R60-R62 y design §1.1, §3.1-§3.3 con el contrato implementado de F-065.",
       "acceptance": [
         "Una incidencia aprobada se crea en Sigrid con sus campos y su industrial, y su número vuelve a la bandeja",
         "Dry-run antes de escribir",
@@ -695,12 +694,12 @@
         "Cada parte creado lleva los mismos campos que el alta manual de docs/referencia/04_alta_incidencia_sigrid.md",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "blocked",
       "sdd": true,
       "rigor": "critico",
       "priority": 6,
       "branch": "feature/F-040-volcado-sigrid",
-      "blocked_by": "F-059 (el backend del volcado), done, desplegada y verificada; y F-038 (bandeja.html), done."
+      "blocked_by": "Aparcada por el humano el 2026-11-05 para hacer F-071 (urgente). No hay fallo. Hecho y en dev (ed935ad): Bloque 1, T4, T5.1, T5.2, T6a (enlaces a bandeja.html, APPROVED; M4 y M5 aceptados por escrito por el humano el 2026-11-05). Decisiones del humano 2026-11-05: miga de pan de bandeja.html como texto sin enlace; tarjeta del inicio a «En producción». Al retomar: T5.3 (clic del humano con la ventana cerrada), T5.4 solo DESPUÉS de F-072 (tipo de reclamación), T5.6, resto de T6, T6 bis, T7."
     },
     {
       "id": "F-041",
@@ -978,7 +977,7 @@
       "rigor": "critico",
       "priority": 8,
       "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
-      "blocked_by": null
+      "blocked_by": "Absorbida por F-071 (decisión del humano 2026-11-05, Q-11). No se implementa por su cuenta: se cierra cuando F-071 esté done; su rama se conserva como archivo y el worktree postventa-f058 se retira entonces."
     },
     {
       "id": "F-059",
@@ -1103,11 +1102,12 @@
         "Verificado en producción con recuentos de antes y de después",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "blocked",
       "sdd": true,
       "rigor": "critico",
       "priority": 4,
-      "branch": "feature/F-066-mudanza-posventa"
+      "branch": "feature/F-066-mudanza-posventa",
+      "blocked_by": "Aparcada por el humano el 2026-10-27 para hacer F-040 (volcado a Sigrid de la VILLA 15 de la 0677, importada por Excel). No hay fallo. Bloques 1 y T3 hechos y APROBADOS; Bloque 2 (T4-T6) implementado, mutación 27/27, sin review: al retomar, review del Bloque 2 y después Bloque 3."
     },
     {
       "id": "F-064",
@@ -1129,7 +1129,7 @@
     {
       "id": "F-065",
       "title": "Revisión con Sigrid en el backend: leer las reclamaciones de la obra y cruzarlas con la bandeja",
-      "description": "Alta del 2026-10-21: tramo A (backend) de F-064, partido por el límite de servicio (Q-1 de F-064, aprobada por el humano). Una ruta nueva de solo lectura, aparte del listado de la revisión, que lee de sigrid-api (sql/read) TODAS las reclamaciones 708 de la obra, las empareja con la bandeja por la referencia PVI- y cruza el resto con los criterios aprobados (misma unidad+oficio+ubicación; misma unidad+descripción parecida); devuelve las reclamaciones y los hallazgos. Si Sigrid falla, la bandeja sigue. Datos personales de la reclamación en la respuesta (decisión del humano), nunca en logs ni en la base. Spec en el worktree postventa-f064 (specs/F-065-revision-sigrid-backend/). Va antes que F-064. SPEC APROBADA por el humano el 2026-10-21 (con N-1 a N-3: una lectura con techo 500.000 y truncated → 409; descripción parecida por Jaccard 50 y 2 palabras; datos personales en una sola ruta, sin DNI ni credenciales de i-Sigrid), en la rama feature/F-064-bandeja-con-sigrid (worktree postventa-f064, e38f01b): specs/F-064-bandeja-con-sigrid/ y specs/F-065-revision-sigrid-backend/. Se trae a la rama de F-065 al empezar.",
+      "description": "Alta del 2026-10-21: tramo A (backend) de F-064, partido por el límite de servicio (Q-1 de F-064, aprobada por el humano). Una ruta nueva de solo lectura, aparte del listado de la revisión, que lee de sigrid-api (sql/read) TODAS las reclamaciones 708 de la obra, las empareja con la bandeja por la referencia PVI- y cruza el resto con los criterios aprobados (misma unidad+oficio+ubicación; misma unidad+descripción parecida); devuelve las reclamaciones y los hallazgos. Si Sigrid falla, la bandeja sigue. Datos personales de la reclamación en la respuesta (decisión del humano), nunca en logs ni en la base. Spec en el worktree postventa-f064 (specs/F-065-revision-sigrid-backend/). Va antes que F-064. SPEC APROBADA por el humano el 2026-10-21 (con N-1 a N-3: una lectura con techo 500.000 y truncated → 409; descripción parecida por Jaccard 50 y 2 palabras; datos personales en una sola ruta, sin DNI ni credenciales de i-Sigrid), en la rama feature/F-064-bandeja-con-sigrid (worktree postventa-f064, e38f01b): specs/F-064-bandeja-con-sigrid/ y specs/F-065-revision-sigrid-backend/. Se trae a la rama de F-065 al empezar. EN CURSO desde el 2026-10-28 por decisión del humano, antes de F-040: el botón Registrar de F-040 sincroniza con Sigrid antes de registrar. Rama nueva desde dev f7f63da en el worktree postventa-f065; spec traída de e38f01b. Paso 1: el spec-author la concilia con dev y añade lo nuevo: el ensayo del volcado (F-059) consulta este cruce, excluye lo que ya está en Sigrid y pide segundo clic para lo que choca, para que la regla la garantice el backend. Si cambia una decisión aprobada, vuelve al humano. SPEC CONCILIADA (spec-author, 2026-10-28, 12d53ae y 362a783) y APROBADA POR EL HUMANO el 2026-10-28 con S-1 a S-9 según la recomendación: el ensayo de F-059 gana conflictos_confirmados (opcional, por incidencia y con los códigos) y dos motivos (duplicada_en_sigrid para ya_existe, conflicto_sin_confirmar para choca); se_enlaza (PVI-) no se excluye; la guarda lee solo las unidades de lo que se manda y sin datos personales; Sigrid caída o truncated, no se ensaya; volcar y el panel no cambian; sin DDL. DESPLEGADA el 2026-10-31 desde dev ed590bd y verificada en producción en solo lectura (T-A11 a T-A17). Review final APPROVED; mutación 182/182; init.sh en verde. T-A18 (ensayo con un choca sin confirmar y confirmado) APLAZADA por decisión del humano (2026-10-31) al primer ensayo real de la 0677 con el botón Registrar de F-040: en la 0626 y la 0677 no había ninguna candidata aprobada.",
       "acceptance": [
         "Para una obra, la ruta devuelve sus reclamaciones de Sigrid y, para cada incidencia de la bandeja, los conflictos según los criterios aprobados",
         "Si Sigrid no responde o tarda, el listado de la revisión no cambia ni se ralentiza, y la ruta lo dice",
@@ -1138,11 +1138,153 @@
         "Verificado en producción en solo lectura con la 0677 y la 0626",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 4,
       "branch": "feature/F-065-revision-sigrid-backend"
+    },
+    {
+      "id": "F-067",
+      "title": "Registrar incidencias desde el PDF de repasos del cliente (backend): un PDF por unidad, casado de ubicaciones, prioridades y oficios, y fotos a SharePoint",
+      "description": "Alta del 2026-10-27 por petición del humano. Segunda vía de entrada, junto al Excel de F-036: el cliente pasa un PDF digital (no escaneado) «Listado repasos …» con una tabla por página de 8 columnas: Nº Incidencia, Fecha Toma de Datos, ZONA (planta), Estancia (puede venir vacía), Descripción, FOTO (imagen incrustada), Observaciones o recomendaciones (opcional) y RELEVANCIA (opcional; visto «PRIORITARIO»). PyMuPDF reconoce la tabla (find_tables): lectura determinista, sin IA. Muestra de partida: 5 PDF de la obra 0677 en el OneDrive del humano (postventa/mirasierra: BAJA 22 págs., PRIMERA 12, SEGUNDA 7, sótano 11, urbanización 8; unas 285 incidencias, tomas del 07 y 09/10/2026); no se versionan. DECISIONES DEL HUMANO (2026-10-27): (1) UN PDF POR UNIDAD, y la unidad NO viene en el PDF: se indica al cargarlo (obra y unidad de posventa); varios PDF pueden ser de la misma unidad. En la muestra, obra 0677 y solo la VILLA 15: incidencias privativas de la vivienda, no zonas comunes. (2) Se crean TODAS las incidencias aunque el texto se repita entre plantas: no se fusionan. (3) Las fotos se guardan en la carpeta de fotos de la villa en el SharePoint de Posventa (estructura de F-013) Y en Sigrid como gráfico de su incidencia (como F-012 con el parte). Las incidencias pasan por la bandeja de revisión (F-036/F-056/F-038) antes del volcado (F-059/F-040); la foto va a Sigrid cuando exista la incidencia. A resolver en la spec: correspondencia de planta/estancia con la ubicación de lista cerrada (F-060), descripción corta de 128 (con.res) y detalle, PRIORITARIO como urgencia, idempotencia al recargar el mismo PDF, filas partidas entre páginas, nombre y carpeta de cada foto, y el orden con F-038/F-040. Pregunta a negocio enviada en «Preguntas listados repasos Mirasierra.docx». SEGUNDA TANDA DEL HUMANO (2026-10-27): la unidad se elige antes de cargar; al leer el PDF el front enseña los valores AGREGADOS (ubicación por zona y estancia, prioridad, oficio) con lo que se ha casado cada uno, y lo que no casa se casa a mano con un desplegable, una sola vez por valor agregado (7 «Baños» en BAJA = una línea). Esto sustituye la tabla de equivalencias versionada. Las fotos van SOLO a SharePoint en esta ficha: su subida a Sigrid como gráfico pasa a F-069, porque sigrid/concepto-grafico existe pero hoy solo admite PDF (SIGRID_DOCUMENT_ALLOWED_MAGIC) y las clases 35 y 0. La página del front pasa a F-068 por el límite de servicio. Esta ficha es el backend (postventa-api). AVISO DEL LÍDER (2026-10-27): la VILLA 15 de la 0677 ya entró en la bandeja por un Excel que el humano generó a partir de estos 5 PDF; el Excel y el PDF no comparten clave de duplicado, así que cargar esos mismos PDF con F-067 duplicaría. La spec debe decidir cómo se detecta lo ya importado por Excel o verificar con otro PDF.",
+      "acceptance": [
+        "Al cargar un PDF de repasos se indica la obra y la unidad de posventa; el PDF no las trae",
+        "Cada fila de la tabla del PDF queda como una incidencia en la bandeja de revisión, sin fusionar las repetidas, con fecha, ubicación, descripción, observaciones y relevancia",
+        "Antes de cargar, la API devuelve los valores agregados del PDF (ubicación por zona y estancia, prioridad, oficio) con su casado propuesto; la carga se confirma con el casado elegido",
+        "Un PDF que no tenga el formato esperado se rechaza entero y dice por qué; no se carga nada a medias",
+        "Volver a cargar el mismo PDF no duplica incidencias ni fotos",
+        "La foto de cada incidencia queda en la carpeta de fotos de su villa en el SharePoint de Posventa",
+        "Nada se escribe en Sigrid ni en SharePoint desde local ni desde tests",
+        "Verificado con los 5 PDF de la VILLA 15 de la 0677",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 5,
+      "branch": "feature/F-067-pdf-repasos-cliente"
+    },
+    {
+      "id": "F-068",
+      "title": "Página de carga del PDF de repasos en el portal: elegir la unidad y casar a mano ubicaciones, prioridades y oficios",
+      "description": "Alta del 2026-10-27 por decisión del humano, partida de F-067 por el límite de servicio (postventa-front). Antes de cargar se elige la obra y la unidad. Al leer el PDF se enseñan los valores agregados (si hay 7 «Baños» en BAJA, una línea) con lo que ha casado cada uno; lo que no casa se elige con un desplegable de las ubicaciones válidas de la unidad. Lo mismo para prioridades y oficios. Después se confirma la carga a la bandeja. Contrato con el backend en la spec de F-067. Depende de F-067.",
+      "acceptance": [
+        "Se elige la obra y la unidad antes de cargar el PDF",
+        "Se ven los valores agregados del PDF con su casado propuesto y los que no casan se casan con un desplegable, una sola vez por valor",
+        "La carga solo se confirma con todo casado o con lo no casado aceptado explícitamente",
+        "Un PDF rechazado enseña la lista de problemas",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 5,
+      "branch": "feature/F-068-pagina-pdf-repasos"
+    },
+    {
+      "id": "F-069",
+      "title": "Fotos de las incidencias del PDF de repasos a Sigrid como gráfico",
+      "description": "Alta del 2026-10-27 por decisión del humano, separada de F-067. Cada foto que F-067 deja en SharePoint se cuelga de su reclamación en Sigrid como gráfico, cuando la incidencia ya existe allí (tras el volcado). sigrid/concepto-grafico existe (F-012 lo usa con el parte), pero hoy solo admite la firma %PDF- (SIGRID_DOCUMENT_ALLOWED_MAGIC) y las clases 35 «POSTVENTA:Fotos Reparaciones» y 0. Hay que decidir entre pedir al dueño de sigrid-api que admita JPEG y PNG (y quizá la clase 34) o envolver cada foto en un PDF. Antes hay que medir cómo cuelga hoy Posventa las fotos en Sigrid. Depende de F-067 y del volcado (F-059/F-040).",
+      "acceptance": [
+        "Cada foto queda como gráfico de su reclamación, una sola vez, aunque se repita la operación",
+        "Ensayo previo y escritura solo con confirmación y ventana abierta",
+        "Nada se escribe en Sigrid desde local ni desde tests",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 6,
+      "branch": "feature/F-069-fotos-repasos-sigrid"
+    },
+    {
+      "id": "F-070",
+      "title": "Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos",
+      "description": "Alta del 2026-11-03 por decisión del humano. Hoy hay que escribir la obra con su 0 inicial (0677); escrita 677 no se encuentra. El humano dice que 677 y 0677 son la misma obra, así que la regla escrita en domain/models/nombrado.py («0677 y 677 son obras distintas; los ceros a la izquierda se conservan») ES INCORRECTA y se corrige: un código de obra solo numérico con menos de 4 cifras se completa con ceros a la izquierda (677 → 0677) antes de consultar o guardar, en todos los campos y rutas que reciben un código de obra (front y backend: plantilla, importación, bandeja, revisión, volcado, sincronización con Sigrid, partes y archivo). Lo que no es solo numérico no cambia. La spec decide dónde vive la normalización (una sola función, la de nombrado.py, para no tener dos criterios) y comprueba en Sigrid que ningún código de obra tenga menos de 4 cifras. Cuidado con el archivo en SharePoint: la carpeta y el nombre del parte cuelgan de normalizar_codigo.",
+      "acceptance": [
+        "677, 0677 y ' 677 ' llevan a la misma obra 0677 en todos los campos de código de obra del front y en todas las rutas del backend",
+        "Lo que se guarda y lo que se manda a Sigrid es siempre el código con sus 4 cifras",
+        "Un código que no es solo numérico no se toca",
+        "La regla de nombrado.py y sus tests dicen que 677 y 0677 son la misma obra",
+        "La carpeta y el nombre de los partes archivados no cambian para los códigos que ya tenían 4 cifras",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 3,
+      "branch": "feature/F-070-obra-sin-cero-inicial"
+    },
+    {
+      "id": "F-071",
+      "title": "La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad",
+      "description": "Alta del 2026-11-04 por petición del humano, URGENTE: «el excel que descarga debe extraer TODAS las opciones de TODOS los desplegables de lo que hay en el momento en sigrid. esta feature es urgente. lo mismo oficios, etc.». Problema real en la obra 0677 (Mirasierra): la plantilla de F-036 saca las ubicaciones de una lista FIJA (config/plantilla_incidencias.yaml, 44 etiquetas con «General (toda la unidad)» inventada), igual para todas las unidades, mientras la bandeja (F-056) valida contra prmtpl.ubica de la tipología de CADA unidad: se elige «Escalera» o «General» en el Excel y la bandeja dice «La ubicación no está en la lista». Segundo síntoma: el desplegable de Oficio agrupa oficios equivalentes (R86, R92 de F-036) y la fila importada queda oficio_ambiguo («Elige el código del oficio: hay varios en la obra»). Alcance: cada desplegable sale de Sigrid al descargar (unidad, ubicación dependiente de la unidad de la fila, oficio con su código, par oficio–proveedor de obrofc); la importación vuelve a leer Sigrid y valida contra lo de ese momento; lo que se elige en el Excel entra resuelto (sin oficio_ambiguo ni proveedor_ambiguo). Urgencia y listado: la spec dice qué hay en Sigrid (rcp.texurg es texto libre; auxtrcp son los tipos de reclamación) y lo deja como pregunta al humano. Absorbe F-058 (su spec y su prueba del desplegable dependiente, en el worktree postventa-f058). Versión de la plantilla a 2. Solo backend (postventa-api). Spec en specs/F-071-plantilla-desde-sigrid/ y preguntas en progress/spec_F-071.md.",
+      "acceptance": [
+        "La plantilla de una obra lleva en sus desplegables de Unidad, Ubicación, Oficio y Proveedor lo que hay en Sigrid en el momento de descargarla, sin listas fijas ni opciones inventadas",
+        "La Ubicación de cada fila ofrece solo las ubicaciones de la tipología de la unidad de esa fila",
+        "El Oficio y el Proveedor elegidos en el Excel entran en la bandeja con su código de Sigrid: ninguna fila de una plantilla nueva entra como oficio_ambiguo ni proveedor_ambiguo",
+        "La importación valida cada fila contra Sigrid en el momento de importar; lo que no casa vuelve en el Excel de errores con su motivo",
+        "Una plantilla de la versión anterior se rechaza con un motivo claro",
+        "No se escribe nada en Sigrid",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "done",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 1,
+      "branch": "feature/F-071-plantilla-desde-sigrid"
+    },
+    {
+      "id": "F-072",
+      "title": "El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado",
+      "description": "Alta del 2026-11-05 por decisión del humano (Q-3 de F-071, «toca lo que sea»). Hoy la columna «Listado» de la plantilla ofrece dos valores fijos del YAML (Primer listado / Segundo listado), la bandeja los guarda pero el volcado manda SIEMPRE el tipo 0002 (PRIMER LISTADO POSTVENTA, constante TIPO_RECLAMACION en domain/models/volcado.py): una incidencia de segundo listado entraría en Sigrid como primer listado. Alcance: la plantilla ofrece los tipos vigentes de dbo.auxtrcp (vía sigrid-api, lectura) al descargar; la importación valida contra los de ese momento y guarda el código; la bandeja lo guarda en columna nueva (DDL solo en el schema postventa); la revisión lo enseña y deja cambiarlo; el volcado manda el código elegido. En blanco = 0002, como hoy (decisión del humano 2026-11-05). Orden fijado por el humano: F-071 -> F-072 -> retomar F-040; el primer volcado real (T5.4 de F-040) no se hace antes de F-072.",
+      "acceptance": [
+        "La columna Listado de la plantilla ofrece los tipos de reclamación vigentes en Sigrid (auxtrcp sin fecha de baja) en el momento de la descarga",
+        "La importación valida el tipo contra Sigrid en ese momento, con la regla de mayúsculas de F-060/F-071, y guarda su código",
+        "Un tipo en blanco se guarda y se vuelca como 0002",
+        "La revisión de la bandeja enseña el tipo y deja cambiarlo antes de aprobar",
+        "El volcado manda a Sigrid el código del tipo guardado, no una constante",
+        "El DDL va solo en el schema propio postventa y es re-ejecutable",
+        "Ninguna escritura en Sigrid desde local ni desde tests",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 2,
+      "branch": "feature/F-072-tipo-reclamacion-sigrid"
+    },
+    {
+      "id": "F-073",
+      "title": "La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez",
+      "description": "Alta del 2026-11-09 por decisión del humano, tras medir en producción la carga de bandeja.html?obra=0677 (285 incidencias). La página pinta en menos de 0,3 s; lo lento es GET /api/revision, de 0,4 a 15 s. La línea «F-060 tiempos del listado» y App Insights de sigrid-api lo explican: el listado hace tres lecturas a Sigrid seguidas (catalogo.leer_unidades, catalogo.leer_oficios y ubicaciones), cada una de unos 0,1 s, pero cuando sigrid-api estrena instancia esa lectura tarda unos 4 s (unos 3,5 s antes de que sigrid-api la atienda y 0,75 s de su primera conexión SQL); si coinciden dos o tres, la carga pasa de 8 a 13 s. Lo nuestro (base, cálculo, serializar) no pasa de 0,2 s. El arreglo: lanzar las tres lecturas a la vez en interface_adapters/api/revision.py y su caso de uso, sin cambiar el contrato ni el front. Sin caché del catálogo (descartada por el riesgo de datos viejos). La causa de raíz, en sigrid-api, queda en F-074.",
+      "acceptance": [
+        "Las tres lecturas a Sigrid del listado de revisión salen a la vez, no una tras otra, y un test lo fija sin red",
+        "La respuesta de GET /api/revision no cambia (mismo contrato y mismos datos)",
+        "Si una lectura falla, el error es el mismo que hoy y las otras no dejan nada a medias",
+        "La línea «F-060 tiempos del listado» sigue saliendo con sus tramos",
+        "Medido en producción: con una lectura lenta de sigrid-api la carga no pasa de unos 5 s",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 7,
+      "branch": "feature/F-073-revision-lee-sigrid-en-paralelo"
+    },
+    {
+      "id": "F-074",
+      "title": "Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío",
+      "description": "Alta del 2026-11-09 por decisión del humano, como mejora futura de baja prioridad, no relevante ahora. Cuando sigrid-api reparte una petición a una instancia nueva, la petición espera unos 3,5 s a que arranque y otros 0,75 s a su primera conexión SQL (medido el 2026-11-09 en App Insights de sigrid-api). Dejar una instancia siempre preparada quitaría esa espera para todos los clientes de sigrid-api. NO se hace en este repositorio: es un cambio de configuración del proyecto sigrid-api, con coste en Azure, que decide el humano. Aquí solo se anota.",
+      "acceptance": [
+        "El humano decide si se hace y lo encarga en el proyecto sigrid-api",
+        "Medido después: las lecturas a sigrid-api no tienen esperas de unos 4 s al estrenar instancia"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "documental",
+      "priority": 150
     }
   ]
 }

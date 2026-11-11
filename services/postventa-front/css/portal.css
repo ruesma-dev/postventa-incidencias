@@ -1002,32 +1002,6 @@ input[type="checkbox"]:disabled {
   color: var(--rs-tinta);
 }
 
-/* Las aprobadas por obra, candidatas al volcado. (Hasta el bloque 9 se
-   llamaba `rs-obras`; ese nombre es ahora el del recuadro «En construcción».) */
-.rs-por-obra {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rs-por-obra > li {
-  padding: 0.4rem 0.85rem;
-  background-color: var(--rs-lienzo);
-  border: 1px solid var(--rs-linea);
-  border-radius: var(--rs-radio-pildora);
-  font-size: 0.84rem;
-  color: var(--rs-tinta-suave);
-}
-
-.rs-por-obra strong {
-  font-family: var(--rs-fuente-titulos);
-  font-weight: 700;
-  color: var(--rs-tinta);
-}
-
 .rs-historial {
   display: flex;
   flex-direction: column;

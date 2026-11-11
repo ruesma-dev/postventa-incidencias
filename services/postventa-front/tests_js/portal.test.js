@@ -255,16 +255,17 @@ const SECCIONES_DEL_PORTAL = SECCIONES_ESPERADAS.map(([id]) => id).filter((id) =
 //: 2026-09-25 (`bandeja.reintentarVolcado`). Se pueden añadir; no cambiar.
 //: Los dos de F-036 (`entrada.elegirExcel`, `entrada.importar`) salieron en la
 //: enmienda del 2026-10-05: F-036 está done y vive en `importar.html` (§16.5).
+//: Cierre de F-038 (T8, su `design.md` §3.2): salen sus tres (`bandeja.editar`,
+//: `bandeja.descartar`, `bandeja.aprobar`), y `bandeja.aprobarSeleccionadas` y
+//: `bandeja.reintentarVolcado` pasan a `enBloque: false`: en `#/bandeja` ya no
+//: hay filas que seleccionar.
 const PLACEHOLDERS_ESPERADOS = [
   ["entrada.verContratoWeb", "F-037", "Ver el contrato de entrada", false],
-  ["bandeja.editar", "F-038", "Editar", false],
-  ["bandeja.descartar", "F-038", "Descartar", false],
-  ["bandeja.aprobar", "F-038", "Aprobar", false],
   ["bandeja.cambiarIndustrial", "F-039", "Cambiar industrial", false],
-  ["bandeja.aprobarSeleccionadas", "F-043", "Aprobar las seleccionadas", true],
+  ["bandeja.aprobarSeleccionadas", "F-043", "Aprobar las seleccionadas", false],
   ["bandeja.verVolcado", "F-040", "Ver qué se crearía en Sigrid", false],
   ["bandeja.volcar", "F-040", "Volcar a Sigrid", false],
-  ["bandeja.reintentarVolcado", "F-040", "Reintentar los rechazados y no procesados", true],
+  ["bandeja.reintentarVolcado", "F-040", "Reintentar los rechazados y no procesados", false],
   ["incidencias.cambiarEstadoBloque", "F-043", "Cambiar estado…", true],
   ["incidencias.asignarIndustrialBloque", "F-043", "Asignar industrial…", true],
   ["incidencias.imprimirBloque", "F-044", "Imprimir los partes", true],
@@ -844,43 +845,54 @@ const ESTROPEOS_DEL_RECORRIDO = [
     /05 Parte\): lleva aria-current y el paso actual es 06/,
   ],
   // F-038 (T1 bis, R25): el 03 de bandeja.html es de su sección y no es el actual.
+  // Cierre de F-038 (T8, R17): cambio a propósito, declarado. Con `bandeja` en
+  // `parcial`, 02 y 03 van sin marca: los controles que quitaban la marca del 02
+  // pasan a ponérsela (al 02 y al 03), y los demás estropean el marcado nuevo.
   [
     "un 03 con aria-current=\"step\" en bandeja.html", "bandeja.html", "bandeja.html",
     (html) => html.replace(
-      '<span class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">',
-      '<span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">',
+      '<span class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">03</span>',
+      '<span aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">03</span>',
     ),
     /03 Sigrid\): es de la sección de esta página y no es el actual/,
   ],
   [
     "el 03 de bandeja.html como enlace al portal", "bandeja.html", "bandeja.html",
     (html) => html.replace(
-      /<span class="rs-recorrido__paso" data-construccion aria-label="Sigrid \(en construcción\)">([\s\S]*?)<\/span><\/li>/,
-      '<a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">$1</a></li>',
+      /<span class="rs-recorrido__paso">(<span class="rs-recorrido__num" aria-hidden="true">03<\/span>Sigrid)<\/span><\/li>/,
+      '<a href="./#/bandeja" class="rs-recorrido__paso">$1</a></li>',
     ),
     /03 Sigrid\): es de la sección de esta página y no es el actual/,
   ],
   [
-    "el 02 actual de bandeja.html sin su aria-label", "bandeja.html", "bandeja.html",
+    "el 02 actual de bandeja.html con aria-label de construcción", "bandeja.html", "bandeja.html",
     (html) => html.replace(
-      '<span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)">',
-      '<span aria-current="step" class="rs-recorrido__paso" data-construccion>',
-    ),
-    /02 Revisión\): aria-label «undefined», no «Revisión \(en construcción\)» \(R87\)/,
-  ],
-  [
-    "el 02 actual de bandeja.html sin su data-construccion", "bandeja.html", "bandeja.html",
-    (html) => html.replace(
-      '<span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)">',
+      '<span aria-current="step" class="rs-recorrido__paso">',
       '<span aria-current="step" class="rs-recorrido__paso" aria-label="Revisión (en construcción)">',
     ),
-    /02 Revisión\): su sección está en construcción y no lleva data-construccion/,
+    /02 Revisión\): su sección no está en construcción y lleva aria-label \(R87\)/,
+  ],
+  [
+    "el 02 actual de bandeja.html con data-construccion", "bandeja.html", "bandeja.html",
+    (html) => html.replace(
+      '<span aria-current="step" class="rs-recorrido__paso">',
+      '<span aria-current="step" class="rs-recorrido__paso" data-construccion>',
+    ),
+    /02 Revisión\): su sección no está en construcción y lleva data-construccion/,
+  ],
+  [
+    "el 03 de bandeja.html con data-construccion", "bandeja.html", "bandeja.html",
+    (html) => html.replace(
+      '<span class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">03</span>',
+      '<span class="rs-recorrido__paso" data-construccion><span class="rs-recorrido__num" aria-hidden="true">03</span>',
+    ),
+    /03 Sigrid\): su sección no está en construcción y lleva data-construccion/,
   ],
   [
     "el 02 de bandeja.html sin aria-current", "bandeja.html", "bandeja.html",
     (html) => html.replace(
-      '<span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)">',
-      '<span class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)">',
+      '<span aria-current="step" class="rs-recorrido__paso">',
+      '<span class="rs-recorrido__paso">',
     ),
     /02 Revisión\): es el paso de esta página/,
   ],
@@ -1027,6 +1039,10 @@ test("f035 R12: un placeholder que no es en bloque no habla de la selección", (
   const aviso = textoPlaceholder("ficha.guardar", { seleccionadas: 3 });
 
   assert.doesNotMatch(aviso, /\b3 incidencias\b/);
+  // Cierre de F-038 (T8): los dos de la bandeja que contaban su selección.
+  for (const id of ["bandeja.aprobarSeleccionadas", "bandeja.reintentarVolcado"]) {
+    assert.doesNotMatch(textoPlaceholder(id, { seleccionadas: 3 }), /selección actual/, id);
+  }
 });
 
 test("f035 R12: con una sola seleccionada, el aviso va en singular", () => {
@@ -1108,19 +1124,14 @@ test("f035 R19: los filtros se cumplen todos a la vez", () => {
   );
 });
 
-test("f035 R19: la bandeja se filtra por origen, estado de revisión y obra, todos a la vez", () => {
-  const { filtrarBandeja } = portal();
-  const bandeja = [
-    { id: "B1", origen: "Excel", estado: "nueva", obra: "9901" },
-    { id: "B2", origen: "Web", estado: "nueva", obra: "9901" },
-    { id: "B3", origen: "Excel", estado: "aprobada", obra: "9902" },
-    { id: "B4", origen: "Excel", estado: "nueva", obra: "9902" },
-  ];
+// Cierre de F-038 (T8, su `design.md` §3.2): el filtro de la bandeja de ejemplo
+// solo servía a sus filas, que se fueron con F-038; sale con su export. Lo que
+// queda de R19 en la bandeja vive en `bandeja.html` (`js/revision.js`).
+test("f038 R17: filtrarBandeja salió de Portal con las filas de ejemplo de la bandeja", () => {
+  const Portal = portal();
 
-  assert.deepEqual(ids(filtrarBandeja(bandeja, {})), ["B1", "B2", "B3", "B4"]);
-  assert.deepEqual(ids(filtrarBandeja(bandeja, { origen: "Excel" })), ["B1", "B3", "B4"]);
-  assert.deepEqual(ids(filtrarBandeja(bandeja, { estado: "nueva", obra: "9902" })), ["B4"]);
-  assert.deepEqual(ids(filtrarBandeja(bandeja, { origen: "Web", estado: "aprobada" })), []);
+  assert.equal("filtrarBandeja" in Portal, false);
+  assert.doesNotMatch(leer("js/portal.js"), /filtrarBandeja/, "ni en el código ni en su cabecera");
 });
 
 test("f035 R20: alternarSeleccion marca y desmarca sin mutar la lista", () => {
@@ -1261,6 +1272,24 @@ test("f035 R40: el resumen de los dos resultados de ejemplo sale de sus filas", 
   assert.ok(resumenVolcado(dryRun.partes).previstos > 0);
   assert.equal(resumenVolcado(hecho.partes).previstos, 0, "un volcado hecho no deja previstos");
   assert.ok(resumenVolcado(hecho.partes).creados > 0);
+});
+
+// ── Cierre de F-038 (T8) · El detalle de la bandeja abre las filas de F-039 ─
+
+test("f038 R17: abrirFilaBandeja abre cada fila de ejemplo del industrial propuesto (F-039), y cerrar la cierra", () => {
+  conVentanaFalsa(() => {
+    const c = nuevoComponente();
+    const filas = datos().propuestas.filas;
+
+    assert.ok(filas.length >= 2, "hay filas de ejemplo del industrial propuesto");
+    assert.equal(c.filaBandeja(), null, "sin abrir, no hay detalle");
+    for (const fila of filas) {
+      c.abrirFilaBandeja(fila.id);
+      assert.equal(c.filaBandeja(), fila, `${fila.id}: el detalle es su fila`);
+    }
+    c.cerrarFilaBandeja();
+    assert.equal(c.filaBandeja(), null);
+  });
 });
 
 // ── R16 · El componente no llama a nada ─────────────────────────────────────
@@ -1489,11 +1518,13 @@ for (const [pagina, modo] of [
 
 test("f035 R12: seleccionadasPara cuenta la selección de la sección del placeholder", () => {
   const { seleccionadasPara } = portal();
-  const selecciones = { incidencias: ["EJ-0001", "EJ-0002"], bandeja: ["BJ-0004"], impresion: [] };
+  // Cierre de F-038 (T8): la bandeja ya no tiene selección; su prefijo, sin
+  // lista, cuenta cero como cualquier otro.
+  const selecciones = { incidencias: ["EJ-0001", "EJ-0002"], impresion: ["EJ-0003"] };
 
   assert.equal(seleccionadasPara("incidencias.cambiarEstadoBloque", selecciones), 2);
-  assert.equal(seleccionadasPara("bandeja.aprobarSeleccionadas", selecciones), 1);
-  assert.equal(seleccionadasPara("impresion.generarPdf", selecciones), 0);
+  assert.equal(seleccionadasPara("impresion.generarPdf", selecciones), 1);
+  assert.equal(seleccionadasPara("bandeja.aprobarSeleccionadas", selecciones), 0, "la bandeja ya no tiene selección");
   assert.equal(seleccionadasPara("ficha.guardar", selecciones), 0, "la ficha no tiene selección");
   assert.equal(seleccionadasPara("no.existe", selecciones), 0);
   assert.equal(seleccionadasPara("incidencias.imprimirBloque", {}), 0, "sin lista, cero; no lanza");
@@ -1515,22 +1546,25 @@ test("f035 R6: buscarPorId devuelve la fila o null, sin lanzar", () => {
 // única pista: el chip lleva siempre su texto (código y resumen, o la
 // etiqueta legible del volcado).
 
-/** Los códigos de los tres catálogos de estado que pinta el portal. */
+/**
+ * Los códigos de los catálogos de estado que pinta el portal. Cierre de F-038
+ * (T8): los cinco de revisión se fueron con el bloque `bandeja` de la maqueta
+ * (`design.md` §3.2 de F-038); los pinta `bandeja.html`, no el portal.
+ */
 function codigosDeEstado() {
   const { ESTADOS } = portal();
   const d = datos();
   return [
     ...ESTADOS.map((e) => e.cod),
-    ...d.bandeja.estadosRevision,
     ...d.volcado.catalogos.estados.map((e) => e.cod),
   ];
 }
 
-test("f035 R57: cada código de estado (conest, revisión y volcado) tiene su regla [data-estado] en css/portal.css", () => {
+test("f035 R57: cada código de estado (conest y volcado) tiene su regla [data-estado] en css/portal.css", () => {
   const css = leer("css/portal.css").replace(/\/\*[\s\S]*?\*\//g, " ");
   const codigos = codigosDeEstado();
 
-  assert.equal(codigos.length, 15, "cinco de conest, cinco de revisión y cinco de volcado");
+  assert.equal(codigos.length, 10, "cinco de conest y cinco de volcado");
   const faltan = codigos.filter((cod) => !css.includes(`[data-estado="${cod}"]`));
   assert.deepEqual(faltan, [], `css/portal.css no pinta estos estados: ${faltan.join(", ")}`);
 });
@@ -1549,7 +1583,8 @@ test("f035 R57: todo elemento de index.html con data-estado es un rs-chip con su
   }
   const expresiones = conEstado.map((e) => e.atributos[":data-estado"] || "");
   assert.ok(expresiones.some((x) => /\binc\.estado\b/.test(x)), "los estados de conest de las incidencias");
-  assert.ok(expresiones.some((x) => /\bfila\.estado\b/.test(x)), "los estados de revisión de la bandeja");
+  // Cierre de F-038 (T8): el portal ya no pinta estados de revisión (`fila.estado`).
+  assert.ok(!expresiones.some((x) => /\bfila\.estado\b/.test(x)), "los estados de revisión son de bandeja.html");
   assert.ok(expresiones.some((x) => /\bp\.estado\b/.test(x)), "los estados de volcado");
 });
 
@@ -1645,15 +1680,16 @@ function clasesEn(nodo, ambito) {
 /**
  * Estados del componente que abren, a la vez, la fila i de la bandeja, la
  * incidencia i y el capítulo i: así cada panel de detalle se pinta con cada
- * uno de sus datos de ejemplo.
+ * uno de sus datos de ejemplo. Cierre de F-038 (T8): las filas de la bandeja
+ * de ejemplo son las del industrial propuesto (`propuestas.filas`, F-039).
  */
 function estadosDeDetalle(c) {
   const d = datos();
-  const n = Math.max(d.bandeja.filas.length, d.incidencias.filas.length, d.capitulos.filas.length);
+  const n = Math.max(d.propuestas.filas.length, d.incidencias.filas.length, d.capitulos.filas.length);
   const estados = [];
   for (let i = 0; i < n; i += 1) {
     estados.push(() => {
-      c.filaBandejaAbierta = (d.bandeja.filas[i] || {}).id || null;
+      c.filaBandejaAbierta = (d.propuestas.filas[i] || {}).id || null;
       c.incidenciaAbierta = (d.incidencias.filas[i] || {}).id || null;
       c.capituloAbierto = (d.capitulos.filas[i] || {}).obra || null;
     });

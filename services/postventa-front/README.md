@@ -202,10 +202,12 @@ como R28). `Portal.enConstruccion(id)` lo consulta.
    página real, `bandeja.html` (el `enlace` de la sección en
    `Portal.SECCIONES`, que usa `Portal.enlaceSeccion`), y van **sin** punto
    aunque la sección siga en `construccion`; en `bandeja.html` la pestaña
-   actual y sus pasos 02 y 03, que no enlazan, lo conservan (R2 y R25 de
-   F-038). La ruta `#/bandeja` de la maqueta sigue existiendo, pero ya no la
-   enlazan ni las barras, ni las tiras, ni la tarjeta de la portada (que va a
-   `bandeja.html` con su chip «En construcción», el de su sección).
+   actual y sus pasos 02 y 03, que no enlazan, lo conservaban (R2 y R25 de
+   F-038). **Con el cierre de F-038** (2026-11-11, su R17) la sección pasó a
+   `parcial` y el punto se fue también de `bandeja.html`. La ruta `#/bandeja`
+   de la maqueta sigue existiendo, pero ya no la enlazan ni las barras, ni
+   las tiras, ni la tarjeta de la portada (que va a `bandeja.html` y, desde
+   el cierre de F-038, lleva «En producción»).
 2. **En la sección**: todo lo inventado va **dentro** de un recuadro
    `data-en-construccion` con la clase `rs-obras` (borde ámbar continuo y una
    cinta de obra arriba, nunca discontinuo ni burdeos), que empieza por su
@@ -215,16 +217,18 @@ como R28). `Portal.enConstruccion(id)` lo consulta.
    `Portal.fichasDeSeccion`). Una sección en `construccion` tiene **un**
    recuadro de sección (`data-en-construccion="<id>"`); una que no lo está
    solo lleva recuadros de bloque (`data-en-construccion="F-0NN"`) en lo que
-   le falte: hoy, la web de clientes (F-037) en `entrada` y el registro sin
-   firma (F-045) en la tarjeta «Partes firmados» (R63–R65). El rótulo no se
+   le falte: hoy, la web de clientes (F-037) en `entrada`, el registro sin
+   firma (F-045) en la tarjeta «Partes firmados» y, desde el cierre de F-038,
+   el industrial propuesto (F-039), la aprobación en bloque (F-043) y el
+   volcado (F-040) en `bandeja` (R63–R65). El rótulo no se
    puede cerrar ni esconder (ni `x-show`, ni `hidden`, ni `sr-only`, ni
    `style`). Fuera de los recuadros, `index.html` solo admite una **lista
    cerrada** de directivas de Alpine (R63 enmendado): un dato inventado que
    se escape del recuadro pone la suite en rojo.
 3. **En la portada**: ninguna cifra inventada; las tarjetas de lo que está
    en construcción llevan su chip «En construcción», y las de lo que
-   funciona («Entrada de incidencias» y «Partes firmados»), «En producción»
-   (R67). Y bajo la barra, el aviso permanente (R13).
+   funciona («Entrada de incidencias», «Bandeja de revisión» desde el
+   cierre de F-038 y «Partes firmados»), «En producción» (R67). Y bajo la barra, el aviso permanente (R13).
 
 **Las páginas reales: `Portal.PAGINAS`.** `importar.html` y `oficios.html`
 son **páginas propias** del portal, de la sección `entrada`, y desde F-038
@@ -586,15 +590,19 @@ aquí está la página que los usa. Diseño: `specs/F-038-bandeja-revision/`.
   se lee pero no se revisa.
 - **La guarda de salida**: un `beforeunload` propio de la página, que solo
   pregunta con un formulario con cambios sin guardar (no es la del circuito).
-- **Mientras la sección esté en construcción** (R16–R17 de F-038): la
-  sección `bandeja` del portal sigue «en construcción» —con su recuadro en
-  `#/bandeja` y el punto ámbar de su pestaña en esta página; en las demás,
-  desde F-040 T6a, la pestaña y los pasos 02 y 03 llevan aquí y sin punto—
-  mientras F-038 no esté `done`, porque la sección tiene más fichas (F-039,
-  F-040, F-043). El paso a «En producción» va en **un solo commit**, el que
-  pone F-038 en `done`: la sección a `parcial`, fuera las marcas de la
-  pestaña y de los pasos 02 y 03, y fuera los restos de F-038 de la maqueta.
-  Si se parte, las guardias de la raíz se ponen en rojo.
+- **El paso a «En producción»** (R16–R17 de F-038): mientras F-038 no
+  estuvo `done`, la sección `bandeja` del portal siguió «en construcción»
+  —con su recuadro en `#/bandeja` y el punto ámbar de su pestaña en esta
+  página; en las demás, desde F-040 T6a, la pestaña y los pasos 02 y 03 ya
+  llevaban aquí y sin punto—, porque la sección tiene más fichas (F-039,
+  F-040, F-043). El cierre (2026-11-11) fue **un solo commit**, el que puso
+  F-038 en `done`: la sección a `parcial`; fuera las marcas de la pestaña y
+  de los pasos 02 y 03 de esta página; la tarjeta de la portada con «En
+  producción»; en `#/bandeja`, una tarjeta «Revisar la bandeja» a esta
+  página y los recuadros de bloque de F-039, F-043 y F-040; y fuera los
+  restos de F-038 de la maqueta (sus tres botones, sus entradas de
+  `Portal.PLACEHOLDERS`, su bloque de `MaquetaDatos` y su título). Partido en
+  dos, las guardias de la raíz se habrían puesto en rojo.
 
 - **Lo que ya está en Sigrid se ve y no se toca** (R21; decisión Q-6 del
   2026-10-20). El filtro de estado ofrece también `volcada` («Volcadas a

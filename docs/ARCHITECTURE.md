@@ -430,6 +430,10 @@ es su pestaña `partes`.
 >   `entrada` y `partes` están en `parcial` y las otras cinco en
 >   `construccion`; `inicio` solo es `real` cuando lo son las otras siete,
 >   `partes` incluida.
+>   *Nota del 2026-11-11 (cierre de F-038, su R17):* `bandeja` pasa a
+>   `parcial` con F-038 `done`: hoy son `inicio`, `entrada`, `bandeja` y
+>   `partes` las que están en `parcial`, y las otras cuatro en
+>   `construccion`.
 > - **«En construcción»** sustituye a «maqueta» en lo que ve el usuario. Se
 >   reconoce en tres capas: el punto ámbar y el `aria-label` de la pestaña
 >   (`data-construccion`, R66), el recuadro `data-en-construccion` con su
@@ -1213,8 +1217,8 @@ en la sección «Volcado a Sigrid (F-059)».
 
 ## La página de revisión (F-038)
 
-**Añadida el 2026-10-20 por F-038 (Bloque 1 bis), en su rama y sin
-desplegar.** La pantalla de la revisión de F-056 es una **página real propia**
+**Añadida el 2026-10-20 por F-038 (Bloque 1 bis); publicada el 2026-10-21
+y verificada en producción el 2026-11-09.** La pantalla de la revisión de F-056 es una **página real propia**
 del front, **`bandeja.html`**, con su componente de Alpine `appRevision` en
 **`js/revision.js`** (lógica pura, probada con `node --test`) y tres funciones
 en `js/api.js`. Es la primera página real de la sección **«Bandeja de
@@ -1238,11 +1242,16 @@ la maqueta no pueden hablar con el backend. Diseño:
   (`cuerpoDeAccion`), cada estado ofrece solo sus acciones (`accionesDe`, la
   tabla de `_PERMITIDAS` del backend) y la `revision_previa` impide pisar a
   otra persona.
-- **Mientras la sección siga en construcción** (tiene también F-039, F-040 y
-  F-043), su pestaña y sus pasos llevan la marca de construcción en las cinco
-  páginas, también en `bandeja.html`, y `#/bandeja` sigue con su recuadro
-  «En construcción». El paso a «En producción» es un único commit, el que
-  pone F-038 en `done` (D-11 de F-038).
+- **En producción.** Con el cierre de F-038 (un único commit, el que la
+  pone en `done`, D-11 de F-038) la sección está en `parcial`: su pestaña y
+  sus pasos 02 y 03 van sin marca de construcción en las cinco páginas,
+  también en `bandeja.html`; la tarjeta «Bandeja de revisión» de la portada
+  lleva «En producción»; y en `#/bandeja` hay una tarjeta «Revisar la
+  bandeja» a `bandeja.html` y, cada uno en su recuadro de bloque, lo que
+  sigue en construcción: el industrial propuesto
+  (F-039), la aprobación en bloque (F-043) y el panel de volcado de la
+  maqueta (F-040). La tabla de ejemplo de la bandeja, sus filtros y los
+  botones de F-038 salieron de la maqueta.
 - **`importar.html`** enlaza a la página de su obra («Revisar esta obra en la
   bandeja de revisión», `bandeja.html?obra=<obra>`, misma pestaña); su
   bandeja sigue siendo de solo lectura.

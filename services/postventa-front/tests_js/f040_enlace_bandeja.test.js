@@ -18,6 +18,13 @@
 //   y 03, que no enlazan, siguen la sección (R2 y R25 de F-038).
 // - La ruta `#/bandeja` de la maqueta sigue existiendo.
 //
+// Cierre de F-038 (T8, 2026-11-11; R17 de F-038): cambio a propósito, declarado.
+// T6a ató el estado de la sección a R62 («ninguna de sus fichas está done»);
+// con F-038 `done`, `bandeja` está en `parcial`: deja de estar en construcción,
+// y la pestaña actual de `bandeja.html` ya no se marca. El caso «un desde
+// desconocido: la de la sección» se hace con una sección que sigue en
+// `construccion` (`incidencias`).
+//
 // El módulo se carga DENTRO de cada test, como en `portal.test.js`.
 
 const test = require("node:test");
@@ -123,11 +130,12 @@ test("f040 T6a: las demás secciones no cambian de enlace", () => {
   assert.equal(enlaceSeccion("partes", "circuito"), null, "partes es el circuito");
 });
 
-test("f040 T6a: la ruta #/bandeja de la maqueta sigue existiendo y la sección sigue en construcción", () => {
-  const { resolverRuta, enConstruccion } = portal();
+test("f040 T6a: la ruta #/bandeja de la maqueta sigue existiendo y la sección está en parcial (cierre de F-038)", () => {
+  const { resolverRuta, enConstruccion, SECCIONES } = portal();
 
   assert.equal(resolverRuta("#/bandeja", []).seccion, "bandeja");
-  assert.equal(enConstruccion("bandeja"), true, "R62: ninguna ficha de la sección está done");
+  assert.equal(SECCIONES.find((s) => s.id === "bandeja").estado, "parcial", "R62: F-038 está done");
+  assert.equal(enConstruccion("bandeja"), false, "una sección parcial no está en construcción");
 });
 
 // ── La marca: marcadaEnConstruccion ─────────────────────────────────────────
@@ -141,11 +149,12 @@ test("f040 T6a: marcadaEnConstruccion: lo que lleva a bandeja.html no se marca; 
     assert.equal(marcadaEnConstruccion("entrada", desde), false, `${pagina}: entrada no está en construcción`);
   }
   assert.equal(
-    marcadaEnConstruccion("bandeja", "bandeja.html"), true,
-    "la pestaña actual de bandeja.html, sin enlace, sigue a su sección (R2 de F-038)",
+    marcadaEnConstruccion("bandeja", "bandeja.html"), false,
+    "la pestaña actual de bandeja.html, sin enlace, sigue a su sección, que ya está en parcial (R17 de F-038)",
   );
   assert.equal(marcadaEnConstruccion("no-existe", "portal"), false);
-  assert.equal(marcadaEnConstruccion("bandeja", "otra.html"), true, "un desde desconocido: la de la sección");
+  assert.equal(marcadaEnConstruccion("incidencias", "otra.html"), true, "un desde desconocido: la de la sección");
+  assert.equal(marcadaEnConstruccion("bandeja", "otra.html"), false, "un desde desconocido, de una sección parcial: sin marca");
 });
 
 // ── El HTML: pestaña, pasos y tarjeta ───────────────────────────────────────

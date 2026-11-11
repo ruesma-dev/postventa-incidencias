@@ -37,14 +37,15 @@ function portalPosventa() {
     pestanaFicha: "datos",
     avisoRuta: "",
 
-    // Controles locales (R19, R20): se conservan al cambiar de sección.
+    // Controles locales (R19, R20): se conservan al cambiar de sección. La
+    // bandeja ya no tiene filtros ni selección: con el cierre de F-038 su
+    // revisión es `bandeja.html`, y en `#/bandeja` solo queda el ejemplo del
+    // industrial propuesto (F-039), que se abre fila a fila.
     filtros: {
       incidencias: { estado: "", obra: "", texto: "" },
-      bandeja: { origen: "", estado: "", obra: "" },
       impresion: { obra: "" },
     },
     seleccionIncidencias: [],
-    seleccionBandeja: [],
     seleccionImpresion: [],
     filaBandejaAbierta: null,
     capituloAbierto: null,
@@ -83,7 +84,6 @@ function portalPosventa() {
     placeholder(id) {
       const selecciones = {
         incidencias: this.seleccionIncidencias,
-        bandeja: this.seleccionBandeja,
         impresion: this.seleccionImpresion,
       };
       this.aviso = Portal.textoPlaceholder(id, { seleccionadas: Portal.seleccionadasPara(id, selecciones) });
@@ -93,10 +93,6 @@ function portalPosventa() {
 
     incidenciasFiltradas() {
       return Portal.filtrarIncidencias(datos.incidencias.filas, this.filtros.incidencias);
-    },
-
-    bandejaFiltrada() {
-      return Portal.filtrarBandeja(datos.bandeja.filas, this.filtros.bandeja);
     },
 
     impresionFiltrada() {
@@ -111,10 +107,6 @@ function portalPosventa() {
 
     alternarIncidencia(id) {
       this.seleccionIncidencias = Portal.alternarSeleccion(this.seleccionIncidencias, id);
-    },
-
-    alternarBandeja(id) {
-      this.seleccionBandeja = Portal.alternarSeleccion(this.seleccionBandeja, id);
     },
 
     alternarImpresion(id) {
@@ -144,7 +136,7 @@ function portalPosventa() {
     },
 
     filaBandeja() {
-      return Portal.buscarPorId(datos.bandeja.filas, this.filaBandejaAbierta);
+      return Portal.buscarPorId(datos.propuestas.filas, this.filaBandejaAbierta);
     },
 
     abrirFilaBandeja(id) {

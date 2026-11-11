@@ -264,7 +264,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
 > no cubren). Los puntos marcados [Q-11] y [Q-12] solo entran si el humano
 > dice sí; si dice no, se quitan de T8 y de T10 sin más.
 
-- [ ] **T8**: **solo por encargo del líder**, con Q-11 y Q-12 respondidas.
+- [x] **T8**: **solo por encargo del líder**, con Q-11 y Q-12 respondidas.
   **Un solo commit** «F-038 T8: …» sobre la rama al día con `dev` (hoy
   `d54f481`), que **incluye F-038 → `done` en `harness/features.json`**: lo
   asigna la spec (R17, D-11, `design.md` §3.2), porque con F-038 sin `done`

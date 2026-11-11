@@ -2445,3 +2445,314 @@ Sigrid no se escribió nada**; en nuestra base, solo la fila de prueba de la
 
 **T7 cerrada (2026-11-09).** Siguiente: T8, cuando F-038 vuelva a estar en
 curso (antes se cierra F-071, por decisión del humano).
+
+## T8 · El cierre de la sección (implementer, 2026-11-11)
+
+Encargo del líder: solo T8, con **Q-11 y Q-12 respondidas «sí»**
+(`progress/spec_F-038.md`, «Respuestas a Q-11 y Q-12»). Rama
+`feature/F-038-bandeja-revision` sobre `60daef7` (dev `d54f481` más los dos
+commits de spec). **Un solo commit** `F-038 T8: …`, con F-038 → `done` en
+`harness/features.json` y esta traza dentro. `BACKLOG.md` no se tocó (lo
+regenera `init.sh` en T9). No se ejecutó `bash harness/init.sh` (lo hace el
+líder en T9). Ni `.env`, ni Sigrid, ni SharePoint, ni `services/postventa-api/`.
+
+### Qué cambió (código)
+
+1. **`js/portal.js`**: `bandeja` → `estado: "parcial"` (y el comentario de
+   `enlace`, que decía que el estado no cambiaba); fuera las entradas
+   `bandeja.editar`, `bandeja.descartar` y `bandeja.aprobar` de
+   `PLACEHOLDERS` y `"F-038"` de `TITULOS_FICHAS`; fuera `filtrarBandeja`
+   (función, export y su línea de la cabecera: solo servía a las filas de
+   ejemplo); `bandeja.aprobarSeleccionadas` (F-043) y
+   `bandeja.reintentarVolcado` (F-040) a `enBloque: false`, con el porqué en
+   el comentario de `PLACEHOLDERS` y de `seleccionadasPara`.
+2. **`js/portal_app.js`**: fuera `filtros.bandeja`, `seleccionBandeja`,
+   `bandejaFiltrada()`, `alternarBandeja()` y la entrada `bandeja` de las
+   selecciones de `placeholder()`. `filaBandeja()` lee ahora
+   `datos.propuestas.filas` (el detalle del ejemplo de F-039).
+3. **`js/maqueta_datos.js`**: fuera el bloque `bandeja` (`ficha: "F-038"`,
+   con `origenes`, `estadosRevision`, ocho filas e `historial`). **Decisión
+   de diseño:** a `propuestas` (F-039) pasan **cuatro** filas, como
+   `propuestas.filas`, **sin** `estado`, `duplicada` ni `codSigrid` (eran
+   vocabulario de la revisión, ya real en `bandeja.html`): BJ-0001 (con
+   propuesta), BJ-0002 (Excel sin ubicación ni oficio: «no se propone», R38
+   de F-035), **BJ-0003 (la única con tipo 0003: R39 de F-035 sigue con
+   objeto, no hizo falta parar)** y BJ-0007 (origen Web). `porFila` se recorta
+   a esas cuatro (las otras cuatro filas solo enseñaban estados de revisión:
+   aprobada, duplicada/descartada, volcada). Comentarios de `obras` y de
+   `volcado.hecho` (citaba la fila BJ-0008) al día. Ninguna fila queda en un
+   bloque sin ficha ni con la de F-038.
+4. **`index.html`**:
+   - `#/bandeja`: fuera el envoltorio de sección (`data-en-construccion="bandeja"`
+     con la frase de R69); tras la cabecera, una rejilla con la tarjeta
+     **«Revisar la bandeja»** (`<a href="bandeja.html" class="rs-tarjeta rs-tarjeta--produccion">`,
+     chip «En producción», una frase y su llamada, como las tarjetas de
+     `#/entrada`; misma pestaña); y tres recuadros de bloque con su rótulo
+     (R64, R65): **F-039** (tabla de `propuestas.filas` con el industrial
+     propuesto y su detalle de solo lectura —campos del alta, intervinientes
+     y referencia externa— con «Cambiar industrial»), **F-043** («Aprobar las
+     seleccionadas» y una frase) y **F-040** (el panel de volcado con
+     `MaquetaDatos.volcado`, sin la lista «aprobadas por obra», que leía las
+     filas de F-038 con `filtrarBandeja`; `design.md` §3.2 punto 5).
+   - Fuera los tres botones `data-placeholder="F-038"`, los filtros, la
+     selección y el contador, la columna de estado de revisión y la de código
+     de Sigrid, el historial de revisión y el estado vacío de la tabla.
+   - La tarjeta «Bandeja de revisión» de la portada: chip «En producción»
+     (`rs-chip--ok`), `rs-tarjeta--produccion`, y la llamada «Revisar la
+     bandeja →» en lugar de «Ver cómo será». **Decisión:** se queda `<a>`
+     (no `div` con botones como «Entrada de incidencias») porque la guardia de
+     F-040 T6a la busca como `<a … rs-tarjeta>` con `href="bandeja.html"`; lo
+     que pide R67 (chip, clase de producción, sin «Ver cómo será») se cumple.
+   - **[Q-12]** la entradilla de inicio, con el texto recomendado.
+5. **`bandeja.html`**: la pestaña actual y los pasos 02 y 03 sin
+   `data-construccion` ni su `aria-label`; 02 sigue `aria-current="step"`,
+   03 sigue `<span>` sin `href` ni `aria-current` (R25). Comentarios de las
+   dos `<nav>` al día. La leyenda del punto ámbar se queda.
+6. **[Q-11] `importar.html`**: la frase del bloque 3 pasa a «Solo lectura:
+   para revisar, corregir o descartar, la bandeja de revisión (abajo).» (el
+   enlace de R14 va justo debajo) y el comentario de la cabecera nombra
+   `bandeja.html`. Nada más de la página; `js/importacion.js` no se tocó.
+7. **Desviación (necesaria, justificada): `css/portal.css` y la `?v=` de las
+   hojas.** Al irse la lista «aprobadas por obra», la clase `rs-por-obra` se
+   quedó sin uso y la guardia H-5 (`test_f035_h5_ninguna_clase_de_portal_css_queda_sin_uso`)
+   lo prohíbe: se quitan sus tres reglas. Cambiar una hoja cambia su versión
+   (T21 de F-035): `?v=6e073b5414` → **`?v=80c9887e36`** (la que da
+   `version_de_las_hojas()`) en las cinco páginas (`index.html` ×2,
+   `bandeja.html`, `importar.html`, `oficios.html`, `partes.html`). No es un
+   cambio de diseño: es la consecuencia mecánica de la retirada que pide la
+   spec. **Hay que tenerlo en cuenta al publicar (T10): cambia la hoja.**
+8. **`harness/features.json`**: F-038 `in_progress` → `done` (solo el campo
+   `status`).
+9. **Documentación** (R19, R20): `docs/ARCHITECTURE.md` («publicada el
+   2026-10-21 y verificada en producción el 2026-11-09»; la viñeta pasa a «En
+   producción»; nota fechada en la enmienda del 2026-10-05: hoy `inicio`,
+   `entrada`, `bandeja` y `partes` en `parcial`) y
+   `services/postventa-front/README.md` (la marca y la tarjeta de la
+   portada, los recuadros de bloque, las tarjetas en producción y la viñeta
+   del paso a producción, en pasado).
+10. `specs/F-038-bandeja-revision/tasks.md`: T8 marcada `[x]`.
+
+### Cambios de test, uno a uno, con su porqué
+
+Ninguno debilita una aserción sin sustituirla; donde un control miraba la
+sección `bandeja` (que ya no está en construcción), se muda a otra que sigue
+en construcción (`incidencias`) o se invierte para cazar la marca puesta.
+
+- `tests_js/f040_enlace_bandeja.test.js` *(cambio a propósito de F-040 T6a,
+  declarado en su cabecera)*: «la ruta #/bandeja … sigue en construcción» →
+  «… está en parcial» (comprueba `estado === "parcial"` y
+  `enConstruccion === false`); `marcadaEnConstruccion("bandeja", "bandeja.html")`
+  → `false`; el caso del `desde` desconocido se hace con `incidencias`
+  (`true`) y se añade el de `bandeja` (`false`).
+- `tests_js/portal.test.js`:
+  - `PLACEHOLDERS_ESPERADOS`: fuera las tres de F-038; `aprobarSeleccionadas`
+    y `reintentarVolcado` con `enBloque: false`.
+  - El test de R19 de `filtrarBandeja` se sustituye por **«f038 R17:
+    filtrarBandeja salió de Portal…»** (no está en el export ni en el texto
+    de `js/portal.js`).
+  - R12 `seleccionadasPara`: las selecciones ya no llevan `bandeja`; se
+    comprueba que su prefijo cuenta 0 y se mete `impresion: ["EJ-0003"]` para
+    no perder un caso con 1. R12 «no es en bloque»: añade los dos de la
+    bandeja (sin «selección actual»).
+  - R57: `codigosDeEstado` sin los cinco de revisión (15 → 10) y el chip
+    `fila.estado` pasa de exigirse a **prohibirse** en `index.html`.
+  - `estadosDeDetalle` abre `propuestas.filas`.
+  - Los controles de la tira de `bandeja.html` (R84-R87): el 03 con
+    `aria-current` y el 03 como enlace, reescritos sobre el marcado nuevo; los
+    dos que quitaban la marca del 02 pasan a **ponerla** (al 02, `aria-label`
+    y `data-construccion`) y se añade el 03 con `data-construccion`; el 02 sin
+    `aria-current`, sobre el marcado nuevo.
+  - **Nuevo** «f038 R17: abrirFilaBandeja abre cada fila de ejemplo del
+    industrial propuesto…» (lo pidió el mutante T8-M12, abajo).
+- `tests_js/f035_paginas.test.js`: R65 `fichasDeSeccion("bandeja")` ya no
+  nombra F-038 (y se afirma que no tiene título); comentario de
+  `problemasR66` al día (la guardia no cambia: cambia la fuente).
+- `tests_js/maqueta_datos.test.js`: `BLOQUES` sin `bandeja`; `filasConAlta`
+  y los dos tests de R38/R39 leen `propuestas.filas`; R39 «exactamente una
+  fila usa el tipo 0003» **sigue con objeto** (BJ-0003 se mudó).
+- `tests/test_f035_paginas.py`: `ENVOLTORIOS_DE_BLOQUE` gana F-039, F-043 y
+  F-040 en `bandeja` (y el test de R64 de bloque se renombra en
+  consecuencia); el control de R64 «una sección que deja de estar en
+  construcción sobra» pasa a `incidencias`, y se **añade** el inverso
+  («bandeja de nuevo en construcción pide su recuadro»); el estropeo «un
+  data-en-construccion sin rs-obras», `_RECUADRO_BANDEJA` →
+  `_RECUADRO_INCIDENCIAS` (tres estropeos de R65) y el de «sin la lista de
+  fichas» pasan a `incidencias`; recuadros de 7 a 9; R67:
+  `TARJETAS_EN_PRODUCCION` gana «Bandeja de revisión» y
+  `TARJETAS_EN_CONSTRUCCION` pierde `bandeja.html`; **[Q-12]**
+  `ENTRADILLA_DE_INICIO`; R69: el test del enlace del recuadro se va con el
+  recuadro y lo sustituye **«f038 R17: la bandeja del portal lleva a
+  bandeja.html en producción»** (tarjeta `<a>` a `bandeja.html`, misma
+  pestaña, `rs-tarjeta--produccion`, chip «En producción», sin datos de
+  ejemplo, y ningún `importar.html#bandeja` en la sección); el control de
+  R65 «sin la regla del enlace» (el único rótulo con enlace era el de R69)
+  pone en memoria un enlace en un rótulo y comprueba que con la regla no
+  hay burdeos y sin ella sí (la regla CSS se queda).
+- `tests/test_f035_portal.py`: `CHIPS_DE_ESTADO` 5 → 4 (se va el de
+  revisión); R58 `LISTAS_FILTRADAS` sin `bandeja`.
+- `tests/test_f038_front.py`: R2 «la pestaña … lleva su marca» → «… va sin
+  marca», y su control pasa a cazar la marca puesta (2 problemas) y una
+  pestaña que no es la actual (1); **nuevo** `test_f038_q11_importar_ya_no_dice_que_la_revision_llegara`
+  (lo pidió el mutante T8-M13).
+- `tests/test_f035_placeholders_vivos.py` (raíz) **no cambia**; los tres
+  controles mudados en T1 bis tampoco.
+
+Confirmé la lista de la spec con `grep` y las ejecuciones: además de lo
+listado salieron `CHIPS_DE_ESTADO`, `LISTAS_FILTRADAS`, el control de R65
+«sin la regla del enlace» y el recuento de recuadros (R63).
+
+### Fase RED (contra el código de antes de T8, en una copia; el árbol, nunca)
+
+Copia LF del front con los **tests nuevos** y el **código de `HEAD`
+(`60daef7`)** (`git -c core.autocrlf=false show HEAD:<fichero>` de los nueve
+ficheros de código), y la raíz con el `features.json` nuevo (F-038 `done`).
+
+`node --test --test-reporter=tap tests_js/f040_enlace_bandeja.test.js tests_js/portal.test.js tests_js/f035_paginas.test.js tests_js/maqueta_datos.test.js`
+→ `# tests 267 · # pass 244 · # fail 23`. Trazas de los centrales:
+
+```
+not ok 133 - f040 T6a: la ruta \#/bandeja de la maqueta sigue existiendo y la sección está en parcial (cierre de F-038)
+  error: |-
+    R62: F-038 está done
+    + actual - expected
+    + 'construccion'
+    - 'parcial'
+not ok 134 - f040 T6a: marcadaEnConstruccion: lo que lleva a bandeja.html no se marca; lo que lleva a la maqueta, sí
+  error: |-
+    la pestaña actual de bandeja.html, sin enlace, sigue a su sección, que ya está en parcial (R17 de F-038)
+    true !== false
+not ok 217 - f035 R8: están los placeholders del inventario, con su ficha, etiqueta y enBloque
+  error: |-
+    bandeja.aprobarSeleccionadas: enBloque
+    true !== false
+not ok 229 - f038 R17: filtrarBandeja salió de Portal con las filas de ejemplo de la bandeja
+  error: |-
+    Expected values to be strictly equal:
+    true !== false
+```
+
+(también caen R65 `fichasDeSeccion`, R24/R38/R39 de la maqueta, los seis
+controles de la tira de `bandeja.html`, R12, R57 y las dos de «sin dato»).
+
+`python -m pytest tests/test_f035_paginas.py tests/test_f035_portal.py tests/test_f038_front.py -q -k "r64 or r65 or r67 or f038_r17 or f038_r2 or r58 or r57_el_color or h5 or r63_rs_obras"`
+→ `10 failed, 58 passed`:
+
+```
+FAILED tests/test_f035_paginas.py::test_f035_r63_rs_obras_solo_y_siempre_en_un_recuadro
+FAILED tests/test_f035_paginas.py::test_f035_r64_los_recuadros_de_bloque_son_los_de_la_web_de_clientes_el_parte_sin_firma_y_la_bandeja
+FAILED tests/test_f035_paginas.py::test_f035_r64_control_la_bandeja_de_nuevo_en_construccion_pide_su_recuadro
+FAILED tests/test_f035_paginas.py::test_f035_r65_hay_un_recuadro_por_cada_seccion_en_construccion_y_los_de_bloque
+FAILED tests/test_f035_paginas.py::test_f035_r67_la_portada_no_ensena_cifras_y_cada_tarjeta_lleva_su_chip
+FAILED tests/test_f035_paginas.py::test_f035_r67_la_ceja_y_la_entradilla_de_inicio_no_hablan_de_maqueta
+FAILED tests/test_f035_paginas.py::test_f038_r17_la_bandeja_del_portal_lleva_a_bandeja_html_en_produccion
+FAILED tests/test_f035_portal.py::test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto
+FAILED tests/test_f038_front.py::test_f038_r2_la_pestana_de_la_bandeja_es_la_actual_y_va_sin_marca
+FAILED tests/test_f038_front.py::test_f038_r2_control_con_la_marca_salta
+E   AssertionError: tiene que haber uno y solo uno: la tarjeta de la sección bandeja (hay 0)
+E   - repetidos), la bandeja de revisión y el circuito de partes firmados. El resto del ciclo está en construcción: …
+E   + repetidos) y el circuito de partes firmados. El resto del ciclo está en construcción: …
+```
+
+**La atomicidad (D-11), demostrada.** La guardia de la raíz con F-038 `done`
+y el front de antes: `python -m pytest tests/test_f035_placeholders_vivos.py -q`
+→ 5 FAILED (R28 ×3, R62 ×2):
+
+```
+E   AssertionError: hay fichas cerradas con placeholders o datos de ejemplo en la maqueta; retíralos como dice design.md §7.3 de F-035:
+E     F-038 está done y deja index.html:470
+E     F-038 está done y deja index.html:473
+E     F-038 está done y deja index.html:476
+E     F-038 está done y deja js/portal.js:147
+E     F-038 está done y deja js/portal.js:154
+E     F-038 está done y deja js/portal.js:161
+E     F-038 está done y deja js/maqueta_datos.js:136
+E   AssertionError: «bandeja» declara estado «construccion» y sus fichas dicen «parcial»: cámbialo en Portal.SECCIONES (js/portal.js, R62)
+```
+
+Los siete restos de la spec, exactamente. Con T8 entero: 19 passed.
+
+### Mutación a mano de T8 (13 mutantes, copia LF; el árbol, nunca)
+
+Script en el scratchpad (`mutar_t8.py`): cada mutante en un fichero de la
+copia, `node --test` de los cuatro ficheros JS de arriba y `pytest` de
+`test_f035_paginas.py`, `test_f035_portal.py`, `test_f038_front.py` y
+`test_f036_front.py`; se restaura después de cada uno. **Ojo al leerlo:** en
+la copia (solo el front, sin `docs/` ni `harness/`) esos cuatro ficheros
+Python dan siempre **6 fallos de base** (`t37` ×5 y `r19_r20[architecture]`,
+que leen `docs/`); un mutante con «js 0, py 6» **sobrevive**.
+
+| Mutante | Resultado |
+|---|---|
+| M1 `bandeja` vuelve a `construccion` | muerto (js 8, py 9) |
+| M2 `aprobarSeleccionadas` `enBloque: true` | muerto (js 2: R8, R12) |
+| M3 `reintentarVolcado` `enBloque: true` | muerto (js 2: R8, R12) |
+| M4 pestaña actual de `bandeja.html` con su marca | muerto (js 1 R66, py 8) |
+| M5 paso 03 de `bandeja.html` con su marca | muerto (js 4) |
+| M6 chip de la tarjeta de portada a «En construcción» | muerto (py 7: R67) |
+| M7 «Revisar la bandeja» a `importar.html#bandeja` | muerto (py 7: f038 R17) |
+| M8 recuadro F-043 sin envoltorio | muerto (py 24: R63) |
+| M9 recuadro F-040 rotulado F-039 | muerto (py 19: R64, R65) |
+| M10 entradilla sin la bandeja | muerto (py 7: R67) |
+| M11 la fila del tipo 0003 a 0002 | muerto (js 1: R39) |
+| M12 el detalle lee `incidencias.filas` | **sobrevivió** (js 0, py 6) → test nuevo «f038 R17: abrirFilaBandeja…» → **muerto** (js 1) |
+| M13 la frase de `importar.html` vuelve a «llegará con F-038» | **sobrevivió** (js 0, py 6) → test nuevo `test_f038_q11_…` → **muerto** (py 7) |
+
+M12 sobrevivía porque `estadosDeDetalle` abría ids `BJ-…` que no están en
+`incidencias.filas`: el detalle no se pintaba y nada lo echaba en falta. M13,
+porque ningún test fijaba esa frase (R14 solo mira el enlace). Hueco real
+en los dos; cerrados. **13 de 13 muertos.** La herramienta de mutación
+sobre `.py` no aplica: T8 no toca `.py` de producción.
+
+### Verde (árbol de trabajo, antes del commit)
+
+Desde `services/postventa-front`:
+
+- `node --test "tests_js/*.test.js"`: **1132 tests, 1116 pass, 16 fail**
+  (6,7 s). Los 16 son los controles de mutación de `revision.test.js`
+  (`f038 T5 …` y `f038 C-B1f-…`, «el control no encuentra una sola vez: …»)
+  y **ya fallaban antes de T8** en este worktree (1130 tests, 1114 pass,
+  16 fail en la línea de base, sin ningún cambio). **Causa: los finales de
+  línea.** El worktree `postventa-f038` está con `core.autocrlf=true` y saca
+  `js/revision.js` y `bandeja.html` en CRLF; esos controles buscan trozos de
+  código de varias líneas con `\n`. En la carpeta principal, en LF, no pasa.
+  **Comprobado:** en una copia LF del mismo árbol, **1132 de 1132 en verde**
+  (8,0 s) y `tests/test_f007_js.py` 4 passed. Ningún fichero de T8 los toca.
+  Para el líder: `init.sh` en este worktree los verá en rojo igual que antes
+  de T8; no es de este commit. No lo he arreglado (sería tocar la
+  configuración del worktree o los tests de T5, fuera de T8).
+- `python -m pytest tests`: **910 passed, 1 failed, 7 skipped** (25,5 s).
+  El único fallo es `test_f007_r32_la_suite_de_javascript_esta_en_verde`,
+  que lanza la suite JS de arriba (los mismos 16 de CRLF).
+- Desde la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py`:
+  **19 passed**.
+- Árbol: `grep -rn 'data-placeholder="F-038"\|ficha: "F-038"\|"F-038": "' services/postventa-front --include=*.html --include=*.js`
+  sin resultados fuera de `tests/` y `tests_js/`; `grep -n "data-construccion" bandeja.html`
+  solo en las pestañas y pasos de `incidencias`, `impresion`, `economico` y
+  `datos`.
+- **R18**: F-039, F-040 y F-043 conservan restos (R29 en verde): F-039 2
+  botones + 2 placeholders + su bloque; F-040 3 + 3 + su bloque; F-043 3
+  botones + 3 placeholders.
+
+### Fuera de alcance / pendiente
+
+- **T9** (review corta de este commit, `bash harness/init.sh` sobre él y el
+  `BACKLOG.md` que regenere, del líder). Con el aviso de arriba sobre los 16
+  controles en CRLF de este worktree.
+- **T10 (MANUAL)**: publicar con `-SoloFront`. Cambia `css/portal.css` (y la
+  `?v=` de las cinco páginas): se publica la hoja nueva. Verificación visual
+  de `#/bandeja` (la tarjeta, los tres recuadros y el detalle del ejemplo de
+  F-039) en el navegador: **no la he hecho**; las guardias evalúan las
+  expresiones de Alpine contra el componente, pero no hay captura.
+  `azure-apps/postventa_incidencias.md` (R20) lo pone al día el líder.
+- `progress/current.md` no lo he tocado (lo lleva el líder).
+
+## Evidencias (T8)
+
+| Evidencia | Valor |
+|---|---|
+| Tests JS (árbol, CRLF) | 1132 · 1116 pass · 16 fail (los mismos 16 previos a T8, CRLF) · 6,7 s |
+| Tests JS (copia LF) | 1132 · 1132 pass · 0 fail · 8,0 s |
+| pytest del front | 910 passed · 1 failed (`test_f007_r32`, la suite JS de arriba) · 7 skipped · 25,5 s |
+| Guardia de la raíz | 19 passed · 0,2 s |
+| Cobertura de líneas cambiadas | No aplica aquí: T8 no toca `.py` de producción y `init.sh` no se ejecutó (T9, líder) |
+| Mutación | 13 mutantes a mano · 0 supervivientes al final (2 sobrevivieron y se cerraron con dos tests nuevos) · herramienta `.py`: no aplica |

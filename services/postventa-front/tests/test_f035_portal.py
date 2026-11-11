@@ -2636,9 +2636,10 @@ def test_f035_r56_el_circuito_no_tiene_placeholders():
 # --- R58 · Cuando los filtros no dejan filas, un estado vacío --------------------
 
 #: La lista filtrada que pinta cada sección con filtros (el componente ya la da).
+#: Cierre de F-038 (T8): la bandeja de ejemplo se fue con sus filtros
+#: (`bandejaFiltrada()`); los de la bandeja real son de `bandeja.html`.
 LISTAS_FILTRADAS = {
     "incidencias": "incidenciasFiltradas()",
-    "bandeja": "bandejaFiltrada()",
     "impresion": "impresionFiltrada()",
 }
 
@@ -2835,8 +2836,10 @@ def test_f035_r40_cada_chip_del_volcado_va_en_su_panel():
 # --- R57 · Cada chip pinta el estado que dice (P-R1, :data-estado) ---------------
 
 
-#: Los chips de estado del portal (medido: 5; conest ×3, revisión y volcado).
-CHIPS_DE_ESTADO = 5
+#: Los chips de estado del portal (medido: 4; conest ×3 y volcado). Cierre de
+#: F-038 (T8): el de revisión (`fila.estado`) salió con la tabla de ejemplo de la
+#: bandeja; los estados de revisión los pinta `bandeja.html`.
+CHIPS_DE_ESTADO = 4
 
 
 def test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto():

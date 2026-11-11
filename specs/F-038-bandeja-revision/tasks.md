@@ -376,7 +376,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
        sección esté en construcción» (hacia la línea 589), contadas en pasado:
        qué cambió en el cierre. |
   Verificación: desde `services/postventa-front`, `node --test "tests_js/*.test.js"` y `python -m pytest tests`; desde la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py`; todo en verde. Y en el árbol: `grep -rn 'data-placeholder="F-038"\|ficha: "F-038"\|"F-038": "' services/postventa-front --include=*.html --include=*.js` sin resultados fuera de `tests/` y `tests_js/`; `grep -n "data-construccion" services/postventa-front/bandeja.html` solo en las pestañas y pasos de `incidencias`, `impresion`, `economico` y `datos`; `git show --stat HEAD` con `harness/features.json` dentro
-- [ ] **T9**: review corta **solo** de T8 contra `CHECKPOINTS.md` (el
+- [x] **T9**: review corta **solo** de T8 contra `CHECKPOINTS.md` (el
   reviewer), y `bash harness/init.sh` en verde **sobre ese commit** (el
   líder, P-4 mientras siga abierto); el `BACKLOG.md` que regenera, en un
   commit aparte del líder. Si algo falla, se revierte T8 entero

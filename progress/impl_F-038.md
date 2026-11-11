@@ -2756,3 +2756,13 @@ Desde `services/postventa-front`:
 | Guardia de la raíz | 19 passed · 0,2 s |
 | Cobertura de líneas cambiadas | No aplica aquí: T8 no toca `.py` de producción y `init.sh` no se ejecutó (T9, líder) |
 | Mutación | 13 mutantes a mano · 0 supervivientes al final (2 sobrevivieron y se cerraron con dos tests nuevos) · herramienta `.py`: no aplica |
+
+## T9 · Review y init.sh (líder, 2026-11-11)
+
+- Review de T8 (`8480c66`): **APROBADO** (`progress/review_F-038.md`).
+- `bash harness/init.sh` sobre T8, en verde: API 9932 passed / 457 skipped;
+  front 911 passed / 7 skipped; raíz 115 passed. Antes hubo que arreglar dos
+  cosas del worktree, no de T8: el front estaba sacado con CRLF (16 controles
+  de mutación de `revision.test.js` fallaban; se volvió a sacar en LF, mismo
+  contenido) y faltaba el enlace al venv compartido de la API.
+- `BACKLOG.md` regenerado por `init.sh`, en este commit aparte.

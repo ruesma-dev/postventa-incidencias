@@ -285,3 +285,15 @@ quitan.
 |---|---|---|---|
 | **Q-11** | `importar.html`, bloque 3: «Solo lectura: revisar, corregir o descartar incidencias llegará con F-038.» (y el comentario de la cabecera, «… es F-038»). R14 dice «ningún otro cambio en esa página» (O-B1b-4: implementer y reviewer lo dejaron para T8 o F-057). ¿Se cambia en el cierre? | **Sí, en T8**: «Solo lectura: para revisar, corregir o descartar, la bandeja de revisión (abajo).», o simplemente «Solo lectura.», sin tocar nada más de la página ni `js/importacion.js`. Precisión de R14, no cambio de lo que hace la página | Dejarlo para **F-057**, que rehace esa tabla (la frase queda falsa en producción hasta entonces) |
 | **Q-12** | La entradilla de la portada (F-035, fijada por `ENTRADILLA_DE_INICIO`): «Funcionan ya la entrada de incidencias (…) y el circuito de partes firmados. El resto del ciclo está en construcción…». Con la bandeja «En producción» deja de ser cierta. ¿Se cambia? | **Sí, en T8**: añadir la revisión, p. ej. «Funcionan ya la entrada de incidencias (importar el Excel de la obra y los oficios repetidos), la bandeja de revisión y el circuito de partes firmados. El resto del ciclo está en construcción: lo enseñamos con datos inventados para que veáis cómo será.»; `ENTRADILLA_DE_INICIO` cambia con ella | Dejarla como está (incompleta, no falsa del todo) |
+
+### Respuestas a Q-11 y Q-12 (2026-11-11)
+
+El humano delegó la decisión en el líder («revisa tu en chrome q11 y 12»).
+El líder lo miró en el front publicado: el bloque 3 de `importar.html` dice
+«… llegará con F-038» cuando la bandeja ya revisa, corrige y descarta (T7), y
+la entradilla de la portada solo cita la entrada de incidencias y los partes
+firmados como lo que funciona. **Q-11: sí, en T8** (la frase recomendada).
+**Q-12: sí, en T8** (la entradilla recomendada, con `ENTRADILLA_DE_INICIO`).
+Visto de paso: el front publicado aún enseña la tarjeta «02 Bandeja de
+revisión» como «En construcción»; en `dev` ya va a `bandeja.html` (F-040 T6a)
+y se corrige al publicar en T10.

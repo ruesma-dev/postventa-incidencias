@@ -53,7 +53,10 @@ Bloque 9 (`tasks.md`, T27):
 - **R56 ampliado**: ningún envoltorio usa el discontinuo ni el burdeos.
 - **R67**, la portada sin cifras, con su chip por tarjeta, y ningún texto
   visible del portal que diga «maqueta».
-- **R69**: la bandeja enlaza a `importar.html#bandeja`, que existe.
+- **R69**: la bandeja enlaza a `importar.html#bandeja`, que existe. Desde el
+  cierre de F-038 (T8, su `design.md` §3.2 punto 3) el recuadro de sección de
+  la bandeja ya no existe y su frase de R69 salió con él: queda que
+  `importar.html#bandeja` existe.
 - Review del bloque 7, **H-3** (R68): la estructura cerrada de `entrada`; y
   **H-5**: ninguna clase de `css/portal.css` sin uso en el portal.
 
@@ -1085,19 +1088,31 @@ _FICHA = re.compile(r"^F-\d{3}$")
 #: Las frases que todo rótulo dice (R65, `design.md` §16.10).
 FRASES_DEL_ROTULO = ("En construcción", "no funciona", "inventados", "no es información real", "no se guarda")
 
-#: Los recuadros de bloque de hoy (R64): {ficha: sección donde va}.
-ENVOLTORIOS_DE_BLOQUE = {"F-037": "entrada", "F-045": "inicio"}
+#: Los recuadros de bloque de hoy (R64): {ficha: sección donde va}. Cierre de F-038
+#: (T8, R17): la bandeja pasa a `parcial` y lo que sigue sin funcionar va en los
+#: recuadros de bloque de F-039, F-043 y F-040.
+ENVOLTORIOS_DE_BLOQUE = {
+    "F-037": "entrada",
+    "F-045": "inicio",
+    "F-039": "bandeja",
+    "F-043": "bandeja",
+    "F-040": "bandeja",
+}
 
 #: R67: las tarjetas de la portada, por su chip (`design.md` §16.5).
-TARJETAS_EN_PRODUCCION = ("Entrada de incidencias", "Partes firmados")
+#: Cierre de F-038 (T8, R17): la de la bandeja pasa a «En producción».
+TARJETAS_EN_PRODUCCION = ("Entrada de incidencias", "Bandeja de revisión", "Partes firmados")
 #: F-040 T6a (2026-11-04): la tarjeta de la bandeja va a bandeja.html, la página real
-#: de una sección que sigue en construcción (R62): se cuenta por su sección.
-TARJETAS_EN_CONSTRUCCION = ("bandeja.html", "#/incidencias", "#/economico")
+#: de su sección; se cuenta por su sección, que desde el cierre de F-038 está en
+#: `parcial` (va con las de producción).
+TARJETAS_EN_CONSTRUCCION = ("#/incidencias", "#/economico")
 CEJA_DE_INICIO = "Posventa"
+#: Q-12 de F-038 (sí, 2026-11-11): la entradilla nombra la bandeja de revisión.
 ENTRADILLA_DE_INICIO = (
     "El portal de posventa. Funcionan ya la entrada de incidencias (importar el Excel de la "
-    "obra y los oficios repetidos) y el circuito de partes firmados. El resto del ciclo está "
-    "en construcción: lo enseñamos con datos inventados para que veáis cómo será."
+    "obra y los oficios repetidos), la bandeja de revisión y el circuito de partes firmados. "
+    "El resto del ciclo está en construcción: lo enseñamos con datos inventados para que "
+    "veáis cómo será."
 )
 
 #: Los prefijos de atributo que son directivas de Alpine.
@@ -1324,7 +1339,9 @@ def test_f035_r63_rs_obras_solo_y_siempre_en_un_recuadro():
     problemas = problemas_rs_obras(PORTAL.read_text(encoding="utf-8"))
 
     assert problemas == [], "R63 enmendado:\n" + "\n".join(problemas)
-    assert len(envoltorios(leer_html(PORTAL))) == 7, "la guardia mira los siete recuadros de hoy"
+    # Cierre de F-038 (T8): sale el de sección de `bandeja` y entran los de bloque
+    # de F-039, F-043 y F-040: de siete a nueve.
+    assert len(envoltorios(leer_html(PORTAL))) == 9, "la guardia mira los nueve recuadros de hoy"
 
 
 _CABECERA_DE_BANDEJA = '<h1 class="rs-titulo">Bandeja de revisión</h1>'
@@ -1442,9 +1459,11 @@ ESTROPEOS_RS_OBRAS = {
         _TARJETA_IMPORTAR.replace(">", " :class=\"'rs-obras'\">"),
         "rs-obras sin data-en-construccion",
     ),
+    # Cierre de F-038 (T8): el recuadro de `bandeja` ya no existe; el ejemplo
+    # pasa a `incidencias`, que sigue en construcción.
     "un data-en-construccion sin rs-obras": (
-        '<div data-en-construccion="bandeja" class="rs-obras">',
-        '<div data-en-construccion="bandeja" class="rs-obras--bloque">',
+        '<div data-en-construccion="incidencias" class="rs-obras">',
+        '<div data-en-construccion="incidencias" class="rs-obras--bloque">',
         "data-en-construccion sin rs-obras",
     ),
 }
@@ -1513,7 +1532,7 @@ def test_f035_r64_cada_seccion_en_construccion_tiene_su_recuadro_y_solo_ella():
     assert problemas == [], "R64:\n" + "\n".join(problemas)
 
 
-def test_f035_r64_los_recuadros_de_bloque_son_los_de_la_web_de_clientes_y_el_parte_sin_firma():
+def test_f035_r64_los_recuadros_de_bloque_son_los_de_la_web_de_clientes_el_parte_sin_firma_y_la_bandeja():
     doc = leer_html(PORTAL)
     de_bloque = {
         e.atributos["data-en-construccion"]: [
@@ -1531,11 +1550,23 @@ def test_f035_r64_los_recuadros_de_bloque_son_los_de_la_web_de_clientes_y_el_par
 
 
 def test_f035_r64_control_una_seccion_que_deja_de_estar_en_construccion_sobra():
-    """Control: con `bandeja` declarada `parcial` (en memoria), su recuadro de sección sobra y salta."""
-    estados = {**estados_de_secciones(), "bandeja": "parcial"}
+    """Control: con `incidencias` declarada `parcial` (en memoria), su recuadro de sección sobra y salta.
+
+    Cierre de F-038 (T8): era `bandeja`, que ya está en `parcial` de verdad y no
+    tiene recuadro de sección; se muda a `incidencias`, que sigue en construcción.
+    """
+    estados = {**estados_de_secciones(), "incidencias": "parcial"}
 
     problemas = problemas_r64(PORTAL.read_text(encoding="utf-8"), estados)
-    assert any("«bandeja» no está en construcción" in p for p in problemas), problemas
+    assert any("«incidencias» no está en construcción" in p for p in problemas), problemas
+
+
+def test_f035_r64_control_la_bandeja_de_nuevo_en_construccion_pide_su_recuadro():
+    """Control del cierre de F-038 (T8): con `bandeja` en `construccion` (en memoria), falta su recuadro."""
+    estados = {**estados_de_secciones(), "bandeja": "construccion"}
+
+    problemas = problemas_r64(PORTAL.read_text(encoding="utf-8"), estados)
+    assert any("«bandeja» está en construcción" in p for p in problemas), problemas
 
 
 def test_f035_r64_control_un_recuadro_que_falta_o_que_no_lo_envuelve_todo_salta():
@@ -1623,7 +1654,8 @@ ESTROPEOS_R65 = {
     ),
     "un x-show en el rótulo": ('<div class="rs-obras__rotulo">', '<div class="rs-obras__rotulo" x-show="verRotulo">'),
     "el rótulo no va primero": ('<div class="rs-obras__rotulo">', '<p>antes</p><div class="rs-obras__rotulo">'),
-    "sin la lista de fichas": ("fichasDeSeccion('bandeja')", "fichasDeSeccion('otra')"),
+    # Cierre de F-038 (T8): el rótulo de sección de `bandeja` ya no existe.
+    "sin la lista de fichas": ("fichasDeSeccion('incidencias')", "fichasDeSeccion('otra')"),
     "sin el título de la ficha": ("titulos['F-037']", "titulos['F-099']"),
 }
 
@@ -1693,14 +1725,16 @@ def test_f035_r65_ninguna_regla_de_rs_obras_esconde_el_recuadro():
 
 
 _ROTULO_R65 = '<div class="rs-obras__rotulo">'
-_RECUADRO_BANDEJA = '<div data-en-construccion="bandeja" class="rs-obras">'
+#: Cierre de F-038 (T8): el recuadro de sección de `bandeja` ya no existe; los
+#: estropeos de envoltorio usan el de `incidencias`, que sigue en construcción.
+_RECUADRO_INCIDENCIAS = '<div data-en-construccion="incidencias" class="rs-obras">'
 
 ESTROPEOS_R65_VISIBLE = {
     # (viejo, nuevo, lo que tiene que salir en el mensaje)
     "C4 · hidden como clase en el rótulo": (_ROTULO_R65, '<div class="rs-obras__rotulo hidden">', "['hidden']"),
     "hidden md:flex en un rótulo": (_ROTULO_R65, '<div class="rs-obras__rotulo hidden md:flex">', "['hidden']"),
     "md:sr-only en un envoltorio": (
-        _RECUADRO_BANDEJA, '<div data-en-construccion="bandeja" class="rs-obras md:sr-only">', "['md:sr-only']"
+        _RECUADRO_INCIDENCIAS, '<div data-en-construccion="incidencias" class="rs-obras md:sr-only">', "['md:sr-only']"
     ),
     "invisible ligado en el rótulo": (
         _ROTULO_R65, "<div class=\"rs-obras__rotulo\" :class=\"{'invisible': true}\">", "['invisible']"
@@ -1712,13 +1746,13 @@ ESTROPEOS_R65_VISIBLE = {
     ),
     "C5 · style en el rótulo": (_ROTULO_R65, '<div class="rs-obras__rotulo" style="display:none">', "['style']"),
     "style en un envoltorio": (
-        _RECUADRO_BANDEJA, '<div data-en-construccion="bandeja" class="rs-obras" style="opacity: 0">', "['style']"
+        _RECUADRO_INCIDENCIAS, '<div data-en-construccion="incidencias" class="rs-obras" style="opacity: 0">', "['style']"
     ),
     ":style ligado en el rótulo": (
         _ROTULO_R65, "<div class=\"rs-obras__rotulo\" :style=\"{display: 'none'}\">", "[':style']"
     ),
     "x-bind:style en un envoltorio": (
-        _RECUADRO_BANDEJA, "<div data-en-construccion=\"bandeja\" class=\"rs-obras\" x-bind:style=\"''\">",
+        _RECUADRO_INCIDENCIAS, "<div data-en-construccion=\"incidencias\" class=\"rs-obras\" x-bind:style=\"''\">",
         "['x-bind:style']",
     ),
 }
@@ -1987,21 +2021,29 @@ def test_f035_r67_contadores_retirados_del_componente_y_de_portal():
 
 
 # R69 · La bandeja enlaza a la de solo lectura de importar.html
+#
+# Cierre de F-038 (T8, su `design.md` §3.2 punto 3): el test del enlace del
+# recuadro de `bandeja` a `importar.html#bandeja` se fue con el recuadro (y su
+# frase de R69). La revisión es `bandeja.html`, a la que lleva la tarjeta
+# «Revisar la bandeja»; `importar.html` sigue teniendo su bandeja con
+# `id="bandeja"`.
 
 
-def test_f035_r69_el_recuadro_de_bandeja_enlaza_a_la_bandeja_de_importar():
-    doc = leer_html(PORTAL)
-    recuadro = _uno(
-        [e for e in envoltorios(doc) if e.atributos["data-en-construccion"] == "bandeja"], "el recuadro de bandeja"
+def test_f038_r17_la_bandeja_del_portal_lleva_a_bandeja_html_en_produccion():
+    bandeja = seccion(leer_html(PORTAL), "bandeja")
+    tarjetas = [e for e in bandeja.elementos() if "rs-tarjeta" in clases(e)]
+    tarjeta = _uno(tarjetas, "la tarjeta de la sección bandeja")
+    chip = _uno([c for c in tarjeta.elementos() if "rs-tarjeta__chip" in clases(c)], "el chip de la tarjeta")
+
+    assert tarjeta.nombre == "a" and tarjeta.atributos.get("href") == "bandeja.html"
+    assert targets_de(tarjeta) == [] and "rel" not in tarjeta.atributos, "en la misma pestaña"
+    assert "rs-tarjeta--produccion" in clases(tarjeta)
+    assert chip.texto() == "En producción" and "rs-chip--ok" in clases(chip)
+    assert "Revisar la bandeja" in tarjeta.texto()
+    assert not _LEE_DATOS.search(" ".join(tarjeta.atributos.values())), "la tarjeta no lee datos de ejemplo"
+    assert not [a for a in bandeja.elementos() if a.atributos.get("href") == "importar.html#bandeja"], (
+        "la frase de R69 salió con el recuadro de sección"
     )
-    rotulo = _hijos(recuadro)[0]
-    enlace = _uno([a for a in rotulo.elementos() if a.nombre == "a"], "el enlace del rótulo de bandeja")
-
-    assert enlace.atributos.get("href") == "importar.html#bandeja"
-    assert targets_de(enlace) == [] and "rel" not in enlace.atributos, "en la misma ventana"
-    assert "rs-enlace" in clases(enlace)
-    assert "Importar incidencias" in enlace.texto()
-    assert "solo lectura" in rotulo.texto(), "dice que allí la bandeja se ve en solo lectura"
 
 
 def test_f035_r69_importar_html_tiene_la_bandeja_con_id_bandeja():
@@ -2129,13 +2171,24 @@ def test_f035_r65_lo_que_va_en_el_rotulo_no_se_pinta_en_burdeos():
 
 
 def test_f035_r65_control_sin_la_regla_del_enlace_el_rotulo_ensena_burdeos():
-    """Control (mutación B9-19): sin `.rs-obras__rotulo .rs-enlace`, en memoria, la comprobación cae."""
+    """Control (mutación B9-19): sin `.rs-obras__rotulo .rs-enlace`, en memoria, la comprobación cae.
+
+    Cierre de F-038 (T8): el único rótulo con enlace era el de `bandeja` (R69),
+    que salió con su recuadro. La regla se queda para el próximo rótulo que
+    enlace algo; el control pone, en memoria, un enlace en un rótulo y
+    comprueba que la regla lo repinta y que sin ella sale el burdeos.
+    """
     hojas = {k: v.replace("\r\n", "\n") for k, v in _hojas().items()}
     regla = ".rs-obras__rotulo .rs-enlace {\n  color: var(--rs-atencion);\n}\n"
     assert hojas["css/portal.css"].count(regla) == 1, "el control ya no encuentra la regla del enlace del rótulo"
-    hojas["css/portal.css"] = hojas["css/portal.css"].replace(regla, "")
+    real = PORTAL.read_text(encoding="utf-8").replace("\r\n", "\n")
+    linea = '<p class="rs-obras__linea">La construirán:</p>'
+    assert real.count(linea) >= 1, "el control no encuentra un rótulo donde poner el enlace"
+    con_enlace = real.replace(linea, '<p class="rs-obras__linea">La construirán: <a href="#" class="rs-enlace">x</a></p>', 1)
+    assert burdeos_en_los_rotulos(con_enlace, hojas) == [], "con la regla, el enlace del rótulo no va en burdeos"
 
-    problemas = burdeos_en_los_rotulos(PORTAL.read_text(encoding="utf-8"), hojas)
+    hojas["css/portal.css"] = hojas["css/portal.css"].replace(regla, "")
+    problemas = burdeos_en_los_rotulos(con_enlace, hojas)
     assert any("«rs-enlace»" in p for p in problemas), problemas
 
 

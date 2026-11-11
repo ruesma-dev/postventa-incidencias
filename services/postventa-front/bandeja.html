@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=6e073b5414">
+  <link rel="stylesheet" href="css/styles.css?v=80c9887e36">
 </head>
 <body class="rs-cuerpo">
   <!-- F-038 · specs/F-038-bandeja-revision/design.md §2.2 y §2.3. La bandeja
@@ -34,8 +34,9 @@
     <!-- F-035 · Barra superior común (R44, R70), en HTML PLANO: ni una
          directiva de Alpine, ni script, ni botón (R45), y esta página no
          carga nada de la maqueta (R77). «Bandeja de revisión» es la sección
-         de esta página (Portal.PAGINAS), la actual, y lleva su marca de
-         construcción mientras la sección lo esté (R2 de F-038). Las demás
+         de esta página (Portal.PAGINAS), la actual; desde el cierre de F-038
+         la sección está en `parcial` y la pestaña ya no lleva la marca de
+         construcción (R2 y R17 de F-038). Las demás
          pestañas llevan a Portal.enlaceSeccion(id, "bandeja.html"), todas en
          la MISMA pestaña (R73). La marca no es un enlace (R51). -->
     <nav data-barra-portal aria-label="Secciones de posventa" class="rs-barra">
@@ -48,7 +49,7 @@
         <div class="rs-barra__pestanas">
           <a href="./#/inicio" class="rs-pestana">Inicio</a>
           <a href="./#/entrada" class="rs-pestana">Entrada</a>
-          <span aria-current="page" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)">Bandeja de revisión</span>
+          <span aria-current="page" class="rs-pestana">Bandeja de revisión</span>
           <a href="./#/incidencias" class="rs-pestana" data-construccion aria-label="Incidencias (en construcción)">Incidencias</a>
           <a href="./#/impresion" class="rs-pestana" data-construccion aria-label="Impresión de partes (en construcción)">Impresión de partes</a>
           <a href="partes.html" class="rs-pestana">Partes firmados</a>
@@ -61,17 +62,19 @@
 
     <!-- F-035 · El recorrido de una incidencia (R83-R88), en HTML PLANO como
          la barra. 02 Revisión es el paso de esta página (Portal.pasoDeSeccion
-         de su sección): el actual, sin enlace y con su marca de construcción.
-         03 Sigrid es de la MISMA sección y no es el actual: un <span> sin href
-         ni aria-current (R25 de F-038, Q-10). Los demás href son los de
+         de su sección): el actual, sin enlace. 03 Sigrid es de la MISMA
+         sección y no es el actual: un <span> sin href ni aria-current (R25 de
+         F-038, Q-10). Ninguno de los dos lleva ya la marca de construcción:
+         la sección está en `parcial` desde el cierre de F-038 (R17). Los demás
+         href son los de
          Portal.enlaceSeccion(paso.seccion, "bandeja.html"), en la misma
          pestaña (R73). -->
     <nav data-recorrido aria-label="El ciclo de una incidencia" class="rs-recorrido-banda">
       <div class="rs-contenedor">
         <ol class="rs-recorrido">
           <li><a href="./#/entrada" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</a></li>
-          <li><span aria-current="step" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</span></li>
-          <li><span class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</span></li>
+          <li><span aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</span></li>
+          <li><span class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</span></li>
           <li><a href="./#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
           <li><a href="./#/impresion" class="rs-recorrido__paso" data-construccion aria-label="Parte (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
           <li><a href="partes.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>

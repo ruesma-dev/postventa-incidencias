@@ -3,9 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **73 features**, 42 abiertas, 31 terminadas.
-
-En curso: **F-038**.
+Resumen: **73 features**, 41 abiertas, 32 terminadas.
 
 Bloqueadas: **F-040, F-066**.
 
@@ -14,7 +12,6 @@ Bloqueadas: **F-040, F-066**.
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
 | F-072 | El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado | 2 | pendiente | critico | `feature/F-072-tipo-reclamacion-sigrid` |
-| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | en curso | critico | `feature/F-038-bandeja-revision` |
 | F-070 | Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos | 3 | pendiente | critico | `feature/F-070-obra-sin-cero-inicial` |
 | F-066 | Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar | 4 | bloqueada | critico | `feature/F-066-mudanza-posventa` |
 | F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | 5 | spec lista | critico | `feature/F-064-bandeja-con-sigrid` |
@@ -72,6 +69,7 @@ Bloqueadas: **F-040, F-066**.
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | critico |
 | F-059 | Volcado a Sigrid en el backend: ensayo, escritura en lote y estado volcada | 2 | critico |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
+| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | critico |
 | F-004 | Validación del parte y clasificación de la firma | 4 | critico |
 | F-065 | Revisión con Sigrid en el backend: leer las reclamaciones de la obra y cruzarlas con la bandeja | 4 | critico |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | critico |
@@ -99,12 +97,6 @@ Bloqueadas: **F-040, F-066**.
 estado **pendiente** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-072-tipo-reclamacion-sigrid`
 
 Alta del 2026-11-05 por decisión del humano (Q-3 de F-071, «toca lo que sea»). Hoy la columna «Listado» de la plantilla ofrece dos valores fijos del YAML (Primer listado / Segundo listado), la bandeja los guarda pero el volcado manda SIEMPRE el tipo 0002 (PRIMER LISTADO POSTVENTA, constante TIPO_RECLAMACION en domain/models/volcado.py): una incidencia de segundo listado entraría en Sigrid como primer listado. Alcance: la plantilla ofrece los tipos vigentes de dbo.auxtrcp (vía sigrid-api, lectura) al descargar; la importación valida contra los de ese momento y guarda el código; la bandeja lo guarda en columna nueva (DDL solo en el schema postventa); la revisión lo enseña y deja cambiarlo; el volcado manda el código elegido. En blanco = 0002, como hoy (decisión del humano 2026-11-05). Orden fijado por el humano: F-071 -> F-072 -> retomar F-040; el primer volcado real (T5.4 de F-040) no se hace antes de F-072.
-
-### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
-
-estado **en curso** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
-
-Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano. APARCADA el 2026-10-26 por decisión del humano para empezar F-066: no hay fallo; solo espera T7 (MANUAL del humano, verificación en producción). Al hacerla, se retoma con T8–T11 (F-066 tendrá que pasar a blocked o estar cerrada: máximo una in_progress). RETOMADA el 2026-11-10 por decisión del humano («hay que cerrar f38»), con F-071 done: T7 cerrada el 2026-11-09 (pasos 1 a 10, el 2 y el 10 con aceptación escrita del humano). Queda T8 conciliada con dev (F-040 T6a ya hizo la pestaña, los pasos 02 y 03 y la tarjeta), T9, T10 y T11.
 
 ### F-070 · Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos
 
@@ -417,6 +409,12 @@ Sacada de F-040 el 2026-10-07 por el límite de servicio (D-1, decisión del hum
 estado **terminada** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
 
 Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo que usa Ruesma; azure-apps documenta el proveedor pero no fija version), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas. CERRADA el 2026-08-19: revisión APROBADA y última verificación manual completada (T18, barrido de los 22 partes reales de Mirasierra), con el modelo leyendo la letra manuscrita y cero falsos negativos.
+
+### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
+
+estado **terminada** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano. APARCADA el 2026-10-26 por decisión del humano para empezar F-066: no hay fallo; solo espera T7 (MANUAL del humano, verificación en producción). Al hacerla, se retoma con T8–T11 (F-066 tendrá que pasar a blocked o estar cerrada: máximo una in_progress). RETOMADA el 2026-11-10 por decisión del humano («hay que cerrar f38»), con F-071 done: T7 cerrada el 2026-11-09 (pasos 1 a 10, el 2 y el 10 con aceptación escrita del humano). Queda T8 conciliada con dev (F-040 T6a ya hizo la pestaña, los pasos 02 y 03 y la tarjeta), T9, T10 y T11.
 
 ### F-004 · Validación del parte y clasificación de la firma
 

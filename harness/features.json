@@ -660,7 +660,7 @@
         "Solo lo aprobado es candidato al volcado",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 3,

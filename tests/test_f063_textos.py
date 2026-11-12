@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 RAIZ = Path(__file__).resolve().parents[1]
 
 
@@ -21,6 +23,10 @@ def _seccion(texto: str, titulo: str) -> str:
     return " ".join(seccion.replace("**", "").split())
 
 
+@pytest.mark.skipif(
+    not (RAIZ.parent / "politica_ficheros.json").is_file(),
+    reason="solo en el taller: un proyecto instalado puede llevar su capa local",
+)
 def test_f063_r2_el_payload_no_trae_capa_local() -> None:
     """Si la trajera, el modo `instalar` la crearía en el proyecto de destino."""
     assert not (RAIZ / "harness" / "rigor.local.json").exists()

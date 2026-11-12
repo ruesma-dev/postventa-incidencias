@@ -259,3 +259,21 @@ mutacion_informe_workers, originales_no_versionados: **313 passed, 12 skipped**.
 **Fuera de esta review:** en `arnes-base` hay ficheros sin seguimiento
 (`codex/`, `instalar_arnes_dual.ps1` y tres `ENCARGO_pendiente_*`) que no son de
 este trabajo; no los he tocado.
+
+## Decisiones del humano y cierre (líder, 2026-11-13)
+
+- **`harness/rigor.local.json`: OK explícito del humano el 2026-11-13** («ok» a la
+  pregunta del líder): `nivel_por_defecto` `critico` y `mutacion.workers` 8.
+- **`critico` de la 1.10 aceptado** el 2026-11-13: cobertura 90 % de las líneas
+  cambiadas y mutación muestreada (uno por línea, 60 %, [100, 300]); no se pisan
+  en la capa local. Las campañas de mutación nuevas **no son comparables** con
+  las anteriores a la 1.10. Para lo que escribe en Sigrid se puede pedir
+  `--max-mutantes 0`.
+- **`servicios.json` (`depende_de` / `ejecutar_siempre`)**: aprobado como cambio
+  aparte, antes de F-072, en su propia rama.
+- **`init.sh` en verde** en `feature/arnes-1.10` tras traer el arreglo de dev
+  `27555d0` (dos tests de cabecera de F-065 que fijaban la frase antigua de
+  F-038; dev estaba en rojo desde `a7400a1`): raíz 2202 passed / 48 skipped,
+  api 9932 passed / 457 skipped, front en verde.
+- Los dos rojos previos del `init.sh` eran de finales de línea de la copia de
+  trabajo (los `.ps1` necesitan CRLF; el JS del front, LF), no del arnés.

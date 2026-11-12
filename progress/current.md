@@ -1,6 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Arnés 1.10.0 · instalado · 2026-11-13 · mergeado en `dev`
+> Desde la 1.5.2 (con parches). Detalle en `progress/arnes_1.10.md`. Review APROBADO e `init.sh` en verde. El humano
+> aprobó `rigor.local.json` (`critico` por defecto, 8 workers) y el `critico` de la 1.10 (cobertura 90 %, mutación
+> muestreada). Ninguna feature en curso. Siguiente: el ajuste de `harness/servicios.json` (caché de suites) en su rama;
+> después F-072 y luego retomar F-040.
+
 > ## F-038 · `done` · 2026-11-12 · mergeada en `dev` `eca6ae3`, front publicado y verificado (T10)
 > Detalle en `progress/history.md` y `progress/impl_F-038.md`. Ninguna feature en curso. Pendientes del humano:
 > comprobaciones 2–4 de T14 de F-071; cerrar F-058 y retirar su worktree si lo aprueba. Siguiente según el

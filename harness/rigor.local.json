@@ -1,0 +1,8 @@
+{
+  "$doc": "Capa local de rigor de postventa-incidencias (F-063 del arnes): pisa a harness/rigor.json clave a clave y el instalador no la toca. Recupera los dos ajustes propios que este repositorio llevaba en rigor.json hasta la 1.5.2 y que la actualizacion a la 1.10.0 piso; decision aprobada por el humano el 2026-11-12. (1) nivel_por_defecto 'critico' y no el 'estandar' generico desde la 1.7.0: una feature sin 'rigor' declarado aqui casi siempre toca el cierre en Sigrid (ERP de produccion), el SharePoint de Posventa o el PostgreSQL compartido, y omitir el nivel no puede ser la via facil. (2) mutacion.workers 8, ver su $doc. Cambiar esta capa dentro de una feature necesita el OK explicito del humano registrado en progress/.",
+  "nivel_por_defecto": "critico",
+  "mutacion": {
+    "$doc": "workers 8 desde el 2026-09-02, medido en progress/explore_F-009_timeouts.md: la suite del servicio api pasa de 38,7 s en solitario a 131,6 s con 16 workers (por encima del tope de 120 s, y los mutantes agotaban el timeout por carga, no por colgarse); con 8 baja a 77,4 s, un 55 % de margen, perdiendo solo un 18 % de rendimiento. El default de la 1.10.0, min(max(1, (nucleos - 2) // 2), 4), es mas conservador; se mantiene el 8 medido en esta maquina. Precedencia: --workers > mutacion.workers > default.",
+    "workers": 8
+  }
+}

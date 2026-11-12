@@ -178,3 +178,84 @@ arreglo).
   1.10 en `critico` (cobertura 90 %, mutación muestreada).
 - Tras actualizar no hay nada en `todo` (estados F-042): el líder tendrá que
   pedir qué comprometer. F-066 seguía aparcada en otra rama.
+
+## Review · 2026-11-12
+
+**Veredicto: APPROVED.** Rama `feature/arnes-1.10` (902d1c9..c2d9391) y
+`arnes-base` 01ef33c. No es feature: no aplica `rigor` ni C1–C5 de feature; se
+revisa la fusión. `bash harness/init.sh` no lo he ejecutado (lo corre el
+líder en paralelo, según el encargo): **el merge queda condicionado a que salga
+en verde.**
+
+**1. Nada propio perdido.** Método: `dev` contra el payload 1.5.2 (9224a5a)
+para aislar lo propio, y HEAD contra el payload 1.10 para ver que sigue.
+- `CLAUDE.md`: título, mapa del monorepo, las cuatro prohibiciones (Sigrid,
+  `psql-albaranes-rs9k2`, SharePoint, partes escaneados) y LÍMITE DE SERVICIO,
+  reaplicados. Autorización de subagentes, dos paradas, markitdown, `azure-apps`
+  y `arnes-base` vienen en el texto 1.10 (dev no los tenía distintos del
+  genérico). La regla de push/PR queda en la 1.10 («push nunca; PRs solo con
+  petición explícita»), coherente con el `CLAUDE.md` global. Cambio de conducta
+  a conocer: los merges a `dev` pasan a ser sin preguntar (genérico 1.10).
+- `CHECKPOINTS.md`: las siete trampas de C3, la casilla de originales de C3 bis,
+  el párrafo del nivel `critico` local y las dos reglas de F-060 en C4 bis. Lo
+  que llevábamos de 1.6.3/1.7.8/F-013 (coste por mutante, workers en
+  Evidencias, equivalentes a mano) ya está en el 1.10.
+- `reviewer.md`: RM7 (F-034) con el añadido de F-013 («sin `-x`»), en la 1.10.
+- `init.sh`: solo `REQUIERE_ENV=0` y las dos cabeceras; idéntico al 1.10 en lo
+  demás. `CONVENTIONS.md` (PyMuPDF, `.ps1` ASCII/CRLF) y
+  `docs/referencia/README.md` (índice real) conservados.
+- `settings.json`: dev era el genérico 1.5.2 sin allowlist propia; HEAD es el
+  1.10 íntegro. Ningún fichero borrado en el diff; `features.json`,
+  `servicios.json`, `ARCHITECTURE.md`, `specs/` y `progress/` sin tocar.
+- Observación (no bloquea): la regla F-060 de mutantes a mano decía en dev
+  «la campaña dio cero **o se quedó corta**»; en C4 bis cuelga del punto «dio 0
+  mutantes». Es el alcance del encargo aprobado en `arnes-base`, y RM7 cubre los
+  de orden, así que lo dejo como nota.
+
+**2. Genérico 1.10 entero.** Los 120 ficheros del payload comparados sin finales
+de línea: solo difieren los mixtos, el estado del proyecto y
+`tests/test_f063_textos.py` (el arreglo). Agentes, `harness/*.py`,
+`specs/SPECS.md` y `settings.json`, idénticos. Ninguna `[ADAPTAR]` en mixtos,
+agentes ni `SPECS.md`.
+
+**3. `test_f063_r2`.** Correcto: misma condición que `es_el_taller` de f023/f026
+(`RAIZ.parent/politica_ficheros.json`); en el taller existe y el test sigue
+corriendo; en `PycharmProjects/` no, y se salta. Anotado en `arnes-base` 01ef33c
+con caso, propuesta y criterio de hecho, y en `ARNES_VERSION.md` para
+reaplicarlo si la próxima versión no lo trae.
+
+**4. Secretos.** Lo propio nuevo (capa local, mixtos, `ARNES_VERSION.md`, este
+informe) no trae GUIDs, correos, IPs ni credenciales. Las IPs y correos que
+salen en el diff son de los tests genéricos del payload (`10.0.0.5`,
+`127.0.0.1`, `arnes@ejemplo.invalid`, `arnes@ruesma.es` como committer de
+prueba), idénticos a `arnes-base`.
+
+**Tests puntuales (sin `.env`, Python del PATH):** f063 (×3), backlog_md,
+documentos_del_arnes, f070/f040/f058/f059_textos, f004_settings,
+mutacion_informe_workers, originales_no_versionados: **313 passed, 12 skipped**.
+`python -m harness.rigor --validar`: por defecto `critico`, capa local con
+`mutacion.workers` y `nivel_por_defecto`. Decisiones del humano cumplidas.
+
+**5. Los dos puntos para el humano.**
+- **`depende_de` en `servicios.json` — no bloquea el merge, sí conviene antes
+  de la próxima feature.** Verificado: 15 ficheros de tests de los servicios
+  leen la raíz (`docs` 40 veces, `infra` 17, `specs` 16, `progress`, `harness`).
+  El cierre no corre riesgo (C1 y el reviewer exigen `ARNES_SIN_CACHE=1`), pero
+  el `init.sh` normal de inicio de sesión podría servir un verde viejo tras un
+  cambio solo en `infra/` o `docs/`. Recomiendo **no** usar `depende_de` con
+  `docs/specs/progress` (cambian en casi cada commit y anulan la caché, igual que
+  `["."]`), sino `ejecutar_siempre` con esos ficheros de tests (es lo que el
+  `$doc` de `servicios.ejemplo.json` propone para tests que barren el repo), más
+  `depende_de: ["infra", "harness"]` en `api` y `["harness"]` en `front`. Es
+  estado del proyecto: cambio aparte, con OK del humano.
+- **Cobertura 90 % y mutación muestreada en `critico` — no bloquea.**
+  Recomiendo aceptar las dos y no pisarlas en la capa local: el 90 % mide solo
+  líneas cambiadas, y la muestra (uno por línea, 60 %, [100, 300]) es completa
+  con ≤ 100 candidatos, que es lo habitual aquí. Para lo que escribe en Sigrid
+  o protege un orden, el reviewer sigue teniendo RM7 a mano y la regla de los
+  5 minutos, y el humano puede pedir `--max-mutantes 0`. Dejar dicho que las
+  campañas nuevas no son comparables con las anteriores.
+
+**Fuera de esta review:** en `arnes-base` hay ficheros sin seguimiento
+(`codex/`, `instalar_arnes_dual.ps1` y tres `ENCARGO_pendiente_*`) que no son de
+este trabajo; no los he tocado.

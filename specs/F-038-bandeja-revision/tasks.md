@@ -382,7 +382,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
   commit aparte del líder. Si algo falla, se revierte T8 entero
   (`git revert`), no se arregla encima. |
   Verificación: `progress/review_F-038.md` con APROBADO de T8, y `bash harness/init.sh` en verde con F-038 `done`
-- [ ] **T10 · MANUAL (humano)**: merge normal a `dev` (el líder, a petición
+- [x] **T10 · MANUAL (humano)**: merge normal a `dev` (el líder, a petición
   del humano, desde un worktree aparte; el push, el humano) y publicar el
   front desde un worktree limpio de `dev` con **`-SoloFront`**, como T6.
   Anotar el commit publicado en `progress/impl_F-038.md`. En producción, sin
@@ -411,7 +411,7 @@ Lo que la spec de F-040 tenía en su R54 y el humano trajo aquí (R21).
   su T6», y las filas de F-036 y F-056 de la tabla de estado que dicen «hasta
   F-038» / «sin la página de F-038»). |
   Verificación: MANUAL (humano), pasos 1 a 5 anotados en `progress/impl_F-038.md`; y `git -C ..\azure-apps log -1` con el commit, sin ninguna frase de F-038 en futuro en `postventa_incidencias.md`
-- [ ] **T11**: resumen de F-038 en `progress/history.md` (el líder), con lo
+- [x] **T11**: resumen de F-038 en `progress/history.md` (el líder), con lo
   que queda abierto fuera de la ficha (F-073 y F-074, de T7 paso 2; O-B1b-3;
   el historial del detalle que no se refresca solo tras guardar, de T7
   paso 3), y `bash harness/init.sh` en verde. |

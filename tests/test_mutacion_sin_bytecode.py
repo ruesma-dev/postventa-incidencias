@@ -1,7 +1,8 @@
 # tests/test_mutacion_sin_bytecode.py
 """Una campaña de mutación no puede dejar bytecode envenenado en el árbol.
 
-Pasó de verdad, y costó una review entera averiguarlo (F-010, 2026-08-19).
+Pasó de verdad, y costó una review entera averiguarlo (`postventa-incidencias`,
+F-010, 2026-08-19).
 
 `EjecutorPytest` muta un fichero `.py`, lanza la suite en un subproceso y
 restaura el original. Si ese subproceso escribe `__pycache__`, en el disco
@@ -41,12 +42,12 @@ def test_la_suite_de_mutacion_se_lanza_sin_escribir_bytecode(monkeypatch):
     def falso_run(orden, **opciones):
         capturado["orden"] = orden
         capturado["opciones"] = opciones
-        return subprocess.CompletedProcess(orden, 1)
+        return subprocess.CompletedProcess(orden, 1, stdout=b"", stderr=b"")
 
     monkeypatch.setenv("UNA_VARIABLE_DEL_ENTORNO", "valor")
     monkeypatch.setattr(subprocess, "run", falso_run)
 
-    EjecutorPytest().ejecutar(timeout_s=60)
+    EjecutorPytest().correr(timeout_s=60)
 
     entorno = capturado["opciones"]["env"]
     assert entorno["PYTHONDONTWRITEBYTECODE"] == "1"

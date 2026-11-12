@@ -1,7 +1,7 @@
 # tests/test_mutacion_repaso_timeouts.py
 """Un `timeout` no es un veredicto sobre el mutante: es un reintento pendiente.
 
-Medido el 2026-09-02 en este repositorio (`progress/explore_F-009_timeouts.md`):
+Medido el 2026-09-02 en un proyecto real con 22 CPUs:
 la misma feature, el mismo commit y tres campañas dieron **15, 27 y 0 timeouts**
 sobre mutantes distintos cada vez. La causa no era ningún cuelgue, sino la
 contención: con 16 suites simultáneas cada una pasaba de 38,7 s a 131,6 s,
@@ -29,6 +29,7 @@ from harness.mutacion import (
     TIMEOUT,
     InformeMutacion,
     Mutante,
+    ResultadoSuite,
 )
 from harness.mutacion_paralela import (
     clave_estable,
@@ -207,6 +208,10 @@ class EjecutorQueSeAtragantaLaPrimeraVez:
         self._cerrojo = cerrojo
         self._raices = raices
         self._veredicto = veredicto_al_repasar
+
+    def linea_base(self, _timeout_s: int) -> ResultadoSuite:
+        """La suite SIN mutar nada: verde, y no cuenta como visita de un mutante."""
+        return ResultadoSuite(codigo=0)
 
     def ejecutar(self, _timeout_s: int) -> str:
         codigo = (Path(self._raiz) / "codigo.py").read_text(encoding="utf-8")

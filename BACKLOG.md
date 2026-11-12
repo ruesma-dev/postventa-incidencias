@@ -3,92 +3,112 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **73 features**, 40 abiertas, 33 terminadas.
+Resumen: **73 features**, 40 abiertas y 33 terminadas. Por columna: 0 en Review, 2 en Blocked, 0 en In progress, 2 en Spec aprobada, 0 en To do, 36 en Backlog y 33 en Done.
 
-Bloqueadas: **F-040, F-066**.
+## Review
 
-## Trabajo abierto
+_Nada esperando revisión._
 
-| # | Feature | Prioridad | Estado | Rigor | Rama |
+## Blocked
+
+| # | Feature | Prioridad | Rigor | Rama |
+|---|---|---|---|---|
+| F-066 | Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar | 4 | critico | `feature/F-066-mudanza-posventa` |
+| F-040 | Volcar a Sigrid las incidencias aprobadas | 6 | critico | `feature/F-040-volcado-sigrid` |
+
+## In progress
+
+_Ninguna feature en implementación._
+
+## Spec aprobada
+
+| # | Feature | Spec aprobada | Prioridad | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-072 | El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado | 2 | pendiente | critico | `feature/F-072-tipo-reclamacion-sigrid` |
-| F-070 | Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos | 3 | pendiente | critico | `feature/F-070-obra-sin-cero-inicial` |
-| F-066 | Mudanza a Posventa de los partes de la 0677 archivados en IT, y archivado sin cierre de los que quedaron sin archivar | 4 | bloqueada | critico | `feature/F-066-mudanza-posventa` |
-| F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | 5 | spec lista | critico | `feature/F-064-bandeja-con-sigrid` |
-| F-067 | Registrar incidencias desde el PDF de repasos del cliente (backend): un PDF por unidad, casado de ubicaciones, prioridades y oficios, y fotos a SharePoint | 5 | pendiente | critico | `feature/F-067-pdf-repasos-cliente` |
-| F-068 | Página de carga del PDF de repasos en el portal: elegir la unidad y casar a mano ubicaciones, prioridades y oficios | 5 | pendiente | estandar | `feature/F-068-pagina-pdf-repasos` |
-| F-040 | Volcar a Sigrid las incidencias aprobadas | 6 | bloqueada | critico | `feature/F-040-volcado-sigrid` |
-| F-069 | Fotos de las incidencias del PDF de repasos a Sigrid como gráfico | 6 | pendiente | critico | `feature/F-069-fotos-repasos-sigrid` |
-| F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 7 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
-| F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 7 | pendiente | critico | `feature/F-062-gestionar-volcadas` |
-| F-063 | Normalizar el código de obra: un cero delante cuando empieza por tres cifras | 7 | pendiente | critico | `feature/F-063-normalizar-codigo-obra` |
-| F-073 | La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez | 7 | pendiente | estandar | `feature/F-073-revision-lee-sigrid-en-paralelo` |
-| F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 9 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
-| F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 10 | pendiente | critico | `feature/F-052-secretos-ajustes` |
-| F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 11 | pendiente | estandar | `feature/F-054-dev-server-127` |
-| F-061 | Optimizar el listado de la revisión: arranque de instancias y picos de Sigrid | 12 | pendiente | estandar | `feature/F-061-optimizar-listado-revision` |
-| F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 17 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
-| F-039 | Propuesta del industrial al crear la incidencia | 19 | pendiente | critico | `feature/F-039-propuesta-industrial` |
-| F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 21 | pendiente | critico | `feature/F-041-ficha-incidencia` |
-| F-042 | No procede: justificación obligatoria y email al cliente | 22 | pendiente | critico | `feature/F-042-no-procede-email` |
-| F-043 | Operaciones en bloque sobre incidencias | 23 | pendiente | critico | `feature/F-043-operaciones-bloque` |
-| F-044 | Imprimir partes en bloque a PDF o impresora con la plantilla de posventa | 24 | pendiente | estandar | `feature/F-044-impresion-bloque` |
-| F-045 | Registrar un parte sin firma: la incidencia pasa a TER, no a CER | 25 | pendiente | critico | `feature/F-045-parte-sin-firma` |
-| F-046 | Coste de la posventa desde la obra POSTV2 | 26 | pendiente | critico | `feature/F-046-coste-postv2` |
-| F-047 | Vincular incidencias con la proforma, el coste y la venta | 27 | pendiente | critico | `feature/F-047-incidencia-proforma` |
-| F-048 | Los datos de posventa al datamart | 28 | pendiente | estandar | `feature/F-048-datamart-posventa` |
-| F-050 | Agrupar los proveedores casi duplicados del maestro de Sigrid | 29 | pendiente | estandar | `feature/F-050-agrupar-proveedores` |
-| F-024 | Datos del parte enlazados a Sigrid, para el datamart | 121 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
-| F-011 | Fase 2: ingesta desde buzón de correo | 122 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 123 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
-| F-015 | Evaluación del prompt de extracción contra partes reales | 124 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
-| F-016 | Interpretación automática de las observaciones manuscritas | 125 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
-| F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 126 | pendiente | documental | `feature/F-017-checkpoints-manual` |
-| F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 127 | pendiente | documental | `feature/F-018-minimo-privilegio-graph` |
-| F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 129 | pendiente | documental | `feature/F-020-diseno-front` |
-| F-021 | Rehidratar la sesión del front al recargar el navegador | 130 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
-| F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 131 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
-| F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 132 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
-| F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 138 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
-| F-074 | Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío | 150 | pendiente | documental |  |
+| F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | pendiente de tu aprobación | 5 | critico | `feature/F-064-bandeja-con-sigrid` |
+| F-024 | Datos del parte enlazados a Sigrid, para el datamart | pendiente de tu aprobación | 121 | estandar | `feature/F-024-datos-parte-sigrid` |
 
-## Terminadas
+## To do
 
-| # | Feature | Prioridad | Rigor |
-|---|---|---|---|
-| F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 0 | critico |
-| F-049 | Las villas que crea el archivo, siempre con tres cifras (VILLA 008) | 0 | critico |
-| F-051 | La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla | 0 | critico |
-| F-001 | Esqueleto del monorepo y /health | 1 | estandar |
-| F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | estandar |
-| F-056 | Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo | 1 | critico |
-| F-060 | Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid | 1 | critico |
-| F-071 | La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad | 1 | critico |
-| F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
-| F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | critico |
-| F-059 | Volcado a Sigrid en el backend: ensayo, escritura en lote y estado volcada | 2 | critico |
-| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
-| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | critico |
-| F-004 | Validación del parte y clasificación de la firma | 4 | critico |
-| F-065 | Revisión con Sigrid en el backend: leer las reclamaciones de la obra y cruzarlas con la bandeja | 4 | critico |
-| F-005 | Persistencia en el PostgreSQL compartido | 5 | critico |
-| F-006 | Nombrado y archivo en SharePoint | 6 | critico |
-| F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 6 | critico |
-| F-007 | Front de carga y revisión | 7 | estandar |
-| F-010 | Despliegue en Azure y tarjeta en el portal | 8 | estandar |
-| F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 8 | critico |
-| F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | documental |
-| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | critico |
-| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | critico |
-| F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | 19 | estandar |
-| F-025 | Archivar y cerrar en una sola confirmacion | 25 | critico |
-| F-026 | Aprobacion humana de los partes que van a revision | 26 | estandar |
-| F-028 | Estado del parte -pendiente, aprobado, rechazado, cerrado- con historico y transicion manual | 28 | estandar |
-| F-030 | REGRESION: la aprobacion humana no sobrevive a la puerta de F-028 | 30 | critico |
-| F-031 | El nombrado del fichero archivado sale del cuerpo, no de lo persistido | 31 | critico |
-| F-032 | Los codigos no admiten espacios: ni para Sigrid, ni para la carpeta, ni al guardarlos | 32 | critico |
-| F-033 | La primera capa contra el duplicado en SharePoint esta inerte desde el endpoint | 33 | critico |
-| F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 134 | critico |
+_Nada comprometido._
+
+## Backlog
+
+| # | Feature | Prioridad | Rigor | Rama |
+|---|---|---|---|---|
+| F-072 | El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado | 2 | critico | `feature/F-072-tipo-reclamacion-sigrid` |
+| F-070 | Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos | 3 | critico | `feature/F-070-obra-sin-cero-inicial` |
+| F-067 | Registrar incidencias desde el PDF de repasos del cliente (backend): un PDF por unidad, casado de ubicaciones, prioridades y oficios, y fotos a SharePoint | 5 | critico | `feature/F-067-pdf-repasos-cliente` |
+| F-068 | Página de carga del PDF de repasos en el portal: elegir la unidad y casar a mano ubicaciones, prioridades y oficios | 5 | estandar | `feature/F-068-pagina-pdf-repasos` |
+| F-069 | Fotos de las incidencias del PDF de repasos a Sigrid como gráfico | 6 | critico | `feature/F-069-fotos-repasos-sigrid` |
+| F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 7 | estandar | `feature/F-057-tabla-bandeja-paso1` |
+| F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 7 | critico | `feature/F-062-gestionar-volcadas` |
+| F-063 | Normalizar el código de obra: un cero delante cuando empieza por tres cifras | 7 | critico | `feature/F-063-normalizar-codigo-obra` |
+| F-073 | La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez | 7 | estandar | `feature/F-073-revision-lee-sigrid-en-paralelo` |
+| F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 9 | critico | `feature/F-055-barridos-sin-cache` |
+| F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 10 | critico | `feature/F-052-secretos-ajustes` |
+| F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 11 | estandar | `feature/F-054-dev-server-127` |
+| F-061 | Optimizar el listado de la revisión: arranque de instancias y picos de Sigrid | 12 | estandar | `feature/F-061-optimizar-listado-revision` |
+| F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 17 | critico | `feature/F-037-entrada-web-clientes` |
+| F-039 | Propuesta del industrial al crear la incidencia | 19 | critico | `feature/F-039-propuesta-industrial` |
+| F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 21 | critico | `feature/F-041-ficha-incidencia` |
+| F-042 | No procede: justificación obligatoria y email al cliente | 22 | critico | `feature/F-042-no-procede-email` |
+| F-043 | Operaciones en bloque sobre incidencias | 23 | critico | `feature/F-043-operaciones-bloque` |
+| F-044 | Imprimir partes en bloque a PDF o impresora con la plantilla de posventa | 24 | estandar | `feature/F-044-impresion-bloque` |
+| F-045 | Registrar un parte sin firma: la incidencia pasa a TER, no a CER | 25 | critico | `feature/F-045-parte-sin-firma` |
+| F-046 | Coste de la posventa desde la obra POSTV2 | 26 | critico | `feature/F-046-coste-postv2` |
+| F-047 | Vincular incidencias con la proforma, el coste y la venta | 27 | critico | `feature/F-047-incidencia-proforma` |
+| F-048 | Los datos de posventa al datamart | 28 | estandar | `feature/F-048-datamart-posventa` |
+| F-050 | Agrupar los proveedores casi duplicados del maestro de Sigrid | 29 | estandar | `feature/F-050-agrupar-proveedores` |
+| F-011 | Fase 2: ingesta desde buzón de correo | 122 | estandar | `feature/F-011-buzon-correo` |
+| F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 123 | critico | `feature/F-014-reagrupar-pagina-2` |
+| F-015 | Evaluación del prompt de extracción contra partes reales | 124 | critico | `feature/F-015-evaluacion-prompt` |
+| F-016 | Interpretación automática de las observaciones manuscritas | 125 | critico | `feature/F-016-interpretacion-observaciones` |
+| F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 126 | documental | `feature/F-017-checkpoints-manual` |
+| F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 127 | documental | `feature/F-018-minimo-privilegio-graph` |
+| F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 129 | documental | `feature/F-020-diseno-front` |
+| F-021 | Rehidratar la sesión del front al recargar el navegador | 130 | estandar | `feature/F-021-rehidratar-sesion` |
+| F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 131 | estandar | `feature/F-022-cache-prompts-gemini` |
+| F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 132 | estandar | `feature/F-027-suite-barrido-cacheado` |
+| F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 138 | estandar | `feature/F-029-scripts-infra-comillas` |
+| F-074 | Mejora futura en sigrid-api: una instancia siempre preparada para que no arranque en frío | 150 | documental |  |
+
+## Done
+
+| # | Feature | Cierre | OK humano | Prioridad | Rigor |
+|---|---|---|---|---|---|
+| F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | sin fecha | sin anotar | 0 | critico |
+| F-049 | Las villas que crea el archivo, siempre con tres cifras (VILLA 008) | sin fecha | sin anotar | 0 | critico |
+| F-051 | La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla | sin fecha | sin anotar | 0 | critico |
+| F-001 | Esqueleto del monorepo y /health | sin fecha | sin anotar | 1 | estandar |
+| F-035 | Diseño del portal de posventa: todas las secciones con placeholders | sin fecha | sin anotar | 1 | estandar |
+| F-056 | Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo | sin fecha | sin anotar | 1 | critico |
+| F-060 | Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid | sin fecha | sin anotar | 1 | critico |
+| F-071 | La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad | sin fecha | sin anotar | 1 | critico |
+| F-002 | Ingesta y troceado de la remesa en partes | sin fecha | sin anotar | 2 | critico |
+| F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | sin fecha | sin anotar | 2 | critico |
+| F-059 | Volcado a Sigrid en el backend: ensayo, escritura en lote y estado volcada | sin fecha | sin anotar | 2 | critico |
+| F-003 | Extracción multimodal del parte, manuscritos incluidos | sin fecha | sin anotar | 3 | critico |
+| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | sin fecha | sin anotar | 3 | critico |
+| F-004 | Validación del parte y clasificación de la firma | sin fecha | sin anotar | 4 | critico |
+| F-065 | Revisión con Sigrid en el backend: leer las reclamaciones de la obra y cruzarlas con la bandeja | sin fecha | sin anotar | 4 | critico |
+| F-005 | Persistencia en el PostgreSQL compartido | sin fecha | sin anotar | 5 | critico |
+| F-006 | Nombrado y archivo en SharePoint | sin fecha | sin anotar | 6 | critico |
+| F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | sin fecha | sin anotar | 6 | critico |
+| F-007 | Front de carga y revisión | sin fecha | sin anotar | 7 | estandar |
+| F-010 | Despliegue en Azure y tarjeta en el portal | sin fecha | sin anotar | 8 | estandar |
+| F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | sin fecha | sin anotar | 8 | critico |
+| F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | sin fecha | sin anotar | 9 | documental |
+| F-009 | Cierre de la incidencia en Sigrid (solo estado) | sin fecha | sin anotar | 10 | critico |
+| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | sin fecha | sin anotar | 12 | critico |
+| F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | sin fecha | sin anotar | 19 | estandar |
+| F-025 | Archivar y cerrar en una sola confirmacion | sin fecha | sin anotar | 25 | critico |
+| F-026 | Aprobacion humana de los partes que van a revision | sin fecha | sin anotar | 26 | estandar |
+| F-028 | Estado del parte -pendiente, aprobado, rechazado, cerrado- con historico y transicion manual | sin fecha | sin anotar | 28 | estandar |
+| F-030 | REGRESION: la aprobacion humana no sobrevive a la puerta de F-028 | sin fecha | sin anotar | 30 | critico |
+| F-031 | El nombrado del fichero archivado sale del cuerpo, no de lo persistido | sin fecha | sin anotar | 31 | critico |
+| F-032 | Los codigos no admiten espacios: ni para Sigrid, ni para la carpeta, ni al guardarlos | sin fecha | sin anotar | 32 | critico |
+| F-033 | La primera capa contra el duplicado en SharePoint esta inerte desde el endpoint | sin fecha | sin anotar | 33 | critico |
+| F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | sin fecha | sin anotar | 134 | critico |
 
 ## Detalle
 
@@ -334,198 +354,198 @@ Alta del 2026-11-09 por decisión del humano, como mejora futura de baja priorid
 
 ### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
 
-estado **terminada** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-013-archivo-posventa`
+estado **terminada** · sin fecha de cierre · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-013-archivo-posventa`
 
 Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.
 
 ### F-049 · Las villas que crea el archivo, siempre con tres cifras (VILLA 008)
 
-estado **terminada** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-049-villa-tres-cifras`
+estado **terminada** · sin fecha de cierre · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-049-villa-tres-cifras`
 
 Alta del 2026-09-25 por decisión del humano, tras el paso 2 del corte de F-013: Posventa ha reorganizado la biblioteca y sus unidades se llaman ahora VILLA 001 … VILLA 007, VILLA 012 y VILLA 013. F-013 R37 crea la unidad con dos cifras (VILLA 08). El humano eligió «Siempre con tres cifras»: VILLA 008 en todas las obras. Enmienda fechada de F-013 R37 (y de la tabla de design.md §4.6, de R31 y del runbook), sin cambiar cómo se CASA (por número, que ya reconoce VILLA 001 como la villa 1). Números de tres o más cifras, tal cual.
 
 ### F-051 · La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla
 
-estado **terminada** · prioridad 0 · rigor `critico` · SDD no · rama `feature/F-051-carpeta-base-raiz`
+estado **terminada** · sin fecha de cierre · prioridad 0 · rigor `critico` · SDD no · rama `feature/F-051-carpeta-base-raiz`
 
 INCIDENTE EN PRODUCCIÓN del 2026-10-01, detectado por un correo de Posventa (un parte que «no se refleja en Sigrid»). Desde el corte de F-013 (2026-09-25) el App Setting SHAREPOINT_CARPETA_BASE se dejó VACÍO a propósito (D-1 de F-013: vacío = la raíz de la biblioteca de Posventa). Azure no pasa a la aplicación un App Setting de valor vacío, así que pydantic tomó el valor por defecto del campo, «Postventa», y el archivo buscó root:/Postventa en la biblioteca: Graph 404. El 2026-10-01, primer uso real tras el corte, las 90 peticiones de archivar de ~20 partes respondieron 502 («la carpeta «Postventa» no existe en la biblioteca»); como el cierre va detrás del archivo, tampoco se cerró ninguno en Sigrid. No se escribió nada a medias. La comprobación del corte (docs/DESPLIEGUE.md §9, paso 6, «el vacío llegó») miró la configuración de Azure, no lo que lee la aplicación. MITIGADO el 2026-10-01 por el humano: SHAREPOINT_CARPETA_BASE=/ (el dominio recorta las barras, así que «/» es la raíz). Esta feature es el arreglo definitivo, autorizado por el humano el 2026-10-01: (1) con la estrategia posventa, una SHAREPOINT_CARPETA_BASE ausente significa la raíz, no «Postventa» (que sigue siendo el valor por omisión de por_obra); (2) el despliegue nunca escribe un App Setting vacío: escribe «/» para la raíz; (3) la Function deja una traza al construir el archivador con el destino efectivo (estructura y base, sin identificadores) y el guion del corte comprueba ESO en Application Insights, no la configuración; (4) INTEGRACION, DESPLIEGUE y azure-apps/postventa_incidencias.md dicen «/» y no «vacía».
 
 ### F-001 · Esqueleto del monorepo y /health
 
-estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
+estado **terminada** · sin fecha de cierre · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
 
 Crear services/postventa-api (Function App Python con settings, logging y un endpoint /health) y services/postventa-front vacío pero arrancable. Feature de calentamiento: valida el circuito completo del arnés antes de jugarse nada.
 
 ### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
 
-estado **terminada** · prioridad 1 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
+estado **terminada** · sin fecha de cierre · prioridad 1 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal. AÑADIDO EL 2026-10-05 por petición del humano (desde la T28 de F-036): al convertir oficios.html en sección del portal, añadir un bloque «Decididos como distintos» con un botón «Son el mismo» en cada par. Hoy un par marcado «Son distintos» desaparece de la pantalla y no se puede volver a juntar desde ella (Separar sí se deshace; Son distintos no). La API ya lo admite: POST /api/catalogos/decisiones con «mismo» y manda la última decisión (design.md de F-036, §7); es solo front. Primer caso real: Solados y Alicatados M.O. (0033) frente a Solados y Alicatados (0133), obra 0677. Y, del cierre de F-036 (2026-10-05): en la pantalla de importar, cuando el fichero ya se había importado, el mensaje «no se ha añadido nada» va con los recuentos de la importación original («14 nuevas»), que se leen como si hubieran entrado otra vez; rotularlos como «resumen de la importación original del …». Precisado el 2026-10-05 (H-9 de la enmienda): los dos apuntes anteriores necesitan dos datos del backend; se separan en F-053 por el límite de servicio y el portal los consume de forma tolerante (sin ellos, rotula sin fecha y no pinta «Decididos como distintos»).
 
 ### F-056 · Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo
 
-estado **terminada** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-056-revision-bandeja-backend`
+estado **terminada** · sin fecha de cierre · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-056-revision-bandeja-backend`
 
 Sacada de F-038 el 2026-10-06 por el límite de servicio (D-1, decisión del humano). El backend de la revisión de la bandeja de F-036 en services/postventa-api: tabla append-only postventa.revisiones_bandeja (15_revisiones_bandeja.sql) con una foto completa de los valores por acción, el oid y el correo de quien actúa; estados derivados (nueva, editada, aprobada, descartada); acciones editar, descartar, aprobar y recuperar con concurrencia optimista; aprobar vuelve a leer el catálogo de Sigrid (sql/read) y exige unidad de la obra, ubicación de la lista, oficio elegido de obrofc y par de obrofc si hay proveedor; tres endpoints (GET /api/revision paginado, GET /api/revision/historial, POST /api/revision/acciones); y las candidatas al volcado para F-040. Resuelve en el backend los dos apuntes de F-036: las 144 filas de la 0677 con oficio o proveedor viejos se ven por sus motivos contra el catálogo de hoy y se corrigen editando, y las 47 ambiguas eligen su código. No escribe en Sigrid. Spec: specs/F-056-revision-bandeja-backend/ (escrita en la rama de F-038; se lleva a la de F-056 antes de empezar). AÑADIDO EL 2026-10-06 (review de F-053, O-1): al tocar docs/INTEGRACION.md, poner al día su cabecera (fecha y última feature, hoy «F-036») y hacer que test_f036_documentacion.py deje de exigir «F-036» como última feature, porque esa aserción caduca con cualquier feature nueva.
 
 ### F-060 · Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid
 
-estado **terminada** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-060-normalizar-ubicaciones`
+estado **terminada** · sin fecha de cierre · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-060-normalizar-ubicaciones`
 
 Alta del 2026-10-09 por decisión del humano, tras el paso 2 de la T19 de F-056 en producción: de las 158 incidencias de la 0677, 148 salen con ubicacion_fuera_de_lista porque la comparación contra la tipología de la unidad (prmtpl.ubica, F-056 §16.3) es exacta; 110 de ellas solo difieren en mayúsculas (la plantilla de F-036 ofrece, p. ej., «Baño 1» y Sigrid guarda «baño 1»), 0 en tildes o espacios y 38 (8 textos distintos) no están en la lista de su unidad. El humano no quiere comparar sin mayúsculas sino NORMALIZAR: una ubicación que coincide con una de la lista de su unidad salvo mayúsculas (la spec decide si también espacios; tildes y erratas siguen distinguiéndose) pasa a ser el texto exacto de Sigrid, de modo que en la bandeja, en lo aprobado y en lo que llegue al volcado (F-059) solo haya textos de Sigrid. Cubre lo ya importado (las 110 de la 0677) y lo que se importe en adelante, con constancia (la bandeja de F-036 no se reescribe y las revisiones de F-056 son append-only: la spec decide cómo, sin perder la trazabilidad). Las 38 que no están siguen fuera de lista y se corrigen en la revisión. Solo backend; no toca la plantilla (eso es F-058). Medir también el tiempo de la primera página de GET /api/revision (11,9 s en el paso 2, objetivo < 10 s) si no era arranque en frío. AÑADIDO AL CIERRE DE F-056 (2026-10-09): el listado GET /api/revision tardó p50 7,1 s y máx. 12,7 s en 9 peticiones de la T19, con las lecturas de Sigrid en 0,1–0,3 s: el tiempo se va en otra parte (base, cálculo de motivos o arranque); medirlo y bajarlo de 10 s entra aquí. SPEC ESCRITA EL 2026-10-09 (spec-author): specs/F-060-normalizar-ubicaciones/, pendiente de aprobación del humano (PARADA 1). Propone una revisión editar del sistema (oid y correo sistema:normalizar_ubicacion, sin DDL) tras cada importación y a demanda con POST /api/revision/normalizar (ensayo obligatorio); medir el listado con trazas por tramo antes de optimizar. T30 (humano, 2026-10-14): M1 no cumple D-10 (p50 4,92 s, máx. 14,73 s en caliente); se hace solo M-3 y F-060 se cierra con la medición M2 que salga; el resto de la optimización va a F-061. CERRADA 2026-10-14: desplegada el 2026-10-13 (6272dee) y verificada en producción con la 0677 (T26: 110 normalizadas, 0 conflictos, fuera de lista 148 → 38; T27: Sigrid igual, 1276); Bloque 7 (M-3) publicado (cad2cb2); M2 en caliente p50 5,00 s y máx. 13,21 s, aceptado por el humano; el resto en F-061. Resumen en progress/history.md.
 
 ### F-071 · La plantilla de incidencias saca TODOS sus desplegables de Sigrid en el momento de la descarga, y lo elegido se importa sin ambigüedad
 
-estado **terminada** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-071-plantilla-desde-sigrid`
+estado **terminada** · sin fecha de cierre · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-071-plantilla-desde-sigrid`
 
 Alta del 2026-11-04 por petición del humano, URGENTE: «el excel que descarga debe extraer TODAS las opciones de TODOS los desplegables de lo que hay en el momento en sigrid. esta feature es urgente. lo mismo oficios, etc.». Problema real en la obra 0677 (Mirasierra): la plantilla de F-036 saca las ubicaciones de una lista FIJA (config/plantilla_incidencias.yaml, 44 etiquetas con «General (toda la unidad)» inventada), igual para todas las unidades, mientras la bandeja (F-056) valida contra prmtpl.ubica de la tipología de CADA unidad: se elige «Escalera» o «General» en el Excel y la bandeja dice «La ubicación no está en la lista». Segundo síntoma: el desplegable de Oficio agrupa oficios equivalentes (R86, R92 de F-036) y la fila importada queda oficio_ambiguo («Elige el código del oficio: hay varios en la obra»). Alcance: cada desplegable sale de Sigrid al descargar (unidad, ubicación dependiente de la unidad de la fila, oficio con su código, par oficio–proveedor de obrofc); la importación vuelve a leer Sigrid y valida contra lo de ese momento; lo que se elige en el Excel entra resuelto (sin oficio_ambiguo ni proveedor_ambiguo). Urgencia y listado: la spec dice qué hay en Sigrid (rcp.texurg es texto libre; auxtrcp son los tipos de reclamación) y lo deja como pregunta al humano. Absorbe F-058 (su spec y su prueba del desplegable dependiente, en el worktree postventa-f058). Versión de la plantilla a 2. Solo backend (postventa-api). Spec en specs/F-071-plantilla-desde-sigrid/ y preguntas en progress/spec_F-071.md.
 
 ### F-002 · Ingesta y troceado de la remesa en partes
 
-estado **terminada** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
+estado **terminada** · sin fecha de cierre · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
 
 Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.
 
 ### F-036 · Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión
 
-estado **terminada** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-036-importar-excel`
+estado **terminada** · sin fecha de cierre · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-036-importar-excel`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Primera vía de entrada. El humano pasará un Excel de ejemplo y un correo con los pasos de cómo se crea hoy una incidencia. Se valida el fichero, se marcan duplicados y las filas quedan en una bandeja, sin tocar Sigrid. Añadido el 2026-09-24: el Excel alimenta el alta masiva de F-040, que replica el alta manual de docs/referencia/04_alta_incidencia_sigrid.md. Cada fila debe traer como mínimo la unidad de posventa y la descripción; ubicación y oficio pueden venir en el Excel o completarse en la bandeja. Actualizado por el líder el 2026-09-28: el humano pasó el Excel de hoy (creacion_incidencias.xlsx), convertido en docs/referencia/05_excel_creacion_incidencias.md con sus defectos anotados. DECISIÓN DEL HUMANO: ese Excel es la muestra de partida, NO el contrato; la feature lo MEJORA en formato y en contenido. Tres entregables: (1) una PLANTILLA NUEVA generada POR OBRA desde el portal, con los desplegables cargados desde Sigrid (unidades de posventa y oficios de esa obra), cabecera fija, una incidencia por fila sin celdas heredadas, hoja de instrucciones, descripción corta que quepa en con.res (128) y detalle aparte, urgencia/seguridad como columna y no en mayúsculas dentro del texto, ubicación de lista cerrada, un defecto por fila; (2) el IMPORTADOR, que SOLO acepta la plantilla nueva (el formato viejo no se lee); (3) el Excel actual MIGRADO a la plantilla nueva con el contenido corregido, entregado como creacion_incidencias_v2.xlsx junto al original en el OneDrive del humano, sin tocar el original y sin versionarlo. Riesgo: quien rellena el Excel es la propiedad (externa); la plantilla es una propuesta que Posventa tiene que aceptar y difundir.
 
 ### F-059 · Volcado a Sigrid en el backend: ensayo, escritura en lote y estado volcada
 
-estado **terminada** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-059-volcado-sigrid-backend`
+estado **terminada** · sin fecha de cierre · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-059-volcado-sigrid-backend`
 
 Sacada de F-040 el 2026-10-07 por el límite de servicio (D-1, decisión del humano). El backend del volcado de la bandeja a Sigrid en services/postventa-api: tres endpoints (GET /api/volcado, POST /api/volcado/ensayo, POST /api/volcado/volcar) sobre POST /api/sigrid/partes-reclamacion de sigrid-api (azure-apps/sigrid_api.md §8.9); ensayo guardado obligatorio (misma persona, 30 min); escritura anticipada del evento enviado antes de cada commit; referencia PVI-<incidencia_id> para que reintentar no duplique; tabla append-only postventa.volcados_sigrid (16_volcados_sigrid.sql); estados derivados volcada y en_duda que amplían los de F-056 y bloquean la revisión; tipo 0002 siempre, causante false, sin urgencia ni clase; el parte queda en SAT y Posventa lo pasa a PTE a mano; ventana propia VOLCADO_HABILITADO publicada cerrada (infra/27_ventana_volcado.ps1) y lectura de verificación (infra/28_volcado_lectura_sigrid.ps1); verificación en producción en la obra 0626 con una escritura autorizada y anulación posterior. Q-6: el líder actualiza la fila de consumidores de azure-apps/sigrid_api.md al desplegar. Spec aprobada (2026-10-07): specs/F-059-volcado-sigrid-backend/ (escrita en la rama de F-040, worktree postventa-f040; se lleva a su rama al empezar). El front es F-040. F-056 cerrada y desplegada el 2026-10-09: ya no hay bloqueo. Orden del humano (2026-10-09): justo detrás de F-060, antes de F-038, para llegar antes a la primera escritura real en Sigrid. NOTA DEL LÍDER (2026-10-14, cierre de F-060): F-060 deja las rutas anónimas en veintiuna; la spec de F-059 (worktree postventa-f040) contaba 23→24 y hay que ajustar sus cuentas a partir de 21. PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. EN CURSO desde el 2026-10-15: rama desde dev 2d2efd7 (base fija), spec traída del worktree postventa-f040. BLOQUEADA el 2026-10-16 antes de T4 (Bloque 2; Bloque 1 APPROVED en 9fdb222): B-1 R17 frente a R33 (leer actor_oid para comparar la persona del ensayo) y B-2 test de F-056 que falta en el inventario de R41; decisión del humano (progress/impl_F-059.md, «Bloque 2 · BLOQUEADO antes de T4»). DESBLOQUEADA el 2026-10-16 por el humano («ok a b1 y b2»): B-1 (a) la base compara la persona y el dominio recibe de_la_persona: bool; B-2 el test r12 de test_f056_ddl.py entra en las excepciones de R41 ampliando sin relajar. BLOQUEADA el 2026-10-17 en T22 (Bloques 1-4 APPROVED; Bloque 5 T18-T21 hechos): la campaña final de mutación del tramo entero son 203 mutantes, estimados en unas 17 h (más de 12); decide el humano entre A (entera), B (201/203 ya medidos en las campañas de bloque y los 2 restantes muertos a mano) y C (muestreo) (progress/impl_F-059.md, T22). DESBLOQUEADA el 2026-10-17 por el humano: opción B para T22 (las campañas de bloque cubren 201/203 y los 2 restantes se mataron a mano). CERRADA el 2026-10-20: desplegada el 2026-10-17 (dev 81049bc) con la ventana cerrada y verificada en producción en la 0626 el 2026-10-19 (T25: RS26.10/0074 creado en 1,8 s, ventana cerrada enseguida; bandeja, Application Insights y fotos conformes); T26: anulado desde la UI de Sigrid (NO PROCEDE, sin correo), comprobado con 28_ (estado NPR). Resumen en progress/history.md.
 
 ### F-003 · Extracción multimodal del parte, manuscritos incluidos
 
-estado **terminada** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
+estado **terminada** · sin fecha de cierre · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
 
 Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo que usa Ruesma; azure-apps documenta el proveedor pero no fija version), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas. CERRADA el 2026-08-19: revisión APROBADA y última verificación manual completada (T18, barrido de los 22 partes reales de Mirasierra), con el modelo leyendo la letra manuscrita y cero falsos negativos.
 
 ### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
 
-estado **terminada** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
+estado **terminada** · sin fecha de cierre · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código. PARTIDA EL 2026-10-06 (D-1, decisión del humano): esta ficha es la página bandeja.html y el cierre de la sección del portal; el backend es F-056. Spec aprobada: specs/F-038-bandeja-revision/ (D-4 ubicación obligatoria, D-8 se enseña el correo, Q-2 paginada). PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. F-056 ya está done y desplegada (2026-10-09): sin bloqueo. Su spec (worktree postventa-f038) es anterior a F-060: ponerla al día al empezar. EN CURSO desde el 2026-10-20: rama nueva desde dev 87a03f3 (base fija, F-059 cerrada); la rama antigua queda como archivo/F-038-spec-2026-10-06 y su spec se trae tal cual. Paso 1: el spec-author la concilia con dev (estados volcada y en_duda y el objeto volcado de F-059; revisiones del sistema y ubicacion_fuera_de_lista de F-060; catalogo.pares, marcas de ambiguo y errores reales de F-056); si cambia una decisión aprobada, vuelve al humano. APARCADA el 2026-10-26 por decisión del humano para empezar F-066: no hay fallo; solo espera T7 (MANUAL del humano, verificación en producción). Al hacerla, se retoma con T8–T11 (F-066 tendrá que pasar a blocked o estar cerrada: máximo una in_progress). RETOMADA el 2026-11-10 por decisión del humano («hay que cerrar f38»), con F-071 done: T7 cerrada el 2026-11-09 (pasos 1 a 10, el 2 y el 10 con aceptación escrita del humano). Queda T8 conciliada con dev (F-040 T6a ya hizo la pestaña, los pasos 02 y 03 y la tarjeta), T9, T10 y T11.
 
 ### F-004 · Validación del parte y clasificación de la firma
 
-estado **terminada** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-004-validacion`
+estado **terminada** · sin fecha de cierre · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-004-validacion`
 
 Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme. DECISIONES DE DOMINIO DEL HUMANO (2026-08-19, mandan sobre el diseño): (1) un parte SIN DNI del cliente SÍ pasa como conforme, la ausencia de DNI no descalifica; (2) un parte CON observaciones manuscritas NO es conforme, y de momento ese es el ÚNICO motivo de rechazo; (3) el parte rechazado por observaciones no se descarta: va a una COLA DE VALIDACIÓN HUMANA que presenta las observaciones transcritas para que una persona decida. Dato real que respalda el dimensionado de esa cola: en la remesa real de Mirasierra 2 de 22 partes (~9 %) traen observaciones manuscritas, y solo 7 de 22 traen DNI.
 
 ### F-065 · Revisión con Sigrid en el backend: leer las reclamaciones de la obra y cruzarlas con la bandeja
 
-estado **terminada** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-065-revision-sigrid-backend`
+estado **terminada** · sin fecha de cierre · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-065-revision-sigrid-backend`
 
 Alta del 2026-10-21: tramo A (backend) de F-064, partido por el límite de servicio (Q-1 de F-064, aprobada por el humano). Una ruta nueva de solo lectura, aparte del listado de la revisión, que lee de sigrid-api (sql/read) TODAS las reclamaciones 708 de la obra, las empareja con la bandeja por la referencia PVI- y cruza el resto con los criterios aprobados (misma unidad+oficio+ubicación; misma unidad+descripción parecida); devuelve las reclamaciones y los hallazgos. Si Sigrid falla, la bandeja sigue. Datos personales de la reclamación en la respuesta (decisión del humano), nunca en logs ni en la base. Spec en el worktree postventa-f064 (specs/F-065-revision-sigrid-backend/). Va antes que F-064. SPEC APROBADA por el humano el 2026-10-21 (con N-1 a N-3: una lectura con techo 500.000 y truncated → 409; descripción parecida por Jaccard 50 y 2 palabras; datos personales en una sola ruta, sin DNI ni credenciales de i-Sigrid), en la rama feature/F-064-bandeja-con-sigrid (worktree postventa-f064, e38f01b): specs/F-064-bandeja-con-sigrid/ y specs/F-065-revision-sigrid-backend/. Se trae a la rama de F-065 al empezar. EN CURSO desde el 2026-10-28 por decisión del humano, antes de F-040: el botón Registrar de F-040 sincroniza con Sigrid antes de registrar. Rama nueva desde dev f7f63da en el worktree postventa-f065; spec traída de e38f01b. Paso 1: el spec-author la concilia con dev y añade lo nuevo: el ensayo del volcado (F-059) consulta este cruce, excluye lo que ya está en Sigrid y pide segundo clic para lo que choca, para que la regla la garantice el backend. Si cambia una decisión aprobada, vuelve al humano. SPEC CONCILIADA (spec-author, 2026-10-28, 12d53ae y 362a783) y APROBADA POR EL HUMANO el 2026-10-28 con S-1 a S-9 según la recomendación: el ensayo de F-059 gana conflictos_confirmados (opcional, por incidencia y con los códigos) y dos motivos (duplicada_en_sigrid para ya_existe, conflicto_sin_confirmar para choca); se_enlaza (PVI-) no se excluye; la guarda lee solo las unidades de lo que se manda y sin datos personales; Sigrid caída o truncated, no se ensaya; volcar y el panel no cambian; sin DDL. DESPLEGADA el 2026-10-31 desde dev ed590bd y verificada en producción en solo lectura (T-A11 a T-A17). Review final APPROVED; mutación 182/182; init.sh en verde. T-A18 (ensayo con un choca sin confirmar y confirmado) APLAZADA por decisión del humano (2026-10-31) al primer ensayo real de la 0677 con el botón Registrar de F-040: en la 0626 y la 0677 no había ninguna candidata aprobada.
 
 ### F-005 · Persistencia en el PostgreSQL compartido
 
-estado **terminada** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
+estado **terminada** · sin fecha de cierre · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
 
 Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado de validación, trazas de archivo y cierre, y preferencias por usuario (incluida la de auto-cierre). DDL idempotente al arranque, como hace sv3 en albaranes.
 
 ### F-006 · Nombrado y archivo en SharePoint
 
-estado **terminada** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
+estado **terminada** · sin fecha de cierre · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
 
 Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.
 
 ### F-053 · Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos
 
-estado **terminada** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-053-datos-para-el-portal`
+estado **terminada** · sin fecha de cierre · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-053-datos-para-el-portal`
 
 Alta del 2026-10-05 por el líder, con el visto bueno del humano (D-13 de la enmienda de F-035). Los dos apuntes del humano para el portal (F-035) no son solo front: el portal los pinta de forma tolerante, pero necesitan dos datos del backend que hoy no salen. (a) POST /api/importaciones devuelve importado_at_utc (ISO 8601 en UTC) de la importación de la respuesta; con ya_importado true, el de la ORIGINAL, para rotular «resumen de la importación original del …» en vez de presentar los recuentos como si hubieran entrado otra vez. (b) GET /api/catalogos/propuestas devuelve oficio.distintos, [{codigo_a, codigo_b}] ordenados: los pares de oficios de la obra cuya última decisión es «distinto», para que la pantalla de oficios enseñe «Decididos como distintos» con un botón «Son el mismo» (la API ya admite esa decisión y manda la última). Hoy un par marcado distinto desaparece de la pantalla y no se puede deshacer desde ella; primer caso real: Solados y Alicatados M.O. (0033) · Solados y Alicatados (0133), obra 0677. Contrato propuesto en specs/F-035-portal-posventa/design.md §16.6. Solo aditiva: ningún campo existente cambia. Actualiza azure-apps/postventa_incidencias.md en el mismo trabajo. AÑADIDO EL 2026-10-06: el front de F-035 ya consume importado_at_utc (R74, bloque 12) con unas suposiciones que F-053 debe respetar; están escritas en progress/review_F-035.md, «Review del bloque 12», apartado «Contrato para F-053» (formato ISO 8601 con desfase, qué hace el front sin él, y en qué respuestas debe ir el campo).
 
 ### F-007 · Front de carga y revisión
 
-estado **terminada** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-007-front`
+estado **terminada** · sin fecha de cierre · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-007-front`
 
 Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar. PUNTO DE PARTIDA: el esqueleto del front ya está escrito y verificado en la rama feature/F-007-front (se sacó de F-001 porque su dev_server.py hundía la puerta de cobertura). Recuperarlo con: git checkout feature/F-007-front -- services/postventa-front. Ya resuelto ahí: los scripts propios van SIN defer al final del body (con defer, Alpine arranca antes de que exista la función del x-data), Alpine con versión fija 3.14.1, el proxy apunta al puerto 7073, y el staticwebapp.config.json lleva <TENANT_ID> como marcador porque el ID de tenant no se versiona.
 
 ### F-010 · Despliegue en Azure y tarjeta en el portal
 
-estado **terminada** · prioridad 8 · rigor `estandar` · SDD sí · rama `feature/F-010-despliegue`
+estado **terminada** · sin fecha de cierre · prioridad 8 · rigor `estandar` · SDD sí · rama `feature/F-010-despliegue`
 
 Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de Entra, grupo de seguridad de Posventa (hay que crearlo) y alta de la tarjeta en front-portal. La tarjeta se edita en ese repositorio, no en este. PRIORIDAD SUBIDA EL 2026-08-20 por el humano, por delante de F-008 y F-009 (las dos de Sigrid): quiere que **negocio pruebe el circuito completo desplegado sin tocar Sigrid todavía**. Encaja con lo que ya hay: F-002 a F-007 cubren entrada, extracción, validación, archivo y front, y el cierre en el ERP es justamente lo que queda fuera. Efecto lateral que importa: F-010 es quien **desbloquea T18 de F-006**, la verificación de subida real a SharePoint, que está diferida esperando un entorno desplegado.
 
 ### F-058 · La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad
 
-estado **terminada** · prioridad 8 · rigor `critico` · SDD sí · rama `feature/F-058-plantilla-ubicaciones-sigrid`
+estado **terminada** · sin fecha de cierre · prioridad 8 · rigor `critico` · SDD sí · rama `feature/F-058-plantilla-ubicaciones-sigrid`
 
 Alta del 2026-10-06 al resolver la Q-5 de F-056 (propuesta del spec-author). Hoy la columna Ubicación de la plantilla de F-036 sale de una lista cerrada versionada (config/plantilla_incidencias.yaml), la misma para todas las filas, y la importación la valida contra ella; la revisión de F-056, en cambio, valida contra Sigrid en vivo: las ubicaciones de la tipología de la unidad (upv.obrtplide → prmtpl.ubica, separadas por ;, exactas tras recortar; medido en la 0677: 3 tipologías de 31 a 37 ubicaciones, que cubren las 1.261 reclamaciones). Una fila puede entrar con una ubicación de la plantilla que no es de su unidad y quedar luego ubicacion_fuera_de_lista. Esta ficha alinea las dos: la plantilla y la importación usan la misma lectura que F-056. Ojo: en el Excel la lista depende de la unidad de cada fila. Opciones para su spec: (a) desplegable dependiente de la columna Unidad (rangos con nombre por unidad o tipología y validación con INDIRECTO, probado en Excel, Excel web y LibreOffice); (b) pares Unidad · Ubicación en una sola columna, como los pares oficio · proveedor de F-036; (c) un desplegable con la unión de la obra y la validación por unidad solo al importar (con el Excel de errores). Retira la lista de ubicaciones del YAML. No cambia la bandeja ni la revisión. SPEC ESCRITA el 2026-10-09 en el worktree postventa-f058 (rama feature/F-058-plantilla-ubicaciones-sigrid), pendiente de aprobación. Respuestas del humano (2026-10-09): D-4 solo se aceptan plantillas de la versión nueva (una v1 se rechaza con motivo claro; cambia el criterio 4 de la ficha); Q-4 el Excel se rellena a mano en Excel; Q-6 autoriza la importación de prueba en producción; Q-7 el Bloque 0 se prueba en Excel de escritorio y Excel web (sin LibreOffice). Pendiente: D-6 (retirar o congelar scripts/migrar_excel_f036.py) y el resto de recomendaciones. F-060 done y desplegada (2026-10-14): sin bloqueo. CERRADA el 2026-11-12 por absorción en F-071 (decisión del humano 2026-11-05, Q-11; cierre aprobado por el humano el 2026-11-12): sus criterios los cumple F-071, done con reviews APPROVED, init.sh en verde y verificada en producción con la 0677 (T16). No se implementó por su cuenta; la rama feature/F-058-plantilla-ubicaciones-sigrid se conserva como archivo y el worktree postventa-f058 se retira.
 
 ### F-008 · Modelo de posventa en Sigrid: confirmar contra el ERP
 
-estado **terminada** · prioridad 9 · rigor `documental` · SDD no · rama `feature/F-008-modelo-sigrid`
+estado **terminada** · sin fecha de cierre · prioridad 9 · rigor `documental` · SDD no · rama `feature/F-008-modelo-sigrid`
 
 Confirmar contra el ERP lo que ya está documentado en azure-apps/sigrid_tablas.md, sigrid_api.md §9 y docs/referencia/01_cierre_incidencia_sigrid.md. Lo crítico: el proceso 'Cerrar parte' de Sigrid comprueba que la reclamación tenga un gráfico asociado, y existe una opción 6 'Cerrar parte sin archivo (RPV)'. Hay que averiguar qué escribe realmente cada uno de esos dos procesos antes de decidir el alcance del cierre. Además: el con.tip de la reclamación y el estado CERRADA en conest (el estado PENDIENTE es 3/PTE), en qué base vive gra, y si 'Asociar URL de Internet' permite referenciar el PDF de SharePoint en vez de incrustar el binario. Solo lecturas.
 
 ### F-009 · Cierre de la incidencia en Sigrid (solo estado)
 
-estado **terminada** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
+estado **terminada** · sin fecha de cierre · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
 
 Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático. CERRADA EL 2026-09-16 CON CINCO HUECOS DE VERIFICACIÓN ABIERTOS, ESCRITOS Y FECHADOS, por decisión del responsable del proyecto, que ordenó cerrarla con estas palabras: «ya he probado que cierra y escribe bien en sigrid. cierrala». Preguntado qué respalda esa prueba, respondió: los DOS CIERRES REALES YA AUDITADOS, y ninguno nuevo — RS26.09/0150 del 2026-09-11 (fila de dbo.log ide 8457839, dentro de F-012) y RS26.09/0149 del 2026-09-15 (ide 8467000, dentro de F-026), los dos sobre la obra 0626, que es una obra EN USO. Mismo precedente que el cierre de F-012 el 2026-09-11: los huecos se escriben, no se ocultan. LOS CINCO HUECOS, con su requisito: (1) T22 pasos 2 y 5, el 503 de /api/cerrar con la ventana CIERRE_HABILITADO cerrada y que el dry-run no escribe (R37, R49, R8, R10); (2) T22 paso 4, las seis comprobaciones de R9 más el bloque grafico de R49 leídos por consola; (3) T23, el COUNT en dbo.usu de 07_alta_usuario_sigrid.ps1 -VerificarAhora (R34), la correspondencia confirmada en postventa.usuarios_sigrid (R33) y el login inexistente que responde 409 sin tocar Sigrid (R31) — bloqueado ADEMÁS por un script roto, ver F-029; (4) T27, el reintento sobre una incidencia ya cerrada que debe salir ya_cerrada sin escribir (R18, R42), que es el ÚNICO criterio de aceptación de esta ficha que ningún cierre real ha ejercido; (5) R22, filas_afectadas: 2 y las fotos de partida del MAX(ide) de dbo.log y de con.tiemod (pasos 2, 5 y 8 de T24), que NO ES RECUPERABLE HACIA ATRÁS porque la foto que faltaba era la de ANTES: exigiría una reclamación ABIERTA nueva de la obra 0626, que depende de Posventa (progress/peticion_posventa_prueba_F-012.md, escrita y sin enviar). LO QUE SÍ ESTÁ ACREDITADO: bloques 1-7 (T1-T21) con review APROBADA en progress/review2_F-009.md, T25 y T26 enteras, los pasos 6, 7 y 9 de T24 (R24, R25, R41, R43) por la sesión de solo lectura del 2026-09-15 —el huso de fec/hor resultó ser HORA LOCAL, 0,0 min de desvío: la hipótesis de que escribiéramos en UTC quedó descartada con dato—, T28 (117 muertos, 6 supervivientes justificados) y T29. ACTA COMPLETA EN progress/cierre_F-009.md. QUEDA DEROGADO EL blocked_by QUE ESTA FICHA ARRASTRABA, y hay que decir por qué: decía literalmente «Decision del humano del 2026-09-06: el bloque 8 (T22-T27, el primer cierre real) se ejecuta DESPUES de implementar y desplegar F-012 [...] Bloques 1-7 y T28 estan hechos y revisados; lo que falta no es codigo sino ejecucion contra el ERP. Antes de reanudar: Paso 0 del guion (infra/14_paso0_sigrid.ps1, lo ejecuta el humano) y corregir el guion segun specs/F-012-grafico-sigrid/design.md §13(b): P5 pasa de Mirasierra a la obra 404 [...]». Está desfasado en cuatro cosas: el Paso 0 se hizo el 2026-09-11; F-012 está done y desplegada; la obra de prueba 404 quedó derogada el 2026-09-10 en favor de la 0626 por decisión del responsable; y su frase «lo que falta no es codigo sino ejecucion» es FALSA HOY, porque hay dos scripts de infra/ rotos que impiden esa ejecución (F-029).
 
 ### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
 
-estado **terminada** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
+estado **terminada** · sin fecha de cierre · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
 
 Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF del parte a la reclamación como gráfico (fila en gra, binario en ima de la base documental y enlace rcg en la de negocio), ANTES del cambio de estado de F-009, de modo que ninguna reclamación quede cerrada sin su parte. DESBLOQUEADA EL 2026-09-06: el endpoint de dominio existe. sigrid-api expone POST /api/sigrid/concepto-grafico (su F-004, mergeada en dev el 2026-09-06; contrato en azure-apps/sigrid_api.md §8.8): dry-run por defecto, idempotente por tamaño+sha256, transaccional entre las dos bases (misma instancia, sin MSDTC), solo PDF hasta SIGRID_DOCUMENT_MAX_BYTES, y única vía de escritura en la documental. La atomicidad entre dos llamadas HTTP (adjuntar y cerrar) no existe: se sustituye por orden más idempotencia, y un fallo tras adjuntar deja la reclamación abierta con su gráfico, que el reintento cierra. Parámetros de partida: contip 708, gratipide 35 (PV002 'POSTVENTA:Fotos Reparaciones', docs/referencia/03_modelo_posventa_sigrid.md), usu el login que F-009 ya resuelve por usuario, sha256 del PDF archivado. La configuración de sigrid-api en dev (SIGRID_DOMAIN_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_DATABASE y las listas blancas de contip y gratipide) es del dueño de sigrid-api y es precondición, no se toca desde aquí. DECISION DEL RESPONSABLE DEL 2026-09-10, y cambia una premisa: la verificación contra el ERP se hace sobre la incidencia RS26.09/0150 (tipo 708) de la OBRA 0626, y sobre ninguna otra. La 0626 NO es una obra de pruebas: es una obra EN USO; se le planteó de forma explícita y lo reafirmó. Cae así la premisa anterior, que decía literalmente 'Toda verificación contra el ERP se hace sobre reclamaciones de la OBRA DE PRUEBA 404, con dry-run antes de cada commit y autorización expresa del humano por incidencia' (decisión del 2026-09-06). Implica que la incidencia de la comprobación y su cierre quedan en el histórico de una obra en uso, con el documento adjunto colgado de ella. La incidencia la da de alta el responsable en el ERP: este servicio no crea incidencias, y si no existe, la comprobación previa responde que no la localiza. Lo que NO cambia: comprobación previa (dry-run) antes de cada escritura, autorización expresa del responsable por incidencia concreta -que aquí gana peso, no lo pierde-, CIERRE_HABILITADO como interruptor único para el documento adjunto y para el cambio de estado, y ninguna escritura desde un puesto de trabajo. Constancia fechada en specs/F-012-grafico-sigrid/ (glosario de requirements.md, §15 de design.md, bloque 9 de tasks.md) y en progress/guion_bloque9_F-012.md. Historia previa (hallazgo 2026-08-26, base documental fuera de ALLOWED_WRITE_DATABASES; 2026-09-03, cae la premisa de la réplica): en progress/history.md y progress/current.md.
 
 ### F-019 · Endpoints de persistencia: guardar la remesa y leer la cola
 
-estado **terminada** · prioridad 19 · rigor `estandar` · SDD sí · rama `feature/F-019-endpoints-persistencia`
+estado **terminada** · sin fecha de cierre · prioridad 19 · rigor `estandar` · SDD sí · rama `feature/F-019-endpoints-persistencia`
 
 F-005 dejó `RepositorioPartesPort` completo —`guardar_remesa`, `guardar_parte`, `guardar_validacion`, `cola_validacion_humana`— y sus seis tablas creadas en la base real, pero **el único endpoint que escribe hoy es `/api/archivar`**, y solo su traza. El puerto existe y nadie lo llama: la remesa, los partes extraídos y el resultado de la validación no se guardan en ningún sitio. Consecuencia visible, detectada al diseñar F-007 (decisión D4): recargar la pestaña del front pierde todo el trabajo de revisión, y la cola de validación humana que F-004 declara no puede sobrevivir entre sesiones porque nada la escribe ni la lee. EL HUMANO DECIDIÓ EL 2026-08-20 sacar F-007 sin persistencia de sesión y dar de alta esta feature aparte, en vez de bloquear el front: el piloto de Mirasierra no se retrasa y el front no carga con una responsabilidad que es de `postventa-api`. Alcance: los endpoints que faltan sobre los puertos que YA existen; no hay que diseñar esquema ni tocar el DDL. **PREREQUISITO DEL ARCHIVADO REAL, DEMOSTRADO CONTRA EL ENTORNO DESPLEGADO EL 2026-08-25** (defecto 15 de F-010, T18): la tabla `archivos` tiene una clave ajena contra `partes` —`archivos_hash_parte_fkey`— y hoy NADA inserta el parte, así que `POST /api/archivar` sube el fichero a SharePoint y después NO puede escribir su traza: `ForeignKeyViolation`, «Key (hash_parte)=(...) is not present in table "partes"». Pasa con parte sintético y con parte real. Consecuencia: **tal y como está desplegado, el archivado no puede completar nunca**, y el circuito completo del piloto no se puede dar por bueno hasta que exista esta feature. Mientras tanto el borde responde 500 diciendo que el fichero SÍ está subido y que lo que falta es la traza (defecto 14). Al implementar esta feature hay que comprobar el orden: el parte se guarda ANTES de archivarlo.
 
 ### F-025 · Archivar y cerrar en una sola confirmacion
 
-estado **terminada** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-025-confirmacion-unica`
+estado **terminada** · sin fecha de cierre · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-025-confirmacion-unica`
 
 Quitar el paso de vista previa del circuito. Hoy el front pide DOS confirmaciones para la misma decision: una para archivar y otra, tras ensenar el dry-run del grafico y del cierre, para escribir en el ERP. Al pulsar archivar sobre los partes aptos habra UNA sola confirmacion -la que ya existe- y al confirmarla se ejecutan los tres pasos seguidos: archivar en SharePoint, adjuntar el parte a la reclamacion y cerrarla. DECISION DEL HUMANO DEL 2026-09-11, tomada despues de verificar el circuito completo contra el ERP real: NO hace falta ensenar ningun resumen antes de confirmar; se le planteo que eso es lo que protege de cerrar la incidencia equivocada si la IA leyo mal el numero del papel, y lo reafirmo. OJO: esto DEROGA requisitos aprobados de F-009 y de F-012 que exigen dry-run mostrado al usuario antes de cada commit; se enmiendan con constancia fechada, citando la premisa original literal, NO se borran (mismo patron que R28 de F-010 el 2026-09-03). Las comprobaciones que el backend hace antes de escribir -que la reclamacion existe, en que estado esta, si el documento ya cuelga de ella- NO se tocan: lo que desaparece es la pantalla, no la verificacion. Los partes no aptos siguen sin archivarse.
 
 ### F-026 · Aprobacion humana de los partes que van a revision
 
-estado **terminada** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
+estado **terminada** · sin fecha de cierre · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
 
 Hoy un parte que la validacion manda a revision humana se queda bloqueado para siempre: el front lo pinta en ambar, deja corregir sus campos y consultar la cola, pero NO existe ninguna forma de aprobarlo -ni boton, ni endpoint- y `esArchivable` solo mira el veredicto y el destino que puso la IA. Esta feature cierra ese circuito: cuando el humano corrige los campos o revisa el parte, este pasa a APROBADO y entra en el flujo normal de archivo y cierre. NO TOCA SIGRID: la puerta del ERP sigue siendo la misma y el cierre sigue exigiendo lo que exige. EL APROBADO SE GUARDA, no vive solo en el navegador (decision del humano del 2026-09-11): quien aprobo y cuando, en el esquema propio. El motivo no es completismo: un parte llega a revision porque la firma no parecia humana o porque trae observaciones manuscritas del cliente diciendo que la reparacion no esta bien, asi que aprobarlo es la decision de una persona que sobrescribe al sistema en una incidencia que acabara cerrada en el ERP, y esa decision tiene que quedar registrada.
 
 ### F-028 · Estado del parte -pendiente, aprobado, rechazado, cerrado- con historico y transicion manual
 
-estado **terminada** · prioridad 28 · rigor `estandar` · SDD sí · rama `feature/F-028-estado-del-parte`
+estado **terminada** · sin fecha de cierre · prioridad 28 · rigor `estandar` · SDD sí · rama `feature/F-028-estado-del-parte`
 
 REPLANTEADA POR EL HUMANO EL 2026-09-15, despues de verificar F-026 en real. La peticion inicial era poder rechazar un parte aprobado; al concretarla quedo algo mas simple y mas amplio, en sus palabras: <<los partes pueden estar pendientes, rechazados, aprobados o cerrados; lo que quiero es poder cambiar el estado desde donde este a aprobado o rechazado, y que se guarde un historico del estado>>. ESO ES UN MODELO DE ESTADO EXPLICITO DEL PARTE, que hoy NO existe: el estado esta repartido entre el veredicto de la maquina (apto/no_apto, F-004), la aprobacion humana en su tabla (F-026), `postventa.archivos.estado` y `postventa.cierres.estado`, y hay que reconstruirlo cruzando cuatro sitios. LOS CUATRO ESTADOS Y SUS REGLAS, decididas por el humano el 2026-09-15: (1) `pendiente`, el parte que la maquina dejo en no apto y espera decision; (2) `aprobado`, que es DONDE NACE UN PARTE QUE LA MAQUINA DA POR APTO -el verde entra directo en aprobado y el historico registra que lo decidio la maquina, para que el trabajo diario de Posventa no cambie: los verdes se siguen archivando en bloque-; (3) `rechazado`, que impide archivar; (4) `cerrado`, TERMINAL: de ahi no sale ninguna flecha, porque lo escrito en SharePoint y en el ERP no se deshace desde aqui y cambiar el estado solo haria que nuestra base dijera algo distinto del ERP; la web lo explica en vez de fallar. UNA PERSONA PUEDE MOVER EL PARTE A `aprobado` O A `rechazado` DESDE CUALQUIERA DE LOS OTROS TRES -pendiente, aprobado o rechazado-, es decir tambien deshacer lo suyo y lo de la maquina. MOTIVO OBLIGATORIO al rechazar (decision del humano; al aprobar sigue siendo opcional). CUALQUIERA que entre puede cambiarlo: no hay roles en el servicio y el acceso ya lo acota el grupo de Posventa. HISTORICO APPEND-ONLY: cada cambio guarda de que estado a cual, quien -oid opaco, nunca el login del ERP-, cuando y por que; ninguna fila se pisa. Hace falta porque hoy `upsert_aprobacion` hace ON CONFLICT DO UPDATE poniendo la revocacion a NULL con `hash_parte` como clave primaria, asi que un ciclo aprobar -> rechazar -> aprobar deja UNA sola fila y ni rastro del rechazo (medido el 2026-09-15). LO QUE YA ESTA HECHO Y NO SE REINVENTA: F-026 dejo `Aprobacion` con `revocada_at_utc` y `revocada_motivo`, `esta_vigente`, `puede_archivarse` atento a la vigencia, y la pantalla sabe volver al color de antes cuando el estado serializado dice `revocado`. LA REGLA DE F-026 SE MANTIENE: la decision humana se registra AL LADO del veredicto de la maquina, nunca encima (R11); el veredicto, el destino y los motivos siguen intactos. NO TOCA SIGRID NI SHAREPOINT. SEGUNDO ASUNTO, anadido por el humano el 2026-09-15 nada mas verificar F-026 en real: LOS ESPACIOS DE LOS CODIGOS DE INCIDENCIA. La IA leyo el numero del papel como 'RS26.09 / 0149', con un espacio a cada lado de la barra, y eso ROMPE EL CIERRE: `a_codigo_de_sigrid` se apoya en `normalizar_codigo`, que colapsa los espacios repetidos pero NO quita los que rodean a un separador, asi que el codigo llega al ERP con sus dos espacios y la busqueda -WHERE c.cod = ?, igualdad exacta- no encuentra la reclamacion. Reproducido el 2026-09-15: 'RS26.09 / 0149' sale de `a_codigo_de_sigrid` tal cual. LO QUE HACE EL DEFECTO DIFICIL DE VER es que EL NOMBRE DEL FICHERO SALE BIEN POR CASUALIDAD -la barra pasa a ' - ' y el colapso posterior se come el sobrante-, o sea que el parte se archiva con el nombre correcto y solo falla el cierre. Y no es solo la barra: 'RS26.09- 0149' produce el nombre '0626 - RS26.09- 0149 PARTE FIRMADO.pdf', distinto del canonico, y ese si se archivaria mal. EL ARREGLO VA EN EL DOMINIO, en `normalizar_codigo`, para que lo hereden las dos conversiones y no diverjan. OJO: al cambiar la normalizacion cambia tambien `huella_de_veredicto` de F-026, que normaliza los mismos campos; hay que comprobar que eso no revoca aprobaciones vigentes por nada. Va en esta feature por peticion expresa del humano, aunque es un defecto independiente del rechazo manual.
 
 ### F-030 · REGRESION: la aprobacion humana no sobrevive a la puerta de F-028
 
-estado **terminada** · prioridad 30 · rigor `critico` · SDD sí · rama `feature/F-030-veredicto-persistido`
+estado **terminada** · sin fecha de cierre · prioridad 30 · rigor `critico` · SDD sí · rama `feature/F-030-veredicto-persistido`
 
 DEFECTO EN PRODUCCION detectado por el humano el 2026-09-16 a las 18:10 sobre la incidencia RS26.09/0178 (parte b7e9b037): un parte aprobado por una persona no se archiva, y el backend responde 'este parte esta pendiente: la validacion lo manda a cola_validacion_humana y no consta que nadie lo haya aprobado'. CAUSA, diagnosticada con las dos huellas calculadas: POST /api/estado guarda la decision junto a la HUELLA del veredicto completo (interface_adapters/api/estado.py:162,198), pero POST /api/archivar NO recibe la extraccion y fabrica un ResultadoValidacion de pega con motivos=(), clasificacion_firma=HUMANA fija y observaciones=None (archivar.py:190-198). La puerta recomputa la huella sobre ese veredicto falso (puerta_de_estado.py:112 -> domain/models/estado.py:325-328,355-357), no coincide con la apuntada y tumba la aprobacion. Medido sobre un parte con observaciones manuscritas: huella real 44aeec3e... contra huella del stub 9d8596a0... El mismo stub esta en adjuntar.py:244-249 y cerrar.py:212-217: las TRES puertas. ES REGRESION DE F-028: hasta F-026 la puerta era admite_circuito(validacion, aprobacion) y comparaba solo el destino aprobado, con esta docstring literal: 'lo que hace que la puerta sirva de algo sin poder recomputar la huella'. F-026 sabia que /api/archivar no puede rehacer el veredicto; F-028 (T11, commit 51fbe77) la sustituyo por estado_del_parte, que si lo recomputa, y no migro los tres endpoints. Entro en produccion con el despliegue del 2026-09-16 07:33 UTC. ALCANCE: todos los partes aprobados a mano, en archivar, adjuntar y cerrar; los verdes automaticos y los rechazos siguen bien. EL TEST QUE FALTO: test_f028_puertas.py:737 construye la decision y la puerta con el MISMO objeto de validacion, asi que las huellas coinciden por construccion, y no hay ni un test que recorra decidir -> archivar con el cuerpo real del endpoint. ARREGLO ELEGIDO POR EL HUMANO el 2026-09-16, descartado el parche por destino: que las tres puertas dejen de juzgar un veredicto venido del cuerpo y usen el veredicto PERSISTIDO, que es lo que R33 ya exige para la situacion. OJO: postventa.validaciones guarda veredicto, destino, clasificacion y motivos pero NO las observaciones ni los dos campos decisivos de la huella; hay que traerlos de postventa.partes para recomponerla.
 
 ### F-031 · El nombrado del fichero archivado sale del cuerpo, no de lo persistido
 
-estado **terminada** · prioridad 31 · rigor `critico` · SDD sí · rama `feature/F-031-nombrado-persistido`
+estado **terminada** · sin fecha de cierre · prioridad 31 · rigor `critico` · SDD sí · rama `feature/F-031-nombrado-persistido`
 
 Hallazgo de la spec de F-030 (design.md seccion 10.7), 2026-09-16, declarado FUERA DE ALCANCE alli a proposito y dado de alta aqui por decision del humano. POST /api/archivar decide la carpeta de SharePoint y el nombre del fichero con el codigo_obra y el numero_incidencia DEL FORMULARIO, no con los guardados. Esos dos campos entran en la huella del veredicto, asi que a partir de F-030 se da una asimetria: la puerta aprueba los valores de la base y el fichero se nombra con los del cuerpo. Si no coincidieran, un PDF con el DNI de un cliente acabaria archivado en la carpeta de OTRA OBRA. Hoy no ocurre porque el front manda lo que leyo, de modo que esto es una defensa en profundidad, no un fallo observado. NO se metio en F-030 porque cerrarlo obliga a dos cosas que aquella no toca: mover el nombrado a lo persistido, y mirar que hace el front cuando una persona corrige a mano el codigo de obra o el numero de incidencia -si esa correccion se guarda antes de archivar, o solo viaja en el cuerpo-. Esa segunda parte puede cambiar el circuito del front, no solo el backend.
 
 ### F-032 · Los codigos no admiten espacios: ni para Sigrid, ni para la carpeta, ni al guardarlos
 
-estado **terminada** · prioridad 32 · rigor `critico` · SDD sí · rama `feature/F-032-codigos-sin-espacios`
+estado **terminada** · sin fecha de cierre · prioridad 32 · rigor `critico` · SDD sí · rama `feature/F-032-codigos-sin-espacios`
 
 Detectado por el humano el 2026-09-17 al verificar F-030 contra produccion (V1). El circuito funciono, pero ANTES tuvo que editar a mano el codigo del parte: la IA habia leido 'RS 26.09/0178', con un espacio DENTRO del primer tramo. La busqueda de la reclamacion en Sigrid es igualdad exacta (infrastructure/sigrid/consultas.py:78-84, WHERE c.tip = ? AND c.cod = ?), asi que devuelve cero filas y el cierre muere en ReclamacionNoLocalizada (paso_cierre.py:308-312); lo mismo el grafico (paso_grafico.py:304). CAUSA: normalizar_codigo (domain/models/nombrado.py:145-146) COLAPSA los espacios interiores a uno y solo ELIMINA los que flanquean el separador / o -. F-028 arreglo el caso 'RS26.09 / 0149' (R44-R47, cerrada el 2026-09-16) pero el espacio lejos de la barra sobrevive al colapso. Y nadie mas normaliza: la extraccion guarda el valor crudo (paso_extraccion.py:106), F-004 lo copia tal cual al veredicto, el front solo hace trim y postventa.partes se queda el literal sucio. DANO SILENCIOSO ADEMAS DEL CIERRE: el nombre del fichero sale '0626 - RS 26.09 - 0178 PARTE FIRMADO.pdf' y nombre_admisible lo ACEPTA, asi que el mismo parte puede acabar en SharePoint con dos nombres distintos; y el codigo de obra pasa por la misma funcion y decide la CARPETA, de modo que un '06 26' mandaria un PDF con el DNI manuscrito de un cliente a una carpeta que no es. ALCANCE ELEGIDO POR EL HUMANO el 2026-09-17, los dos sitios que NO tocan la huella: (1) normalizar_codigo elimina todos los espacios en vez de colapsarlos -una linea, cubre ERP, carpeta y nombre de fichero-; (2) la extraccion sanea codigo_obra y numero_incidencia para que lo que se persista en postventa.partes nazca sin espacios y no haya que editar un parte a mano nunca mas. DESCARTADO EXPRESAMENTE tocar _normalizar de la huella (domain/models/aprobacion.py:165-178): la huella guardada se calculo con la regla vieja y la recompuesta usaria la nueva, asi que todo parte aprobado cuyo codigo u observaciones lleven un espacio volveria a 'pendiente' y habria que decidirlo otra vez; rompe ademas R50 y R51 de F-028 -que exigen que las dos normalizaciones sigan separadas y que ningun cambio invalide una decision vigente, con test centinela en test_f028_huella_intacta.py- y el razonamiento de la seccion 8 de design.md de F-030. Si algun dia se quieren alinear, es feature propia con migracion. COSTE CERO SOBRE LA HUELLA, ya medido por F-028: 'cambiar normalizar_codigo no cambia ni una huella'. RIESGO A RESOLVER EN EL DISENO: un parte ya archivado como '... - RS 26.09 - 0178 ...pdf' se re-archivaria con nombre distinto, posible duplicado en SharePoint. Y OJO: las filas ya guardadas en postventa.partes con el codigo sucio no las limpia nadie; reprocesar un parte lo limpia Y caduca su aprobacion, que es el comportamiento correcto segun R19 de F-028. CERRADA el 2026-09-17 con review APROBADA. Queda SIN RECORRER la T14, la medicion previa contra la base (design.md seccion 6.3): es MANUAL (humano), exige credenciales que ningun agente tiene, y **sin ella no se despliega** (R26). Su consulta, de solo lectura, esta en progress/impl_F-032.md lista para copiar. Queda ademas pendiente del humano la verificacion de punta a punta con un parte real cuyo codigo lleve un espacio, que es el criterio de aceptacion 1 y solo se puede dar por cumplido contra el ERP.
 
 ### F-033 · La primera capa contra el duplicado en SharePoint esta inerte desde el endpoint
 
-estado **terminada** · prioridad 33 · rigor `critico` · SDD sí · rama `feature/F-033-l1-traza-archivo`
+estado **terminada** · sin fecha de cierre · prioridad 33 · rigor `critico` · SDD sí · rama `feature/F-033-l1-traza-archivo`
 
 Defecto D-A1, hallado y MEDIDO por la spec de F-032 el 2026-09-17 (design.md seccion 6.2), dado de alta por decision del humano ese mismo dia. La arquitectura declara TRES capas contra subir dos veces el mismo parte a SharePoint, y la primera -L1, cortar sin llamar a nadie cuando el parte ya consta archivado, F-006 R14- NO ESTA CONECTADA: paso_archivo la espera como argumento opcional (paso_archivo.py:96, traza_previa=None) y archivar.py:118-128 no se la pasa. El unico sitio del arbol que la pasa es tests/test_f019_orden_archivado.py. Consecuencia: POST /api/archivar VUELVE A SUBIR SIEMPRE, y lo que evitaba el duplicado era el reemplazo del HOMONIMO (paso_archivo.py _subir busca por nombre), que funcionaba solo porque el nombre no cambiaba nunca. AGRAVANTE: re-archivar pisa la traza de postventa.archivos -clave por hash_parte-, asi que el nombre_fichero y la carpeta viejos se pierden y el fichero huerfano deja de ser localizable desde nuestra base. POR QUE SALE AHORA: F-032 hace que el nombre del fichero CAMBIE al limpiar los espacios, y con ello el reemplazo por homonimo deja de tapar el agujero. F-032 NO lo arregla -reabriria el alcance que fijo el humano el 2026-09-17- y mitiga con una consulta de solo lectura antes de desplegar. LO QUE HACE FALTA: un campo nuevo en SituacionParte, un metodo consultar_archivo en RepositorioPartesPort, su adaptador, una sentencia, su mapeo y los tests de los tres. Pisa el terreno de F-019 y de F-031, asi que conviene mirarlas juntas. Hoy SituacionParte no trae la traza del archivo (domain/models/estado.py:189-208) y el puerto solo tiene consultar_grafico, consultar_situacion y consultar_estado_cierre.
 
 ### F-034 · Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado
 
-estado **terminada** · prioridad 134 · rigor `critico` · SDD sí · rama `feature/F-034-archivo-persistido-en-erp`
+estado **terminada** · sin fecha de cierre · prioridad 134 · rigor `critico` · SDD sí · rama `feature/F-034-archivo-persistido-en-erp`
 
 Hallazgo D-6 de la spec de F-033 (design.md seccion 10), 2026-09-18, dado de alta por decision del humano ese mismo dia. adjuntar.py (lineas 262-265) y cerrar.py (lineas 235-238) construyen la TrazaArchivo con el estado_archivo que llega EN EL CUERPO, y el front lo manda FIJO a archivado (pipeline.js:540 y :631). Consecuencia: la puerta del grafico no tiene otra detras que mire el archivo de verdad, y un parte aprobado pero sin archivar se adjuntaria al ERP de produccion. Es la misma familia de defecto que F-030 (el veredicto del cuerpo) y F-031 (el nombrado del cuerpo): la fuente tiene que ser lo persistido. AMPLIADA el 2026-09-22 por decision del humano con el hallazgo H-1 de la spec de F-031: no es solo el estado_archivo, son tambien los dos codigos, y esa mitad es MAS GRAVE porque el numero de incidencia elige la reclamacion que se cierra en Sigrid. Orden decidido por el humano: F-033 -> F-031 -> F-034 -> F-013. F-033 ya trae la traza del archivo dentro de la consulta de situacion, que es lo que esta ficha deberia leer.

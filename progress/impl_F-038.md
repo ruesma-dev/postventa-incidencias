@@ -2766,3 +2766,27 @@ Desde `services/postventa-front`:
   de mutación de `revision.test.js` fallaban; se volvió a sacar en LF, mismo
   contenido) y faltaba el enlace al venv compartido de la API.
 - `BACKLOG.md` regenerado por `init.sh`, en este commit aparte.
+
+## T10 · Merge y publicación del front (2026-11-11/12)
+
+- Merge a `dev` en `eca6ae3` (líder). Front publicado por el humano con
+  `-SoloFront` desde una copia limpia de `dev` (`eca6ae3`), el 2026-11-12.
+- Verificación en producción (líder en el Chrome del humano, sin pulsar nada
+  que escriba; la ventana no pintaba, así que se leyó el DOM y el HTML
+  publicado):
+  1. `bandeja.html`: pestaña y paso 02 como página actual (`aria-current`),
+     sin marca de construcción; el 03 sin enlace ni marca. Las pestañas en
+     construcción conservan `data-construccion`.
+  2. `#/bandeja`: la tarjeta «Revisar la bandeja» «En producción» lleva a
+     `bandeja.html` en la misma pestaña; siguen los bloques de F-039, F-043 y
+     F-040; ningún botón de maqueta de F-038 (`data-placeholder="F-038"`: 0).
+  3. Portada: la entradilla nueva (Q-12) y la tarjeta 02 «En producción» a
+     `bandeja.html`; hoja `portal.css?v=80c9887e36`.
+  4. `index.html`, `partes.html`, `importar.html` y `oficios.html`: pestaña y
+     pasos 02 y 03 a `bandeja.html`, sin marca: sin regresión.
+  5. `importar.html`: «Solo lectura: para revisar, corregir o descartar, la
+     bandeja de revisión (abajo).» (Q-11); «llegará con F-038» en ninguna
+     página.
+- `azure-apps/postventa_incidencias.md` al día (R20), commit `402b082`, sin
+  push; los mismos futuros sobre F-038, corregidos también en
+  `docs/INTEGRACION.md`.

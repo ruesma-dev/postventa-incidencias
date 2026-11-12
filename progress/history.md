@@ -2373,3 +2373,34 @@ Lo que enseñó:
 Pendiente fuera de la ficha: las comprobaciones 2 a 4 de T14 (App Settings,
 `POST /api/archivar` al host desnudo, restricción de acceso público), del
 humano; cerrar F-058 y retirar su worktree si el humano lo aprueba.
+
+---
+
+## F-038 · Bandeja de revisión: editar, descartar y aprobar — 2026-11-12
+
+**Cerrada.** Rama `feature/F-038-bandeja-revision`, mergeada en `dev`
+`eca6ae3`; la página se publicó el 2026-10-21 (T6) y el cierre de la sección
+el 2026-11-12 (`-SoloFront`). Rigor `critico`.
+
+Qué queda: `bandeja.html`, la revisión de la bandeja de una obra (editar,
+descartar, recuperar y aprobar, con quién y cuándo; las volcadas y en duda
+solo se ven), sobre las rutas de F-056; la sección «Bandeja de revisión» del
+portal «En producción», sin botones de maqueta; los textos de `importar.html`
+y de la portada al día (Q-11 y Q-12).
+
+Evidencias: T7 en producción el 2026-11-09 (pasos 1 a 10; el 2 y el 10 con
+aceptación escrita del humano), review de T8 APROBADA, `init.sh` en verde
+(API 9932, front 911) y T10 verificada en producción.
+
+Queda abierto fuera de la ficha: **F-073** (las tres lecturas de Sigrid de
+`GET /api/revision` en paralelo) y **F-074** (instancia siempre preparada en
+`sigrid-api`), de T7 paso 2; O-B1b-3; y que el historial del detalle no se
+refresca solo tras guardar (T7 paso 3).
+
+Lo que enseñó:
+
+- **Un worktree nuevo no es un entorno**: le faltaba el enlace al venv de la
+  API y sacó el front con CRLF, y la suite JS fallaba por eso. Comprobar las
+  dos cosas antes de leer un rojo como fallo del código.
+- **El paso «los recuentos no cambian»** de una verificación larga en el tiempo
+  no se cumple en una obra viva: la foto de antes tiene que ser del mismo día.

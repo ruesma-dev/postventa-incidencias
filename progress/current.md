@@ -1,12 +1,10 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-038 · `in_progress` · 2026-11-10 · retomada por decisión del humano
-> T7 cerrada el 2026-11-09 (verificación en producción; pasos 2 y 10 con aceptación escrita del humano), en la rama
-> `feature/F-038-bandeja-revision` (worktree `postventa-f038`). Siguiente: el spec-author concilia T8 y T10 con `dev`
-> (F-040 T6a ya hizo la pestaña, los pasos 02 y 03 y la tarjeta; quedan el «llegará con F-038» de `importar.html`,
-> los botones de maqueta de `index.html`, ARCHITECTURE «En producción» y F-038 → done); luego T8, T9, T10 y T11.
-> **El estado del backlog pasa a llevarse en la rama de F-038.**
+> ## F-038 · `done` · 2026-11-12 · mergeada en `dev` `eca6ae3`, front publicado y verificado (T10)
+> Detalle en `progress/history.md` y `progress/impl_F-038.md`. Ninguna feature en curso. Pendientes del humano:
+> comprobaciones 2–4 de T14 de F-071; cerrar F-058 y retirar su worktree si lo aprueba. Siguiente según el
+> backlog: F-072, luego retomar F-040 (Q-3 de F-071).
 
 > ## F-071 · `done` · 2026-11-10 · mergeada en `dev` `c201f29`, backend publicado y verificado (T16)
 > Detalle en `progress/history.md` y `progress/impl_F-071.md` «Bloque 5». Pendientes del humano: comprobaciones 2–4

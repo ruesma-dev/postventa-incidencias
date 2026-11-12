@@ -191,13 +191,15 @@ def test_f065_r30_la_cabecera_dice_que_f065_lo_toco():
 def test_f065_a7_la_cabecera_dice_que_f065_esta_desplegada():
     """Cierre del Bloque A7 (2026-10-31): desplegada desde `dev` `ed590bd` y
     verificada en solo lectura (T-A11 a T-A17); T-A18, el ensayo, pendiente.
-    F-038 (front) **no** se ha publicado: su frase no cambia."""
+    F-038 (front) se publicó el 2026-10-21 y se cerró el 2026-11-11 (merge
+    `a7400a1`): la cabecera lo dice en pasado y no vuelve a la frase de antes."""
     cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
 
     for texto in ("desplegada el 2026-10-31 desde dev ed590bd", "T-A11 a T-A17", "T-A18 pendiente"):
         assert texto in cabecera, f"la cabecera no dice «{texto}»"
     assert "F-065" in cabecera and "pendiente de publicar" not in cabecera
-    assert "implementada en su rama; se publica con su T6" in cabecera
+    assert "publicada el 2026-10-21, verificada en producción el 2026-11-09" in cabecera
+    assert "implementada en su rama; se publica con su T6" not in cabecera
 
 
 def test_f065_r30_la_fila_de_sigrid_api_de_la_seccion_uno_gana_la_lectura():
@@ -631,7 +633,9 @@ def test_f065_r30_la_copia_de_azure_apps_dice_lo_que_cambia():
         assert texto in cabecera, f"la cabecera de la copia no dice «{texto}»"
     assert "desplegada el 2026-10-31 desde dev ed590bd" in cabecera
     assert "F-065 implementada y pendiente de publicar" not in cabecera
-    assert "F-038 mergeada y sin publicar todavía" in cabecera
+    # F-038 se cerró el 2026-11-11 (azure-apps `402b082`): la copia lo dice en pasado.
+    assert "F-038 publicada el 2026-10-21, verificada en producción el 2026-11-09" in cabecera
+    assert "F-038 mergeada y sin publicar todavía" not in cabecera
 
 
 @sin_azure_apps

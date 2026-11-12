@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **73 features**, 41 abiertas, 32 terminadas.
+Resumen: **73 features**, 40 abiertas, 33 terminadas.
 
 Bloqueadas: **F-040, F-066**.
 
@@ -23,7 +23,6 @@ Bloqueadas: **F-040, F-066**.
 | F-062 | Gestionar desde el portal las incidencias ya volcadas a Sigrid: editar o anular el parte | 7 | pendiente | critico | `feature/F-062-gestionar-volcadas` |
 | F-063 | Normalizar el código de obra: un cero delante cuando empieza por tres cifras | 7 | pendiente | critico | `feature/F-063-normalizar-codigo-obra` |
 | F-073 | La revisión de la bandeja lee Sigrid en paralelo: las tres lecturas del catálogo a la vez | 7 | pendiente | estandar | `feature/F-073-revision-lee-sigrid-en-paralelo` |
-| F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 8 | pendiente | critico | `feature/F-058-plantilla-ubicaciones-sigrid` |
 | F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 9 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
 | F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 10 | pendiente | critico | `feature/F-052-secretos-ajustes` |
 | F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 11 | pendiente | estandar | `feature/F-054-dev-server-127` |
@@ -77,6 +76,7 @@ Bloqueadas: **F-040, F-066**.
 | F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 6 | critico |
 | F-007 | Front de carga y revisión | 7 | estandar |
 | F-010 | Despliegue en Azure y tarjeta en el portal | 8 | estandar |
+| F-058 | La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad | 8 | critico |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | documental |
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | critico |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | critico |
@@ -163,12 +163,6 @@ Alta del 2026-10-20 por petición del humano. Los códigos de obra de Sigrid lle
 estado **pendiente** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-073-revision-lee-sigrid-en-paralelo`
 
 Alta del 2026-11-09 por decisión del humano, tras medir en producción la carga de bandeja.html?obra=0677 (285 incidencias). La página pinta en menos de 0,3 s; lo lento es GET /api/revision, de 0,4 a 15 s. La línea «F-060 tiempos del listado» y App Insights de sigrid-api lo explican: el listado hace tres lecturas a Sigrid seguidas (catalogo.leer_unidades, catalogo.leer_oficios y ubicaciones), cada una de unos 0,1 s, pero cuando sigrid-api estrena instancia esa lectura tarda unos 4 s (unos 3,5 s antes de que sigrid-api la atienda y 0,75 s de su primera conexión SQL); si coinciden dos o tres, la carga pasa de 8 a 13 s. Lo nuestro (base, cálculo, serializar) no pasa de 0,2 s. El arreglo: lanzar las tres lecturas a la vez en interface_adapters/api/revision.py y su caso de uso, sin cambiar el contrato ni el front. Sin caché del catálogo (descartada por el riesgo de datos viejos). La causa de raíz, en sigrid-api, queda en F-074.
-
-### F-058 · La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad
-
-estado **pendiente** · prioridad 8 · rigor `critico` · SDD sí · rama `feature/F-058-plantilla-ubicaciones-sigrid`
-
-Alta del 2026-10-06 al resolver la Q-5 de F-056 (propuesta del spec-author). Hoy la columna Ubicación de la plantilla de F-036 sale de una lista cerrada versionada (config/plantilla_incidencias.yaml), la misma para todas las filas, y la importación la valida contra ella; la revisión de F-056, en cambio, valida contra Sigrid en vivo: las ubicaciones de la tipología de la unidad (upv.obrtplide → prmtpl.ubica, separadas por ;, exactas tras recortar; medido en la 0677: 3 tipologías de 31 a 37 ubicaciones, que cubren las 1.261 reclamaciones). Una fila puede entrar con una ubicación de la plantilla que no es de su unidad y quedar luego ubicacion_fuera_de_lista. Esta ficha alinea las dos: la plantilla y la importación usan la misma lectura que F-056. Ojo: en el Excel la lista depende de la unidad de cada fila. Opciones para su spec: (a) desplegable dependiente de la columna Unidad (rangos con nombre por unidad o tipología y validación con INDIRECTO, probado en Excel, Excel web y LibreOffice); (b) pares Unidad · Ubicación en una sola columna, como los pares oficio · proveedor de F-036; (c) un desplegable con la unión de la obra y la validación por unidad solo al importar (con el Excel de errores). Retira la lista de ubicaciones del YAML. No cambia la bandeja ni la revisión. SPEC ESCRITA el 2026-10-09 en el worktree postventa-f058 (rama feature/F-058-plantilla-ubicaciones-sigrid), pendiente de aprobación. Respuestas del humano (2026-10-09): D-4 solo se aceptan plantillas de la versión nueva (una v1 se rechaza con motivo claro; cambia el criterio 4 de la ficha); Q-4 el Excel se rellena a mano en Excel; Q-6 autoriza la importación de prueba en producción; Q-7 el Bloque 0 se prueba en Excel de escritorio y Excel web (sin LibreOffice). Pendiente: D-6 (retirar o congelar scripts/migrar_excel_f036.py) y el resto de recomendaciones. F-060 done y desplegada (2026-10-14): sin bloqueo.
 
 ### F-055 · init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado
 
@@ -457,6 +451,12 @@ Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el p
 estado **terminada** · prioridad 8 · rigor `estandar` · SDD sí · rama `feature/F-010-despliegue`
 
 Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de Entra, grupo de seguridad de Posventa (hay que crearlo) y alta de la tarjeta en front-portal. La tarjeta se edita en ese repositorio, no en este. PRIORIDAD SUBIDA EL 2026-08-20 por el humano, por delante de F-008 y F-009 (las dos de Sigrid): quiere que **negocio pruebe el circuito completo desplegado sin tocar Sigrid todavía**. Encaja con lo que ya hay: F-002 a F-007 cubren entrada, extracción, validación, archivo y front, y el cierre en el ERP es justamente lo que queda fuera. Efecto lateral que importa: F-010 es quien **desbloquea T18 de F-006**, la verificación de subida real a SharePoint, que está diferida esperando un entorno desplegado.
+
+### F-058 · La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad
+
+estado **terminada** · prioridad 8 · rigor `critico` · SDD sí · rama `feature/F-058-plantilla-ubicaciones-sigrid`
+
+Alta del 2026-10-06 al resolver la Q-5 de F-056 (propuesta del spec-author). Hoy la columna Ubicación de la plantilla de F-036 sale de una lista cerrada versionada (config/plantilla_incidencias.yaml), la misma para todas las filas, y la importación la valida contra ella; la revisión de F-056, en cambio, valida contra Sigrid en vivo: las ubicaciones de la tipología de la unidad (upv.obrtplide → prmtpl.ubica, separadas por ;, exactas tras recortar; medido en la 0677: 3 tipologías de 31 a 37 ubicaciones, que cubren las 1.261 reclamaciones). Una fila puede entrar con una ubicación de la plantilla que no es de su unidad y quedar luego ubicacion_fuera_de_lista. Esta ficha alinea las dos: la plantilla y la importación usan la misma lectura que F-056. Ojo: en el Excel la lista depende de la unidad de cada fila. Opciones para su spec: (a) desplegable dependiente de la columna Unidad (rangos con nombre por unidad o tipología y validación con INDIRECTO, probado en Excel, Excel web y LibreOffice); (b) pares Unidad · Ubicación en una sola columna, como los pares oficio · proveedor de F-036; (c) un desplegable con la unión de la obra y la validación por unidad solo al importar (con el Excel de errores). Retira la lista de ubicaciones del YAML. No cambia la bandeja ni la revisión. SPEC ESCRITA el 2026-10-09 en el worktree postventa-f058 (rama feature/F-058-plantilla-ubicaciones-sigrid), pendiente de aprobación. Respuestas del humano (2026-10-09): D-4 solo se aceptan plantillas de la versión nueva (una v1 se rechaza con motivo claro; cambia el criterio 4 de la ficha); Q-4 el Excel se rellena a mano en Excel; Q-6 autoriza la importación de prueba en producción; Q-7 el Bloque 0 se prueba en Excel de escritorio y Excel web (sin LibreOffice). Pendiente: D-6 (retirar o congelar scripts/migrar_excel_f036.py) y el resto de recomendaciones. F-060 done y desplegada (2026-10-14): sin bloqueo. CERRADA el 2026-11-12 por absorción en F-071 (decisión del humano 2026-11-05, Q-11; cierre aprobado por el humano el 2026-11-12): sus criterios los cumple F-071, done con reviews APPROVED, init.sh en verde y verificada en producción con la 0677 (T16). No se implementó por su cuenta; la rama feature/F-058-plantilla-ubicaciones-sigrid se conserva como archivo y el worktree postventa-f058 se retira.
 
 ### F-008 · Modelo de posventa en Sigrid: confirmar contra el ERP
 

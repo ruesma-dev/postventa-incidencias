@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **73 features**, 40 abiertas y 33 terminadas. Por columna: 0 en Review, 2 en Blocked, 0 en In progress, 2 en Spec aprobada, 1 en To do, 35 en Backlog y 33 en Done.
+Resumen: **73 features**, 40 abiertas y 33 terminadas. Por columna: 0 en Review, 2 en Blocked, 0 en In progress, 3 en Spec aprobada, 0 en To do, 35 en Backlog y 33 en Done.
 
 ## Review
 
@@ -24,14 +24,13 @@ _Ninguna feature en implementación._
 
 | # | Feature | Spec aprobada | Prioridad | Rigor | Rama |
 |---|---|---|---|---|---|
+| F-072 | El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado | pendiente de tu aprobación | 2 | critico | `feature/F-072-tipo-reclamacion-sigrid` |
 | F-064 | La bandeja enseña también las incidencias que ya están en Sigrid y los conflictos con lo importado | pendiente de tu aprobación | 5 | critico | `feature/F-064-bandeja-con-sigrid` |
 | F-024 | Datos del parte enlazados a Sigrid, para el datamart | pendiente de tu aprobación | 121 | estandar | `feature/F-024-datos-parte-sigrid` |
 
 ## To do
 
-| # | Feature | Prioridad | Rigor | Rama |
-|---|---|---|---|---|
-| F-072 | El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado | 2 | critico | `feature/F-072-tipo-reclamacion-sigrid` |
+_Nada comprometido._
 
 ## Backlog
 
@@ -115,7 +114,7 @@ _Ninguna feature en implementación._
 
 ### F-072 · El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado
 
-estado **to do (comprometida)** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-072-tipo-reclamacion-sigrid`
+estado **spec lista** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-072-tipo-reclamacion-sigrid`
 
 Alta del 2026-11-05 por decisión del humano (Q-3 de F-071, «toca lo que sea»). Hoy la columna «Listado» de la plantilla ofrece dos valores fijos del YAML (Primer listado / Segundo listado), la bandeja los guarda pero el volcado manda SIEMPRE el tipo 0002 (PRIMER LISTADO POSTVENTA, constante TIPO_RECLAMACION en domain/models/volcado.py): una incidencia de segundo listado entraría en Sigrid como primer listado. Alcance: la plantilla ofrece los tipos vigentes de dbo.auxtrcp (vía sigrid-api, lectura) al descargar; la importación valida contra los de ese momento y guarda el código; la bandeja lo guarda en columna nueva (DDL solo en el schema postventa); la revisión lo enseña y deja cambiarlo; el volcado manda el código elegido. En blanco = 0002, como hoy (decisión del humano 2026-11-05). Orden fijado por el humano: F-071 -> F-072 -> retomar F-040; el primer volcado real (T5.4 de F-040) no se hace antes de F-072.
 

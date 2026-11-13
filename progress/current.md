@@ -1,6 +1,15 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · `todo` · 2026-11-13 · spec escrita por el spec-author, pendiente de aprobación
+> `specs/F-072-tipo-reclamacion-sigrid/` (requirements 148/150, design 249/250, tasks en 9 bloques, base fija propuesta
+> `dev` `6994cb0`). Solo backend: el front publicado sigue sirviendo porque se mantiene la forma del contrato
+> (`listado` lleva el código de `auxtrcp`, `catalogo.listados` los tipos). Columna nueva `tipo_reclamacion` en
+> `bandeja_incidencias` y `revisiones_bandeja` (`17_tipo_reclamacion.sql`, primer `ALTER TABLE` en producción); huella
+> compatible (las aprobadas de antes siguen intactas). **Para el humano**: Q-1..Q-11 de `design.md` §12. **Mediciones de
+> solo lectura del líder antes de aprobar (T0)**: Q-1 valores de `dbo.auxtrcp` (¿`0002` vigente?), Q-2 recuento de
+> `listado` heredado en la bandeja, Q-3 dueño de las dos tablas frente al rol de la Function (si no es dueño, se para).
+
 > ## Arnés · caché de suites ajustada · 2026-11-13 · mergeado en `dev`
 > `harness/servicios.json` con `depende_de` y `ejecutar_siempre` (inventario, ampliación (b) y recorte de F-059/F-060/F-065
 > aprobados por el humano). Detalle en `progress/impl_arnes_servicios_cache.md`. Con caché, `init.sh` ejecuta igualmente

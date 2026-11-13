@@ -310,3 +310,41 @@ prefiere otra cosa, opciones: sacar esos tres de `ejecutar_siempre` (vuelve
 el riesgo del verde viejo solo para ellos, cubierto en el cierre por
 `ARNES_SIN_CACHE=1`), o abrir trabajo aparte para que decidan el salto antes
 de hacer el trabajo caro.
+
+## Recorte (2026-11-13)
+
+Decisión del humano tras el aviso de la ampliación (b): salen de
+`ejecutar_siempre` de `api` los tres controles de alcance más caros.
+
+### Quitado
+
+- `tests/test_f059_alcance_cerrado.py` (~132 s medidos)
+- `tests/test_f060_alcance_cerrado.py` (~45 s)
+- `tests/test_f065_alcance_cerrado.py` (~64 s)
+
+Los tres entraron en la ampliación (b); ninguno estaba antes en la lista por
+leer `docs/`, `specs/` o el front, así que no había ninguno que conservar.
+Siguen en `ejecutar_siempre` los demás tests que dependen de git
+(`test_f013_*`, `test_f030_veredicto_persistido`, `test_f031` a `test_f034`,
+`test_f036`, `test_f056` y `test_f071_alcance_cerrado`). `api` queda con 36
+rutas.
+
+### Motivo
+
+F-059, F-060 y F-065 están cerradas. El riesgo de que la caché sirva un verde
+viejo de estos tests solo existiría en sus propias ramas, y el cierre de
+cualquier feature se valida con `ARNES_SIN_CACHE=1` (suite completa). El
+`$doc` de `harness/servicios.json` dice qué se dejó fuera, por qué y el coste
+medido.
+
+### Verificación (resultados reales; python del venv de `api`, sin `.env`)
+
+- `python -m harness.servicios --validar` (raíz) →
+  `2 servicio(s): api (python), front (python)`.
+- `ejecutar_siempre` de `api`, desde `services/postventa-api`
+  (`pytest -q -p no:cacheprovider` con las 36 rutas) →
+  **1501 passed, 65 skipped en 104,0 s** (con los tres: 1564 / 343 en
+  346,0 s).
+- `tests/test_servicios_declarados.py` +
+  `services/postventa-front/tests/test_f007_declaracion.py` → 7 passed.
+- No ejecutado: `bash harness/init.sh` (por encargo).

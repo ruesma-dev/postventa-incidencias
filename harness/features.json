@@ -1248,7 +1248,7 @@
         "Ninguna escritura en Sigrid desde local ni desde tests",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "todo",
       "sdd": true,
       "rigor": "critico",
       "priority": 2,

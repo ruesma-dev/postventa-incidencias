@@ -1,6 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Arnés · caché de suites ajustada · 2026-11-13 · mergeado en `dev`
+> `harness/servicios.json` con `depende_de` y `ejecutar_siempre` (inventario, ampliación (b) y recorte de F-059/F-060/F-065
+> aprobados por el humano). Detalle en `progress/impl_arnes_servicios_cache.md`. Con caché, `init.sh` ejecuta igualmente
+> 36 rutas de `api` (~2 min) y 5 de `front`. **Pendiente para `arnes-base`** (no portado, el humano no lo ha pedido):
+> `tests/test_f059_ejecucion.py::test_f059_r9_timeout_mata_el_arbol_y_no_es_rojo` es intermitente con la máquina
+> cargada (`timeout_s=3`; el nieto no llega a escribir su pid); falló una vez el 2026-11-13 y pasó en 3 repeticiones.
+> Siguiente: F-072, con su rama sacada en la carpeta principal para arrancar ya con el arnés 1.10.
+
 > ## Arnés 1.10.0 · instalado · 2026-11-13 · mergeado en `dev`
 > Desde la 1.5.2 (con parches). Detalle en `progress/arnes_1.10.md`. Review APROBADO e `init.sh` en verde. El humano
 > aprobó `rigor.local.json` (`critico` por defecto, 8 workers) y el `critico` de la 1.10 (cobertura 90 %, mutación

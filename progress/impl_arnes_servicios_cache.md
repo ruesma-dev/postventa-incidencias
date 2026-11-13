@@ -136,6 +136,9 @@ con algún acceso fuera, pero muchos son falsos positivos (ver «Ruido»).
 
 ## Pendiente de decisión (no lo he hecho: no estaba en el plan aprobado)
 
+> **Resuelto el 2026-11-13**: el humano eligió la opción (b). Ver «Ampliación
+> (b) (2026-11-13)» al final.
+
 **Tests que dependen del estado de `git`, no de ficheros.** Los
 `*_alcance_cerrado` de `api` (F-031, 032, 033, 034, 036, 056, 059, 060, 065,
 071), `test_f013_por_obra_intacto`, `test_f013_arquitectura`,
@@ -190,7 +193,7 @@ nueva que traiga su `*_alcance_cerrado` (F-036 y F-071 ya están en
 - **No ejecutado**: `bash harness/init.sh` (lo hace el líder, según el
   encargo).
 
-## Propuestas para `arnes-base` (para el líder; no las he portado)
+## Propuestas para `arnes-base` (descartadas por el humano el 2026-11-13)
 
 1. **Nota en el `$doc` de `servicios.ejemplo.json`**: avisar de que
    `depende_de: ["harness"]` (o cualquier carpeta que contenga
@@ -218,3 +221,92 @@ líneas cambiadas ni mutación (el único cambio es una declaración JSON).
 | `ejecutar_siempre` ejecutado | `api` 1248 passed / 19 skipped (59,2 s); `front` 483 passed (21,8 s) |
 | Cobertura de líneas cambiadas | no aplica (solo JSON) |
 | Mutantes | no aplica |
+
+## Ampliación (b) (2026-11-13)
+
+Encargo aprobado por el humano el 2026-11-13: los tests que dependen del estado
+de `git` van a `ejecutar_siempre`. Solo cambia `harness/servicios.json` (y este
+informe); `features.json` y `arnes-base` no se tocan.
+
+### Cómo se localizaron
+
+`grep` en `services/postventa-api/tests` y `services/postventa-front/tests` de
+los ficheros que lanzan `git` (`subprocess` con `"git"` o
+`shutil.which("git")`), más los que importan ayudantes de esos ficheros. Salen
+15 ficheros: los 14 que invocan `git` directamente y
+`test_f013_arquitectura.py`, que no lo invoca pero importa los ayudantes del
+diff de `test_f013_por_obra_intacto.py` (su «mitad del diff»). Todos los
+nombres del informe se confirmaron con su ruta real; no apareció ninguno más
+que dependa de la rama o de un diff. `test_f051_sin_caracteres_de_control.py`
+usa `git ls-files` (lista el índice, no un diff), y ya estaba en
+`ejecutar_siempre` por leer `docs/`.
+
+### Añadidos
+
+`api` (10; ya estaban `test_f030_veredicto_persistido`,
+`test_f036_alcance_cerrado`, `test_f051_sin_caracteres_de_control` y
+`test_f071_alcance_cerrado`):
+
+- `tests/test_f013_arquitectura.py`
+- `tests/test_f013_por_obra_intacto.py`
+- `tests/test_f031_alcance_cerrado.py`
+- `tests/test_f032_alcance_cerrado.py`
+- `tests/test_f033_alcance_cerrado.py`
+- `tests/test_f034_alcance_cerrado.py`
+- `tests/test_f056_alcance_cerrado.py`
+- `tests/test_f059_alcance_cerrado.py`
+- `tests/test_f060_alcance_cerrado.py`
+- `tests/test_f065_alcance_cerrado.py`
+
+`front` (1): `tests/test_f035_portal.py`.
+
+Listas en orden alfabético y sin duplicados (`api` 39 rutas, `front` 5). El
+`$doc` lleva una frase nueva sobre este tercer caso: la clave de la caché es
+el árbol del servicio y no ve la rama ni el diff contra una base.
+
+### Verificación (resultados reales; python del venv de `api`, sin `.env`)
+
+- `python -m harness.servicios --validar` (raíz) →
+  `2 servicio(s): api (python), front (python)`; `--shell` sin error.
+- `ejecutar_siempre` de `api`, desde `services/postventa-api`
+  (`pytest -q -p no:cacheprovider` con las 39 rutas) →
+  **1564 passed, 343 skipped en 346,0 s** (antes: 1248 / 19 en 59,2 s).
+- `ejecutar_siempre` de `front`, desde `services/postventa-front` (5 rutas) →
+  **620 passed, 7 skipped en 9,4 s**.
+- Raíz: `tests/test_servicios_declarados.py tests/test_cache_suites.py
+  tests/test_f028_cache_de_suites.py` → **142 passed en 58,6 s**. Tras el
+  último retoque del `$doc`: `--validar` de nuevo en verde y
+  `tests/test_servicios_declarados.py` +
+  `services/postventa-front/tests/test_f007_declaracion.py` → 7 passed.
+- No ejecutado: `bash harness/init.sh` (por encargo).
+
+### Aviso para el humano: el coste NO es bajo
+
+El informe anterior suponía que, al saltarse fuera de su rama, estos tests
+costaban poco. Medido fichero a fichero (desde `services/postventa-api`, en
+esta rama, donde se saltan casi todos):
+
+| Fichero | Resultado | Tiempo |
+|---|---|---|
+| `test_f013_arquitectura` | 199 passed, 2 skipped | 6,9 s |
+| `test_f013_por_obra_intacto` | 5 passed, 15 skipped | 6,5 s |
+| `test_f031_alcance_cerrado` | 6 passed, 4 skipped | 4,3 s |
+| `test_f032_alcance_cerrado` | 8 passed, 5 skipped | 1,8 s |
+| `test_f033_alcance_cerrado` | 4 passed, 4 skipped | 6,4 s |
+| `test_f034_alcance_cerrado` | 18 passed, 7 skipped | 10,7 s |
+| `test_f056_alcance_cerrado` | 13 passed, 9 skipped | 7,3 s |
+| `test_f059_alcance_cerrado` | 33 passed, 132 skipped | **132,1 s** |
+| `test_f060_alcance_cerrado` | 17 passed, 64 skipped | **44,9 s** |
+| `test_f065_alcance_cerrado` | 13 passed, 82 skipped | **63,5 s** |
+
+El `ejecutar_siempre` de `api` pasa de ~1 min a ~6 min por cada `init.sh` con
+caché válida (la suite completa de `api` ronda los 20 min, así que la caché
+sigue ahorrando ~14 min). F-059, F-060 y F-065 gastan casi todo, y la mayoría
+en tests que acaban saltados: probablemente trabajo con `git` o con el árbol
+antes de decidir el salto (no lo he investigado: tocarlos queda fuera de este
+encargo). He dejado los tres dentro, porque es lo aprobado, y he corregido el
+`$doc` para que no diga que «cuestan poco» sino el coste medido. Si el humano
+prefiere otra cosa, opciones: sacar esos tres de `ejecutar_siempre` (vuelve
+el riesgo del verde viejo solo para ellos, cubierto en el cierre por
+`ARNES_SIN_CACHE=1`), o abrir trabajo aparte para que decidan el salto antes
+de hacer el trabajo caro.

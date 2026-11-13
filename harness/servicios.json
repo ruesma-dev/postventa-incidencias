@@ -1,5 +1,5 @@
 {
-  "$doc": "Servicios de este monorepo. El portero valida cada uno por separado: su suite, su interprete y su lenguaje. Ver harness/servicios.ejemplo.json para el formato completo. Sobre el servicio 'front' (F-007): va con lenguaje 'python' y NO con 'otro' aunque sea un front estatico, porque tiene un .py de verdad (dev_server.py) y el arnes solo mide cobertura y muta ficheros Python; con 'otro' la suite se ejecutaria por comando_tests pero dev_server.py seguiria contando como NO MEDIDO en la puerta de cobertura, que es exactamente el problema que expulso al front de F-001. Va SIN venv porque no tiene dependencias (dev_server.py es solo biblioteca estandar): sin venv el arnes usa el interprete que corre init.sh, que ya trae pytest y coverage; declarar un venv que no existe haria fallar al portero. Y va SIN comando_tests porque con lenguaje 'python' el arnes ejecuta pytest en la carpeta del servicio, y ahi dentro esta el puente a 'node --test tests_js' (tests/test_f007_js.py). Sobre la cache de suites (arnes 1.10, 2026-11-13): la clave de cada servicio es su arbol en HEAD, pero hay tests de los servicios que leen ficheros FUERA de su ruta, y sin declararlos un cambio solo en esas rutas serviria un verde viejo. Se reparten en dos campos segun lo que lean (inventario completo, medido con una sonda de aperturas de ficheros, en progress/impl_arnes_servicios_cache.md). 'depende_de' lleva solo lo que es codigo o configuracion estable y cambia poco: en 'api', infra/ (los tests *_scripts_infra y otros leen los .ps1 de despliegue), el .gitignore de la raiz y services/postventa-front/staticwebapp.config.json (test_f010_scripts_infra lo cruza con desplegar_front.ps1); en 'front', harness/servicios.json (test_f007_declaracion lee esta declaracion). NO va la carpeta harness/ entera: dentro esta features.json, que cambia con cada paso de estado de una feature (61 de los 65 commits que tocaron harness/ entre octubre y noviembre de 2026 eran solo features.json), y ademas un features.json sin commitear bajo una ruta de depende_de deja sin cache al servicio; los dos tests de 'api' que leen features.json (test_f056_documentacion y test_f059_documentacion) ya leen docs/ y van en ejecutar_siempre. NO van en depende_de docs/, specs/ ni progress/: cambian en casi cada commit y anularian la cache igual que depende_de: [\".\"]. Los tests que leen docs/, specs/, progress/ o la copia de ../azure-apps (otro repositorio, que ninguna clave puede ver), el que barre el repositorio entero (test_f006_repo_sin_identificadores) y los dos que leen el codigo del front desde 'api' (test_f036_alcance_cerrado y test_f071_alcance_cerrado) van en 'ejecutar_siempre': con la cache valida, init.sh los ejecuta igualmente. Al anadir un test de servicio que lea algo fuera de su ruta, se declara aqui en el mismo trabajo.",
+  "$doc": "Servicios de este monorepo. El portero valida cada uno por separado: su suite, su interprete y su lenguaje. Ver harness/servicios.ejemplo.json para el formato completo. Sobre el servicio 'front' (F-007): va con lenguaje 'python' y NO con 'otro' aunque sea un front estatico, porque tiene un .py de verdad (dev_server.py) y el arnes solo mide cobertura y muta ficheros Python; con 'otro' la suite se ejecutaria por comando_tests pero dev_server.py seguiria contando como NO MEDIDO en la puerta de cobertura, que es exactamente el problema que expulso al front de F-001. Va SIN venv porque no tiene dependencias (dev_server.py es solo biblioteca estandar): sin venv el arnes usa el interprete que corre init.sh, que ya trae pytest y coverage; declarar un venv que no existe haria fallar al portero. Y va SIN comando_tests porque con lenguaje 'python' el arnes ejecuta pytest en la carpeta del servicio, y ahi dentro esta el puente a 'node --test tests_js' (tests/test_f007_js.py). Sobre la cache de suites (arnes 1.10, 2026-11-13): la clave de cada servicio es su arbol en HEAD, pero hay tests de los servicios que leen ficheros FUERA de su ruta, y sin declararlos un cambio solo en esas rutas serviria un verde viejo. Se reparten en dos campos segun lo que lean (inventario completo, medido con una sonda de aperturas de ficheros, en progress/impl_arnes_servicios_cache.md). 'depende_de' lleva solo lo que es codigo o configuracion estable y cambia poco: en 'api', infra/ (los tests *_scripts_infra y otros leen los .ps1 de despliegue), el .gitignore de la raiz y services/postventa-front/staticwebapp.config.json (test_f010_scripts_infra lo cruza con desplegar_front.ps1); en 'front', harness/servicios.json (test_f007_declaracion lee esta declaracion). NO va la carpeta harness/ entera: dentro esta features.json, que cambia con cada paso de estado de una feature (61 de los 65 commits que tocaron harness/ entre octubre y noviembre de 2026 eran solo features.json), y ademas un features.json sin commitear bajo una ruta de depende_de deja sin cache al servicio; los dos tests de 'api' que leen features.json (test_f056_documentacion y test_f059_documentacion) ya leen docs/ y van en ejecutar_siempre. NO van en depende_de docs/, specs/ ni progress/: cambian en casi cada commit y anularian la cache igual que depende_de: [\".\"]. Los tests que leen docs/, specs/, progress/ o la copia de ../azure-apps (otro repositorio, que ninguna clave puede ver), el que barre el repositorio entero (test_f006_repo_sin_identificadores) y los dos que leen el codigo del front desde 'api' (test_f036_alcance_cerrado y test_f071_alcance_cerrado) van en 'ejecutar_siempre': con la cache valida, init.sh los ejecuta igualmente. Tercer caso (2026-11-13): los tests que dependen del estado de git y no de ficheros (los controles de alcance que llaman a 'git diff dev...HEAD', 'git diff <base fija>', 'git merge-base' o miran la rama actual: los *_alcance_cerrado, test_f013_por_obra_intacto y test_f013_arquitectura, que usa sus ayudantes, y test_f030_veredicto_persistido en 'api'; test_f035_portal en 'front') tambien van en 'ejecutar_siempre', porque la clave de la cache es el arbol del servicio y no ve la rama ni el diff contra una base: un commit fuera del servicio o un cambio de rama con el mismo arbol serviria el verde de otra situacion. Fuera de la rama de su feature se saltan casi todos, pero no son gratis: con ellos el ejecutar_siempre de 'api' pasa de ~1 a ~6 minutos, sobre todo por test_f059, test_f060 y test_f065_alcance_cerrado (medido el 2026-11-13 en progress/impl_arnes_servicios_cache.md). Al anadir un test de servicio que lea algo fuera de su ruta, se declara aqui en el mismo trabajo.",
   "servicios": [
     {
       "nombre": "api",
@@ -20,22 +20,32 @@
         "tests/test_f010_integracion_expuesto.py",
         "tests/test_f010_tarjeta_portal.py",
         "tests/test_f012_documentacion.py",
+        "tests/test_f013_arquitectura.py",
         "tests/test_f013_documentacion.py",
+        "tests/test_f013_por_obra_intacto.py",
         "tests/test_f019_documentacion.py",
         "tests/test_f025_documentacion.py",
         "tests/test_f026_documentacion.py",
         "tests/test_f028_documentacion.py",
         "tests/test_f030_veredicto_persistido.py",
+        "tests/test_f031_alcance_cerrado.py",
+        "tests/test_f032_alcance_cerrado.py",
+        "tests/test_f033_alcance_cerrado.py",
+        "tests/test_f034_alcance_cerrado.py",
         "tests/test_f036_alcance_cerrado.py",
         "tests/test_f036_documentacion.py",
         "tests/test_f049_villa_tres_cifras.py",
         "tests/test_f051_documentacion.py",
         "tests/test_f051_sin_caracteres_de_control.py",
         "tests/test_f053_documentacion.py",
+        "tests/test_f056_alcance_cerrado.py",
         "tests/test_f056_documentacion.py",
         "tests/test_f056_ubicaciones.py",
+        "tests/test_f059_alcance_cerrado.py",
         "tests/test_f059_documentacion.py",
+        "tests/test_f060_alcance_cerrado.py",
         "tests/test_f060_documentacion.py",
+        "tests/test_f065_alcance_cerrado.py",
         "tests/test_f065_consulta.py",
         "tests/test_f065_datos_personales.py",
         "tests/test_f065_documentacion.py",
@@ -53,6 +63,7 @@
       "ejecutar_siempre": [
         "tests/test_f007_documentacion.py",
         "tests/test_f035_paginas.py",
+        "tests/test_f035_portal.py",
         "tests/test_f038_front.py",
         "tests/test_f040_front.py"
       ]

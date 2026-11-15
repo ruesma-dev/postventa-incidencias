@@ -1,6 +1,17 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · `blocked` · 2026-11-15 · Bloque 2: T4 `143802a` y T5 `fd0673d` hechos; suite entera con 7 rojos
+> El dominio de la revisión (R21–R25) está en verde en la verificación de T5 (499 passed), pero `pytest tests` de
+> `api` da 7 fallos fuera de esa lista: 2 de documentación de F-056 (el motivo nuevo no está en `ARCHITECTURE.md`,
+> es T21), 2 de expectativas que cambian por R24/R25 (r27 de paginación, r29 de HTTP) y 3 HTTP de F-056 en los que
+> aprobar da 409 porque editar guarda `0002` (R22) y el HTTP aún compone los listados del YAML (Bloques 5/6) → R24.
+> **Motivo del bloqueo**: `tasks.md` exige la suite en verde en cada bloque, y cerrarlo pide tocar tests o docs de
+> bloques posteriores o cambiar la API de `decidir` (§4.2). Opciones (a)/(b)/(c), y la decisión `_mismos_valores`
+> (estado y `sin_cambios` por tipo efectivo, no escrita en la spec), en `progress/impl_F-072.md`, «Bloque 2».
+> Mutación sin lanzar.
+
+
 > ## F-072 · `in_progress` · 2026-11-15 · desbloqueada; Bloque 1, relanzando la mutación de T3
 > T1 RED `50efef2` y T2 GREEN `0a3ed7e`. El bloqueo de T3 (13 tests de «configuración que falta» que veían el `.env`
 > volcado a `os.environ` por `volcar_variables` del arnés 1.10) se resolvió con la opción (a) del humano: arreglo de

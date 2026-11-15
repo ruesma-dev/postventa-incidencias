@@ -84,102 +84,20 @@ Desviación: ninguna. Fuera del Bloque 1 (llega en el Bloque 2): `validar_valore
 desde la bandeja aún no copian `tipo_reclamacion` (hoy ninguna fila lo tiene: lo escribe la
 importación del Bloque 5).
 
-### T3 · campaña de mutación del Bloque 1 — BLOQUEADA (fallo inesperado del arnés)
+### T3 · campaña de mutación del Bloque 1 (resumida; detalle en los commits y en el informe de campaña)
 
-Comando lanzado tal cual lo pidió el líder, desde la raíz:
-`python -m harness.mutacion --feature F-072 --base 6994cb0 --timeout 1800 --salida progress/mutacion_F-072_bloque1.md`
+- Primer intento **bloqueado**: la línea base salía roja en los worktrees por 13 tests de «configuración que
+  falta» que veían el `.env` volcado a `os.environ` por `volcar_variables` (arnés 1.10). El humano eligió
+  arreglar los tests (`a18956e`, `dev` `05c8a5a`, traído en `299f21c`; `progress/impl_fix_tests_config_entorno.md`).
+- Relanzada tal cual (`--base 6994cb0 --timeout 1800`, 5 workers, línea base 1293–1364 s): 7 generados, 5
+  evaluados (uno por línea), **5 muertos, 0 supervivientes** en 3989,2 s. `volcado.py` no da mutantes; su
+  control a mano está en `progress/mutacion_F-072_bloque1.md`, sin `PENDIENTE`.
 
-Alcance que calculó: 3 ficheros, 93 líneas de producción (rama `6994cb0..feature/F-072…`),
-muestreo `critico` (60 %, suelo 100, techo 300, semilla 20261030), 8 workers. **Abortó sin escribir
-informe** (`progress/mutacion_F-072_bloque1.md` no existe), porque la línea base sale roja **en el
-worktree del worker**, sin mutar nada:
+### Cambios de la review del Bloque 1 (`3575aa0`; detalle en `progress/review_F-072_bloque1.md`)
 
-```
-LÍNEA BASE EN ROJO en C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_upct7sx9/wk_1/services/postventa-api: la suite falla SIN mutar nada.
-Campaña abortada sin escribir informe: sobre una base roja TODO mutante saldría «muerto» y el cero de supervivientes sería falso.
-  Tests que fallan sin mutar:
-    - tests/test_f012_fabrica_grafico.py::test_f012_r40_la_tercera_puerta_nombra_todas_las_variables_que_faltan
-    - tests/test_f012_fabrica_grafico.py::test_f012_r40_el_error_no_lleva_jamas_el_valor_de_ninguna_variable
-    - tests/test_f013_ubicacion_sigrid.py::test_f013_t12_faltando_configuracion_nombra_todas_y_ningun_valor
-    - tests/test_f036_adaptador_catalogo.py::test_f036_r11_faltando_configuracion_nombra_todas_y_ningun_valor
-    - tests/test_f056_ubicaciones.py::test_f056_r46_la_fabrica_nombra_lo_que_falta_y_ningun_valor
-    - tests/test_f059_fabrica.py::test_f059_r10_r16_la_configuracion_nombra_todas_las_que_faltan_y_ningun_valor[construir_ensayador]
-    - tests/test_f059_fabrica.py::test_f059_r10_r16_la_configuracion_nombra_todas_las_que_faltan_y_ningun_valor[construir_volcador]
-    - tests/test_f059_fabrica.py::test_f059_r30_la_configuracion_va_antes_que_n[construir_ensayador]
-    - tests/test_f059_fabrica.py::test_f059_r30_la_configuracion_va_antes_que_n[construir_volcador]
-    - tests/test_f059_volcado_http.py::test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[sin-configuracion]
-    - tests/test_f059_volcado_http.py::test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[sin-configuracion]
-    - tests/test_f065_adaptador.py::test_f065_r2_la_fabrica_nombra_lo_que_falta_y_ningun_valor
-    - tests/test_f065_http.py::test_f065_r2_sin_configuracion_503_nombrando_las_variables_y_nunca_sus_valores
-```
-
-Esos 13 tests pasan en la carpeta principal (están entre los 9971 verdes de la suite entera de T2).
-**Diagnóstico** (leyendo código, sin abrir el `.env`, que no se toca):
-
-- El arnés 1.10 trae `volcar_variables` (`harness/mutacion_paralela.py`, F-023 del arnés): antes de
-  crear los worktrees vuelca el `.env` de la raíz **a `os.environ`** del coordinador, y los workers lo
-  heredan. No existía en el arnés con el que se midió F-071 (`git show 6994cb0~5:harness/mutacion_paralela.py`
-  no lo tiene); F-072 es la primera campaña con la 1.10.
-- Los 13 tests comprueban que la fábrica **nombra la configuración que falta** (p. ej.
-  `test_f056_r46…`: `_ajustes(ENTORNO="dev", SIGRID_API_KEY=…, SIGRID_BASE_DATOS="  ")` y espera
-  `SIGRID_API_BASE_URL` en el error). Se aíslan del fichero `.env`, pero no de `os.environ`: con las
-  variables ya volcadas al entorno, lo que debía faltar está, y el error no sale.
-- No es del código de F-072 (ninguno de los 13 toca los ficheros mutados) ni de la máquina.
-
-**Por qué no lo esquivo**: `--workers 1` lo evita (en serie no hay volcado de worktree), pero la suite
-entera tarda **730 s** sin paralelizar y el muestreo pide ≥ 100 mutantes: más de 20 h. Exportar
-variables vacías para tapar las del `.env`, tocar los tests de otras features o el arnés serían
-workarounds que el protocolo prohíbe improvisar. Decisión para el líder/humano, opciones que veo:
-(a) arreglar el aislamiento de esos 13 tests (que limpien también `os.environ` de las variables que
-esperan ausentes) en una tarea de arnés/proyecto aparte; (b) que `volcar_variables` sea opt-in en
-`rigor.local.json` (mejora del arnés genérico, a portar a `arnes-base`); (c) campaña con
-`--con-seleccion` y `--workers 1` (no probado: la selección mide cobertura y podría bajar mucho
-el coste, pero no lo he lanzado sin permiso).
-
-Estado del Bloque 1: **T1 y T2 hechas y en verde** (commits `50efef2`, `0a3ed7e`); T3 sin hacer
-(mutación bloqueada; la review la lanza el líder). La rama queda limpia y sin worktrees colgados
-(`git worktree list` sin los de la campaña).
-
-### T3 · campaña relanzada tras el desbloqueo (2026-11-15)
-
-El humano eligió la opción (a): `conftest.py` aísla de `os.environ` los tests de configuración
-ausente (`a18956e`, `dev` `05c8a5a`, traído a la rama en `299f21c`). Relanzada tal cual:
-`python -m harness.mutacion --feature F-072 --base 6994cb0 --timeout 1800 --salida progress/mutacion_F-072_bloque1.md`
-
-```
-[base] .../wk_0..wk_4/services/postventa-api: en verde (1293.3 s a 1364.3 s)
-[1/5] muerto  plantilla_incidencias.py:193 [booleano] @dataclass(frozen=True) -> @dataclass(frozen=False)
-[2/5] muerto  revision.py:826 [comparacion] if valores.tipo_reclamacion is not None: -> ... is None:
-[3/5] muerto  revision.py:822 [comparacion] if campo.name == "tipo_reclamacion": -> ... != ...
-[4/5] muerto  plantilla_incidencias.py:579 [comparacion] ... if codigo is None else codigo -> ... is not None ...
-[5/5] muerto  plantilla_incidencias.py:66 [entero] MAX_TIPO_RECLAMACION = 24 -> 25
-5 mutantes evaluados, 5 muertos, 0 supervivientes, 0 timeouts, 0 sin veredicto en 3989.2 s
-```
-
-Campaña completa (7 generados, 5 candidatos con uno por línea; sin muestreo), 5 workers. **Cero
-supervivientes**: no hay huecos que matar ni tests nuevos. `volcado.py` (16 líneas en alcance) no
-da mutantes; su declaración, con la prueba de control a mano (7 y 2 rojos al quitar el tipo
-efectivo o cambiar el alias), está en `progress/mutacion_F-072_bloque1.md`, sin nada en
-`PENDIENTE`. El `.json` de estado de la campaña queda sin versionar, como los de antes.
-T3 no se marca: la review del Bloque 1 la lanza el líder.
-
-### Cambios de la review del Bloque 1 (`progress/review_F-072_bloque1.md`, puntos 1–3)
-
-Los 2 mutantes que la reducción «uno por línea» dejó sin evaluar sobrevivían. Reproducidos a mano
-con `pytest tests/test_f072_dominio_tipos.py tests/test_f072_volcado.py -q` y el código restaurado
-después de cada uno (`git status` sin cambios en `domain/`):
-
-| Mutante | Antes de los tests nuevos | Después |
-|---|---|---|
-| `plantilla_incidencias.py:579` `codigo is None` → `not codigo` | `39 passed` (sobrevive) | `1 failed, 40 passed`: `test_f072_r19_con_tipo_el_efectivo_es_el_guardado[]` |
-| `revision.py:826` `is not None` → `if valores.tipo_reclamacion:` | `39 passed` (sobrevive) | `1 failed, 40 passed`: `test_f072_r26_un_tipo_vacio_no_es_el_nulo_y_va_al_final` |
-| `revision.py:826` → `if valores.tipo_reclamacion or "0002":` (variante) | — | `1 failed`: `test_f072_r26_con_tipo_nulo_la_huella_es_la_de_6994cb0` (ya lo cazaba) |
-
-Tests: `""` añadido al `parametrize` de R19 (§4.1: solo el nulo es «sin tipo») y
-`test_f072_r26_un_tipo_vacio_no_es_el_nulo_y_va_al_final` (huella ≠ `HUELLA_6994CB0` e igual al
-sha de la lista con `""` al final). Comentario de `test_f060_normalizacion_dominio.py:486`
-precisado (la fixture lleva el tipo nulo; la copia de R23 se prueba en el Bloque 2). Sin campaña
-nueva: solo cambian tests. Verde: los dos de F-072 → `41 passed`; con F-056, F-059 y F-060 → `699 passed`.
+Los 2 mutantes de veracidad que la reducción «uno por línea» descartó sobrevivían (`plantilla_incidencias.py:579`
+`not codigo`, `revision.py:826` `if valores.tipo_reclamacion:`): `39 passed` antes; con `""` en el `parametrize` de
+R19 y `test_f072_r26_un_tipo_vacio_no_es_el_nulo_y_va_al_final`, `1 failed` cada uno. Verificado por la review.
 
 ## Evidencias (Bloque 1)
 
@@ -190,3 +108,113 @@ nueva: solo cambian tests. Verde: los dos de F-072 → `41 passed`; con F-056, F
 | Mutantes | 7 generados, 5 evaluados (uno por línea), 5 muertos, **0 supervivientes**, 0 timeouts (`progress/mutacion_F-072_bloque1.md`) |
 | Tiempo de la suite | 730,04 s (`api` entera, en serie); dirigidos 3,89 s |
 | Capa e2e | N/A en el Bloque 1 (dominio puro) |
+
+## Bloque 2 · Dominio de la revisión — BLOQUEADO tras T5 (suite entera en rojo, 7 tests)
+
+### T4 · RED (`143802a`)
+
+`services/postventa-api/tests/test_f072_revision_dominio.py` (70 casos): R21, R22, R23 (con tipo **no nulo**,
+en editar, aprobar, descartar, recuperar y `revision_de_normalizacion`), R24 (orden, `""`, sin `tipos`, en su sitio,
+aprobar → 409, fila y resumen) y R25 (`cambios`, `sin_cambios`, estado). Tipos `9001`, `9002`, `9009` (de baja); la
+lista vigente **no** trae `0002`.
+
+Comando: `.venv/Scripts/python.exe -m pytest tests/test_f072_revision_dominio.py -q -p no:cacheprovider`
+
+```
+tests\test_f072_revision_dominio.py:41: in <module>
+    from domain.models.revision import (
+E   ImportError: cannot import name 'TIPO_NO_VALIDO' from 'domain.models.revision'
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.43s
+```
+
+Segunda traza, por comportamiento: la misma suite con solo la constante inyectada desde fuera
+(`python -c "import domain.models.revision as r; r.TIPO_NO_VALIDO = '...'; pytest.main([..., '--tb=line'])"`,
+sin tocar el código). Extracto:
+
+```
+E   ValueError: '9001' is not a valid Listado
+E   AssertionError: assert ('urgencia',) == ('urgencia', 'listado')
+E   AssertionError: assert <EstadoRevision.EDITADA: 'editada'> is <EstadoRevision.NUEVA: 'nueva'>
+FAILED ...::test_f072_r21_un_codigo_vigente_exacto_se_guarda[9001]
+FAILED ...::test_f072_r22_listado_nulo_guarda_0002_sin_mirar_la_lista[None]
+FAILED ...::test_f072_r24_no_se_puede_aprobar
+FAILED ...::test_f072_r25_volver_a_lo_importado_con_0002_deja_la_incidencia_nueva
+(...)
+49 failed, 21 passed in 0.22s
+```
+
+Razón esperada: `validar_valores` pasaba el código por `Listado(...)`, no existían motivo ni `tipos`, y `cambios`
+y estado miraban el heredado. Los 21 verdes, a propósito: la copia de R23 ya es estructural en la base.
+
+### T5 · GREEN (`fd0673d`)
+
+`domain/models/revision.py` (§4.2): `TIPO_NO_VALIDO` (sustituye a `LISTADO_NO_VALIDO`, sin usos);
+`_tipo_pedido` (R21, R22) y `listado=vigentes.listado` (R23) en `validar_valores`;
+`MotivoNoAprobable.TIPO_FUERA_DE_SIGRID` entre `PROVEEDOR_AMBIGUO` y `DUPLICADA`;
+`motivos_no_aprobable(..., tipos=None)` y `fila_de_revision(..., tipos=None)` (sin `tipos` no se
+calcula, §4.2); `decidir` aprobar pasa `tipos={o.codigo for o in listas.listados}` (los mismos con que
+valida editar, §4.2); `CAMPOS_LOGICOS` igual, pero `listado` sale de `tipo_efectivo` (R25).
+
+**Decisión que la spec no escribe (para la review):** `_mismos_valores` compara dos fotos con el tipo
+efectivo y se usa en `estado_de` (R1 de F-056) y en `sin_cambios` (R16 de F-056). Sin ella, R22 rompe
+las dos para las 289 incidencias anteriores a F-072: guardar sin cambios desde el front (que manda
+`listado` = efectivo `0002`, R20) escribiría una revisión vacía, y volver a lo importado dejaría
+`editada` con `cambios` vacío. Es la regla de R25 («de nulo a `0002` no es un cambio») aplicada a los
+otros dos sitios que comparan fotos; la huella sigue distinguiéndolas (R26). Tests:
+`test_f072_r25_editar_una_foto_sin_tipo_con_su_efectivo_es_sin_cambios` y
+`test_f072_r25_volver_a_lo_importado_con_0002_deja_la_incidencia_nueva`.
+
+**Aserciones de F-056 que cambian** (`tests/test_f056_revision_dominio.py`; ninguna borrada):
+
+| Test | Antes | Ahora | R |
+|---|---|---|---|
+| `test_f056_r13_unos_valores_validos_dan_la_foto_completa` | `== valores()` | `== valores(tipo_reclamacion="0002")` | R22 |
+| `test_f056_r13_urgencia_y_listado_validos` | `listado == Listado.SEGUNDO` | `tipo_reclamacion == "segundo"`, `listado` heredado `None` | R21, R23 |
+| `test_f056_r16_sin_cambios_frente_a_los_vigentes_no_a_los_importados` (2.ª parte) | `== valores()` | `== valores(tipo_reclamacion="0002")` | R22 |
+| `test_f056_r13_editar_valido_da_la_revision_nueva` | foto y huella sin tipo | con `0002` | R22 |
+| `test_f056_r21_los_nueve_motivos_en_su_orden` | 9 motivos | 10, el nuevo en su sitio | R24 |
+| `test_f056_r33_cada_campo_logico[listado]` | `listado=PRIMERO` | `tipo_reclamacion="9001"` | R25, R19 |
+| `test_f056_r33_varios_salen_en_orden_fijo` | ídem | ídem | R25 |
+
+Verificación de T5 (comando de `tasks.md`, los cuatro ficheros): `499 passed in 2.49s`.
+
+### Por qué se para: la suite entera queda en rojo fuera de la lista de T5
+
+`pytest tests -q` (api, sin `init.sh`): **`7 failed, 10038 passed, 353 skipped in 436.09s`**.
+
+- `test_f056_paginacion.py::test_f056_r27_resumen_sobre_todas_las_filas`: `por_motivo` trae una clave más (R24; arreglo limpio).
+- `test_f056_revision_http.py::test_f056_r29_una_fila_revisada_y_duplicada`: la fixture cambia el `listado` heredado y
+  ya no sale en `cambios` (R25; arreglo limpio: poner un tipo).
+- `test_f056_documentacion.py::test_f056_t15_los_controles_leen_algo_del_codigo` (`10 == 9`) y
+  `::test_f056_r44_nombra_cada_motivo_de_no_aprobable[tipo_fuera_de_sigrid]`: `docs/ARCHITECTURE.md` (es T21).
+- `test_f056_revision_http.py::test_f056_o2_…`, `::test_f056_r10_…` y `::test_f056_r42_…`: aprobar → 409.
+
+Los tres 409: editan con `listado: null`, se guarda `0002` (R22), y aprueban; el HTTP sigue componiendo
+`listas` del YAML (`primero`/`segundo`, hasta los Bloques 5 y 6), donde `0002` no está, así que sale
+`tipo_fuera_de_sigrid` (R24). Es lo que mandan R22 + R24 + Q-7 si `0002` no fuera vigente: el rojo es del
+cableado a medias, no del dominio. `tasks.md` dice que cada bloque deja la suite en verde, y no se puede
+cerrar sin tocar tests de otros bloques o cambiar la API del dominio que fija §4.2. Opciones:
+
+- **(a)** `decidir(..., tipos: Collection[str] | None = None)` explícito, como `motivos_no_aprobable`: sin
+  `tipos` no se mira R24; la aplicación lo pasa en el Bloque 6 (`aplicar_accion(..., tipos)`, §3.2). Los
+  3 HTTP vuelven a verde sin tocarlos. Riesgo: si el Bloque 6 olvida pasarlo, R24 no se aplica (lo
+  cazarían sus tests de R24 por HTTP). Desviación pequeña de §4.2, que no dice de dónde salen al aprobar.
+- **(b)** Mantener `listas.listados` y, en los 3 tests HTTP, editar con `listado: "primero"` (un código de
+  la lista que compone hoy el HTTP), citado con R22 y R24; el Bloque 6 los vuelve a tocar.
+- **(c)** Adelantar el cableado de `tipos` (T19) a este bloque. No recomendado: mezcla bloques.
+
+En las tres, r27 y r29 se arreglan citando R24/R25, y los dos de documentación piden adelantar a este
+bloque la mención de `tipo_fuera_de_sigrid` en `docs/ARCHITECTURE.md` (sección de F-056) o aceptarlos en
+rojo hasta T21. **No se ha lanzado la mutación**: con la suite roja, la línea base del arnés aborta. T4 y
+T5 no se marcan en `tasks.md` hasta resolverlo.
+
+## Evidencias (Bloque 2, parciales)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | api entera: 10038 passed, 353 skipped, **7 failed** (lista de arriba); T5: 499 passed |
+| Cobertura de líneas cambiadas | sin medir (`init.sh`, el líder) |
+| Mutantes | sin campaña: bloqueada por la suite roja |
+| Tiempo de la suite | 436,09 s (api entera); T5 2,49 s |
+| Capa e2e | N/A (dominio puro) |

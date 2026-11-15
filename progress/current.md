@@ -8,6 +8,8 @@
 > `conftest.py` quita del entorno las variables de `Ajustes` en cada test; 11 tests frágiles más de F-006/F-013/F-031/
 > F-051 cubiertos), `init.sh` verde (raíz 2202, api 9932, front 911), mergeado en `dev` `05c8a5a` y traído a F-072
 > `299f21c`. **Pendiente de proponer para `arnes-base`**: que `volcar_variables` sea opt-in.
+> **T3 relanzada (implementer)**: 5 mutantes, 5 muertos, 0 supervivientes (`progress/mutacion_F-072_bloque1.md`).
+> Siguiente: review del Bloque 1 (líder).
 
 > ## F-072 · `in_progress` · 2026-11-15 · spec aprobada por el humano; siguiente, Bloque 1
 > `specs/F-072-tipo-reclamacion-sigrid/`, base fija `dev` `6994cb0`. **T0 (líder, solo lecturas, 2026-11-15)**:

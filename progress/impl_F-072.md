@@ -140,12 +140,35 @@ Estado del Bloque 1: **T1 y T2 hechas y en verde** (commits `50efef2`, `0a3ed7e`
 (mutación bloqueada; la review la lanza el líder). La rama queda limpia y sin worktrees colgados
 (`git worktree list` sin los de la campaña).
 
+### T3 · campaña relanzada tras el desbloqueo (2026-11-15)
+
+El humano eligió la opción (a): `conftest.py` aísla de `os.environ` los tests de configuración
+ausente (`a18956e`, `dev` `05c8a5a`, traído a la rama en `299f21c`). Relanzada tal cual:
+`python -m harness.mutacion --feature F-072 --base 6994cb0 --timeout 1800 --salida progress/mutacion_F-072_bloque1.md`
+
+```
+[base] .../wk_0..wk_4/services/postventa-api: en verde (1293.3 s a 1364.3 s)
+[1/5] muerto  plantilla_incidencias.py:193 [booleano] @dataclass(frozen=True) -> @dataclass(frozen=False)
+[2/5] muerto  revision.py:826 [comparacion] if valores.tipo_reclamacion is not None: -> ... is None:
+[3/5] muerto  revision.py:822 [comparacion] if campo.name == "tipo_reclamacion": -> ... != ...
+[4/5] muerto  plantilla_incidencias.py:579 [comparacion] ... if codigo is None else codigo -> ... is not None ...
+[5/5] muerto  plantilla_incidencias.py:66 [entero] MAX_TIPO_RECLAMACION = 24 -> 25
+5 mutantes evaluados, 5 muertos, 0 supervivientes, 0 timeouts, 0 sin veredicto en 3989.2 s
+```
+
+Campaña completa (7 generados, 5 candidatos con uno por línea; sin muestreo), 5 workers. **Cero
+supervivientes**: no hay huecos que matar ni tests nuevos. `volcado.py` (16 líneas en alcance) no
+da mutantes; su declaración, con la prueba de control a mano (7 y 2 rojos al quitar el tipo
+efectivo o cambiar el alias), está en `progress/mutacion_F-072_bloque1.md`, sin nada en
+`PENDIENTE`. El `.json` de estado de la campaña queda sin versionar, como los de antes.
+T3 no se marca: la review del Bloque 1 la lanza el líder.
+
 ## Evidencias (Bloque 1)
 
 | Evidencia | Valor |
 |---|---|
 | Tests ejecutados | suite unitaria `api` entera: 9971 passed, 353 skipped, 1 failed (aserción de F-060 corregida, citada arriba); dirigidos de T2: 725 passed |
 | Cobertura de líneas cambiadas | sin medir: `init.sh` lo lanza el líder |
-| Mutantes | 0 generados: campaña abortada en la línea base (arriba) |
+| Mutantes | 7 generados, 5 evaluados (uno por línea), 5 muertos, **0 supervivientes**, 0 timeouts (`progress/mutacion_F-072_bloque1.md`) |
 | Tiempo de la suite | 730,04 s (`api` entera, en serie); dirigidos 3,89 s |
 | Capa e2e | N/A en el Bloque 1 (dominio puro) |

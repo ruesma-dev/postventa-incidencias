@@ -54,3 +54,32 @@ Traceback (most recent call last):
   File "<string>", line 3, in <module>
 TypeError: ValoresIncidencia.__init__() got an unexpected keyword argument 'tipo_reclamacion'
 ```
+
+### T2 · GREEN
+
+- `domain/models/plantilla_incidencias.py`: `TIPO_RECLAMACION_POR_DEFECTO = "0002"`,
+  `MAX_TIPO_RECLAMACION = 24`, `TipoReclamacion(codigo, nombre)`, `tipos_del_desplegable`
+  (reutiliza `_nombre_recortado` y `_con_codigo` de F-071, así la etiqueta es la del oficio),
+  `listas_con_tipos` (`replace` de `listados`) y `tipo_efectivo`; docstring de `ListasCerradas`.
+- `domain/models/revision.py`: `ValoresIncidencia.tipo_reclamacion: str | None = None` (último
+  campo) y `huella_de_valores`, que salta el campo y lo añade al final solo si no es nulo (R26).
+- `domain/models/volcado.py`: `TIPO_RECLAMACION = TIPO_RECLAMACION_POR_DEFECTO` (alias) y
+  `parte_de` con `tipo_efectivo(v.tipo_reclamacion)` (R28); docstrings sin «siempre `0002`».
+
+**Aserción de otra feature que cambia** (citada con su R, como pide `design.md` §3.2):
+`tests/test_f060_normalizacion_dominio.py::test_f060_r8_la_revision_cambia_solo_la_ubicacion_de_los_vigentes`
+contaba `len(otros) == 12` campos de la foto aparte de `ubicacion`; con el campo nuevo son 13
+(R26). Lo demás del test (que todos se copian y solo cambia `ubicacion`) sigue igual y ahora
+cubre también la copia de `tipo_reclamacion` en la revisión del sistema (R23).
+
+Verificación de T2 (comando de `tasks.md`, más los dos de F-060):
+`.venv/Scripts/python.exe -m pytest tests/test_f060_normalizacion_dominio.py tests/test_f060_pipeline_normalizacion.py tests/test_f072_dominio_tipos.py tests/test_f072_volcado.py tests/test_f056_revision_dominio.py tests/test_f059_volcado_dominio.py -q -p no:cacheprovider`
+→ `725 passed in 3.89s`.
+
+Suite unitaria entera de `api` (`pytest tests -q`, sin `init.sh`, que es del líder), antes de
+corregir la aserción de F-060: `1 failed, 9971 passed, 353 skipped in 730.04s`; el único rojo
+era ese recuento, ya corregido y en verde. No hay más ficheros afectados.
+
+Desviación: ninguna. Fuera del Bloque 1 (llega en el Bloque 2): `validar_valores` y la foto
+desde la bandeja aún no copian `tipo_reclamacion` (hoy ninguna fila lo tiene: lo escribe la
+importación del Bloque 5).

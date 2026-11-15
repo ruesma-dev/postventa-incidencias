@@ -223,6 +223,10 @@ class ValoresIncidencia:
     Con las mismas invariantes que la fila de la bandeja (R99 de F-036): un
     ambiguo no tiene código y sí nombre, un nombre sin código es ambiguo, y no
     hay proveedor sin oficio.
+
+    `listado` es el dato heredado de antes de F-072 (ya no se escribe ni
+    decide nada); `tipo_reclamacion`, el código de `dbo.auxtrcp` (F-072), nulo
+    en las fotos anteriores, cuyo tipo efectivo es `0002` (R19).
     """
 
     unidad_codigo: str
@@ -238,6 +242,7 @@ class ValoresIncidencia:
     proveedor_ambiguo: bool
     urgencia: Urgencia | None
     listado: Listado | None
+    tipo_reclamacion: str | None = None  # F-072: siempre el último (R26)
 
     def __post_init__(self) -> None:
         hay_oficio = _comprobar_elegido(
@@ -807,11 +812,19 @@ def huella_de_valores(valores: ValoresIncidencia) -> str:
     separadores `,` y `:`): las comillas y el escapado hacen de separador que
     ningún texto puede imitar, y `null` no es `""`. Los `Enum`, por su valor.
     F-040 la recalcula para comprobar que manda lo aprobado.
+
+    F-072 (R26): `tipo_reclamacion` entra **solo si no es nulo**, al final de
+    la lista. Una foto sin tipo da la huella de F-056, así que lo aprobado
+    antes de F-072 sigue intacto.
     """
     lista = []
     for campo in fields(valores):
+        if campo.name == "tipo_reclamacion":
+            continue
         valor = getattr(valores, campo.name)
         lista.append(valor.value if isinstance(valor, Enum) else valor)
+    if valores.tipo_reclamacion is not None:
+        lista.append(valores.tipo_reclamacion)
     texto = json.dumps(lista, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 

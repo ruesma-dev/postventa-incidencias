@@ -429,6 +429,23 @@ def test_f072_r24_sin_tipo_guardado_no_es_motivo_aunque_0002_no_este_vigente() -
     assert motivos(situacion()) == ()
 
 
+def test_f072_r24_sin_ningun_tipo_vigente_todo_tipo_guardado_es_motivo() -> None:
+    """Leer cero tipos (R7) no es «no haberlos leído»: la lista vacía sí se mira."""
+    assert motivos(con_tipo("9001"), tipos=frozenset()) == (M.TIPO_FUERA_DE_SIGRID,)
+    assert motivos(con_tipo(None), tipos=frozenset()) == ()
+    sin_tipos = listas_con_tipos(LISTAS, ())
+    with pytest.raises(IncidenciaNoAprobable) as exc:
+        decidir(
+            con_tipo("9001"),
+            peticion(A.APROBAR),
+            catalogo=CATALOGO,
+            ubicaciones=UBICACIONES,
+            listas=sin_tipos,
+            ahora=AHORA,
+        )
+    assert exc.value.motivos == ("tipo_fuera_de_sigrid",)
+
+
 def test_f072_r24_sin_los_tipos_leidos_no_se_calcula() -> None:
     assert motivos(con_tipo(DE_BAJA), tipos=None) == ()
     assert motivos_no_aprobable(

@@ -109,7 +109,7 @@ R19 y `test_f072_r26_un_tipo_vacio_no_es_el_nulo_y_va_al_final`, `1 failed` cada
 | Tiempo de la suite | 730,04 s (`api` entera, en serie); dirigidos 3,89 s |
 | Capa e2e | N/A en el Bloque 1 (dominio puro) |
 
-## Bloque 2 · Dominio de la revisión — BLOQUEADO tras T5 (suite entera en rojo, 7 tests)
+## Bloque 2 · Dominio de la revisión (T4, T5 y la campaña de T6)
 
 ### T4 · RED (`143802a`)
 
@@ -156,14 +156,10 @@ y estado miraban el heredado. Los 21 verdes, a propósito: la copia de R23 ya es
 calcula, §4.2); `decidir` aprobar pasa `tipos={o.codigo for o in listas.listados}` (los mismos con que
 valida editar, §4.2); `CAMPOS_LOGICOS` igual, pero `listado` sale de `tipo_efectivo` (R25).
 
-**Decisión que la spec no escribe (para la review):** `_mismos_valores` compara dos fotos con el tipo
-efectivo y se usa en `estado_de` (R1 de F-056) y en `sin_cambios` (R16 de F-056). Sin ella, R22 rompe
-las dos para las 289 incidencias anteriores a F-072: guardar sin cambios desde el front (que manda
-`listado` = efectivo `0002`, R20) escribiría una revisión vacía, y volver a lo importado dejaría
-`editada` con `cambios` vacío. Es la regla de R25 («de nulo a `0002` no es un cambio») aplicada a los
-otros dos sitios que comparan fotos; la huella sigue distinguiéndolas (R26). Tests:
-`test_f072_r25_editar_una_foto_sin_tipo_con_su_efectivo_es_sin_cambios` y
-`test_f072_r25_volver_a_lo_importado_con_0002_deja_la_incidencia_nueva`.
+**Decisión que la spec no escribe (para la review):** `_mismos_valores` compara fotos con el tipo efectivo en
+`estado_de` (R1 de F-056) y `sin_cambios` (R16 de F-056). Sin ella, R22 rompe las dos para las 289 incidencias
+anteriores a F-072 (guardar sin cambiar nada escribiría una revisión vacía; volver a lo importado dejaría `editada`).
+Es R25 aplicada a los otros dos sitios que comparan fotos; la huella sí las distingue (R26). Tests: `test_f072_r25_*`.
 
 **Aserciones de F-056 que cambian** (`tests/test_f056_revision_dominio.py`; ninguna borrada):
 
@@ -178,43 +174,47 @@ otros dos sitios que comparan fotos; la huella sigue distinguiéndolas (R26). Te
 | `test_f056_r33_varios_salen_en_orden_fijo` | ídem | ídem | R25 |
 
 Verificación de T5 (comando de `tasks.md`, los cuatro ficheros): `499 passed in 2.49s`.
+### Bloqueo de la suite entera y opción (b) del humano (`d8ae988` → `435dd49`)
 
-### Por qué se para: la suite entera queda en rojo fuera de la lista de T5
+Con T5, `pytest tests` de api daba `7 failed, 10038 passed`: los 3 HTTP de F-056 que editan con `listado: null` y
+aprueban (o2, r10, r42) salían 409 por R22 + R24 (el HTTP aún compone los listados del YAML); r27 y r29 por R24/R25; y
+dos de documentación de F-056 (el motivo nuevo). El humano eligió la opción (b). Hecho en `0fb864e`:
 
-`pytest tests -q` (api, sin `init.sh`): **`7 failed, 10038 passed, 353 skipped in 436.09s`**.
+- `test_f056_revision_http.py` o2, r10 y r42: editan con `_valores(listado="primero")` (código de la lista que
+  compone hoy el HTTP), con comentario R22/R24 y aviso de que el Bloque 6 los vuelve a tocar. Nada más cambia.
+- r29 (`test_f056_revision_http.py`): la foto lleva además `tipo_reclamacion="9001"` para que `listado` siga en
+  `cambios` (R25); r27 (`test_f056_paginacion.py`): `M.TIPO_FUERA_DE_SIGRID: 0` en `por_motivo` (R24).
+- `docs/ARCHITECTURE.md`, sección de F-056: `tipo_fuera_de_sigrid` en la lista de motivos, en su sitio; el resto de
+  la documentación sigue en T21. `test_f056_documentacion.py`: `len(MotivoNoAprobable) == 10` (R24).
 
-- `test_f056_paginacion.py::test_f056_r27_resumen_sobre_todas_las_filas`: `por_motivo` trae una clave más (R24; arreglo limpio).
-- `test_f056_revision_http.py::test_f056_r29_una_fila_revisada_y_duplicada`: la fixture cambia el `listado` heredado y
-  ya no sale en `cambios` (R25; arreglo limpio: poner un tipo).
-- `test_f056_documentacion.py::test_f056_t15_los_controles_leen_algo_del_codigo` (`10 == 9`) y
-  `::test_f056_r44_nombra_cada_motivo_de_no_aprobable[tipo_fuera_de_sigrid]`: `docs/ARCHITECTURE.md` (es T21).
-- `test_f056_revision_http.py::test_f056_o2_…`, `::test_f056_r10_…` y `::test_f056_r42_…`: aprobar → 409.
+Suite de api entera tras `0fb864e`: **`10045 passed, 353 skipped in 856.35s`**. T4 y T5 marcadas (`9b22088`).
 
-Los tres 409: editan con `listado: null`, se guarda `0002` (R22), y aprueban; el HTTP sigue componiendo
-`listas` del YAML (`primero`/`segundo`, hasta los Bloques 5 y 6), donde `0002` no está, así que sale
-`tipo_fuera_de_sigrid` (R24). Es lo que mandan R22 + R24 + Q-7 si `0002` no fuera vigente: el rojo es del
-cableado a medias, no del dominio. `tasks.md` dice que cada bloque deja la suite en verde, y no se puede
-cerrar sin tocar tests de otros bloques o cambiar la API del dominio que fija §4.2. Opciones:
+### T6 · campaña de mutación (`progress/mutacion_F-072_bloque2.md`)
 
-- **(a)** `decidir(..., tipos: Collection[str] | None = None)` explícito, como `motivos_no_aprobable`: sin
-  `tipos` no se mira R24; la aplicación lo pasa en el Bloque 6 (`aplicar_accion(..., tipos)`, §3.2). Los
-  3 HTTP vuelven a verde sin tocarlos. Riesgo: si el Bloque 6 olvida pasarlo, R24 no se aplica (lo
-  cazarían sus tests de R24 por HTTP). Desviación pequeña de §4.2, que no dice de dónde salen al aprobar.
-- **(b)** Mantener `listas.listados` y, en los 3 tests HTTP, editar con `listado: "primero"` (un código de
-  la lista que compone hoy el HTTP), citado con R22 y R24; el Bloque 6 los vuelve a tocar.
-- **(c)** Adelantar el cableado de `tipos` (T19) a este bloque. No recomendado: mezcla bloques.
+A mano antes de lanzarla (24 mutantes, copia `git archive`, `pytest -x`): un **superviviente real**, `revision.py:856`
+`tipos is not None` → `tipos` (con la lista de vigentes vacía, R7, no se miraba R24). Lo mata `85d3c36`.
 
-En las tres, r27 y r29 se arreglan citando R24/R25, y los dos de documentación piden adelantar a este
-bloque la mención de `tipo_fuera_de_sigrid` en `docs/ARCHITECTURE.md` (sección de F-056) o aceptarlos en
-rojo hasta T21. **No se ha lanzado la mutación**: con la suite roja, la línea base del arnés aborta. T4 y
-T5 no se marcan en `tasks.md` hasta resolverlo.
+`python -m harness.mutacion --feature F-072 --base 6994cb0 --timeout 1800 --salida progress/mutacion_F-072_bloque2.md`
+(8 workers; el `.json` sin versionar del Bloque 1, apartado mientras corría: la campaña exige el árbol limpio):
 
-## Evidencias (Bloque 2, parciales)
+```
+[base] .../wk_0..wk_7/services/postventa-api: en verde (1669.5 s a 1780.6 s)
+[15/16] muerto  revision.py:856 [veracidad] tipos is not None -> tipos
+16 mutantes evaluados, 16 muertos, 0 supervivientes, 0 timeouts, 0 sin veredicto en 5450.4 s
+```
+
+24 generados (4 en `plantilla_incidencias.py`, 20 en `revision.py`, 0 en `volcado.py`) → 16 con uno por línea, sin
+muestreo. Los **8 descartados**, por debajo del suelo de 100, reproducidos a mano: **8 muertos** (tabla con el test
+que caza cada uno en el informe de campaña). `volcado.py`: declaración sin `PENDIENTE`. **Cero supervivientes.**
+
+Equivalentes: ninguno. Nota: el `return` de la rama de error de `_tipo_pedido` no se usa (`validar_valores` lanza).
+
+## Evidencias (Bloque 2)
 
 | Evidencia | Valor |
 |---|---|
-| Tests ejecutados | api entera: 10038 passed, 353 skipped, **7 failed** (lista de arriba); T5: 499 passed |
-| Cobertura de líneas cambiadas | sin medir (`init.sh`, el líder) |
-| Mutantes | sin campaña: bloqueada por la suite roja |
-| Tiempo de la suite | 436,09 s (api entera); T5 2,49 s |
+| Tests ejecutados | api entera: 10045 passed, 353 skipped (antes de `85d3c36`, que añade 1 test que pasa) |
+| Cobertura de líneas cambiadas | sin medir: `init.sh` lo lanza el líder |
+| Mutantes | 24 generados, 16 evaluados + 8 a mano, **24 muertos, 0 supervivientes**, 0 timeouts |
+| Tiempo de la suite | 856,35 s (api entera, en serie); dirigidos de T5 2,49 s; campaña 5450,4 s |
 | Capa e2e | N/A (dominio puro) |

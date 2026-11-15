@@ -7,6 +7,10 @@
 > los vuelve a tocar), r27 y r29 citando R24/R25, y la mención de `tipo_fuera_de_sigrid` en `docs/ARCHITECTURE.md`
 > adelantada a este bloque. Descartadas (a) (R24 opcional en `decidir`) y (c). `_mismos_valores` por tipo efectivo
 > queda para la review del Bloque 2.
+> **Implementer (2026-11-15)**: (b) hecho en `0fb864e`; suite de api `10045 passed, 353 skipped`; T4 y T5 marcadas
+> (`9b22088`). Un superviviente real a mano (`revision.py:856`, lista de vigentes vacía) cerrado con un test (`85d3c36`).
+> Campaña `progress/mutacion_F-072_bloque2.md`: 24 generados, 16 evaluados y 8 descartados a mano, 0 supervivientes.
+> Siguiente: review del Bloque 2 (líder; T6 sin marcar).
 
 > ## F-072 · `in_progress` · 2026-11-15 · desbloqueada; Bloque 1, relanzando la mutación de T3
 > T1 RED `50efef2` y T2 GREEN `0a3ed7e`. El bloqueo de T3 (13 tests de «configuración que falta» que veían el `.env`

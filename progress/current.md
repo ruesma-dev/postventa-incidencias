@@ -1,12 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-072 · `blocked` · 2026-11-15 · Bloque 1: T1 y T2 hechas; la mutación de T3 no arranca
-> T1 RED `50efef2` y T2 GREEN `0a3ed7e` (dominio de tipos, `tipo_efectivo`, huella R26 y `parte_de` R28), suite
-> unitaria de `api` en verde salvo un recuento de F-060 (12 → 13 campos, R26) ya corregido. **Bloqueo**: la campaña
-> `python -m harness.mutacion --feature F-072 --base 6994cb0 …` aborta con la línea base roja en los worktrees: 13
-> tests de «configuración que falta» ven las variables que `volcar_variables` (arnés 1.10) vuelca del `.env` raíz a
-> `os.environ`. No es del código de F-072. Decide el líder/humano entre las opciones de `progress/impl_F-072.md`, T3.
+> ## F-072 · `in_progress` · 2026-11-15 · desbloqueada; Bloque 1, relanzando la mutación de T3
+> T1 RED `50efef2` y T2 GREEN `0a3ed7e`. El bloqueo de T3 (13 tests de «configuración que falta» que veían el `.env`
+> volcado a `os.environ` por `volcar_variables` del arnés 1.10) se resolvió con la opción (a) del humano: arreglo de
+> tests en `fix/tests-configuracion-sin-entorno` (`a18956e`, informe `progress/impl_fix_tests_config_entorno.md`;
+> `conftest.py` quita del entorno las variables de `Ajustes` en cada test; 11 tests frágiles más de F-006/F-013/F-031/
+> F-051 cubiertos), `init.sh` verde (raíz 2202, api 9932, front 911), mergeado en `dev` `05c8a5a` y traído a F-072
+> `299f21c`. **Pendiente de proponer para `arnes-base`**: que `volcar_variables` sea opt-in.
 
 > ## F-072 · `in_progress` · 2026-11-15 · spec aprobada por el humano; siguiente, Bloque 1
 > `specs/F-072-tipo-reclamacion-sigrid/`, base fija `dev` `6994cb0`. **T0 (líder, solo lecturas, 2026-11-15)**:

@@ -1248,8 +1248,7 @@
         "Ninguna escritura en Sigrid desde local ni desde tests",
         "bash harness/init.sh en verde"
       ],
-      "status": "blocked",
-      "blocked_by": "2026-11-15, implementer: Bloque 1 T1 y T2 hechos y en verde (50efef2, 0a3ed7e); la mutacion de T3 aborta con la linea base en rojo en los worktrees (13 tests de configuracion ausente de F-012/F-013/F-036/F-056/F-059/F-065), porque volcar_variables del arnes 1.10 pone el .env raiz en os.environ. Detalle y opciones en progress/impl_F-072.md, T3.",
+      "status": "in_progress",
       "spec_aprobada": "2026-11-15",
       "sdd": true,
       "rigor": "critico",

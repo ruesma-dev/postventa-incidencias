@@ -653,7 +653,8 @@ def test_f056_r13_campos_pedidos_y_logicos() -> None:
 
 
 def test_f056_r13_unos_valores_validos_dan_la_foto_completa() -> None:
-    assert valida() == valores()
+    # F-072 (R22): con `listado` nulo, la edición guarda el tipo `0002`.
+    assert valida() == valores(tipo_reclamacion="0002")
 
 
 def test_f056_r14_los_nombres_salen_de_sigrid_y_no_de_lo_guardado() -> None:
@@ -869,11 +870,22 @@ def test_f056_r13_proveedor_que_no_es_texto() -> None:
 
 
 def test_f056_r13_urgencia_y_listado_validos() -> None:
+    # F-072 (R21, R23): `listado` trae ahora un código de los ofrecidos, que se
+    # guarda en `tipo_reclamacion`; el `listado` de la foto es el heredado de
+    # los vigentes (aquí nulo) y no lo cambia la edición.
     v = valida(urgencia="seguridad", listado="segundo")
-    assert (v.urgencia, v.listado) == (Urgencia.SEGURIDAD, Listado.SEGUNDO)
+    assert (v.urgencia, v.tipo_reclamacion, v.listado) == (
+        Urgencia.SEGURIDAD,
+        "segundo",
+        None,
+    )
     v = valida(urgencia="urgente", listado="primero")
-    assert (v.urgencia, v.listado) == (Urgencia.URGENTE, Listado.PRIMERO)
-    assert isinstance(v.urgencia, Urgencia) and isinstance(v.listado, Listado)
+    assert (v.urgencia, v.tipo_reclamacion, v.listado) == (
+        Urgencia.URGENTE,
+        "primero",
+        None,
+    )
+    assert isinstance(v.urgencia, Urgencia)
 
 
 @pytest.mark.parametrize(
@@ -1089,7 +1101,8 @@ def test_f056_r16_sin_cambios_frente_a_los_vigentes_no_a_los_importados() -> Non
     with pytest.raises(SinCambios):
         decide(sit, peticion(A.EDITAR, previa=2, vals=pedidos(ubicacion="Cocina")))
     nueva = decide(sit, peticion(A.EDITAR, previa=2, vals=pedidos()))
-    assert nueva.valores == valores()
+    # F-072 (R22): con `listado` nulo, la edición guarda el tipo `0002`.
+    assert nueva.valores == valores(tipo_reclamacion="0002")
 
 
 def test_f056_r16_un_nombre_renombrado_en_sigrid_no_es_sin_cambios() -> None:
@@ -1100,11 +1113,13 @@ def test_f056_r16_un_nombre_renombrado_en_sigrid_no_es_sin_cambios() -> None:
 
 def test_f056_r13_editar_valido_da_la_revision_nueva() -> None:
     nueva = decide(situacion(), peticion(A.EDITAR, vals=pedidos(ubicacion="Cocina")))
+    # F-072 (R22): con `listado` nulo, la edición guarda el tipo `0002`.
+    editados = valores(ubicacion="Cocina", tipo_reclamacion="0002")
     assert nueva == RevisionNueva(
         incidencia_id=UUID(int=1),
         accion=A.EDITAR,
-        valores=valores(ubicacion="Cocina"),
-        huella=huella_de_valores(valores(ubicacion="Cocina")),
+        valores=editados,
+        huella=huella_de_valores(editados),
         motivo=None,
         quien=QUIEN,
         revisado_at_utc=AHORA,
@@ -1287,6 +1302,7 @@ def test_f056_r21_los_nueve_motivos_en_su_orden() -> None:
         "oficio_fuera_de_la_obra",
         "par_fuera_de_la_obra",
         "proveedor_ambiguo",
+        "tipo_fuera_de_sigrid",  # F-072 (R24): el décimo, en este sitio
         "duplicada",
     ]
 
@@ -1688,7 +1704,9 @@ def test_f056_r29_iguales_no_cambian_nada() -> None:
         ({"proveedor_nombre": "Otro Ejemplo"}, "proveedor"),
         ({"proveedor_codigo": None, "proveedor_ambiguo": True}, "proveedor"),
         ({"urgencia": Urgencia.SEGURIDAD}, "urgencia"),
-        ({"listado": Listado.PRIMERO}, "listado"),
+        # F-072 (R25, R19): el campo lógico `listado` es el tipo efectivo; el
+        # `listado` heredado ya no cuenta (lo prueba test_f072_r25_*).
+        ({"tipo_reclamacion": "9001"}, "listado"),
     ],
 )
 def test_f056_r33_cada_campo_logico(cambio: dict[str, object], campo: str) -> None:
@@ -1696,7 +1714,8 @@ def test_f056_r33_cada_campo_logico(cambio: dict[str, object], campo: str) -> No
 
 
 def test_f056_r33_varios_salen_en_orden_fijo() -> None:
-    despues = valores(listado=Listado.PRIMERO, unidad_codigo=U2, detalle="Ejemplo")
+    # F-072 (R25): el tipo, no el `listado` heredado, cambia el campo `listado`.
+    despues = valores(tipo_reclamacion="9001", unidad_codigo=U2, detalle="Ejemplo")
     assert campos_cambiados(valores(), despues) == ("unidad", "detalle", "listado")
     assert campos_cambiados(despues, valores()) == ("unidad", "detalle", "listado")
 

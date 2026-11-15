@@ -288,7 +288,10 @@ def test_f072_r21_otro_valor_es_error_en_listado(listado: object) -> None:
 
 def test_f072_r21_el_error_va_en_su_sitio_con_los_demas() -> None:
     errores = errores_de(
-        urgencia="nada", listado="9003", unidad_codigo="9901.03VILLA 9."
+        urgencia="nada",
+        listado="9003",
+        unidad_codigo="9901.03VILLA 9.",
+        ubicacion=None,
     )
     assert [c for c, _ in errores] == ["unidad_codigo", "urgencia", "listado"]
 

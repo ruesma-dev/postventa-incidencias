@@ -39,8 +39,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, fields
+from collections.abc import Collection, Iterable, Mapping
+from dataclasses import dataclass, fields, replace
 from datetime import UTC, datetime, timedelta
 from enum import Enum, StrEnum
 from uuid import UUID
@@ -58,11 +58,13 @@ from domain.models.plantilla_incidencias import (
     MAX_DESCRIPCION,
     MAX_DETALLE,
     MAX_UBICACION,
+    TIPO_RECLAMACION_POR_DEFECTO,
     CatalogoObra,
     Listado,
     ListasCerradas,
     OrigenIncidencia,
     Urgencia,
+    tipo_efectivo,
 )
 from domain.models.situacion_volcado import SituacionDeVolcado, estado_de_volcado
 
@@ -94,6 +96,7 @@ class MotivoNoAprobable(StrEnum):
     OFICIO_FUERA_DE_LA_OBRA = "oficio_fuera_de_la_obra"
     PAR_FUERA_DE_LA_OBRA = "par_fuera_de_la_obra"
     PROVEEDOR_AMBIGUO = "proveedor_ambiguo"
+    TIPO_FUERA_DE_SIGRID = "tipo_fuera_de_sigrid"  # F-072 (R24, Q-8)
     DUPLICADA = "duplicada"
 
 
@@ -134,8 +137,10 @@ CAMPOS_PEDIDOS: tuple[str, ...] = (
     "listado",
 )
 
-#: Los ocho campos lógicos de `cambios` y `campos_cambiados` (R29, R33), con
-#: los atributos de la foto que forman cada uno.
+#: Los siete primeros campos lógicos de `cambios` y `campos_cambiados` (R29,
+#: R33), con los atributos de la foto que forman cada uno. El octavo,
+#: `listado`, es el tipo de reclamación y se compara por el tipo efectivo
+#: (F-072, R25): no sale de ningún atributo tal cual.
 _ATRIBUTOS_DE_CAMPO: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("unidad", ("unidad_codigo", "unidad_nombre")),
     ("ubicacion", ("ubicacion",)),
@@ -144,9 +149,11 @@ _ATRIBUTOS_DE_CAMPO: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("oficio", ("oficio_codigo", "oficio_nombre", "oficio_ambiguo")),
     ("proveedor", ("proveedor_codigo", "proveedor_nombre", "proveedor_ambiguo")),
     ("urgencia", ("urgencia",)),
-    ("listado", ("listado",)),
 )
-CAMPOS_LOGICOS: tuple[str, ...] = tuple(campo for campo, _ in _ATRIBUTOS_DE_CAMPO)
+CAMPOS_LOGICOS: tuple[str, ...] = (
+    *(campo for campo, _ in _ATRIBUTOS_DE_CAMPO),
+    "listado",
+)
 
 #: Lo que se permite desde cada estado (§3.3; D-6, D-7).
 _PERMITIDAS: dict[EstadoRevision, tuple[AccionRevision, ...]] = {
@@ -189,7 +196,7 @@ PAR_FUERA = "ese proveedor no está en la obra con ese oficio en Sigrid"
 PROVEEDOR_SIN_OFICIO = "no hay proveedor sin oficio"
 ELIGE_EL_OFICIO = "elige primero el código del oficio"
 URGENCIA_NO_VALIDA = "no es una de las urgencias"
-LISTADO_NO_VALIDO = "no es uno de los listados"
+TIPO_NO_VALIDO = "no es un tipo de reclamación vigente en Sigrid"  # F-072 (R21)
 
 
 # --------------------------------------------------------------------------
@@ -483,9 +490,24 @@ def estado_de(situacion: SituacionDeRevision) -> EstadoRevision:
         return EstadoRevision.APROBADA
     if ultima is not None and ultima.accion is AccionRevision.DESCARTAR:
         return EstadoRevision.DESCARTADA
-    if valores_vigentes(situacion) != valores_importados(situacion.incidencia):
+    if not _mismos_valores(
+        valores_vigentes(situacion), valores_importados(situacion.incidencia)
+    ):
         return EstadoRevision.EDITADA
     return EstadoRevision.NUEVA
+
+
+def _mismos_valores(a: ValoresIncidencia, b: ValoresIncidencia) -> bool:
+    """¿Son la misma foto? Campo a campo, con el tipo **efectivo** (F-072, R25).
+
+    Una foto sin tipo (anterior a F-072) y la misma con `0002` son la misma:
+    pasar de nulo a `0002` no es un cambio. Vale para el estado (R1 de F-056)
+    y para `sin_cambios` (R16 de F-056); la huella, en cambio, sí las
+    distingue (R26).
+    """
+    return replace(a, tipo_reclamacion=tipo_efectivo(a.tipo_reclamacion)) == replace(
+        b, tipo_reclamacion=tipo_efectivo(b.tipo_reclamacion)
+    )
 
 
 def acciones_posibles(estado: EstadoRevision) -> tuple[AccionRevision, ...]:
@@ -496,12 +518,21 @@ def acciones_posibles(estado: EstadoRevision) -> tuple[AccionRevision, ...]:
 def campos_cambiados(
     antes: ValoresIncidencia, despues: ValoresIncidencia
 ) -> tuple[str, ...]:
-    """Los campos lógicos que difieren, en el orden de `CAMPOS_LOGICOS` (R29, R33)."""
-    return tuple(
+    """Los campos lógicos que difieren, en el orden de `CAMPOS_LOGICOS` (R29, R33).
+
+    `listado` es el tipo de reclamación, comparado por el tipo efectivo (F-072,
+    R25): de nulo a `0002` no cambia, y el `listado` heredado no cuenta (R19).
+    """
+    cambiados = [
         campo
         for campo, atributos in _ATRIBUTOS_DE_CAMPO
         if any(getattr(antes, a) != getattr(despues, a) for a in atributos)
-    )
+    ]
+    if tipo_efectivo(antes.tipo_reclamacion) != tipo_efectivo(
+        despues.tipo_reclamacion
+    ):
+        cambiados.append("listado")
+    return tuple(cambiados)
 
 
 # --------------------------------------------------------------------------
@@ -576,7 +607,9 @@ def validar_valores(
     pedida** (R48): cambiar la unidad la revalida. Los nombres salen del
     catálogo (R14): la unidad y el oficio sin nombre en Sigrid guardan su
     código; el proveedor, el nombre de la primera fila de `obrofc` de su par.
-    La urgencia y el listado, entre los que se ofrecen (`listas`).
+    La urgencia, entre las que se ofrecen (`listas`); el tipo de reclamación
+    (la clave `listado`), con `_tipo_pedido` (F-072, R21, R22), y el `listado`
+    heredado se copia de los vigentes (R23).
 
     R15: con el oficio vigente **ambiguo** y `oficio_codigo` nulo, se conserva
     el oficio ambiguo, y el proveedor solo puede ser el vigente (que se
@@ -678,14 +711,7 @@ def validar_valores(
         URGENCIA_NO_VALIDA,
         errores,
     )
-    listado = _tasado(
-        pedidos.listado,
-        {o.codigo for o in listas.listados},
-        Listado,
-        "listado",
-        LISTADO_NO_VALIDO,
-        errores,
-    )
+    tipo = _tipo_pedido(pedidos.listado, vigentes, listas, errores)
 
     if errores:
         raise ValoresNoValidos(
@@ -706,8 +732,33 @@ def validar_valores(
         proveedor_nombre=proveedor[1],
         proveedor_ambiguo=proveedor[2],
         urgencia=urgencia,  # type: ignore[arg-type]
-        listado=listado,  # type: ignore[arg-type]
+        listado=vigentes.listado,  # el heredado, tal cual (F-072, R23)
+        tipo_reclamacion=tipo,
     )
+
+
+def _tipo_pedido(
+    pedido: object,
+    vigentes: ValoresIncidencia,
+    listas: ListasCerradas,
+    errores: list[tuple[str, str]],
+) -> str:
+    """El tipo de reclamación de una edición (F-072, R21, R22).
+
+    `valores.listado` conserva su nombre y trae un **código**: nulo → `0002`
+    sin mirar la lista (Q-7); si no, exactamente uno de los vigentes leídos
+    (`listas.listados`) o el tipo efectivo que ya tiene la incidencia, que se
+    conserva aunque esté de baja. Otro → error en `listado`, sin repetirlo.
+    """
+    if pedido is None:
+        return TIPO_RECLAMACION_POR_DEFECTO
+    if isinstance(pedido, str) and (
+        pedido in {o.codigo for o in listas.listados}
+        or pedido == tipo_efectivo(vigentes.tipo_reclamacion)
+    ):
+        return pedido
+    errores.append(("listado", TIPO_NO_VALIDO))
+    return TIPO_RECLAMACION_POR_DEFECTO
 
 
 def _tasado(
@@ -762,6 +813,7 @@ def motivos_no_aprobable(
     *,
     catalogo: CatalogoObra,
     ubicaciones: Mapping[str, tuple[str, ...]],
+    tipos: Collection[str] | None = None,
 ) -> tuple[MotivoNoAprobable, ...]:
     """Todos los motivos de no aprobable de los valores vigentes, en orden (R21).
 
@@ -769,6 +821,11 @@ def motivos_no_aprobable(
     unidad sin entrada en `ubicaciones` tiene la lista vacía. `sin_oficio` es
     no tener ni código ni oficio ambiguo; el par solo se mira con código de
     oficio (con un oficio ambiguo no hay par que comprobar).
+
+    F-072 (R24): `tipos` son los códigos vigentes leídos de Sigrid; un tipo
+    guardado **no nulo** que no está entre ellos es `tipo_fuera_de_sigrid`.
+    Sin `tipos` (`None`) no se calcula, como no se calcula nada sin el
+    catálogo: descartar y recuperar no leen Sigrid (R27).
     """
     v = valores_vigentes(situacion)
     motivos: list[MotivoNoAprobable] = []
@@ -795,6 +852,12 @@ def motivos_no_aprobable(
         motivos.append(MotivoNoAprobable.PAR_FUERA_DE_LA_OBRA)
     if v.proveedor_ambiguo:
         motivos.append(MotivoNoAprobable.PROVEEDOR_AMBIGUO)
+    if (
+        tipos is not None
+        and v.tipo_reclamacion is not None
+        and v.tipo_reclamacion not in tipos
+    ):
+        motivos.append(MotivoNoAprobable.TIPO_FUERA_DE_SIGRID)
     if _es_duplicada(situacion):
         motivos.append(MotivoNoAprobable.DUPLICADA)
     return tuple(motivos)
@@ -907,13 +970,16 @@ def decidir(
                 ubicaciones=ubicaciones,
                 listas=listas,
             )
-            if valores == vigentes:
+            if _mismos_valores(valores, vigentes):  # F-072 (R25): nulo y 0002
                 raise SinCambios(
                     "los valores son los vigentes: no hay nada que guardar"
                 )
         else:
             motivos = motivos_no_aprobable(
-                situacion, catalogo=catalogo, ubicaciones=ubicaciones
+                situacion,
+                catalogo=catalogo,
+                ubicaciones=ubicaciones,
+                tipos={o.codigo for o in listas.listados},  # F-072 (R24)
             )
             if motivos:
                 raise IncidenciaNoAprobable(
@@ -1067,13 +1133,18 @@ def fila_de_revision(
     *,
     catalogo: CatalogoObra,
     ubicaciones: Mapping[str, tuple[str, ...]],
+    tipos: Collection[str] | None = None,
 ) -> FilaDeRevision:
-    """Estado, motivos y cambios de una incidencia, con las mismas funciones (R26)."""
+    """Estado, motivos y cambios de una incidencia, con las mismas funciones (R26).
+
+    `tipos`, los códigos vigentes de Sigrid (F-072, R24): los mismos que usa
+    aprobar, que salen de `listas.listados`.
+    """
     return FilaDeRevision(
         situacion=situacion,
         estado=estado_de(situacion),
         motivos=motivos_no_aprobable(
-            situacion, catalogo=catalogo, ubicaciones=ubicaciones
+            situacion, catalogo=catalogo, ubicaciones=ubicaciones, tipos=tipos
         ),
         cambios=campos_cambiados(
             valores_importados(situacion.incidencia), valores_vigentes(situacion)

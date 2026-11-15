@@ -1100,8 +1100,9 @@ guardan como los da Sigrid, nunca del cuerpo. Aprobar guarda los vigentes
 son exactamente estos y en este orden: `unidad_fuera_de_la_obra`,
 `sin_ubicacion` (la ubicación es obligatoria para aprobar),
 `ubicacion_fuera_de_lista`, `sin_oficio`, `oficio_ambiguo`,
-`oficio_fuera_de_la_obra`, `par_fuera_de_la_obra`, `proveedor_ambiguo` y
-`duplicada`. Con alguno, 409 `incidencia_no_aprobable` con todos. Así se
+`oficio_fuera_de_la_obra`, `par_fuera_de_la_obra`, `proveedor_ambiguo`,
+`tipo_fuera_de_sigrid` (F-072: el tipo de reclamación guardado ya no está
+vigente en Sigrid) y `duplicada`. Con alguno, 409 `incidencia_no_aprobable` con todos. Así se
 resuelven los dos apuntes que dejó F-036: las filas importadas con un catálogo
 viejo se ven por sus motivos y se corrigen editando, y las de oficio ambiguo
 eligen su código.

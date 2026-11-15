@@ -531,6 +531,7 @@ def test_f056_r27_resumen_sobre_todas_las_filas() -> None:
         M.OFICIO_FUERA_DE_LA_OBRA: 0,
         M.PAR_FUERA_DE_LA_OBRA: 0,
         M.PROVEEDOR_AMBIGUO: 0,
+        M.TIPO_FUERA_DE_SIGRID: 0,  # F-072 (R24): el motivo nuevo, a cero
         M.DUPLICADA: 1,
     }
 

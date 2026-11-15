@@ -615,7 +615,11 @@ def test_f056_o2_la_fuente_por_defecto_lee_las_ubicaciones_de_sigrid(monkeypatch
     monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", _FUENTE_POR_DEFECTO)
     monkeypatch.setattr(modulo, "construir_ubicaciones_validas", lambda _ajustes: PuertoDeSigrid())
 
-    assert _leer(_post(_cuerpo("editar")))[0] == 200
+    # F-072 (R22, R24): editar con `listado` nulo guarda `0002`, que no está en los
+    # listados que compone hoy el HTTP (los del YAML) y daría `tipo_fuera_de_sigrid`
+    # al aprobar. Se edita con un código de esa lista; el Bloque 6 (T18, T19) los
+    # vuelve a tocar al componer los tipos de Sigrid.
+    assert _leer(_post(_cuerpo("editar", valores=_valores(listado="primero"))))[0] == 200
     assert _leer(_post(_cuerpo("aprobar", revision_previa=1)))[0] == 200
     estado, datos = _leer(_listar())
     assert estado == 200
@@ -647,8 +651,12 @@ def test_f056_r9_el_correo_se_guarda_recortado_y_sale_en_listado_e_historial(
 
 
 def test_f056_r10_el_oid_no_sale_en_ninguna_respuesta(mundo: Mundo) -> None:
+    # F-072 (R22, R24): editar con `listado` nulo guarda `0002`, que no está en los
+    # listados que compone hoy el HTTP (los del YAML) y daría `tipo_fuera_de_sigrid`
+    # al aprobar. Se edita con un código de esa lista; el Bloque 6 (T18, T19) los
+    # vuelve a tocar al componer los tipos de Sigrid.
     respuestas = [
-        _post(_cuerpo("editar")),
+        _post(_cuerpo("editar", valores=_valores(listado="primero"))),
         _post(_cuerpo("aprobar", revision_previa=1)),
         _post(_cuerpo("aprobar", revision_previa=2)),  # 409: ya aprobada
         _post(_cuerpo(usuario_correo="sin-arroba")),  # 400
@@ -700,7 +708,11 @@ def test_f056_r41_ningun_registro_lleva_oid_correo_ni_textos(caplog, mundo: Mund
 
 
 def test_f056_r42_cualquiera_del_grupo_puede_actuar_sin_roles(mundo: Mundo) -> None:
-    primera = _leer(_post(_cuerpo("editar")))
+    # F-072 (R22, R24): editar con `listado` nulo guarda `0002`, que no está en los
+    # listados que compone hoy el HTTP (los del YAML) y daría `tipo_fuera_de_sigrid`
+    # al aprobar. Se edita con un código de esa lista; el Bloque 6 (T18, T19) los
+    # vuelve a tocar al componer los tipos de Sigrid.
+    primera = _leer(_post(_cuerpo("editar", valores=_valores(listado="primero"))))
     segunda = _leer(
         _post(
             _cuerpo(
@@ -1134,7 +1146,14 @@ def test_f056_r29_una_fila_revisada_y_duplicada(monkeypatch) -> None:
     vigentes = replace(
         valores_importados(incidencia(2)), ubicacion="Cocina", detalle=DETALLE
     )
-    vigentes = replace(vigentes, urgencia=Urgencia.SEGURIDAD, listado=Listado.SEGUNDO)
+    # F-072 (R25): el campo lógico `listado` es el tipo efectivo; el heredado ya no
+    # cuenta, así que la foto lleva además un tipo para que siga saliendo en `cambios`.
+    vigentes = replace(
+        vigentes,
+        urgencia=Urgencia.SEGURIDAD,
+        listado=Listado.SEGUNDO,
+        tipo_reclamacion="9001",
+    )
     mundo.revision.sembrar(
         UUID(int=2),
         A.EDITAR,

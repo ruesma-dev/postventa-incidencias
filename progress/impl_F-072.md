@@ -83,3 +83,69 @@ era ese recuento, ya corregido y en verde. No hay más ficheros afectados.
 Desviación: ninguna. Fuera del Bloque 1 (llega en el Bloque 2): `validar_valores` y la foto
 desde la bandeja aún no copian `tipo_reclamacion` (hoy ninguna fila lo tiene: lo escribe la
 importación del Bloque 5).
+
+### T3 · campaña de mutación del Bloque 1 — BLOQUEADA (fallo inesperado del arnés)
+
+Comando lanzado tal cual lo pidió el líder, desde la raíz:
+`python -m harness.mutacion --feature F-072 --base 6994cb0 --timeout 1800 --salida progress/mutacion_F-072_bloque1.md`
+
+Alcance que calculó: 3 ficheros, 93 líneas de producción (rama `6994cb0..feature/F-072…`),
+muestreo `critico` (60 %, suelo 100, techo 300, semilla 20261030), 8 workers. **Abortó sin escribir
+informe** (`progress/mutacion_F-072_bloque1.md` no existe), porque la línea base sale roja **en el
+worktree del worker**, sin mutar nada:
+
+```
+LÍNEA BASE EN ROJO en C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_upct7sx9/wk_1/services/postventa-api: la suite falla SIN mutar nada.
+Campaña abortada sin escribir informe: sobre una base roja TODO mutante saldría «muerto» y el cero de supervivientes sería falso.
+  Tests que fallan sin mutar:
+    - tests/test_f012_fabrica_grafico.py::test_f012_r40_la_tercera_puerta_nombra_todas_las_variables_que_faltan
+    - tests/test_f012_fabrica_grafico.py::test_f012_r40_el_error_no_lleva_jamas_el_valor_de_ninguna_variable
+    - tests/test_f013_ubicacion_sigrid.py::test_f013_t12_faltando_configuracion_nombra_todas_y_ningun_valor
+    - tests/test_f036_adaptador_catalogo.py::test_f036_r11_faltando_configuracion_nombra_todas_y_ningun_valor
+    - tests/test_f056_ubicaciones.py::test_f056_r46_la_fabrica_nombra_lo_que_falta_y_ningun_valor
+    - tests/test_f059_fabrica.py::test_f059_r10_r16_la_configuracion_nombra_todas_las_que_faltan_y_ningun_valor[construir_ensayador]
+    - tests/test_f059_fabrica.py::test_f059_r10_r16_la_configuracion_nombra_todas_las_que_faltan_y_ningun_valor[construir_volcador]
+    - tests/test_f059_fabrica.py::test_f059_r30_la_configuracion_va_antes_que_n[construir_ensayador]
+    - tests/test_f059_fabrica.py::test_f059_r30_la_configuracion_va_antes_que_n[construir_volcador]
+    - tests/test_f059_volcado_http.py::test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer[sin-configuracion]
+    - tests/test_f059_volcado_http.py::test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base[sin-configuracion]
+    - tests/test_f065_adaptador.py::test_f065_r2_la_fabrica_nombra_lo_que_falta_y_ningun_valor
+    - tests/test_f065_http.py::test_f065_r2_sin_configuracion_503_nombrando_las_variables_y_nunca_sus_valores
+```
+
+Esos 13 tests pasan en la carpeta principal (están entre los 9971 verdes de la suite entera de T2).
+**Diagnóstico** (leyendo código, sin abrir el `.env`, que no se toca):
+
+- El arnés 1.10 trae `volcar_variables` (`harness/mutacion_paralela.py`, F-023 del arnés): antes de
+  crear los worktrees vuelca el `.env` de la raíz **a `os.environ`** del coordinador, y los workers lo
+  heredan. No existía en el arnés con el que se midió F-071 (`git show 6994cb0~5:harness/mutacion_paralela.py`
+  no lo tiene); F-072 es la primera campaña con la 1.10.
+- Los 13 tests comprueban que la fábrica **nombra la configuración que falta** (p. ej.
+  `test_f056_r46…`: `_ajustes(ENTORNO="dev", SIGRID_API_KEY=…, SIGRID_BASE_DATOS="  ")` y espera
+  `SIGRID_API_BASE_URL` en el error). Se aíslan del fichero `.env`, pero no de `os.environ`: con las
+  variables ya volcadas al entorno, lo que debía faltar está, y el error no sale.
+- No es del código de F-072 (ninguno de los 13 toca los ficheros mutados) ni de la máquina.
+
+**Por qué no lo esquivo**: `--workers 1` lo evita (en serie no hay volcado de worktree), pero la suite
+entera tarda **730 s** sin paralelizar y el muestreo pide ≥ 100 mutantes: más de 20 h. Exportar
+variables vacías para tapar las del `.env`, tocar los tests de otras features o el arnés serían
+workarounds que el protocolo prohíbe improvisar. Decisión para el líder/humano, opciones que veo:
+(a) arreglar el aislamiento de esos 13 tests (que limpien también `os.environ` de las variables que
+esperan ausentes) en una tarea de arnés/proyecto aparte; (b) que `volcar_variables` sea opt-in en
+`rigor.local.json` (mejora del arnés genérico, a portar a `arnes-base`); (c) campaña con
+`--con-seleccion` y `--workers 1` (no probado: la selección mide cobertura y podría bajar mucho
+el coste, pero no lo he lanzado sin permiso).
+
+Estado del Bloque 1: **T1 y T2 hechas y en verde** (commits `50efef2`, `0a3ed7e`); T3 sin hacer
+(mutación bloqueada; la review la lanza el líder). La rama queda limpia y sin worktrees colgados
+(`git worktree list` sin los de la campaña).
+
+## Evidencias (Bloque 1)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | suite unitaria `api` entera: 9971 passed, 353 skipped, 1 failed (aserción de F-060 corregida, citada arriba); dirigidos de T2: 725 passed |
+| Cobertura de líneas cambiadas | sin medir: `init.sh` lo lanza el líder |
+| Mutantes | 0 generados: campaña abortada en la línea base (arriba) |
+| Tiempo de la suite | 730,04 s (`api` entera, en serie); dirigidos 3,89 s |
+| Capa e2e | N/A en el Bloque 1 (dominio puro) |

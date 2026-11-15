@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · `blocked` · 2026-11-15 · Bloque 1: T1 y T2 hechas; la mutación de T3 no arranca
+> T1 RED `50efef2` y T2 GREEN `0a3ed7e` (dominio de tipos, `tipo_efectivo`, huella R26 y `parte_de` R28), suite
+> unitaria de `api` en verde salvo un recuento de F-060 (12 → 13 campos, R26) ya corregido. **Bloqueo**: la campaña
+> `python -m harness.mutacion --feature F-072 --base 6994cb0 …` aborta con la línea base roja en los worktrees: 13
+> tests de «configuración que falta» ven las variables que `volcar_variables` (arnés 1.10) vuelca del `.env` raíz a
+> `os.environ`. No es del código de F-072. Decide el líder/humano entre las opciones de `progress/impl_F-072.md`, T3.
+
 > ## F-072 · `in_progress` · 2026-11-15 · spec aprobada por el humano; siguiente, Bloque 1
 > `specs/F-072-tipo-reclamacion-sigrid/`, base fija `dev` `6994cb0`. **T0 (líder, solo lecturas, 2026-11-15)**:
 > Q-1 `dbo.auxtrcp` tiene 4 tipos, todos vigentes (`0001` PREVENTA, `0002` PRIMER LISTADO POSTVENTA, `0003` POST VENTA,

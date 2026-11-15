@@ -23,7 +23,7 @@
 
 ## Bloque 0 · Mediciones y decisiones (líder, solo lecturas)
 
-- [ ] **T0 · líder**: medir Q-1 (`SELECT cod, res, pos, fecbaj FROM dbo.auxtrcp ORDER BY pos, cod` por `sql/read` de `sigrid-api`), Q-2 (recuento por `listado` en `postventa.bandeja_incidencias` y en la última revisión de cada incidencia no volcada) y Q-3 (`tableowner` de `bandeja_incidencias` y `revisiones_bandeja` en `pg_tables` frente al rol de la Function), todo de solo lectura y sin datos personales en las notas; llevar al humano Q-1..Q-11 y escribir «Decidido» en `design.md` §12 con `spec_aprobada`. Si `0002` no está vigente o el rol no es dueño, **parar**. | Verificación: resultados y respuestas anotados en `progress/current.md`
+- [x] **T0 · líder**: medir Q-1 (`SELECT cod, res, pos, fecbaj FROM dbo.auxtrcp ORDER BY pos, cod` por `sql/read` de `sigrid-api`), Q-2 (recuento por `listado` en `postventa.bandeja_incidencias` y en la última revisión de cada incidencia no volcada) y Q-3 (`tableowner` de `bandeja_incidencias` y `revisiones_bandeja` en `pg_tables` frente al rol de la Function), todo de solo lectura y sin datos personales en las notas; llevar al humano Q-1..Q-11 y escribir «Decidido» en `design.md` §12 con `spec_aprobada`. Si `0002` no está vigente o el rol no es dueño, **parar**. | Verificación: resultados y respuestas anotados en `progress/current.md`
 
 ## Bloque 1 · Dominio: tipos, tipo efectivo, huella y parte
 

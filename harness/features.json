@@ -1248,7 +1248,8 @@
         "Ninguna escritura en Sigrid desde local ni desde tests",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "in_progress",
+      "spec_aprobada": "2026-11-15",
       "sdd": true,
       "rigor": "critico",
       "priority": 2,

@@ -1,14 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-072 · `todo` · 2026-11-13 · spec escrita por el spec-author, pendiente de aprobación
-> `specs/F-072-tipo-reclamacion-sigrid/` (requirements 148/150, design 249/250, tasks en 9 bloques, base fija propuesta
-> `dev` `6994cb0`). Solo backend: el front publicado sigue sirviendo porque se mantiene la forma del contrato
-> (`listado` lleva el código de `auxtrcp`, `catalogo.listados` los tipos). Columna nueva `tipo_reclamacion` en
-> `bandeja_incidencias` y `revisiones_bandeja` (`17_tipo_reclamacion.sql`, primer `ALTER TABLE` en producción); huella
-> compatible (las aprobadas de antes siguen intactas). **Para el humano**: Q-1..Q-11 de `design.md` §12. **Mediciones de
-> solo lectura del líder antes de aprobar (T0)**: Q-1 valores de `dbo.auxtrcp` (¿`0002` vigente?), Q-2 recuento de
-> `listado` heredado en la bandeja, Q-3 dueño de las dos tablas frente al rol de la Function (si no es dueño, se para).
+> ## F-072 · `in_progress` · 2026-11-15 · spec aprobada por el humano; siguiente, Bloque 1
+> `specs/F-072-tipo-reclamacion-sigrid/`, base fija `dev` `6994cb0`. **T0 (líder, solo lecturas, 2026-11-15)**:
+> Q-1 `dbo.auxtrcp` tiene 4 tipos, todos vigentes (`0001` PREVENTA, `0002` PRIMER LISTADO POSTVENTA, `0003` POST VENTA,
+> `0004` VISITA DE CORTESIA; catálogo, no datos personales); Q-2 la bandeja tiene 285 `primero`, 4 nulos y ningún
+> `segundo` (288 sin volcar); Q-3 `postventa_app` es dueño de `bandeja_incidencias` y `revisiones_bandeja` y es el rol de
+> la sesión. **Decidido por el humano el 2026-11-15**: Q-1..Q-11 la opción (a) (`design.md` §12). Implementación un
+> bloque por encargo, con review al final de cada uno; se para antes del Bloque 8 (despliegue y T26 en la 0677).
 
 > ## Arnés · caché de suites ajustada · 2026-11-13 · mergeado en `dev`
 > `harness/servicios.json` con `depende_de` y `ejecutar_siempre` (inventario, ampliación (b) y recorte de F-059/F-060/F-065

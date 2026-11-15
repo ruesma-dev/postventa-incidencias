@@ -236,14 +236,14 @@ son MANUAL (`tasks.md` T13 y T26).
 
 | Decisión | Opciones | Recomendado | Decidido |
 |---|---|---|---|
-| Q-1 · Los valores de `auxtrcp` (medición del líder: `SELECT cod, res, pos, fecbaj FROM dbo.auxtrcp ORDER BY pos, cod` por `sql/read`) | (a) ofrecer todos los vigentes; (b) una lista blanca de códigos | (a), y parar si `0002` no está vigente | |
-| Q-2 · `listado` heredado en la base (medición del líder: recuento por `listado` en `bandeja_incidencias` y en la última revisión de cada incidencia no volcada) | (a) no traducir: nulo = `0002`; (b) traducir `primero` → `0002` y `segundo` → el código que diga el humano | (a); si hay `segundo` sin volcar, se cambian a mano | |
-| Q-3 · Dueño de las tablas para el primer `ALTER TABLE` (medición del líder: `tableowner` de las dos tablas en `pg_tables` frente al rol de la Function) | (a) seguir si es dueño; (b) si no lo es, parar y proponer | (a)/(b) según la medición | |
-| Q-4 · Límite de servicio y contrato | (a) solo backend: `listado` lleva el código y `catalogo.listados` los tipos, el front no cambia; (b) clave nueva `tipo_reclamacion` y ficha de front aparte | (a) | |
-| Q-5 · Plantillas v2 ya repartidas | (a) seguir en v2; las etiquetas viejas fallan por fila; (b) v3 y rechazar las v2 enteras; (c) alias «Primer listado» → `0002` | (a) | |
-| Q-6 · Etiqueta del desplegable | (a) `<res> (<cod>)`, como el oficio de F-071; (b) solo `res`; (c) `<cod> <res>` | (a) | |
-| Q-7 · En blanco | (a) guardar `0002` al importar y al editar; nulo solo en lo anterior a F-072; (b) guardar nulo y resolver al volcar | (a) (literal del `acceptance`) | |
-| Q-8 · Validar el tipo al aprobar | (a) motivo `tipo_fuera_de_sigrid`; (b) no, lo para `sigrid-api` en el ensayo | (a) | |
-| Q-9 · Qué se guarda | (a) solo el código; (b) código y nombre | (a): el nombre se pinta con la lista vigente | |
-| Q-10 · Verificación en producción (T26) | (a) autorizar filas «PRUEBA F-072 - DESCARTAR» en la bandeja de la 0677 y un **ensayo** (dry-run, ventana cerrada) de una aprobada con tipo ≠ `0002`, y descartarlas; (b) solo lecturas | (a) | |
-| Q-11 · Textos del front («Listado», «Sin listado», el motivo nuevo, `TEXTO_TIPO` de `js/volcado.js`) | (a) en F-040 al retomarla; (b) ficha de front aparte | (a) | |
+| Q-1 · Los valores de `auxtrcp` (medición del líder: `SELECT cod, res, pos, fecbaj FROM dbo.auxtrcp ORDER BY pos, cod` por `sql/read`) | (a) ofrecer todos los vigentes; (b) una lista blanca de códigos | (a), y parar si `0002` no está vigente || (a), humano 2026-11-15. T0: 4 tipos, todos vigentes, `0002` entre ellos |
+| Q-2 · `listado` heredado en la base (medición del líder: recuento por `listado` en `bandeja_incidencias` y en la última revisión de cada incidencia no volcada) | (a) no traducir: nulo = `0002`; (b) traducir `primero` → `0002` y `segundo` → el código que diga el humano | (a); si hay `segundo` sin volcar, se cambian a mano || (a), humano 2026-11-15. T0: 285 `primero`, 4 nulos, ningún `segundo` |
+| Q-3 · Dueño de las tablas para el primer `ALTER TABLE` (medición del líder: `tableowner` de las dos tablas en `pg_tables` frente al rol de la Function) | (a) seguir si es dueño; (b) si no lo es, parar y proponer | (a)/(b) según la medición || (a), humano 2026-11-15. T0: `postventa_app` es dueño de las dos tablas y es el rol de la Function |
+| Q-4 · Límite de servicio y contrato | (a) solo backend: `listado` lleva el código y `catalogo.listados` los tipos, el front no cambia; (b) clave nueva `tipo_reclamacion` y ficha de front aparte | (a) || (a), humano 2026-11-15 |
+| Q-5 · Plantillas v2 ya repartidas | (a) seguir en v2; las etiquetas viejas fallan por fila; (b) v3 y rechazar las v2 enteras; (c) alias «Primer listado» → `0002` | (a) || (a), humano 2026-11-15 |
+| Q-6 · Etiqueta del desplegable | (a) `<res> (<cod>)`, como el oficio de F-071; (b) solo `res`; (c) `<cod> <res>` | (a) || (a), humano 2026-11-15 |
+| Q-7 · En blanco | (a) guardar `0002` al importar y al editar; nulo solo en lo anterior a F-072; (b) guardar nulo y resolver al volcar | (a) (literal del `acceptance`) || (a), humano 2026-11-15 |
+| Q-8 · Validar el tipo al aprobar | (a) motivo `tipo_fuera_de_sigrid`; (b) no, lo para `sigrid-api` en el ensayo | (a) || (a), humano 2026-11-15 |
+| Q-9 · Qué se guarda | (a) solo el código; (b) código y nombre | (a): el nombre se pinta con la lista vigente || (a), humano 2026-11-15 |
+| Q-10 · Verificación en producción (T26) | (a) autorizar filas «PRUEBA F-072 - DESCARTAR» en la bandeja de la 0677 y un **ensayo** (dry-run, ventana cerrada) de una aprobada con tipo ≠ `0002`, y descartarlas; (b) solo lecturas | (a) || (a), humano 2026-11-15 |
+| Q-11 · Textos del front («Listado», «Sin listado», el motivo nuevo, `TEXTO_TIPO` de `js/volcado.js`) | (a) en F-040 al retomarla; (b) ficha de front aparte | (a) || (a), humano 2026-11-15 |

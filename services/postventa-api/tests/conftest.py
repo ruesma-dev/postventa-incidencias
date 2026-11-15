@@ -21,12 +21,39 @@ from __future__ import annotations
 import socket
 
 import pytest
-from config.settings import obtener_ajustes
+from config.settings import Ajustes, obtener_ajustes
+
+
+def variables_de_configuracion() -> set[str]:
+    """Nombres de las variables de entorno que lee `Ajustes`.
+
+    Salen del propio modelo (el alias de cada campo o, si no lo tiene, su
+    nombre en mayúsculas), así que un campo nuevo queda cubierto sin tocar
+    esta lista.
+    """
+    nombres = set()
+    for nombre, campo in Ajustes.model_fields.items():
+        alias = campo.validation_alias
+        nombres.add(alias if isinstance(alias, str) else nombre.upper())
+    return nombres
 
 
 @pytest.fixture(autouse=True)
 def entorno_de_test(monkeypatch):
-    """Entorno reproducible y sin caché heredada entre tests."""
+    """Entorno reproducible y sin caché heredada entre tests.
+
+    Además del `.env` (del que cada test se aísla con `_env_file=None`), la
+    suite se aísla de **`os.environ`**: quita toda variable de configuración
+    que traiga el proceso. Sin esto, los tests que comprueban que la fábrica
+    nombra la configuración que FALTA se ponían rojos cuando alguien la tenía
+    exportada en su terminal, o cuando la mutación paralela del arnés vuelca
+    el `.env` al entorno de los workers. El test que necesite una variable la
+    pone él mismo con `monkeypatch.setenv`.
+    """
+    # pydantic-settings no distingue mayúsculas: se quitan las dos grafías.
+    for nombre in variables_de_configuracion():
+        monkeypatch.delenv(nombre, raising=False)
+        monkeypatch.delenv(nombre.lower(), raising=False)
     monkeypatch.setenv("ENTORNO", "test")
     obtener_ajustes.cache_clear()
     yield

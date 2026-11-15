@@ -179,7 +179,8 @@ def test_f072_r19_sin_tipo_el_efectivo_es_0002() -> None:
     assert tipo_efectivo(None) == "0002"
 
 
-@pytest.mark.parametrize("codigo", ["9001", "0002", "0001"])
+# `""` va tal cual (§4.1): solo el nulo es «sin tipo»; `null` no es `""`.
+@pytest.mark.parametrize("codigo", ["9001", "0002", "0001", ""])
 def test_f072_r19_con_tipo_el_efectivo_es_el_guardado(codigo: str) -> None:
     assert tipo_efectivo(codigo) == codigo
 
@@ -246,3 +247,28 @@ def test_f072_r26_el_tipo_0002_explicito_no_es_el_nulo() -> None:
     # Una foto con `0002` guardado no es la de antes de F-072: su lista lleva
     # el código. El tipo efectivo coincide; la huella, no.
     assert huella_de_valores(valores(tipo_reclamacion="0002")) != HUELLA_6994CB0
+
+def test_f072_r26_un_tipo_vacio_no_es_el_nulo_y_va_al_final() -> None:
+    # Solo el nulo es «anterior a F-072»: `""` entra en la lista, como en F-056
+    # `null` no es `""`. Inalcanzable hoy (R5 y el `CHECK` de R16), pero la
+    # huella no debe confundirlos.
+    v = valores(tipo_reclamacion="")
+    assert huella_de_valores(v) != HUELLA_6994CB0
+    lista = [
+        "9901.03VILLA 1.",
+        "Villa Ejemplo Uno",
+        "Baño",
+        "Ejemplo de grieta junto a la ventana",
+        "Ejemplo «ñ»",
+        "0046",
+        "Carpintería de madera",
+        False,
+        "EJ07",
+        "Carpintería Ejemplo, S.L.",
+        False,
+        "urgente",
+        "primero",
+        "",
+    ]
+    texto = json.dumps(lista, ensure_ascii=False, separators=(",", ":"))
+    assert huella_de_valores(v) == hashlib.sha256(texto.encode("utf-8")).hexdigest()

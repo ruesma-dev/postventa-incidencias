@@ -163,6 +163,24 @@ efectivo o cambiar el alias), está en `progress/mutacion_F-072_bloque1.md`, sin
 `PENDIENTE`. El `.json` de estado de la campaña queda sin versionar, como los de antes.
 T3 no se marca: la review del Bloque 1 la lanza el líder.
 
+### Cambios de la review del Bloque 1 (`progress/review_F-072_bloque1.md`, puntos 1–3)
+
+Los 2 mutantes que la reducción «uno por línea» dejó sin evaluar sobrevivían. Reproducidos a mano
+con `pytest tests/test_f072_dominio_tipos.py tests/test_f072_volcado.py -q` y el código restaurado
+después de cada uno (`git status` sin cambios en `domain/`):
+
+| Mutante | Antes de los tests nuevos | Después |
+|---|---|---|
+| `plantilla_incidencias.py:579` `codigo is None` → `not codigo` | `39 passed` (sobrevive) | `1 failed, 40 passed`: `test_f072_r19_con_tipo_el_efectivo_es_el_guardado[]` |
+| `revision.py:826` `is not None` → `if valores.tipo_reclamacion:` | `39 passed` (sobrevive) | `1 failed, 40 passed`: `test_f072_r26_un_tipo_vacio_no_es_el_nulo_y_va_al_final` |
+| `revision.py:826` → `if valores.tipo_reclamacion or "0002":` (variante) | — | `1 failed`: `test_f072_r26_con_tipo_nulo_la_huella_es_la_de_6994cb0` (ya lo cazaba) |
+
+Tests: `""` añadido al `parametrize` de R19 (§4.1: solo el nulo es «sin tipo») y
+`test_f072_r26_un_tipo_vacio_no_es_el_nulo_y_va_al_final` (huella ≠ `HUELLA_6994CB0` e igual al
+sha de la lista con `""` al final). Comentario de `test_f060_normalizacion_dominio.py:486`
+precisado (la fixture lleva el tipo nulo; la copia de R23 se prueba en el Bloque 2). Sin campaña
+nueva: solo cambian tests. Verde: los dos de F-072 → `41 passed`; con F-056, F-059 y F-060 → `699 passed`.
+
 ## Evidencias (Bloque 1)
 
 | Evidencia | Valor |

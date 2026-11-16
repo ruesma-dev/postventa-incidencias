@@ -151,8 +151,10 @@ def test_f072_r2_sin_parametros() -> None:
         ([None, None, None], FilaTipoReclamacion(None, None, None)),
         ([9004, 7, "3"], FilaTipoReclamacion("9004", "7", 3)),
         (["9005", "TIPO FICTICIO 5", 4.0], FilaTipoReclamacion("9005", "TIPO FICTICIO 5", 4)),
+        # Un valor falso no es un nulo: el `0` y el `""` llegan tal cual (mata `not valor`).
+        ([0, "", 0], FilaTipoReclamacion("0", "", 0)),
     ],
-    ids=["lista", "tupla", "sin-recortar", "nulos", "no-textos", "posicion-real"],
+    ids=["lista", "tupla", "sin-recortar", "nulos", "no-textos", "posicion-real", "falsos-no-nulos"],
 )
 def test_f072_r2_cada_fila_es_codigo_nombre_y_posicion(fila: Any, esperada: FilaTipoReclamacion) -> None:
     assert fila_a_tipo_reclamacion(fila) == esperada

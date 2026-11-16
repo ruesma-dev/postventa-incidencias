@@ -598,3 +598,31 @@ def test_f072_r25_volver_a_lo_importado_con_0002_deja_la_incidencia_nueva() -> N
     assert estado_de(sit) is EstadoRevision.NUEVA
     otra = situacion(revision(3, A.EDITAR, valores(tipo_reclamacion="9001")))
     assert estado_de(otra) is EstadoRevision.EDITADA
+
+def test_f072_r25_el_listado_heredado_no_cuenta_para_el_estado() -> None:
+    """R1 de F-056 con R25 (opción (a) del humano, 2026-11-16): solo el tipo efectivo.
+
+    Caso borde de la review del Bloque 2: lo importado trae el `listado`
+    heredado `primero` y una revisión anterior a F-072 solo lo quitó. Sin
+    ningún cambio en `cambios`, la incidencia sigue `nueva`.
+    """
+    inc = incidencia(listado=Listado.PRIMERO)
+    importados = valores_importados(inc)
+    foto = replace(importados, listado=None)
+    assert campos_cambiados(importados, foto) == ()
+    sit = situacion(revision(3, A.EDITAR, foto), inc=inc)
+    assert estado_de(sit) is EstadoRevision.NUEVA
+    # Y con un cambio de verdad sí sale editada.
+    otra = situacion(revision(3, A.EDITAR, replace(foto, tipo_reclamacion="9001")), inc=inc)
+    assert estado_de(otra) is EstadoRevision.EDITADA
+
+
+def test_f072_r25_el_listado_heredado_no_cuenta_para_sin_cambios() -> None:
+    """R16 de F-056 con R25: reeditar esa foto con lo mismo no guarda nada."""
+    inc = incidencia(listado=Listado.PRIMERO)
+    foto = replace(valores_importados(inc), listado=None)
+    with pytest.raises(SinCambios):
+        decide(
+            situacion(revision(3, A.EDITAR, foto), inc=inc),
+            peticion(A.EDITAR, vals=pedidos(listado=None)),
+        )

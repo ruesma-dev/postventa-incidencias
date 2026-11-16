@@ -57,41 +57,23 @@ TypeError: ValoresIncidencia.__init__() got an unexpected keyword argument 'tipo
 
 ### T2 · GREEN
 
-- `domain/models/plantilla_incidencias.py`: `TIPO_RECLAMACION_POR_DEFECTO = "0002"`,
-  `MAX_TIPO_RECLAMACION = 24`, `TipoReclamacion(codigo, nombre)`, `tipos_del_desplegable`
-  (reutiliza `_nombre_recortado` y `_con_codigo` de F-071, así la etiqueta es la del oficio),
-  `listas_con_tipos` (`replace` de `listados`) y `tipo_efectivo`; docstring de `ListasCerradas`.
-- `domain/models/revision.py`: `ValoresIncidencia.tipo_reclamacion: str | None = None` (último
-  campo) y `huella_de_valores`, que salta el campo y lo añade al final solo si no es nulo (R26).
-- `domain/models/volcado.py`: `TIPO_RECLAMACION = TIPO_RECLAMACION_POR_DEFECTO` (alias) y
-  `parte_de` con `tipo_efectivo(v.tipo_reclamacion)` (R28); docstrings sin «siempre `0002`».
+- `plantilla_incidencias.py`: `TIPO_RECLAMACION_POR_DEFECTO = "0002"`, `MAX_TIPO_RECLAMACION = 24`,
+  `TipoReclamacion`, `tipos_del_desplegable` (reutiliza `_nombre_recortado`/`_con_codigo` de F-071),
+  `listas_con_tipos` y `tipo_efectivo`. `revision.py`: `ValoresIncidencia.tipo_reclamacion = None` (último
+  campo) y `huella_de_valores`, que lo añade al final solo si no es nulo (R26). `volcado.py`: alias
+  `TIPO_RECLAMACION` y `parte_de` con `tipo_efectivo` (R28).
 
-**Aserción de otra feature que cambia** (citada con su R, como pide `design.md` §3.2):
-`tests/test_f060_normalizacion_dominio.py::test_f060_r8_la_revision_cambia_solo_la_ubicacion_de_los_vigentes`
-contaba `len(otros) == 12` campos de la foto aparte de `ubicacion`; con el campo nuevo son 13
-(R26). Lo demás del test (que todos se copian y solo cambia `ubicacion`) sigue igual y ahora
-cubre también la copia de `tipo_reclamacion` en la revisión del sistema (R23).
+**Aserción de otra feature que cambia** (§3.2): `test_f060_r8_la_revision_cambia_solo_la_ubicacion_de_los_vigentes`
+contaba 12 campos aparte de `ubicacion`; ahora 13 (R26); cubre además la copia del tipo (R23).
 
-Verificación de T2 (comando de `tasks.md`, más los dos de F-060):
-`.venv/Scripts/python.exe -m pytest tests/test_f060_normalizacion_dominio.py tests/test_f060_pipeline_normalizacion.py tests/test_f072_dominio_tipos.py tests/test_f072_volcado.py tests/test_f056_revision_dominio.py tests/test_f059_volcado_dominio.py -q -p no:cacheprovider`
-→ `725 passed in 3.89s`.
+Verificación de T2 (F-060 ×2, F-072 ×2, F-056 dominio, F-059 dominio): `725 passed in 3.89s`. Suite `api` entera
+antes de corregir esa aserción: `1 failed, 9971 passed, 353 skipped in 730.04s` (el único rojo, ese recuento).
+Desviación: ninguna.
 
-Suite unitaria entera de `api` (`pytest tests -q`, sin `init.sh`, que es del líder), antes de
-corregir la aserción de F-060: `1 failed, 9971 passed, 353 skipped in 730.04s`; el único rojo
-era ese recuento, ya corregido y en verde. No hay más ficheros afectados.
+### T3 · campaña de mutación del Bloque 1 (detalle en `progress/mutacion_F-072_bloque1.md`)
 
-Desviación: ninguna. Fuera del Bloque 1 (llega en el Bloque 2): `validar_valores` y la foto
-desde la bandeja aún no copian `tipo_reclamacion` (hoy ninguna fila lo tiene: lo escribe la
-importación del Bloque 5).
-
-### T3 · campaña de mutación del Bloque 1 (resumida; detalle en los commits y en el informe de campaña)
-
-- Primer intento **bloqueado**: la línea base salía roja en los worktrees por 13 tests de «configuración que
-  falta» que veían el `.env` volcado a `os.environ` por `volcar_variables` (arnés 1.10). El humano eligió
-  arreglar los tests (`a18956e`, `dev` `05c8a5a`, traído en `299f21c`; `progress/impl_fix_tests_config_entorno.md`).
-- Relanzada tal cual (`--base 6994cb0 --timeout 1800`, 5 workers, línea base 1293–1364 s): 7 generados, 5
-  evaluados (uno por línea), **5 muertos, 0 supervivientes** en 3989,2 s. `volcado.py` no da mutantes; su
-  control a mano está en `progress/mutacion_F-072_bloque1.md`, sin `PENDIENTE`.
+Primer intento bloqueado por 13 tests de configuración que veían el `.env` volcado (arreglados en `a18956e`,
+`progress/impl_fix_tests_config_entorno.md`). Relanzada: 7 generados, 5 evaluados, **5 muertos, 0 supervivientes**.
 
 ### Cambios de la review del Bloque 1 (`3575aa0`; detalle en `progress/review_F-072_bloque1.md`)
 
@@ -208,6 +190,25 @@ muestreo. Los **8 descartados**, por debajo del suelo de 100, reproducidos a man
 que caza cada uno en el informe de campaña). `volcado.py`: declaración sin `PENDIENTE`. **Cero supervivientes.**
 
 Equivalentes: ninguno. Nota: el `return` de la rama de error de `_tipo_pedido` no se usa (`validar_valores` lanza).
+
+### Bloque 2 · ajuste del heredado (opción (a) del humano, 2026-11-16; review del Bloque 2, punto 2 y Obs. 1)
+
+Desde F-072 solo el tipo efectivo cuenta para el estado (R1 de F-056) y `sin_cambios` (R16): el `listado`
+heredado, tampoco. RED: `test_f072_r25_el_listado_heredado_no_cuenta_para_el_estado` (importado `primero`, una
+revisión que solo lo pone a nulo: `cambios == ()` y debe salir `nueva`; con `9001`, `editada`) y
+`..._para_sin_cambios` (reeditar esa foto con lo mismo → `SinCambios`).
+`.venv/Scripts/python -m pytest tests/test_f072_revision_dominio.py -q -k heredado_no_cuenta`
+
+```
+>       assert estado_de(sit) is EstadoRevision.NUEVA
+E       AssertionError: assert <EstadoRevision.EDITADA: 'editada'> is <EstadoRevision.NUEVA: 'nueva'>
+tests\test_f072_revision_dominio.py:614: AssertionError
+FAILED tests/test_f072_revision_dominio.py::test_f072_r25_el_listado_heredado_no_cuenta_para_el_estado
+1 failed, 1 passed, 71 deselected in 0.78s
+```
+
+El de `sin_cambios` pasa ya en rojo, a propósito: editar copia el heredado de los vigentes (R23), así que en esa
+comparación nunca difiere; queda como test de coherencia.
 
 ## Evidencias (Bloque 2)
 

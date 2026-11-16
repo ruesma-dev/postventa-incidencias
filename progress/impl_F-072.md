@@ -187,27 +187,14 @@ FAILED tests/test_f072_revision_dominio.py::test_f072_r25_el_listado_heredado_no
 1 failed, 1 passed, 71 deselected in 0.78s
 ```
 
-El de `sin_cambios` pasa ya en rojo, a propósito: editar copia el heredado de los vigentes (R23), así que en esa
-comparación nunca difiere; queda como test de coherencia.
+El de `sin_cambios` pasa ya en rojo, a propósito (editar copia el heredado, R23): queda como test de coherencia.
 
 GREEN (`639245a`): `_mismos_valores` compara las dos fotos con `listado=None` además del tipo efectivo (`revision.py`
 510–511). La huella no se toca: R26 (`-k r26` en `test_f072_dominio_tipos.py` y `test_f072_volcado.py`) `8 passed`.
 
-Mutantes obvios a mano (quitar `listado=None` de un lado; los cinco ficheros dirigidos, restaurado con `git checkout`):
-
-| Mutante | Antes (test sin parametrizar) | Después (parametrizado en los dos sentidos) |
-|---|---|---|
-| M1 · `:510` sin `listado=None` (lado vigente) | `530 passed`: **sobrevivía** | `2 failed` (`[None-segundo]`, `[primero-segundo]`) |
-| M2 · `:511` sin `listado=None` (lado importado) | `1 failed` | `2 failed` (`[primero-None]`, `[primero-segundo]`) |
-
-M1 era hueco real (el test solo ponía el heredado en lo importado): el test pasa a cubrir `primero→nulo`,
-`nulo→segundo` y `primero→segundo`.
-
-Tests dirigidos (desde `services/postventa-api`, `.venv/Scripts/python -m pytest ... -q -p no:cacheprovider`):
-`test_f072_revision_dominio`, `test_f072_dominio_tipos`, `test_f056_revision_dominio`, `test_f060_normalizacion_dominio`,
-`test_f060_pipeline_normalizacion` → **`532 passed in 5.26s`**; `tests/test_f056_*.py` → **`988 passed, 9 skipped in
-14.51s`**. `init.sh` y la suite entera, no lanzados (del líder). Specs sin tocar: R1/R16 de F-056 y R25 de F-072 deben
-recoger la decisión (encargo del spec-author).
+Mutantes a mano (quitar `listado=None` de un lado): M1 `:510` (lado vigente) **sobrevivía** (`530 passed`, hueco real) y
+M2 `:511` moría; con el test parametrizado en los dos sentidos (`primero→nulo`, `nulo→segundo`, `primero→segundo`), `2 failed`
+cada uno. Dirigidos (cinco ficheros) `532 passed in 5.26s`; `tests/test_f056_*.py` `988 passed, 9 skipped in 14.51s`.
 
 ## Evidencias (Bloque 2)
 
@@ -218,3 +205,13 @@ recoger la decisión (encargo del spec-author).
 | Mutantes | 24 generados, 16 evaluados + 8 a mano, **24 muertos, 0 supervivientes**, 0 timeouts |
 | Tiempo de la suite | 856,35 s (api entera, en serie); dirigidos de T5 2,49 s; campaña 5450,4 s |
 | Capa e2e | N/A (dominio puro) |
+
+## Bloque 3 · La lectura de Sigrid (T7, T8 y la campaña de T9) — detalle en `progress/impl_F-072_bloque3.md`
+
+Puerto `domain/ports/tipos_reclamacion.py`, consulta (R2) y mapeo en `consultas_tipos_reclamacion.py`, adaptador hijo de
+`AdaptadorCatalogoSigridApi`, `construir_tipos_reclamacion` en `fabrica.py` y `application/pipelines/tipos_reclamacion.py`
+(R4 techo → 409, R5, línea de R30 en la aplicación por §6.1: decisión para la review). RED `daca1b9` (`ImportError` y,
+con esqueletos, `72 failed, 7 passed`); GREEN `a7d959c`: `171 passed`; suite `api` entera `10133 passed, 353 skipped in 863.08s`.
+**Campaña NO VÁLIDA** (`progress/mutacion_F-072_bloque3.md`): base rota por un test de tiempo de F-036 bajo 8 workers y 10
+timeouts (bases de 1868–2237 s > `--timeout 1800`); no repetida, decide el líder. A mano: todos muertos; un superviviente
+real que la campaña dio por muerto (`consultas_tipos_reclamacion.py:61` `not valor`), cerrado en `26c6f36`.

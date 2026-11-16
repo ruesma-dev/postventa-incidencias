@@ -1,6 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · `in_progress` · 2026-11-16 · Bloque 3: veredicto de mutación a mano (decisión del líder)
+> Dos campañas del Bloque 3 salieron NO VÁLIDAS solo porque un test de tiempo de F-036 (`test_f036_r115_*`, tope de
+> 1 s, `tests/test_f036_excel_lector.py`) se pone rojo con varias suites a la vez; la segunda (4 workers, `c2f842e`):
+> 30/30 muertos, 0 timeouts. El humano pidió el 2026-11-16 terminar F-072 cuanto antes: el líder acepta como veredicto
+> del Bloque 3 la tabla a mano de `progress/mutacion_F-072_bloque3.md` (24/24 muertos con el test que mata cada uno)
+> y lo somete a la review del Bloque 3. Los tests de tiempo de F-036 bajo carga quedan como deuda fuera de F-072.
+> Bloque 4 arranca en paralelo en un worktree aparte.
+
 > ## F-072 · `in_progress` · 2026-11-15 · Bloque 2 desbloqueado con la opción (b) del humano
 > T4 `143802a` y T5 `fd0673d`. Los 7 rojos de F-056 (detalle en `progress/impl_F-072.md`, «Bloque 2») se cierran con
 > (b): los 3 HTTP de aprobar editan con un código de la lista que aún compone el HTTP (citado con R22/R24; el Bloque 6

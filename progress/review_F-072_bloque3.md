@@ -7,8 +7,7 @@ T9 `26c6f36` `ae15470` `c2f842e`, nota del líder `5e9f675`). Los Bloques 1 y 2 
 - **Veredicto: APROBADO** (APPROVED) en `5e9f675`, condicionado a que el `init.sh` del líder salga
   verde (no lo he ejecutado: lo lanza el líder, por su encargo) y con **una condición de cierre de
   F-072** (no del bloque): el OK explícito del humano a la excepción de mutación, abajo.
-- **Nivel de rigor:** `critico`, declarado en `features.json`. Exige fase RED, cobertura (90 %) y
-  mutación con 0 supervivientes; e2e informativa.
+- **Nivel de rigor:** `critico` (declarado): fase RED, cobertura 90 %, mutación con 0 supervivientes.
 
 ## 1 · Mutación: ¿vale la tabla a mano como veredicto?
 
@@ -21,8 +20,7 @@ excepción concreta).
 
 **Por qué es suficiente:**
 - **Causa ajena y demostrada.** Las dos bases se rompen al final en tests de **tiempo** de F-036
-  (`test_f036_r115_*`, tope de 1 s, `tests/test_f036_excel_lector.py`), que F-072 no toca; con 8 y con
-  4 suites enteras en paralelo. En serie, la suite `api` pasa (`10133 passed`, informe del implementer).
+  (`test_f036_r115_*`, tope de 1 s), que F-072 no toca. En serie, la suite `api` pasa (`10133 passed`).
 - **La tabla es reproducible al pie de la letra.** Recalculado con `harness.alcance` +
   `generar_mutantes` (cálculo puro) sobre la base `6994cb0`: **489 líneas y 45 mutantes**, fichero a
   fichero igual que el informe (10, 4, 20, 0, 2, 9, 0, 0). Las 24 filas de la tabla corresponden **una
@@ -43,10 +41,8 @@ excepción concreta).
 | `ports:44` `repr=False` → `repr=True` | 1 failed | **1 failed** | `r30_la_fila_es_inmutable...` |
 | `plantilla_incidencias:579` `codigo is None` → `not codigo` | 2 failed | 1 failed¹ | `r19_con_tipo_el_efectivo_es_el_guardado[]` |
 
-¹ Mismo test asesino; el número difiere porque la tabla no dice con qué ficheros se juzgó esa fila
-(«los tres `test_f072_*` de dominio y volcado»); yo solo pasé `test_f072_dominio_tipos.py`.
+¹ Mismo test; la tabla no dice con qué ficheros juzgó esa fila. Todos los caza la propia feature.
 
-- **Todos los cazan tests de la propia feature**, ninguno solo una suite vecina.
 - **El superviviente real (`consultas:61`) está bien cerrado:** con el mutante cae exactamente el caso
   nuevo `falsos-no-nulos` (`[0, "", 0]` → `FilaTipoReclamacion("0", "", 0)`), y no es equivalente: un
   `cod` `0` numérico acabaría en «sin código». Que la 1.ª campaña lo diera por **muerto** es la prueba de
@@ -66,10 +62,8 @@ excepción concreta).
 - **RM1:** SHA medido `ae15470…`; de ahí a HEAD solo cambia `progress/current.md`: alcance idéntico.
 - **RM2:** base 2292,8–2363,7 s, media 476,0 s × 4 workers = 1904 s por mutante, coherente con una
   base de ~2340 s y 30/30 muertos con `-x`; `30 × 476,0 = 14280 ≈ 14281,0` s. Sin salto de orden.
-- **RM3:** ningún equivalente salió muerto en la 2.ª campaña (no hay equivalentes declarados; el único
-  dudoso, `:61`, no lo es). **RM5:** N/A, no hay supervivientes declarados equivalentes.
-  **RM6:** `26c6f36` añade un caso de test; no quita ninguna guarda.
-- **Árbol:** las mutaciones se hicieron sobre la copia; `git status` del árbol de trabajo, limpio.
+- **RM3:** ningún equivalente salió muerto. **RM5:** N/A, sin equivalentes declarados. **RM6:**
+  `26c6f36` solo añade un caso de test; no quita ninguna guarda.
 
 ## 2 · R30: la línea de log en la aplicación y no en el adaptador
 
@@ -95,8 +89,7 @@ del 409, para que `al_techo=True` conste (comprobado moviéndola, arriba).
   de `construir_ubicaciones_validas`. [x] primera línea con la ruta en los 5 ficheros; sin `print`, sin
   secretos (URL, clave y base inventadas en tests). [x] Nada contra Sigrid escribe: solo `sql/read`.
   Resto de C3 (parte, firmas, manuscritos…): N/A, el bloque no los toca.
-- **C3 bis / C3 ter** — N/A: no entra ningún documento externo ni acta.
-- **C3 quater** — N/A en este bloque: `azure-apps` (lectura de `auxtrcp`) es la T25 del líder.
+- **C3 bis / ter** — N/A: ningún documento externo ni acta. **C3 quater** — N/A aquí: es la T25.
 - **C4** — [x] trazabilidad (tabla abajo). [x] sin red ni base: `ClienteFalso` y un puerto en memoria.
   [x] dobles: `PuertoDeTipos` solo declara `leer`, que es el único método del puerto; la comprobación
   automática (`test_f013_puertos_y_dobles.py`) pasa. MANUAL: ninguna en este bloque.
@@ -120,8 +113,7 @@ del 409, para que `al_techo=True` conste (comprobado moviéndola, arriba).
 | R30 | `r30_la_linea_de_log_lleva_los_recuentos...`, `r30_al_techo_tambien_se_registra_antes_del_409`, `r30_la_linea_registra_la_duracion...`, `r30_el_adaptador_no_registra_nada...`, `r30_la_fila_es_inmutable...` |
 | R31 | `r31_el_adaptador_se_niega_fuera_de_dev_y_pro`, `r31_solo_lee_y_no_mira_ningun_interruptor`, `r31_la_fabrica_*` (5) |
 
-R1 «una vez por petición» en los handlers y el orden catálogo → ubicaciones → tipos (§5) son de los
-bloques siguientes (composición en `plantilla`, `importar`, `revision`): aquí solo la fuente sin caché.
+R1 en los handlers y el orden catálogo → ubicaciones → tipos (§5): bloques siguientes.
 
 ## 5 · Cambios requeridos
 
@@ -143,10 +135,6 @@ punto «CAMPAÑA NO VÁLIDA» de C4 bis queda `[ ]` en la review final.
 
 ## 7 · Automejora (propuesta, no aplicada)
 
-- `CHECKPOINTS.md` C4 bis / `reviewer.md`: contemplar el caso «campaña NO VÁLIDA por un test ajeno a la
-  feature, demostrado» con la misma vía que la campaña MANUAL (una fila por mutante con
-  `descripcion()` literal y nº de fallos, el reviewer reproduce ≥ 3 filas) y el OK del humano por
-  escrito; hoy solo está prevista para «0 mutantes», y la regla de rechazo directo no distingue causa.
-- Arnés (`arnes-base`): un marcador de tests de tiempo (p. ej. `@pytest.mark.tiempo`) que la campaña
-  excluya de la línea base y de los mutantes, o que relance en serie al fallar, porque un tope de
-  pared no es estable con W suites en paralelo. Vale para cualquier proyecto.
+- C4 bis / `reviewer.md`: admitir «campaña NO VÁLIDA por un test ajeno, demostrado» por la vía de la
+  campaña MANUAL (`descripcion()` literal, nº de fallos, ≥ 3 filas reproducidas, OK del humano).
+- `arnes-base`: un marcador de tests de tiempo que la campaña excluya de la línea base o relance en serie.

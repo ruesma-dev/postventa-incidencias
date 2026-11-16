@@ -501,13 +501,14 @@ def _mismos_valores(a: ValoresIncidencia, b: ValoresIncidencia) -> bool:
     """¿Son la misma foto? Campo a campo, con el tipo **efectivo** (F-072, R25).
 
     Una foto sin tipo (anterior a F-072) y la misma con `0002` son la misma:
-    pasar de nulo a `0002` no es un cambio. Vale para el estado (R1 de F-056)
-    y para `sin_cambios` (R16 de F-056); la huella, en cambio, sí las
-    distingue (R26).
+    pasar de nulo a `0002` no es un cambio. Y el `listado` heredado no cuenta
+    (opción (a) del humano, 2026-11-16), igual que en `campos_cambiados`. Vale
+    para el estado (R1 de F-056) y para `sin_cambios` (R16 de F-056); la
+    huella, en cambio, sí las distingue (R26).
     """
-    return replace(a, tipo_reclamacion=tipo_efectivo(a.tipo_reclamacion)) == replace(
-        b, tipo_reclamacion=tipo_efectivo(b.tipo_reclamacion)
-    )
+    return replace(
+        a, tipo_reclamacion=tipo_efectivo(a.tipo_reclamacion), listado=None
+    ) == replace(b, tipo_reclamacion=tipo_efectivo(b.tipo_reclamacion), listado=None)
 
 
 def acciones_posibles(estado: EstadoRevision) -> tuple[AccionRevision, ...]:

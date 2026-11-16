@@ -210,6 +210,25 @@ FAILED tests/test_f072_revision_dominio.py::test_f072_r25_el_listado_heredado_no
 El de `sin_cambios` pasa ya en rojo, a propósito: editar copia el heredado de los vigentes (R23), así que en esa
 comparación nunca difiere; queda como test de coherencia.
 
+GREEN (`639245a`): `_mismos_valores` compara las dos fotos con `listado=None` además del tipo efectivo (`revision.py`
+510–511). La huella no se toca: R26 (`-k r26` en `test_f072_dominio_tipos.py` y `test_f072_volcado.py`) `8 passed`.
+
+Mutantes obvios a mano (quitar `listado=None` de un lado; los cinco ficheros dirigidos, restaurado con `git checkout`):
+
+| Mutante | Antes (test sin parametrizar) | Después (parametrizado en los dos sentidos) |
+|---|---|---|
+| M1 · `:510` sin `listado=None` (lado vigente) | `530 passed`: **sobrevivía** | `2 failed` (`[None-segundo]`, `[primero-segundo]`) |
+| M2 · `:511` sin `listado=None` (lado importado) | `1 failed` | `2 failed` (`[primero-None]`, `[primero-segundo]`) |
+
+M1 era hueco real (el test solo ponía el heredado en lo importado): el test pasa a cubrir `primero→nulo`,
+`nulo→segundo` y `primero→segundo`.
+
+Tests dirigidos (desde `services/postventa-api`, `.venv/Scripts/python -m pytest ... -q -p no:cacheprovider`):
+`test_f072_revision_dominio`, `test_f072_dominio_tipos`, `test_f056_revision_dominio`, `test_f060_normalizacion_dominio`,
+`test_f060_pipeline_normalizacion` → **`532 passed in 5.26s`**; `tests/test_f056_*.py` → **`988 passed, 9 skipped in
+14.51s`**. `init.sh` y la suite entera, no lanzados (del líder). Specs sin tocar: R1/R16 de F-056 y R25 de F-072 deben
+recoger la decisión (encargo del spec-author).
+
 ## Evidencias (Bloque 2)
 
 | Evidencia | Valor |

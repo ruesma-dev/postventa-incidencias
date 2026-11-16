@@ -599,16 +599,22 @@ def test_f072_r25_volver_a_lo_importado_con_0002_deja_la_incidencia_nueva() -> N
     otra = situacion(revision(3, A.EDITAR, valores(tipo_reclamacion="9001")))
     assert estado_de(otra) is EstadoRevision.EDITADA
 
-def test_f072_r25_el_listado_heredado_no_cuenta_para_el_estado() -> None:
+@pytest.mark.parametrize(
+    ("importado", "revisado"),
+    [(Listado.PRIMERO, None), (None, Listado.SEGUNDO), (Listado.PRIMERO, Listado.SEGUNDO)],
+)
+def test_f072_r25_el_listado_heredado_no_cuenta_para_el_estado(
+    importado: Listado | None, revisado: Listado | None
+) -> None:
     """R1 de F-056 con R25 (opción (a) del humano, 2026-11-16): solo el tipo efectivo.
 
-    Caso borde de la review del Bloque 2: lo importado trae el `listado`
-    heredado `primero` y una revisión anterior a F-072 solo lo quitó. Sin
-    ningún cambio en `cambios`, la incidencia sigue `nueva`.
+    Caso borde de la review del Bloque 2: lo importado trae un `listado`
+    heredado y una revisión anterior a F-072 solo lo cambió (en un sentido o
+    en el otro). Sin ningún cambio en `cambios`, la incidencia sigue `nueva`.
     """
-    inc = incidencia(listado=Listado.PRIMERO)
+    inc = incidencia(listado=importado)
     importados = valores_importados(inc)
-    foto = replace(importados, listado=None)
+    foto = replace(importados, listado=revisado)
     assert campos_cambiados(importados, foto) == ()
     sit = situacion(revision(3, A.EDITAR, foto), inc=inc)
     assert estado_de(sit) is EstadoRevision.NUEVA

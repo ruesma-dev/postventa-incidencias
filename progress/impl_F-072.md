@@ -143,41 +143,24 @@ valida editar, §4.2); `CAMPOS_LOGICOS` igual, pero `listado` sale de `tipo_efec
 anteriores a F-072 (guardar sin cambiar nada escribiría una revisión vacía; volver a lo importado dejaría `editada`).
 Es R25 aplicada a los otros dos sitios que comparan fotos; la huella sí las distingue (R26). Tests: `test_f072_r25_*`.
 
-**Aserciones de F-056 que cambian** (`tests/test_f056_revision_dominio.py`; ninguna borrada):
-
-| Test | Antes | Ahora | R |
-|---|---|---|---|
-| `test_f056_r13_unos_valores_validos_dan_la_foto_completa` | `== valores()` | `== valores(tipo_reclamacion="0002")` | R22 |
-| `test_f056_r13_urgencia_y_listado_validos` | `listado == Listado.SEGUNDO` | `tipo_reclamacion == "segundo"`, `listado` heredado `None` | R21, R23 |
-| `test_f056_r16_sin_cambios_frente_a_los_vigentes_no_a_los_importados` (2.ª parte) | `== valores()` | `== valores(tipo_reclamacion="0002")` | R22 |
-| `test_f056_r13_editar_valido_da_la_revision_nueva` | foto y huella sin tipo | con `0002` | R22 |
-| `test_f056_r21_los_nueve_motivos_en_su_orden` | 9 motivos | 10, el nuevo en su sitio | R24 |
-| `test_f056_r33_cada_campo_logico[listado]` | `listado=PRIMERO` | `tipo_reclamacion="9001"` | R25, R19 |
-| `test_f056_r33_varios_salen_en_orden_fijo` | ídem | ídem | R25 |
+**Aserciones de F-056 que cambian** (`tests/test_f056_revision_dominio.py`, ninguna borrada; detalle en el diff de
+`fd0673d`): r13 ×3 y r16 (foto con `0002`, R22; `tipo_reclamacion == "segundo"`, R21/R23), r21 (10 motivos, R24) y r33 ×2
+(`tipo_reclamacion="9001"` en vez de `listado=PRIMERO`, R25/R19).
 
 Verificación de T5 (comando de `tasks.md`, los cuatro ficheros): `499 passed in 2.49s`.
 ### Bloqueo de la suite entera y opción (b) del humano (`d8ae988` → `435dd49`)
 
-Con T5, `pytest tests` de api daba `7 failed, 10038 passed`: los 3 HTTP de F-056 que editan con `listado: null` y
-aprueban (o2, r10, r42) salían 409 por R22 + R24 (el HTTP aún compone los listados del YAML); r27 y r29 por R24/R25; y
-dos de documentación de F-056 (el motivo nuevo). El humano eligió la opción (b). Hecho en `0fb864e`:
-
-- `test_f056_revision_http.py` o2, r10 y r42: editan con `_valores(listado="primero")` (código de la lista que
-  compone hoy el HTTP), con comentario R22/R24 y aviso de que el Bloque 6 los vuelve a tocar. Nada más cambia.
-- r29 (`test_f056_revision_http.py`): la foto lleva además `tipo_reclamacion="9001"` para que `listado` siga en
-  `cambios` (R25); r27 (`test_f056_paginacion.py`): `M.TIPO_FUERA_DE_SIGRID: 0` en `por_motivo` (R24).
-- `docs/ARCHITECTURE.md`, sección de F-056: `tipo_fuera_de_sigrid` en la lista de motivos, en su sitio; el resto de
-  la documentación sigue en T21. `test_f056_documentacion.py`: `len(MotivoNoAprobable) == 10` (R24).
+Con T5, `pytest tests` de api daba `7 failed, 10038 passed` (HTTP de F-056 o2, r10, r42 → 409 por R22+R24; r27 y r29
+por R24/R25; dos de documentación). Opción (b) del humano, en `0fb864e`: o2/r10/r42 editan con `listado="primero"`
+(comentario R22/R24; el Bloque 6 los vuelve a tocar); r29 con `tipo_reclamacion="9001"`; r27 con
+`TIPO_FUERA_DE_SIGRID: 0`; `docs/ARCHITECTURE.md` (F-056) y `test_f056_documentacion.py` con el motivo nuevo (R24).
 
 Suite de api entera tras `0fb864e`: **`10045 passed, 353 skipped in 856.35s`**. T4 y T5 marcadas (`9b22088`).
 
 ### T6 · campaña de mutación (`progress/mutacion_F-072_bloque2.md`)
 
-A mano antes de lanzarla (24 mutantes, copia `git archive`, `pytest -x`): un **superviviente real**, `revision.py:856`
-`tipos is not None` → `tipos` (con la lista de vigentes vacía, R7, no se miraba R24). Lo mata `85d3c36`.
-
-`python -m harness.mutacion --feature F-072 --base 6994cb0 --timeout 1800 --salida progress/mutacion_F-072_bloque2.md`
-(8 workers; el `.json` sin versionar del Bloque 1, apartado mientras corría: la campaña exige el árbol limpio):
+A mano antes (24 mutantes): un superviviente real, `revision.py:856` `tipos is not None` → `tipos`, que mata `85d3c36`.
+`python -m harness.mutacion --feature F-072 --base 6994cb0 --timeout 1800 --salida progress/mutacion_F-072_bloque2.md`:
 
 ```
 [base] .../wk_0..wk_7/services/postventa-api: en verde (1669.5 s a 1780.6 s)
@@ -185,11 +168,8 @@ A mano antes de lanzarla (24 mutantes, copia `git archive`, `pytest -x`): un **s
 16 mutantes evaluados, 16 muertos, 0 supervivientes, 0 timeouts, 0 sin veredicto en 5450.4 s
 ```
 
-24 generados (4 en `plantilla_incidencias.py`, 20 en `revision.py`, 0 en `volcado.py`) → 16 con uno por línea, sin
-muestreo. Los **8 descartados**, por debajo del suelo de 100, reproducidos a mano: **8 muertos** (tabla con el test
-que caza cada uno en el informe de campaña). `volcado.py`: declaración sin `PENDIENTE`. **Cero supervivientes.**
-
-Equivalentes: ninguno. Nota: el `return` de la rama de error de `_tipo_pedido` no se usa (`validar_valores` lanza).
+24 generados → 16 con uno por línea; los **8 descartados**, reproducidos a mano: **8 muertos** (tabla en el informe de
+campaña). **Cero supervivientes**, ningún equivalente.
 
 ### Bloque 2 · ajuste del heredado (opción (a) del humano, 2026-11-16; review del Bloque 2, punto 2 y Obs. 1)
 

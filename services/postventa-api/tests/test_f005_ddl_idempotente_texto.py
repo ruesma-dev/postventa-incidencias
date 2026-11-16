@@ -107,6 +107,7 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
         "14_decisiones_equivalencia.sql",
         "15_revisiones_bandeja.sql",
         "16_volcados_sigrid.sql",  # F-059 (R41, F-1 (a); design.md §21.3 A)
+        "17_tipo_reclamacion.sql",  # F-072 (R16): la columna tipo_reclamacion
     ]
 
 

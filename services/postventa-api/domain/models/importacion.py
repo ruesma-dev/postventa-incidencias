@@ -328,6 +328,7 @@ class IncidenciaValida:
     urgencia: Urgencia | None
     listado: Listado | None
     avisos: tuple[str, ...]
+    tipo_reclamacion: str | None = None  # F-072: el código de `dbo.auxtrcp` (R12, R14)
 
     def __post_init__(self) -> None:
         if self.proveedor is not None and self.oficio is None:
@@ -745,6 +746,7 @@ class IncidenciaEnBandeja:
     listado: Listado | None
     duplicada_de: UUID | None
     creada_at_utc: datetime
+    tipo_reclamacion: str | None = None  # F-072: nulo = anterior a F-072 (R19)
 
     def __post_init__(self) -> None:
         hay_oficio = _comprobar_elegido(

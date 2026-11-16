@@ -170,6 +170,7 @@ def _incidencia(
         "clave_duplicado": clave or _clave(f"clave {incidencia_id}"),
         "duplicada_de": duplicada_de,
         "creada_at_utc": CREADA,
+        "tipo_reclamacion": None,  # F-072 (R16): nulo = anterior a F-072
     }
     fila_sql = tuple(valores[c] for c in sentencias_bandeja.COLUMNAS_BANDEJA)
     with conexion.cursor() as cursor:
@@ -262,7 +263,8 @@ def test_f056_r36_el_ddl_se_aplica_dos_veces_y_no_cambia_nada(conexion, ajustes)
     arranque._YA_ASEGURADOS.clear()
     asegurar_esquema(conexion, ajustes=ajustes)
 
-    assert len([f for f in primera if len(f) == 4]) == 21  # las 21 columnas de §6
+    # F-072 (R16): las 21 columnas de §6 y `tipo_reclamacion` de `17_tipo_reclamacion.sql`.
+    assert len([f for f in primera if len(f) == 4]) == 22
     assert _definicion(conexion) == primera
 
 
@@ -660,7 +662,8 @@ def test_f056_r24_listar_con_10001_filas_devuelve_tope_mas_uno(preparada):
             "SELECT md5('f056-' || g)::uuid, 'excel', %s::uuid, g, %s::text, "
             "'9902.03VILLA 1.', 'Villa Ejemplo 1', NULL::text, 'Ejemplo ' || g, NULL::text, "
             "NULL::text, NULL::text, false, NULL::text, NULL::text, false, NULL::text, "
-            "NULL::text, md5('clave-f056-' || g), NULL::uuid, %s::timestamptz "
+            "NULL::text, md5('clave-f056-' || g), NULL::uuid, %s::timestamptz, "
+            "NULL::text "  # F-072 (R16): `tipo_reclamacion`
             "FROM generate_series(1, 10001) AS g",
             (importacion, OBRA_GRANDE, CREADA),
         )

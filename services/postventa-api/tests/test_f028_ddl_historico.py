@@ -152,6 +152,7 @@ def test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo():
         "14_decisiones_equivalencia.sql",
         "15_revisiones_bandeja.sql",
         "16_volcados_sigrid.sql",  # F-059 (R41, F-1 (a); design.md §21.3 A)
+        "17_tipo_reclamacion.sql",  # F-072 (R16): la columna tipo_reclamacion
     ]
     assert nombres.index("03_partes.sql") < nombres.index(FICHERO)
     assert nombres.index(FICHERO_CONGELADO) < nombres.index(FICHERO)

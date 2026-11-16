@@ -159,8 +159,10 @@ def test_f059_r32_el_fichero_va_el_ultimo_detras_de_la_revision():
     """Lee de `13_` y de `15_` (las claves ajenas): tiene que ir detrás."""
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
-    assert nombres[-1] == FICHERO
-    assert nombres[-2] == REVISIONES
+    # F-072 (R16): detrás va `17_tipo_reclamacion.sql` (amplía 13_ y 15_).
+    assert nombres[-1] == "17_tipo_reclamacion.sql"
+    assert nombres[-2] == FICHERO
+    assert nombres[-3] == REVISIONES
     assert nombres.index(BANDEJA) < nombres.index(FICHERO)
 
 

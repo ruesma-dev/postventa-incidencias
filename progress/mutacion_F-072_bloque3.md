@@ -1,11 +1,11 @@
 <!-- progress/mutacion_F-072_bloque3.md -->
 # F-072 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-072 --base 6994cb0 --workers 8` el 2026-11-16 13:25.
+Generado por `python -m harness.mutacion --feature F-072 --base 6994cb0 --workers 4` el 2026-11-16 17:36.
 
 > ## ⚠ CAMPAÑA NO VÁLIDA
 >
-> La línea base estaba VERDE al empezar y ROJA al terminar en C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_0/services/postventa-api (tests/test_f036_excel_lector.py::test_f036_r115_celda_con_estilo_lejana_en_los_metadatos_es_barata[1-16384]). La base se rompió durante la campaña, así que los mutantes contados como «muertos» pueden no estarlo: estos números NO valen para cerrar una feature. Arregla la suite y repite la campaña.
+> La línea base estaba VERDE al empezar y ROJA al terminar en C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_kno12xr5/wk_2/services/postventa-api (tests/test_f036_excel_lector.py::test_f036_r115_rango_que_openpyxl_expande_al_cargar_se_lee_en_menos_de_un_segundo[combinado-A-H-_plantilla]). La base se rompió durante la campaña, así que los mutantes contados como «muertos» pueden no estarlo: estos números NO valen para cerrar una feature. Arregla la suite y repite la campaña.
 >
 > **No cierres la feature con estos números.** Arregla la línea base y repite la campaña.
 
@@ -31,26 +31,22 @@ Origen del diff: **rama** (`6994cb0fc2d5ad2d9dddeda4d00c849e8d3dd87d` .. `featur
 |---|---|
 | Mutantes generados | 45 |
 | Mutantes evaluados | 30 |
-| Muertos | 20 |
+| Muertos | 30 |
 | Supervivientes | 0 (todos medidos: sin mapa no se poda) |
-| Timeouts | 10 |
+| Timeouts | 0 |
 | Indeterminados | 0 |
-| Timeouts repasados en serie | 0: campaña en serie, el reloj ya midió a cada mutante a solas |
+| Timeouts repasados en serie | 0: ningún mutante agotó el reloj |
 | Sin veredicto (base rota) | 0 |
-| Tiempo total | 9346.3 s |
-| SHA de HEAD medido | `a0f93d60b499c7a6cf6ec82b761343e2a57fb72a` |
-| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_0/services/postventa-api` | 2208.2 |
-| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_1/services/postventa-api` | 1920.8 |
-| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_2/services/postventa-api` | 2236.6 |
-| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_3/services/postventa-api` | 2076.8 |
-| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_4/services/postventa-api` | 1907.6 |
-| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_5/services/postventa-api` | 1951.8 |
-| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_6/services/postventa-api` | 1867.8 |
-| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_5dj18dfg/wk_7/services/postventa-api` | 1960.9 |
-| Media por mutante evaluado (s) | 311.5 |
-| Timeout efectivo por mutante (s) | 1800 — fijado a mano con `--timeout`, sin derivar |
-| Suelo configurado (s) | 1800 |
-| Workers | 8 |
+| Tiempo total | 14281.0 s |
+| SHA de HEAD medido | `ae15470f4f2691adadfedd62a5128012b78c0b3b` |
+| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_kno12xr5/wk_0/services/postventa-api` | 2345.4 |
+| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_kno12xr5/wk_1/services/postventa-api` | 2292.8 |
+| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_kno12xr5/wk_2/services/postventa-api` | 2363.7 |
+| Línea base (s) — `C:/Users/pgris/AppData/Local/Temp/mutacion_F-072_kno12xr5/wk_3/services/postventa-api` | 2352.8 |
+| Media por mutante evaluado (s) | 476.0 |
+| Timeout efectivo por mutante (s) | 3600 — fijado a mano con `--timeout`, sin derivar |
+| Suelo configurado (s) | 3600 |
+| Workers | 4 |
 | Un mutante por línea | sí — 45 generados → 30 candidatos, uno por línea |
 | Muestreo | no: campaña completa (30 candidatos ≤ tope 100 del nivel `critico`) |
 | Selección de tests | desactivada (por defecto): todo con la suite entera, como la 1.9.0 |
@@ -62,7 +58,7 @@ Origen del diff: **rama** (`6994cb0fc2d5ad2d9dddeda4d00c849e8d3dd87d` .. `featur
 | Subconjuntos descartados | n/d |
 | Podados (sin ejecutar) | n/d |
 | Tiempo ahorrado por la poda (s) — derivado: podados × línea base | n/d |
-| Media por mutante juzgado con la suite entera (s) | 1157.1 (30 mutantes) |
+| Media por mutante juzgado con la suite entera (s) | 1172.6 (30 mutantes) |
 
 ## Cómo se juzgó
 
@@ -72,36 +68,6 @@ Origen del diff: **rama** (`6994cb0fc2d5ad2d9dddeda4d00c849e8d3dd87d` .. `featur
 ## Supervivientes
 
 Ninguno: cada mutación aplicada la cazó al menos un test.
-
-## No muertos: código de salida
-
-| Fichero:línea | Operador | Veredicto | Código |
-|---|---|---|---|
-| `services/postventa-api/application/pipelines/tipos_reclamacion.py:48` | logico | timeout | timeout |
-| `services/postventa-api/application/pipelines/tipos_reclamacion.py:50` | aritmetico | timeout | timeout |
-| `services/postventa-api/application/pipelines/tipos_reclamacion.py:58` | aritmetico | timeout | timeout |
-| `services/postventa-api/application/pipelines/tipos_reclamacion.py:60` | aritmetico | timeout | timeout |
-| `services/postventa-api/application/pipelines/tipos_reclamacion.py:62` | negacion | timeout | timeout |
-| `services/postventa-api/domain/models/plantilla_incidencias.py:66` | entero | timeout | timeout |
-| `services/postventa-api/domain/models/plantilla_incidencias.py:579` | veracidad | timeout | timeout |
-| `services/postventa-api/domain/ports/tipos_reclamacion.py:35` | booleano | timeout | timeout |
-| `services/postventa-api/domain/ports/tipos_reclamacion.py:44` | booleano | timeout | timeout |
-| `services/postventa-api/infrastructure/sigrid/consultas_tipos_reclamacion.py:30` | entero | timeout | timeout |
-
-## Timeouts
-
-Campaña sin repaso en serie: con un solo evaluador el reloj ya midió a cada mutante a solas, así que estos timeouts son suyos.
-
-- `services/postventa-api/application/pipelines/tipos_reclamacion.py:48` [logico] codigo = (fila.codigo or "").strip() -> codigo = (fila.codigo and "").strip()
-- `services/postventa-api/application/pipelines/tipos_reclamacion.py:50` [aritmetico] sin_codigo += 1 -> sin_codigo -= 1
-- `services/postventa-api/application/pipelines/tipos_reclamacion.py:58` [aritmetico] len(lectura.filas) - sin_codigo - len(tipos), -> len(lectura.filas) - sin_codigo + len(tipos),
-- `services/postventa-api/application/pipelines/tipos_reclamacion.py:60` [aritmetico] time.monotonic() - arranque, -> time.monotonic() + arranque,
-- `services/postventa-api/application/pipelines/tipos_reclamacion.py:62` [negacion] if lectura.llego_al_techo: -> if not lectura.llego_al_techo:
-- `services/postventa-api/domain/models/plantilla_incidencias.py:66` [entero] MAX_TIPO_RECLAMACION = 24  # `auxtrcp.cod` (F-072, R16) -> MAX_TIPO_RECLAMACION = 25  # `auxtrcp.cod` (F-072, R16)
-- `services/postventa-api/domain/models/plantilla_incidencias.py:579` [veracidad] return TIPO_RECLAMACION_POR_DEFECTO if codigo is None else codigo -> return TIPO_RECLAMACION_POR_DEFECTO if not codigo else codigo
-- `services/postventa-api/domain/ports/tipos_reclamacion.py:35` [booleano] @dataclass(frozen=True) -> @dataclass(frozen=False)
-- `services/postventa-api/domain/ports/tipos_reclamacion.py:44` [booleano] nombre: str | None = field(repr=False) -> nombre: str | None = field(repr=True)
-- `services/postventa-api/infrastructure/sigrid/consultas_tipos_reclamacion.py:30` [entero] COLUMNAS_TIPOS = 3 -> COLUMNAS_TIPOS = 4
 
 ## Ficheros sin mutantes
 
@@ -125,8 +91,17 @@ Cada uno tiene líneas en alcance y el generador no ha sacado de ellas ni un mut
 
 > El adaptador es una clase hija con un único método de tres líneas (`select_tipos_reclamacion()` y `self._leer(...)` con el mapeo y el texto de la operación): nada que el generador sepa mutar. Lo cubren `test_f072_r1_leer_es_un_post_a_sql_read_con_su_cuerpo` y `test_f072_r3_*`: a mano, cambiar el texto de la operación (M24) o el mapeo por la identidad (M25) da `1 failed` cada uno (`progress/impl_F-072_bloque3.md`).
 
+## Segunda campaña (decisión del líder: 4 workers, `--timeout 3600`, sobre `ae15470`): tampoco válida
 
-## Análisis del implementer (2026-11-16): campaña no válida y veredicto a mano
+Es la de arriba. **30 de 30 muertos, 0 supervivientes, 0 timeouts** en 14281,0 s, con las líneas base en verde al
+empezar (2292,8–2363,7 s, por debajo del timeout). Pero al terminar la base de `wk_2` estaba **roja** en otro test de
+**tiempo** de F-036: `tests/test_f036_excel_lector.py::test_f036_r115_rango_que_openpyxl_expande_al_cargar_se_lee_en_menos_de_un_segundo[combinado-A-H-_plantilla]`
+(el de la primera fue `test_f036_r115_celda_con_estilo_lejana_en_los_metadatos_es_barata[1-16384]`, del mismo fichero).
+Con 4 suites enteras a la vez, un tope de un segundo tampoco aguanta. Por orden del líder, **parado aquí**: el test no se
+ha tocado y la campaña no se ha repetido. `consultas_tipos_reclamacion.py:61` (`not valor`) sale ahora muerto, como
+debe tras `26c6f36`; el veredicto válido de cada mutante sigue siendo el de la tabla a mano, más abajo.
+
+## Análisis del implementer, primera campaña (8 workers, `--timeout 1800`, sobre `a0f93d6`): no válida y veredicto a mano
 
 **Por qué la campaña no vale.** La base de `wk_0` se rompió al final en
 `tests/test_f036_excel_lector.py::test_f036_r115_celda_con_estilo_lejana_en_los_metadatos_es_barata[1-16384]`,

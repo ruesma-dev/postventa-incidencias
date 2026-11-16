@@ -129,8 +129,13 @@ CAMPAÑA NO VÁLIDA: La línea base estaba VERDE al empezar y ROJA al terminar e
 **La campaña NO VALE para cerrar** (lo dice el propio arnés). Causa, ajena a F-072: `test_f036_r115_...` es un test de
 **tiempo** de F-036 (`TOPE_SEGUNDOS = 1.0`) que con 8 suites enteras a la vez pasa del segundo; solo pasa
 (`-k r115`: `65 passed in 161.57s`) y en la suite en serie también. Los 10 timeouts, mismo origen: las líneas base
-tardaron **1867,8–2236,6 s**, más que el `--timeout 1800`. **No la he repetido**: con los mismos parámetros saldría
-igual, y cambiar `--workers` o `--timeout` es decisión del líder.
+tardaron **1867,8–2236,6 s**, más que el `--timeout 1800`.
+
+**Segunda campaña** (orden del líder: `--timeout 3600 --workers 4`, sobre `ae15470`): **30 evaluados, 30 muertos, 0
+supervivientes, 0 timeouts** en 14281,0 s (bases 2292,8–2363,7 s), pero **otra vez NO VÁLIDA**: al terminar, la base de
+`wk_2` falló en `test_f036_r115_rango_que_openpyxl_expande_al_cargar_se_lee_en_menos_de_un_segundo[combinado-A-H-_plantilla]`,
+otro test de tiempo de F-036 (tope de un segundo). Parado aquí como mandó el líder, **sin tocar el test**. El informe de
+campaña es el de la segunda, con el análisis a mano de la primera añadido al final.
 
 **Veredicto a mano** (tabla completa en `progress/mutacion_F-072_bloque3.md`, «Análisis del implementer»): los **21**
 mutantes que el generador del arnés saca de los cuatro ficheros nuevos (13 evaluados + 8 descartados por «uno por
@@ -150,12 +155,12 @@ escritas. No había `progress/mutacion_F-072_bloque3.json` de estado en el árbo
 |---|---|
 | Tests ejecutados | `api` entera: **10133 passed, 353 skipped** (en `a0f93d6`); dirigidos de T8: 171 passed; tras `26c6f36`: 172 passed |
 | Cobertura de líneas cambiadas | sin medir: `init.sh` lo lanza el líder |
-| Mutantes | campaña **no válida** (base rota por un test de tiempo de F-036): 45 generados, 30 evaluados, 20 muertos, 10 timeouts; a mano, 28 propios (M01–M28) + 24 del generador: **todos muertos, 0 supervivientes** tras `26c6f36` (1 real, cerrado) |
-| Tiempo de la suite | 863,08 s (`api` entera, en serie); dirigidos 2,86 s; campaña 9346,3 s |
+| Mutantes | dos campañas **no válidas** (base rota por tests de tiempo de F-036): 1.ª 30 evaluados, 20 muertos, 10 timeouts; 2.ª 30 evaluados, 30 muertos, 0 timeouts; a mano, 28 propios (M01–M28) + 24 del generador: **todos muertos, 0 supervivientes** tras `26c6f36` (1 real, cerrado) |
+| Tiempo de la suite | 863,08 s (`api` entera, en serie); dirigidos 2,86 s; campañas 9346,3 s y 14281,0 s |
 | Capa e2e | N/A (lectura con dobles; sin front) |
 
 ## Pendiente
 
-T9 sin marcar. **Decisión del líder**: repetir la campaña (p. ej. menos `--workers` o más `--timeout`) o aceptar el
+T9 sin marcar. **Decisión del líder/humano**: los tests de tiempo de F-036 rompen la base en paralelo; repetir en serie, tratar esos tests, o aceptar el
 veredicto a mano. La suite entera no se ha relanzado tras `26c6f36` (solo añade un caso que pasa); `init.sh`, del líder.
 Nada en Sigrid, ni `.env`, ni push.

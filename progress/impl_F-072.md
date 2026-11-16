@@ -213,5 +213,6 @@ Puerto `domain/ports/tipos_reclamacion.py`, consulta (R2) y mapeo en `consultas_
 (R4 techo → 409, R5, línea de R30 en la aplicación por §6.1: decisión para la review). RED `daca1b9` (`ImportError` y,
 con esqueletos, `72 failed, 7 passed`); GREEN `a7d959c`: `171 passed`; suite `api` entera `10133 passed, 353 skipped in 863.08s`.
 **Campaña NO VÁLIDA** (`progress/mutacion_F-072_bloque3.md`): base rota por un test de tiempo de F-036 bajo 8 workers y 10
-timeouts (bases de 1868–2237 s > `--timeout 1800`); no repetida, decide el líder. A mano: todos muertos; un superviviente
+timeouts; repetida (4 workers, `--timeout 3600`): 30/30 muertos, 0 timeouts, pero **otra vez no válida** por otro test de
+tiempo de F-036 (`..._se_lee_en_menos_de_un_segundo`); parado sin tocarlo, decide el líder. A mano: todos muertos; un superviviente
 real que la campaña dio por muerto (`consultas_tipos_reclamacion.py:61` `not valor`), cerrado en `26c6f36`.

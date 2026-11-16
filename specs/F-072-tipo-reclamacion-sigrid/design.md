@@ -18,9 +18,8 @@
 - **Bandeja**: columna nueva `tipo_reclamacion` en `bandeja_incidencias` y en
   `revisiones_bandeja` (`17_tipo_reclamacion.sql`, `ALTER TABLE … ADD COLUMN IF
   NOT EXISTS`). `listado` se queda como dato heredado y deja de escribirse.
-- **Revisión**: la lista y editar/aprobar leen los tipos; `catalogo.listados`
-  los ofrece; `valores.listado` lleva el **tipo efectivo**; motivo nuevo
-  `tipo_fuera_de_sigrid`.
+- **Revisión**: la lista y editar/aprobar leen los tipos; `catalogo.listados` los
+  ofrece; `valores.listado` lleva el **tipo efectivo**; motivo `tipo_fuera_de_sigrid`.
 - **Volcado**: `parte_de` manda el tipo efectivo; `TIPO_RECLAMACION` es el defecto.
 
 Encaje (`docs/ARCHITECTURE.md`): la hexagonal de F-036/F-056. Un puerto de una
@@ -117,7 +116,9 @@ orden leído; recibe `TipoReclamacion` ya limpios (R5 es de `leer_tipos_reclamac
   `PROVEEDOR_AMBIGUO` y `DUPLICADA` (R24): `motivos_no_aprobable` recibe los
   códigos vigentes; con `None` (descartar, recuperar) no se calcula, como hoy.
 - El campo lógico `listado` de `cambios` deja de salir de `_ATRIBUTOS_DE_CAMPO`:
-  se compara `tipo_efectivo(v.tipo_reclamacion)` de las dos fotos (R25).
+  se compara `tipo_efectivo(v.tipo_reclamacion)` de las dos fotos (R25). Igual
+  `_mismos_valores` (estado, R1 de F-056; `sin_cambios`, R16): tipo efectivo e
+  ignora el `listado` heredado [Q-12]. La huella (R26) sigue distinguiendo nulo de `0002`.
 - `huella_de_valores` (R26): la lista de los 13 primeros campos como hoy y,
   **solo si** `tipo_reclamacion` no es `None`, el código al final. Un test fija
   la huella de una foto de ejemplo con el valor que da el código de `dev`
@@ -200,9 +201,8 @@ bloqueo exclusivo breve y siendo **dueño**: primer `ALTER TABLE` en producción
 - **`listado` heredado** (`primero`/`segundo`): no se traduce (Q-2); se lee y
   se copia, no se enseña. Si hay alguna `segundo` sin volcar, Posventa la cambia
   en la revisión antes de aprobar.
-- **Plantillas v2 ya repartidas** (Q-5): se aceptan; una celda «Primer listado»
-  o «Segundo listado» vuelve en el Excel de errores, que ya trae la lista nueva;
-  en blanco entra con `0002`.
+- **Plantillas v2 ya repartidas** (Q-5): se aceptan; «Primer listado» o «Segundo
+  listado» vuelve en el Excel de errores, ya con la lista nueva; en blanco, `0002`.
 
 ## 10 · Riesgos (logs: solo recuentos y códigos de obra, R30)
 
@@ -247,3 +247,4 @@ son MANUAL (`tasks.md` T13 y T26).
 | Q-9 · Qué se guarda | (a) solo el código; (b) código y nombre | (a): el nombre se pinta con la lista vigente || (a), humano 2026-11-15 |
 | Q-10 · Verificación en producción (T26) | (a) autorizar filas «PRUEBA F-072 - DESCARTAR» en la bandeja de la 0677 y un **ensayo** (dry-run, ventana cerrada) de una aprobada con tipo ≠ `0002`, y descartarlas; (b) solo lecturas | (a) || (a), humano 2026-11-15 |
 | Q-11 · Textos del front («Listado», «Sin listado», el motivo nuevo, `TEXTO_TIPO` de `js/volcado.js`) | (a) en F-040 al retomarla; (b) ficha de front aparte | (a) || (a), humano 2026-11-15 |
+| Q-12 · El `listado` heredado en el estado y en `sin_cambios` (caso borde de la review del Bloque 2, punto 2 y Obs. 1) | (a) ignorarlo, como `cambios` (R25); (b) que siga contando | (a) || (a), humano 2026-11-16 |

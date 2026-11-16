@@ -108,8 +108,9 @@ código: `create_partes_reclamacion_use_case.py`, lectura con `fecbaj`).
 - **R24.** MIENTRAS el tipo guardado no es nulo y no está entre los vigentes leídos,
   la incidencia debe llevar el motivo `tipo_fuera_de_sigrid` —detrás de
   `proveedor_ambiguo` y delante de `duplicada`— y no debe poder aprobarse [Q-8]. (capa: unit)
-- **R25.** El campo lógico `listado` de `cambios` y del historial debe compararse
-  por el tipo efectivo: pasar de nulo a `0002` no es un cambio. (capa: unit)
+- **R25.** `cambios` y el historial (campo lógico `listado`), el estado (R1 de F-056) y
+  `sin_cambios` (R16 de F-056) deben comparar las fotos por el tipo efectivo —nulo y
+  `0002` son iguales— e ignorar el `listado` heredado [Q-12]. (capa: unit)
 - **R26.** La huella de una foto con `tipo_reclamacion` nulo debe ser la que
   calculaba F-056 sobre sus 13 valores; con tipo, la lista JSON debe llevar el
   código al final. Una incidencia aprobada antes de F-072 conserva la huella. (capa: unit)

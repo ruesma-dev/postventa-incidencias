@@ -12,13 +12,11 @@ Revisión completa del Bloque 4 (pasada 1): `5e9f675..201b8f6` (T10 `6278b98`, T
 
 ## Lo que he ejecutado
 
-| Qué | Resultado |
-|---|---|
-| T11 + tests anteriores tocados (17 ficheros de `tests/`), en el árbol real | `629 passed, 168 skipped in 87.97s` |
-| `--collect-only` de `tests_bbdd` (F-072, F-036, F-056, F-059, F-060) | `110 tests collected in 0.40s` |
-| Línea base en la copia (`git archive HEAD`, scratchpad) | `393 passed, 4 skipped` (los 4 son la base fija por git, que en la copia no existe) |
-| 27 mutantes a mano en esa copia | 26 muertos y 1 equivalente (M27), ver la tabla |
-| `git status` al terminar | limpio: nada se mutó en el árbol de trabajo |
+- En el árbol real, T11 más los 17 ficheros de `tests/` tocados: `629 passed, 168 skipped in 87.97s`.
+  `--collect-only` de `tests_bbdd` (F-072, F-036, F-056, F-059, F-060): `110 tests collected`.
+- En la copia (`git archive HEAD`, en el scratchpad), la línea base da `393 passed, 4 skipped`; los 4 son la
+  base fija por git, que en la copia no existe. Sobre ella, 27 mutantes a mano: 26 muertos y 1 equivalente
+  (M27). `git status`, limpio: nada se mutó en el árbol de trabajo.
 
 ## Checkpoints
 
@@ -27,9 +25,8 @@ Revisión completa del Bloque 4 (pasada 1): `5e9f675..201b8f6` (T10 `6278b98`, T
 - C3 `[x]`: hexagonal respetada. El dominio solo gana dos campos con defecto `None` (último campo, §3.2). Las
   sentencias y el `.sql` están en persistencia. Ficheros nuevos con su ruta en la primera línea, sin `print`,
   sin TODO y sin secretos. Datos de prueba ficticios (`9901`, `9001`, `@ejemplo.invalid`).
-- C3 bis / ter `N/A`: no entra documentación de fuera ni actas.
-- C3 quater `N/A` en este bloque: no cambia lo que se expone ni lo que se consume. La columna es interna del
-  esquema propio; `azure-apps` lo actualiza el líder al desplegar (R33).
+- C3 bis / ter `N/A`: no entra documentación de fuera ni actas. C3 quater `N/A` en el bloque: la columna es
+  interna del esquema propio y no cambia lo expuesto ni lo consumido (`azure-apps`, el líder al desplegar).
 - C4 `[x]`: R15, R16, R18 y R32 (parte DDL) tienen tests unitarios trazables que pasan. R17 queda en
   `tests_bbdd`, como pide la spec (MANUAL). Los unit tests no tocan red ni BBDD: el único `subprocess` es un
   `git show` local de solo lectura. T13 consta en `progress/current.md`. Dobles: no hay dobles nuevos.
@@ -40,15 +37,11 @@ Revisión completa del Bloque 4 (pasada 1): `5e9f675..201b8f6` (T10 `6278b98`, T
   - Mutación `[ ]→pendiente del humano`: no hay `progress/mutacion_F-072_bloque4.md`. La sustituye la tabla
     de abajo, con texto exacto y número de fallos, y con todas las filas reproducidas por mí. Queda aceptada
     solo con el OK del humano.
-  - RM1: el SHA medido es HEAD `ecbfb0a`, igual en la copia y en el árbol.
-  - RM2 `N/A`: no hay tiempos de campaña.
-  - RM3 `[x]`: ningún equivalente salió muerto.
-  - RM5 `[x]`: M27 lleva su demostración (abajo).
-  - RM6 `N/A`: no se quitó ninguna guarda.
-  - RM7 `N/A`: ningún requisito del bloque protege un orden entre colaboradores.
-- C4 ter `N/A`: no existe `harness/rutas_sensibles.json`.
-- C5 `[x]` para el bloque: T10–T12 en `[x]` con sus commits `F-072 Tn:`. T13 y T14 siguen abiertas, como
-  corresponde.
+  - RM1: HEAD `ecbfb0a`, igual en la copia y en el árbol. RM2 `N/A`: no hay tiempos de campaña. RM3 `[x]`:
+    ningún equivalente salió muerto. RM5 `[x]`: M27 lleva su demostración (abajo). RM6 `N/A`: no se quitó
+    ninguna guarda. RM7 `N/A`: ningún requisito del bloque protege un orden entre colaboradores.
+- C4 ter `N/A`: no existe `harness/rutas_sensibles.json`. C5 `[x]` para el bloque: T10–T12 en `[x]` con sus
+  commits `F-072 Tn:`; T13 y T14 siguen abiertas, como corresponde.
 
 ## Trazabilidad (requisito → test)
 
@@ -67,9 +60,8 @@ lleva su comentario `F-072 (R…)`.
 
 ## Verificación de mutación a mano (RM4: sobre una copia de `git archive HEAD`, nunca en el árbol)
 
-Tests: los 7 de la verificación de T11. Cada mutante se aplicó solo, se ejecutó sin `-x` y se revirtió.
-B = `sentencias_bandeja.py`, R = `sentencias_revision.py`, Q = `sql/17_tipo_reclamacion.sql`. Script:
-`…/scratchpad/mutar_b4.py`.
+Tests: los 7 de T11. Cada mutante, solo, sin `-x` y revertido. B = `sentencias_bandeja.py`, R =
+`sentencias_revision.py`, Q = `sql/17_tipo_reclamacion.sql`.
 
 | # | Línea | Original → mutado | Resultado |
 |---|---|---|---|
@@ -103,14 +95,11 @@ B = `sentencias_bandeja.py`, R = `sentencias_revision.py`, Q = `sql/17_tipo_recl
 
 Los mutantes que solo mata un test (M06, M08, M10) los mata un test **de F-072**, no uno vecino.
 
-**M27, la demostración de equivalencia (RM5).** Solo cambia el resultado si `v.tipo_reclamacion == ""`. En
-el dominio ese valor no se produce:
-- `_tipo_pedido` (`domain/models/revision.py:741-762`) devuelve `TIPO_RECLAMACION_POR_DEFECTO`, un código de
-  `listas.listados` o el tipo efectivo vigente.
-- `valores_importados` no copia el tipo, así que lo deja `None`.
-
-Además, si llegara un `""`, el `CHECK` de la base lo rechaza. Eso lo prueba
-`tests_bbdd::test_f072_r16_el_check_de_la_revision_rechaza_vacio_y_mas_de_24[]`.
+**M27, la demostración de equivalencia (RM5).** Solo cambia el resultado si `v.tipo_reclamacion == ""`, y
+el dominio no lo produce: `_tipo_pedido` (`domain/models/revision.py:741-762`) devuelve
+`TIPO_RECLAMACION_POR_DEFECTO`, un código de `listas.listados` o el tipo efectivo vigente, y
+`valores_importados` lo deja `None`. Si llegara un `""`, el `CHECK` de la base lo rechaza
+(`tests_bbdd::test_f072_r16_el_check_de_la_revision_rechaza_vacio_y_mas_de_24[]`).
 
 ## La corrección `201b8f6` frente a R17: la conserva
 

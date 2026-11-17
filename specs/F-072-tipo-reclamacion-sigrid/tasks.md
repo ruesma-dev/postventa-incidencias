@@ -41,7 +41,7 @@
 
 - [x] **T7 · RED**: `tests/test_f072_lectura_sigrid.py`: R2 (SQL carácter a carácter, sin parámetros), mapeo de 3 columnas y `ValueError` sin la fila, adaptador con `httpx` simulado (cuerpo de `sql/read`, techo), R3 (fallo y tiempo agotado → `CatalogoNoDisponible`), R4 (techo → `CatalogoSinVerificar`), R5 (vacíos y repetidos), R30 (la línea de log sin `res`), y la fábrica con la misma puerta de entorno que `construir_ubicaciones_validas`. | Verificación: fallan por la razón esperada, traza pegada
 - [x] **T8 · GREEN**: `domain/ports/tipos_reclamacion.py`, `infrastructure/sigrid/consultas_tipos_reclamacion.py`, `infrastructure/sigrid/tipos_reclamacion.py`, `construir_tipos_reclamacion` en `infrastructure/sigrid/fabrica.py` y `application/pipelines/tipos_reclamacion.py` (`design.md` §3.1, §5, §6.1). | Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f072_lectura_sigrid.py tests/test_f056_ubicaciones.py` en verde
-- [ ] **T9**: mutación del Bloque 3 y supervivientes. **Review del Bloque 3.** | Verificación: `progress/mutacion_F-072_bloque3.md`; `bash harness/init.sh` en verde
+- [x] **T9**: mutación del Bloque 3 y supervivientes. **Review del Bloque 3.** | Verificación: `progress/mutacion_F-072_bloque3.md`; `bash harness/init.sh` en verde
 
 ## Bloque 4 · DDL y persistencia
 

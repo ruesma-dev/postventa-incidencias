@@ -19,6 +19,10 @@ riesgo es **el volumen**. De ahí:
    como en la cola.
 2. **Nada al log** salvo la obra y **cuántas** filas volvieron (R47).
 
+F-072 (`design.md` §8): `listado` es el **tipo efectivo** de la incidencia
+—su `tipo_reclamacion` de `auxtrcp`, o `0002` si es nulo (filas anteriores a
+F-072)—, nunca `null`; el `listado` heredado (`primero`/`segundo`) ya no sale.
+
 Un `limite` que no es un entero ≥ 1, o una obra que falta o no es admisible,
 son **400** sin consultar nada; sin base, **503**. No depende de ninguna
 ventana de escritura del servicio.
@@ -32,7 +36,7 @@ from uuid import UUID
 from config.settings import obtener_ajustes
 from domain.models.errores import PeticionDePersistenciaInvalida
 from domain.models.importacion import IncidenciaEnBandeja
-from domain.models.plantilla_incidencias import normalizar_codigo_obra
+from domain.models.plantilla_incidencias import normalizar_codigo_obra, tipo_efectivo
 from domain.ports.bandeja import BandejaPort
 from infrastructure.persistencia.fabrica import construir_bandeja
 from infrastructure.persistencia.sentencias_bandeja import LIMITE_MAXIMO_BANDEJA
@@ -101,7 +105,7 @@ def _serializar(incidencia: IncidenciaEnBandeja) -> dict[str, Any]:
         "proveedor_nombre": incidencia.proveedor_nombre,
         "proveedor_ambiguo": incidencia.proveedor_ambiguo,
         "urgencia": _valor(incidencia.urgencia),
-        "listado": _valor(incidencia.listado),
+        "listado": tipo_efectivo(incidencia.tipo_reclamacion),  # F-072 (§8)
         "duplicada_de": _texto(incidencia.duplicada_de),
         "creada_at_utc": incidencia.creada_at_utc.isoformat(),
     }

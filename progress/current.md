@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · `in_progress` · 2026-11-17 · T13 en verde; OK del humano a la mutación a mano por bloque
+> **T13 (humano, 2026-11-17)**: `infra\pruebas_bbdd_efimera.ps1` repetido tras `201b8f6`: **120 passed**.
+> **OK del humano (2026-11-17, en el chat: «ok, t13 hecha y 120 passed»)** a la propuesta (b) del líder: en los
+> Bloques 4–6 la mutación se cierra con la tabla a mano del implementer reproducida por el reviewer (sin campaña
+> por bloque, que tarda ~4 h y la invalidan los tests de tiempo `test_f036_r115_*` bajo carga), y una única
+> campaña de la feature entera en T22 con menos workers.
+
 > ## F-072 · `in_progress` · 2026-11-17 · OK del humano al veredicto a mano del Bloque 3; T13 en rojo
 > **OK explícito del humano (2026-11-17, en el chat: «a ok a cerrarla»)** a cerrar la mutación del Bloque 3 con el
 > veredicto a mano en lugar de una campaña válida (condición de `progress/review_F-072_bloque3.md` §5 para C4 bis).

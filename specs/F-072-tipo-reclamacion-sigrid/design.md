@@ -46,7 +46,7 @@ microservicio: `sigrid-api` ya admite `tipo` y valida `fecbaj` (§8.9).
 |---|---|
 | `domain/ports/tipos_reclamacion.py` | `FilaTipoReclamacion(codigo: str\|None, nombre: str\|None, posicion: int\|None)`; `TiposReclamacionPort.leer() -> LecturaCatalogo[FilaTipoReclamacion]` (reutiliza `LecturaCatalogo` de `catalogo_obra.py`) |
 | `infrastructure/sigrid/consultas_tipos_reclamacion.py` | `SQL_TIPOS_RECLAMACION` (R2), `select_tipos_reclamacion()`, `fila_a_tipo_reclamacion(fila)` (3 columnas o `ValueError` sin la fila) |
-| `infrastructure/sigrid/tipos_reclamacion.py` | `AdaptadorTiposReclamacionSigridApi(AdaptadorCatalogoSigridApi)`: `leer()` y el log de R30 |
+| `infrastructure/sigrid/tipos_reclamacion.py` | `AdaptadorTiposReclamacionSigridApi(AdaptadorCatalogoSigridApi)`: `leer()`, sin log (la línea de R30 la escribe la aplicación, §6.1) |
 | `application/pipelines/tipos_reclamacion.py` | `leer_tipos_reclamacion(puerto) -> tuple[TipoReclamacion, ...]` (R4, R5), `FuenteTiposReclamacion = Callable[[], tuple[TipoReclamacion, ...]]`, `fuente_de_tipos(puerto)` |
 | `infrastructure/persistencia/sql/17_tipo_reclamacion.sql` | §7 |
 | `tests/test_f072_dominio_tipos.py` | R6, R7, R14, R19, R26, R28 |

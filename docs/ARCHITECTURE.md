@@ -1357,9 +1357,9 @@ segundos desde que arrancó el proceso y los de cada tramo:
 `construir.bandeja`, `construir.equivalencias` y `configuracion` (la
 construcción); `bandeja.listar` (y `bandeja.contar` si la obra pasa del tope),
 `catalogo.leer_unidades`, `catalogo.leer_oficios`,
-`equivalencias.ultimas_decisiones`, `ubicaciones` y `tipos` (los tipos de
-reclamación de `auxtrcp`, F-072) (cada lectura de un puerto); `aplicacion`, `calculo` (la aplicación menos los
-puertos) y `serializar`. Lleva solo la obra, nombres de tramo y números: **ni
+`equivalencias.ultimas_decisiones`, `ubicaciones` y `tipos` (cada lectura de
+un puerto; `tipos` es la de los tipos de reclamación de `auxtrcp`, F-072);
+`aplicacion`, `calculo` (la aplicación menos los puertos) y `serializar`. Lleva solo la obra, nombres de tramo y números: **ni
 correo, ni oid, ni textos**.
 
 La medición **no cambia nada** del listado: el cronómetro

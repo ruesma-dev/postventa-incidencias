@@ -29,7 +29,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from domain.models.equivalencias import Catalogo, DecisionPar
-from domain.models.plantilla_incidencias import CatalogoObra
+from domain.models.plantilla_incidencias import CatalogoObra, TipoReclamacion
 from domain.models.importacion import (
     EstadoFilaImportada,
     EstadoImportacion,
@@ -216,6 +216,42 @@ class UbicacionesEnMemoria:
 
 
 # --- la bandeja ---------------------------------------------------------------
+
+
+#: Tipos de reclamación **ficticios** de `dbo.auxtrcp` (F-072): nunca los reales.
+TIPOS_FICTICIOS: tuple[TipoReclamacion, ...] = (
+    TipoReclamacion(codigo="9001", nombre="TIPO FICTICIO 1"),
+    TipoReclamacion(codigo="9002", nombre="TIPO FICTICIO 2"),
+)
+
+
+class TiposEnMemoria:
+    """La fuente de los tipos de reclamación (F-072 R1, R11), con tipos ficticios.
+
+    Cada llamada es una lectura: se cuenta en `lecturas` y, si se le da la
+    lista común `llamadas`, se anota `"tipos"` en ella. Sin `llamadas`, los
+    tests anteriores a F-072 conservan el orden que fijan.
+    """
+
+    def __init__(
+        self,
+        llamadas: list[str] | None = None,
+        tipos: tuple[TipoReclamacion, ...] = TIPOS_FICTICIOS,
+        *,
+        fallo: Exception | None = None,
+    ) -> None:
+        self.llamadas = llamadas
+        self.tipos = tipos
+        self._fallo = fallo
+        self.lecturas = 0
+
+    def __call__(self) -> tuple[TipoReclamacion, ...]:
+        self.lecturas += 1
+        if self.llamadas is not None:
+            self.llamadas.append("tipos")
+        if self._fallo is not None:
+            raise self._fallo
+        return self.tipos
 
 
 class BandejaEnMemoria:

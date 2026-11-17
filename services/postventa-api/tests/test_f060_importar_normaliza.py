@@ -80,6 +80,7 @@ from tests.utiles_importacion import (
     BandejaEnMemoria,
     GeneradorQueAnota,
     LectorQueAnota,
+    TiposEnMemoria,
     fila,
 )
 from tests.utiles_normalizacion import RevisionConLote
@@ -208,6 +209,7 @@ class Mundo:
             "lector": self.lector,
             "catalogo_obra": self.catalogo,
             "ubicaciones": self.ubicaciones,  # F-071 R24 (antes, `equivalencias`)
+            "tipos": TiposEnMemoria(),  # F-072 R11
             "generador": self.generador,
             "ahora": AHORA_I,
             "nuevo_id": self.nuevo_id,
@@ -268,7 +270,9 @@ def _sin_normalizar(contenido: bytes) -> dict[str, Any]:
     )
     contexto = paso_huella(contexto, mundo.bandeja)
     contexto = paso_reconocimiento(contexto, mundo.lector)
-    contexto = paso_catalogo(contexto, mundo.catalogo, mundo.ubicaciones)  # F-071 R24
+    contexto = paso_catalogo(
+        contexto, mundo.catalogo, mundo.ubicaciones, TiposEnMemoria()  # F-071 R24; F-072 R11
+    )
     contexto = paso_validacion(contexto, config.listas)
     contexto = paso_registro(contexto, mundo.bandeja, nuevo_id=mundo.nuevo_id)
     contexto = paso_excel_errores(contexto, mundo.generador, config.listas, config.textos)

@@ -6,23 +6,17 @@
 #
 # SIN nombres de proveedor ni de persona: este fichero va en git.
 #
-# Las ubicaciones, los oficios y los proveedores no están aquí: salen de Sigrid
-# al descargar la plantilla (F-071). Urgencias y listados sí, porque Sigrid no
-# tiene catálogo de ellos que la bandeja use.
+# Las ubicaciones, los oficios, los proveedores y los tipos de reclamación
+# (columna Listado) salen de Sigrid al descargar (F-071, F-072). La urgencia sí,
+# porque Sigrid no tiene catálogo.
 
-# Los codigos tienen que ser los de los Enum del dominio (Urgencia, Listado).
-# Urgencia vacia = normal (D-4). Listado: sin traducir a tipo de Sigrid (D-5).
+# Los codigos tienen que ser los del Enum del dominio (Urgencia).
+# Urgencia vacia = normal (D-4).
 urgencias:
   - codigo: urgente
     etiqueta: Urgente
   - codigo: seguridad
     etiqueta: Peligro para la seguridad
-
-listados:
-  - codigo: primero
-    etiqueta: Primer listado
-  - codigo: segundo
-    etiqueta: Segundo listado
 
 textos:
   titulo: Cómo rellenar esta plantilla
@@ -32,7 +26,7 @@ textos:
     - "Escribe una incidencia por fila: un solo defecto en cada fila. Si en un sitio hay dos defectos, usa dos filas."
     - "Elige la unidad en cada fila, aunque sea la misma que la de arriba: la unidad no se copia de la fila de arriba."
     - "Todo lo que tiene desplegable se elige del desplegable: no lo escribas ni lo pegues desde otro sitio, porque el valor tiene que ser exactamente el de la lista."
-    - "Los desplegables de unidad, ubicación, oficio y proveedor salen de Sigrid el día que descargas la plantilla."
+    - "Los desplegables de unidad, ubicación, oficio, proveedor y listado salen de Sigrid el día que descargas la plantilla."
     - "La lista de «Ubicación» depende de la unidad de la fila: elige primero la unidad. Si cambias la unidad, vuelve a elegir la ubicación. Si el sitio no está en la lista, deja la ubicación en blanco y explícalo en «Detalle»."
     - "Las columnas obligatorias son «Unidad» y «Descripción corta». Las demás puedes dejarlas en blanco."
     - "En «Descripción corta» pon qué pasa y dónde, en pocas palabras (hasta 128 caracteres). Todo lo demás que quieras contar va en «Detalle»."
@@ -59,7 +53,7 @@ textos:
     - Unidad: "Vivienda 2 (elígela de la lista)"
       Ubicación: "Estancia (elígela de la lista de su unidad)"
       Descripción corta: "Mecanismos sueltos en varias habitaciones"
-      Listado: Segundo listado
+      Listado: "Tipo de reclamación (elígelo de la lista)"
 
   # Mensajes de la validación de datos de cada columna. Excel admite hasta 32
   # caracteres en los títulos y 255 en los textos.
@@ -100,7 +94,7 @@ textos:
       titulo_error: Urgencia no válida
       error: "Ese valor no está en la lista. Elige la urgencia del desplegable o déjala en blanco."
     Listado:
-      titulo_entrada: Listado
-      entrada: "Opcional: si el defecto es del primer o del segundo listado de repasos."
+      titulo_entrada: Listado (tipo de reclamación)
+      entrada: "Opcional: el tipo de reclamación de Sigrid, por ejemplo el primer o el segundo listado de repasos. Si lo dejas en blanco, entra como tipo 0002."
       titulo_error: Listado no válido
-      error: "Ese valor no está en la lista. Elige el listado del desplegable o déjalo en blanco."
+      error: "Ese valor no está en la lista. Elige el tipo del desplegable o déjalo en blanco."

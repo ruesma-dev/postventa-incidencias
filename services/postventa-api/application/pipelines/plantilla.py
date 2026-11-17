@@ -3,7 +3,8 @@
 
 `normalizar_codigo_obra` → `leer_catalogo` → **una** lectura de las
 ubicaciones válidas de cada unidad (`ubicaciones(catalogo)`, F-071 R1) →
-`oficios_del_desplegable` → `pares_del_desplegable` →
+**una** lectura de los tipos de reclamación (`tipos()`, F-072 R1, R6) →
+`listas_con_tipos` → `oficios_del_desplegable` → `pares_del_desplegable` →
 `ubicaciones_de_la_plantilla` → `generador.generar` → nombre
 `plantilla_incidencias_<obra>_<AAAAMMDD>.xlsx`, con la fecha de la generación
 en UTC. Todo de Sigrid en ese momento, sin caché y **sin leer la base** (F-071
@@ -30,8 +31,9 @@ revisión enseña con ella el grupo de las filas **ya importadas** con
 
 Nada se traduce aquí: `CodigoDeObraInvalido` (R9, sin llamar a Sigrid),
 `ObraSinUnidades`, `ObraAmbigua`, `CatalogoSinVerificar` (R10; también la
-lectura de ubicaciones al techo, F-071 R3) y `CatalogoNoDisponible` (R11; y la
-de ubicaciones caída) suben tal cual, y los traduce el borde. Sin fichero en
+lectura de ubicaciones al techo, F-071 R3, y la de tipos, F-072 R4) y
+`CatalogoNoDisponible` (R11; y la de ubicaciones o la de tipos caída, F-072
+R3) suben tal cual, y los traduce el borde. Sin fichero en
 ningún caso: el generador es lo último.
 
 ## Logs (R47; F-071 R44)
@@ -65,6 +67,7 @@ from domain.models.plantilla_incidencias import (
     TextosPlantilla,
     UbicacionesDeLaPlantilla,
     UbicacionesPorUnidad,
+    listas_con_tipos,
     normalizar_codigo_obra,
     oficios_del_desplegable,
     opciones_de_oficio,
@@ -77,6 +80,7 @@ from domain.ports.equivalencias import EquivalenciasPort
 from domain.ports.hoja_calculo import GeneradorPlantillaPort
 
 from application.pipelines.catalogo_obra import leer_catalogo
+from application.pipelines.tipos_reclamacion import FuenteTiposReclamacion
 
 __all__ = [
     "FuenteUbicacionesValidas",
@@ -153,6 +157,7 @@ def generar_plantilla(
     *,
     catalogo_obra: CatalogoObraPort,
     ubicaciones: FuenteUbicacionesValidas,
+    tipos: FuenteTiposReclamacion,
     generador: GeneradorPlantillaPort,
     listas: ListasCerradas,
     textos: TextosPlantilla,
@@ -161,15 +166,18 @@ def generar_plantilla(
     """El nombre y los bytes de la plantilla de la obra (F-036 R1–R12; F-071 R1–R3).
 
     El catálogo y, **después** y una sola vez, las ubicaciones de cada unidad
-    se leen **en este momento** de Sigrid (R1): la plantilla lleva las
-    unidades, los oficios y las ubicaciones de hoy. Si la lectura de
-    ubicaciones llega al techo o falla, su error sube y no hay fichero (R3).
+    y los tipos de reclamación (F-072 R1) se leen **en este momento** de
+    Sigrid (R1): la plantilla lleva las unidades, los oficios, las ubicaciones
+    y los tipos de hoy, los tipos en `Listado` (`listas_con_tipos`, F-072 R6).
+    Si la lectura de ubicaciones o la de tipos llega al techo o falla, su
+    error sube y no hay fichero (R3; F-072 R3, R4).
     """
     codigo = normalizar_codigo_obra(codigo_obra)
     catalogo = leer_catalogo(catalogo_obra, codigo)
     de_la_plantilla = ubicaciones_de_la_plantilla(
         catalogo.unidades, ubicaciones(catalogo)
     )
+    con_tipos = listas_con_tipos(listas, tipos())
     oficios = oficios_del_desplegable(catalogo)
     pares = pares_del_desplegable(catalogo, oficios)
     contenido = generador.generar(
@@ -177,7 +185,7 @@ def generar_plantilla(
         oficios=oficios,
         pares=pares,
         ubicaciones=de_la_plantilla,
-        listas=listas,
+        listas=con_tipos,
         textos=textos,
         generada_at=ahora,
         filas=(),

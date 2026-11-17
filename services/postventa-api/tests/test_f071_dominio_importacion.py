@@ -70,7 +70,6 @@ from domain.models.plantilla_incidencias import (
     CABECERA,
     IDENTIFICADOR_PLANTILLA,
     CatalogoObra,
-    Listado,
     ListasCerradas,
     OficioObra,
     Opcion,
@@ -557,7 +556,9 @@ def test_f071_r36_oficio_y_proveedor_con_otra_mayuscula() -> None:
 def test_f071_r36_urgencia_y_listado_con_otra_mayuscula() -> None:
     valida = una_valida(basica(urgencia="urgente", listado="SEGUNDO LISTADO"))
     assert valida.urgencia is Urgencia.URGENTE
-    assert valida.listado is Listado.SEGUNDO
+    # F-072 R12, R15 (sustituye a `listado is Listado.SEGUNDO`): se guarda el
+    # código de la opción en `tipo_reclamacion` y `listado` nace nulo.
+    assert (valida.tipo_reclamacion, valida.listado) == ("segundo", None)
     assert valida.avisos == (
         aviso_valor_tomado(URGENCIA, "Urgente"),
         aviso_valor_tomado(LISTADO, "Segundo listado"),
@@ -575,7 +576,8 @@ def test_f071_r36_exactos_sin_aviso() -> None:
     )
     assert valida.avisos == ()
     assert valida.urgencia is Urgencia.URGENTE
-    assert valida.listado is Listado.PRIMERO
+    # F-072 R12, R15 (sustituye a `listado is Listado.PRIMERO`).
+    assert (valida.tipo_reclamacion, valida.listado) == ("primero", None)
 
 
 def test_f071_r36_dos_por_clave_es_el_error_de_lista() -> None:
@@ -590,7 +592,8 @@ def test_f071_r36_dos_por_clave_es_el_error_de_lista() -> None:
     assert [c for c, _ in errores] == [LISTADO]
     # Exacto sí casa aunque otra tenga la misma clave.
     valida = una_valida(basica(listado="PRIMER LISTADO"), listas=listas)
-    assert valida.listado is Listado.SEGUNDO
+    # F-072 R12, R15 (sustituye a `listado is Listado.SEGUNDO`).
+    assert (valida.tipo_reclamacion, valida.listado) == ("segundo", None)
     assert valida.avisos == ()
 
 

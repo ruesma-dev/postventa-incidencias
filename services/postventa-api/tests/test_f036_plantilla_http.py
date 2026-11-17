@@ -35,6 +35,7 @@ from domain.models.errores import (
     ObraAmbigua,
     ObraSinUnidades,
 )
+from domain.models.plantilla_incidencias import listas_con_tipos
 from infrastructure.documentos.excel_openpyxl import (
     HOJA_CATALOGOS,
     HOJA_INCIDENCIAS,
@@ -49,6 +50,9 @@ from tests.utiles_importacion import (
     OBRA_REF,
     CatalogoEnMemoria,
     GeneradorQueAnota,
+    TIPOS_FICTICIOS,
+    PuertoTiposEnMemoria,
+    TiposEnMemoria,
     UbicacionesEnMemoria,
     filas_de_unidades,
 )
@@ -73,6 +77,7 @@ class Dobles:
         self.catalogo = catalogo or CatalogoEnMemoria(self.llamadas)
         # F-071 R1: la fuente de ubicaciones en lugar de las decisiones (R2).
         self.ubicaciones = ubicaciones or UbicacionesEnMemoria(self.llamadas)
+        self.tipos = TiposEnMemoria()  # F-072 R1
         self.generador = GeneradorQueAnota(self.llamadas)
 
 
@@ -85,6 +90,7 @@ def _con_dobles(monkeypatch, dobles: Dobles) -> None:
             obra,
             catalogo_obra=dobles.catalogo,
             ubicaciones=dobles.ubicaciones,
+            tipos=dobles.tipos,
             generador=dobles.generador,
             ahora=AHORA,
         )
@@ -184,6 +190,7 @@ def test_f036_r9_con_la_obra_mal_no_se_construye_ningun_adaptador(monkeypatch):
     monkeypatch.setattr(modulo, "construir_catalogo_obra", prohibido)
     # F-071 R1: la fuente de ubicaciones (antes, `construir_equivalencias`).
     monkeypatch.setattr(modulo_revision, "construir_fuente_de_ubicaciones", prohibido)
+    monkeypatch.setattr(modulo, "construir_tipos_reclamacion", prohibido)  # F-072 R1
 
     with pytest.raises(CodigoDeObraInvalido):
         descargar_plantilla("06/77")
@@ -286,13 +293,21 @@ def test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad(monkeypatch
     monkeypatch.setattr(modulo, "construir_catalogo_obra", catalogo)
     monkeypatch.setattr(modulo_revision, "construir_fuente_de_ubicaciones", ubicaciones)
 
+    def tipos(ajustes):
+        vistos.append(("tipos", ajustes))
+        return PuertoTiposEnMemoria()
+
+    monkeypatch.setattr(modulo, "construir_tipos_reclamacion", tipos)  # F-072 R1
+
     nombre, contenido = descargar_plantilla("0677")
 
     # F-071 R1 y design §3.2: la fuente de producción es la de la revisión
     # (antes, `construir_equivalencias`).
+    # F-072 R1: y, la última, la fuente de los tipos de reclamación.
     assert vistos == [
         ("catalogo", "ajustes-de-prueba"),
         ("ubicaciones", "ajustes-de-prueba"),
+        ("tipos", "ajustes-de-prueba"),
     ]
     assert nombre.startswith("plantilla_incidencias_0677_")
     assert nombre.endswith(".xlsx")
@@ -306,6 +321,7 @@ def test_f036_t18_sin_hora_inyectada_se_usa_la_de_ahora_en_utc(monkeypatch):
         "0677",
         catalogo_obra=dobles.catalogo,
         ubicaciones=dobles.ubicaciones,  # F-071 R1 (antes, `equivalencias`)
+        tipos=dobles.tipos,  # F-072 R1
         generador=dobles.generador,
     )
 
@@ -323,13 +339,17 @@ def test_f036_t18_la_configuracion_es_la_del_yaml_versionado(monkeypatch):
         "0677",
         catalogo_obra=dobles.catalogo,
         ubicaciones=dobles.ubicaciones,  # F-071 R1 (antes, `equivalencias`)
+        tipos=dobles.tipos,  # F-072 R1
         generador=dobles.generador,
         ahora=AHORA,
     )
 
     (argumentos,) = dobles.generador.argumentos
     config = cargar_plantilla_yaml()
-    assert argumentos["listas"] == config.listas
+    # F-072 R6 (sustituye a `== config.listas`): `listados` llega vacío del YAML
+    # y lo rellena la aplicación con los tipos leídos (los ficticios del doble).
+    assert config.listas.listados == ()
+    assert argumentos["listas"] == listas_con_tipos(config.listas, TIPOS_FICTICIOS)
     assert argumentos["textos"] == config.textos
 
 

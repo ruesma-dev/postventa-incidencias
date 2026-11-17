@@ -25,7 +25,10 @@ y, después, la fuente de las ubicaciones válidas de cada unidad (la de F-056,
 importado y se ha reconocido como la plantilla: un fichero que no lo es —ni una
 plantilla v1, `version_anterior`— se rechaza sin llegar a Sigrid (R21; F-071
 R23, R24), y el atajo de R39 no lee Sigrid. Desde F-071 la importación no lee
-las decisiones de equivalencia (D-14).
+las decisiones de equivalencia (D-14). Desde F-072, tras la fuente de las
+ubicaciones y con las mismas condiciones, la de los tipos de reclamación
+(`construir_tipos_reclamacion`): se leen una vez, después del catálogo y de las
+ubicaciones (R11).
 
 Desde F-060 (`specs/F-060-normalizar-ubicaciones/design.md` §9.2): si la
 importación **registra filas** en la bandeja, después del Excel de errores se
@@ -87,6 +90,10 @@ from application.pipelines.revision import (
     ResultadoNormalizacion,
     normalizar_ubicaciones,
 )
+from application.pipelines.tipos_reclamacion import (
+    FuenteTiposReclamacion,
+    fuente_de_tipos,
+)
 from config.settings import obtener_ajustes
 from domain.models.errores import (
     FicheroDemasiadoGrande,
@@ -103,7 +110,10 @@ from infrastructure.persistencia.fabrica import (
     construir_bandeja,
     construir_revision,
 )
-from infrastructure.sigrid.fabrica import construir_catalogo_obra
+from infrastructure.sigrid.fabrica import (
+    construir_catalogo_obra,
+    construir_tipos_reclamacion,
+)
 
 from interface_adapters.api.plantilla import configuracion_de_la_plantilla
 from interface_adapters.api.revision import construir_fuente_de_ubicaciones
@@ -162,6 +172,7 @@ def importar_excel(
     lector: LectorPlantillaPort | None = None,
     catalogo_obra: CatalogoObraPort | None = None,
     ubicaciones: FuenteUbicacionesValidas | None = None,
+    tipos: FuenteTiposReclamacion | None = None,
     generador: GeneradorPlantillaPort | None = None,
     configuracion: ConfiguracionPlantilla | None = None,
     ahora: datetime | None = None,
@@ -204,12 +215,14 @@ def importar_excel(
             catalogo_obra = construir_catalogo_obra(obtener_ajustes())
         if ubicaciones is None:
             ubicaciones = construir_fuente_de_ubicaciones(obtener_ajustes())
+        if tipos is None:
+            tipos = fuente_de_tipos(construir_tipos_reclamacion(obtener_ajustes()))
         config = (
             configuracion
             if configuracion is not None
             else configuracion_de_la_plantilla()
         )
-        contexto = paso_catalogo(contexto, catalogo_obra, ubicaciones)
+        contexto = paso_catalogo(contexto, catalogo_obra, ubicaciones, tipos)
         contexto = paso_validacion(contexto, config.listas)
         contexto = paso_registro(contexto, bandeja, nuevo_id=nuevo_id)
         # Importación diferida (F-060 M-3): importar `function_app.py` no

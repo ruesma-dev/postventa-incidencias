@@ -140,7 +140,9 @@ def test_f071_t11_los_controles_leen_algo_del_codigo():
     assert '"ubicaciones_ninguna"' in generador
     assert "INDIRECT(" in generador
     claves = set(yaml.safe_load(_leer(YAML_DE_LA_PLANTILLA)))
-    assert {"urgencias", "listados"} <= claves
+    # F-072 R9 (sustituye a `{"urgencias", "listados"} <= claves`).
+    assert "urgencias" in claves
+    assert "listados" not in claves
     assert "ubicaciones" not in claves
     assert (SERVICIO / MODULO_NUEVO).is_file()
     for retirado in RETIRADOS:

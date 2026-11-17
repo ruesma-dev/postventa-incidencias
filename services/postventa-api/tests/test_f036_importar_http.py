@@ -90,6 +90,8 @@ from tests.utiles_importacion import (
     EquivalenciasEnMemoria,
     GeneradorQueAnota,
     LectorQueAnota,
+    PuertoTiposEnMemoria,
+    TiposEnMemoria,
     UbicacionesEnMemoria,
     fichero,
     fila,
@@ -148,6 +150,9 @@ class Dobles:
         # F-071 R24: las decisiones siguen en la base, pero no se pasan ni se leen.
         self.equivalencias = EquivalenciasEnMemoria(self.llamadas, decisiones)
         self.ubicaciones = UbicacionesEnMemoria(self.llamadas)
+        # F-072 R11: los tipos de reclamación, sin anotar en `llamadas` (el
+        # orden con ellos lo fija `test_f072_importacion.py`).
+        self.tipos = TiposEnMemoria()
         self.generador = GeneradorQueAnota(self.llamadas)
         self._ids = itertools.count(1)
 
@@ -157,6 +162,7 @@ class Dobles:
             "lector": self.lector,
             "catalogo_obra": self.catalogo,
             "ubicaciones": self.ubicaciones,  # F-071 R24 (antes, `equivalencias`)
+            "tipos": self.tipos,  # F-072 R11
             "generador": self.generador,
             "ahora": AHORA,
             "nuevo_id": lambda: UUID(int=next(self._ids)),
@@ -818,6 +824,9 @@ def test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad(monkeypatch
         "construir_fuente_de_ubicaciones",
         fabrica("ubicaciones", dobles.ubicaciones),
     )
+    monkeypatch.setattr(
+        modulo, "construir_tipos_reclamacion", fabrica("tipos", PuertoTiposEnMemoria())
+    )
 
     cuerpo = importar_excel([(NOMBRE, fichero(BUENA, MALA))], OID)
 
@@ -828,6 +837,8 @@ def test_f036_t18_sin_puertos_inyectados_se_construyen_los_de_verdad(monkeypatch
         ("catalogo", AJUSTES),
         ("ubicaciones", AJUSTES),
     ]
+    # F-072 R11: los tipos de reclamación, tras la fuente de ubicaciones.
+    assert vistos[3] == ("tipos", AJUSTES)
     assert cuerpo["estado"] == "parcial"
     assert "excel_errores" in cuerpo
     registro = dobles.bandeja.registradas[0][0]
@@ -850,6 +861,7 @@ def test_f036_r21_sin_puertos_un_fichero_que_no_es_la_plantilla_no_construye_sig
     monkeypatch.setattr(modulo, "construir_catalogo_obra", prohibido)
     # F-071 R24 (antes, `construir_equivalencias`).
     monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", prohibido)
+    monkeypatch.setattr(modulo, "construir_tipos_reclamacion", prohibido)  # F-072 R11
 
     from domain.models.errores import FicheroNoEsPlantilla
 
@@ -871,6 +883,7 @@ def test_f036_r39_sin_puertos_el_atajo_no_construye_sigrid(monkeypatch):
     monkeypatch.setattr(modulo, "construir_catalogo_obra", prohibido)
     # F-071 R24 (antes, `construir_equivalencias`).
     monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", prohibido)
+    monkeypatch.setattr(modulo, "construir_tipos_reclamacion", prohibido)  # F-072 R11
 
     cuerpo = importar_excel([(NOMBRE, contenido)], OID)
 
@@ -885,6 +898,7 @@ def test_f036_t18_con_la_peticion_mal_no_se_construye_nada(monkeypatch):
         "construir_bandeja",
         "construir_catalogo_obra",
         "construir_fuente_de_ubicaciones",  # F-071 R24 (antes, `construir_equivalencias`)
+        "construir_tipos_reclamacion",  # F-072 R11
     ):
         monkeypatch.setattr(modulo, nombre, prohibido)
 

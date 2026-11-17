@@ -55,7 +55,12 @@ from tests.test_f071_pipelines import (
     Ubicaciones,
     _fichero,
 )
-from tests.utiles_importacion import BandejaEnMemoria, LectorQueAnota
+from tests.utiles_importacion import (
+    BandejaEnMemoria,
+    LectorQueAnota,
+    PuertoTiposEnMemoria,
+    TiposEnMemoria,
+)
 
 OID = "oid-ficticio-de-quien-sube"
 NOMBRE = "ficticio.xlsx"
@@ -107,6 +112,7 @@ def test_f071_r1_descargar_plantilla_con_las_ubicaciones_inyectadas() -> None:
         "9901",
         catalogo_obra=Catalogo(llamadas),
         ubicaciones=Ubicaciones(llamadas),
+        tipos=TiposEnMemoria(),  # F-072 R1
         generador=generador,
         ahora=AHORA,
     )
@@ -136,6 +142,10 @@ def test_f071_r1_por_defecto_la_fuente_de_la_revision_construida_tras_el_catalog
     monkeypatch.setattr(modulo_plantilla, "obtener_ajustes", lambda: AJUSTES)
     monkeypatch.setattr(modulo_plantilla, "construir_catalogo_obra", construir_catalogo)
     monkeypatch.setattr(modulo_revision, "construir_fuente_de_ubicaciones", construir_fuente)
+    # F-072 R1: la fuente de los tipos también se compone por defecto.
+    monkeypatch.setattr(
+        modulo_plantilla, "construir_tipos_reclamacion", lambda _ajustes: PuertoTiposEnMemoria()
+    )
     descargar_plantilla("9901", generador=Generador(llamadas), ahora=AHORA)
     assert vistos == [("catalogo", AJUSTES), ("ubicaciones", AJUSTES)]
     assert llamadas.count("ubicaciones") == 1
@@ -149,6 +159,7 @@ def _get_plantilla(monkeypatch, ubicaciones: Ubicaciones, llamadas: list[str]):
             obra,
             catalogo_obra=Catalogo(llamadas),
             ubicaciones=ubicaciones,
+            tipos=TiposEnMemoria(),  # F-072 R1
             generador=Generador(llamadas),
             ahora=AHORA,
         )
@@ -201,6 +212,7 @@ class Dobles:
             "lector": self.lector,
             "catalogo_obra": self.catalogo,
             "ubicaciones": self.ubicaciones,
+            "tipos": TiposEnMemoria(),  # F-072 R11
             "generador": self.generador,
             "ahora": AHORA,
             "nuevo_id": lambda: UUID(int=next(self._ids)),

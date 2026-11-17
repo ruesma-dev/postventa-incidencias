@@ -165,6 +165,7 @@ def _incidencia(conexion, importacion_id: uuid.UUID, fila: int, ubicacion: str) 
         "clave_duplicado": _clave(f"clave {incidencia_id}"),
         "duplicada_de": None,
         "creada_at_utc": CREADA,
+        "tipo_reclamacion": None,  # F-072 (R16): nulo = anterior a F-072
     }
     fila_sql = tuple(valores[c] for c in sentencias_bandeja.COLUMNAS_BANDEJA)
     with conexion.cursor() as cursor:

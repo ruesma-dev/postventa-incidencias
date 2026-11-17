@@ -43,6 +43,14 @@ la misma consulta: ninguna lectura más por petición. `fila_a_situacion` llena
 original de una duplicada queda `None`. `select_bloquear`,
 `select_ultimas_revisiones` e `insert_revision` no cambian: las comparten
 `registrar_lote` de F-060 y la escritura anticipada de F-059.
+
+## El tipo de reclamación (F-072, `design.md` §6.2)
+
+`tipo_reclamacion` (de `17_tipo_reclamacion.sql`) va la última en las tres
+listas: se escribe en la foto, se lee de la foto y de la fila de la bandeja
+(los importados), y nulo se lee nulo; el `0002` de lo anterior a F-072 lo pone
+el dominio (`tipo_efectivo`), no esto. `listado` se sigue leyendo y la foto
+lo copia tal cual (R23).
 """
 
 from __future__ import annotations
@@ -112,6 +120,7 @@ _LEIDAS_DE_LA_BANDEJA: tuple[str, ...] = (
     "listado",
     "duplicada_de",
     "creada_at_utc",
+    "tipo_reclamacion",  # F-072: la de `17_tipo_reclamacion.sql`
 )
 
 #: Las de `revisiones_bandeja` que se leen, en este orden. **Sin
@@ -137,10 +146,11 @@ _LEIDAS_DE_LA_REVISION: tuple[str, ...] = (
     "motivo",
     "revisado_correo",
     "revisado_at_utc",
+    "tipo_reclamacion",  # F-072
 )
 
 #: Las que escribe `insert_revision`: las de `15_revisiones_bandeja.sql` menos
-#: `revision_id`, que pone la base.
+#: `revision_id`, que pone la base, y la de `17_tipo_reclamacion.sql` (F-072).
 COLUMNAS_INSERT: tuple[str, ...] = (
     "incidencia_id",
     "accion",
@@ -162,6 +172,7 @@ COLUMNAS_INSERT: tuple[str, ...] = (
     "revisado_por",
     "revisado_correo",
     "revisado_at_utc",
+    "tipo_reclamacion",  # F-072
 )
 
 #: Los atributos de `ValoresIncidencia` que se copian tal cual de la fila
@@ -307,6 +318,7 @@ def insert_revision(*, esquema: str, revision: RevisionNueva) -> tuple[str, tupl
         revision.quien.oid,
         revision.quien.correo,
         _con_zona(revision.revisado_at_utc),
+        v.tipo_reclamacion,
     )
     return sql, parametros
 
@@ -358,6 +370,7 @@ def fila_a_revision(fila: Sequence[Any]) -> Revision:
             **{campo: d[campo] for campo in _VALORES_TAL_CUAL},
             urgencia=_enum(Urgencia, d["urgencia"]),
             listado=_enum(Listado, d["listado"]),
+            tipo_reclamacion=d["tipo_reclamacion"],
         ),
         huella=d["huella_valores"],
         motivo=d["motivo"],
@@ -382,6 +395,7 @@ def _situacion(
         listado=_enum(Listado, d["listado"]),
         duplicada_de=_uuid_o_nada(d["duplicada_de"]),
         creada_at_utc=_con_zona(d["creada_at_utc"]),
+        tipo_reclamacion=d["tipo_reclamacion"],
     )
     return SituacionDeRevision(
         incidencia=incidencia,

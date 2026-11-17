@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from dataclasses import FrozenInstanceError, fields
+from dataclasses import FrozenInstanceError, fields, replace
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -361,6 +361,7 @@ def test_f036_t15_las_columnas_de_la_bandeja_son_las_del_ddl():
         "clave_duplicado",
         "duplicada_de",
         "creada_at_utc",
+        "tipo_reclamacion",  # F-072 (R15, R16): la de `17_tipo_reclamacion.sql`
     )
 
 
@@ -385,7 +386,7 @@ def test_f036_r41_insert_primeras_en_bloque_con_on_conflict_del_indice_parcial()
 
     sql, parametros = insert_primeras(esquema=ESQUEMA, filas=filas)
 
-    marcas = "(" + ", ".join(["%s"] * 21) + ")"
+    marcas = "(" + ", ".join(["%s"] * 22) + ")"  # F-072 (R15, R16): 21 -> 22
     assert sql == (
         f"INSERT INTO postventa.bandeja_incidencias ({', '.join(COLUMNAS_BANDEJA)})\n"
         f"VALUES {marcas},\n{marcas}\n"
@@ -408,7 +409,7 @@ def test_f036_r37_insert_duplicadas_sin_on_conflict_ni_returning():
 
     sql, parametros = insert_duplicadas(esquema=ESQUEMA, filas=filas)
 
-    marcas = "(" + ", ".join(["%s"] * 21) + ")"
+    marcas = "(" + ", ".join(["%s"] * 22) + ")"  # F-072 (R15, R16): 21 -> 22
     assert sql == (
         f"INSERT INTO postventa.bandeja_incidencias ({', '.join(COLUMNAS_BANDEJA)})\n"
         f"VALUES {marcas}"
@@ -429,13 +430,16 @@ def test_f036_t15_valores_de_una_fila_completa():
     proveedor = Elegido(
         etiqueta=PROVEEDOR_NOMBRE, codigo=PROVEEDOR_CODIGO, ambiguo=False
     )
-    valida = _valida(
-        5,
-        oficio=oficio,
-        proveedor=proveedor,
-        urgencia=Urgencia.SEGURIDAD,
-        listado=Listado.SEGUNDO,
-        detalle=DETALLE,
+    valida = replace(
+        _valida(
+            5,
+            oficio=oficio,
+            proveedor=proveedor,
+            urgencia=Urgencia.SEGURIDAD,
+            listado=Listado.SEGUNDO,
+            detalle=DETALLE,
+        ),
+        tipo_reclamacion="9001",  # F-072 (R15)
     )
 
     valores = sentencias_bandeja.valores_de_fila(
@@ -464,10 +468,11 @@ def test_f036_t15_valores_de_una_fila_completa():
         PROVEEDOR_NOMBRE,
         False,
         "seguridad",
-        "segundo",
+        None,  # F-072 (R15): `listado` a NULL; antes, "segundo"
         _clave("c"),
         _id(19),
         AHORA,
+        "9001",  # F-072 (R15): `tipo_reclamacion`, la última
     )
 
 
@@ -548,7 +553,8 @@ def test_f036_r45_select_de_la_bandeja_por_obra_y_en_orden():
         "SELECT incidencia_id, importacion_id, fila_origen, unidad_codigo, "
         "unidad_nombre, ubicacion, descripcion, detalle, oficio_codigo, "
         "oficio_nombre, oficio_ambiguo, proveedor_codigo, proveedor_nombre, "
-        "proveedor_ambiguo, urgencia, listado, duplicada_de, creada_at_utc\n"
+        "proveedor_ambiguo, urgencia, listado, duplicada_de, creada_at_utc, "
+        "tipo_reclamacion\n"  # F-072 (§6.2): la columna nueva, la última
         "FROM postventa.bandeja_incidencias\n"
         "WHERE obra_codigo = %s\n"
         "ORDER BY creada_at_utc DESC, fila_origen, incidencia_id\n"
@@ -1115,6 +1121,7 @@ def _fila_bandeja(n: int, **cambios) -> tuple:
         "listado": "primero",
         "duplicada_de": None,
         "creada_at_utc": AHORA,
+        "tipo_reclamacion": None,  # F-072 (§6.2): nulo = anterior a F-072
     }
     base.update(cambios)
     return tuple(base.values())

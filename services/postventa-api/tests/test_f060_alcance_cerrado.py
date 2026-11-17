@@ -557,6 +557,7 @@ def test_f060_r37_los_sql_son_los_quince_de_antes():
     assert tuple(sorted(f.name for f in carpeta.glob("*.sql"))) == (
         *SQL_DE_LA_BASE,
         "16_volcados_sigrid.sql",
+        "17_tipo_reclamacion.sql",  # F-072 (R16): el de F-072, y ninguno de F-060
     )
 
 

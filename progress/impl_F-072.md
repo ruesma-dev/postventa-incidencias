@@ -216,5 +216,5 @@ con esqueletos, `72 failed, 7 passed`); GREEN `a7d959c`: `171 passed`; suite `ap
 timeouts; repetida (4 workers, `--timeout 3600`): 30/30 muertos, 0 timeouts, pero **otra vez no válida** por otro test de
 tiempo de F-036 (`..._se_lee_en_menos_de_un_segundo`); parado sin tocarlo, decide el líder. A mano: todos muertos; un superviviente
 real que la campaña dio por muerto (`consultas_tipos_reclamacion.py:61` `not valor`), cerrado en `26c6f36`.
-
 ## Bloque 4 · DDL y persistencia (T10–T12) — detalle en `progress/impl_F-072_bloque4.md`
+## Bloque 5 · Plantilla e importación (T15, T16) — detalle en `progress/impl_F-072_bloque5.md`

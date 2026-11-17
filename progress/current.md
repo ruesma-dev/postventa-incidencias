@@ -1,6 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · `in_progress` · 2026-11-17 · OK del humano al veredicto a mano del Bloque 3; T13 en rojo
+> **OK explícito del humano (2026-11-17, en el chat: «a ok a cerrarla»)** a cerrar la mutación del Bloque 3 con el
+> veredicto a mano en lugar de una campaña válida (condición de `progress/review_F-072_bloque3.md` §5 para C4 bis).
+> **T13 (humano, base efímera)**: 119 passed, 1 failed: `test_f072_r17_el_ddl_dos_veces_sobre_filas_de_f036_y_f056`
+> lee con `RepositorioRevisionPostgres.situacion` (que ya pide `r.tipo_reclamacion`) **antes** de aplicar el DDL
+> sobre la base a la que le ha quitado la columna → `UndefinedColumn`. Fallo del test de T12, no del DDL; se corrige
+> y el humano repite T13.
+
 > ## F-072 · `in_progress` · 2026-11-16 · Bloque 3: veredicto de mutación a mano (decisión del líder)
 > Dos campañas del Bloque 3 salieron NO VÁLIDAS solo porque un test de tiempo de F-036 (`test_f036_r115_*`, tope de
 > 1 s, `tests/test_f036_excel_lector.py`) se pone rojo con varias suites a la vez; la segunda (4 workers, `c2f842e`):

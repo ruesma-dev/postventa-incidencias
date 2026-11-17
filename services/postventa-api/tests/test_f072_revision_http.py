@@ -399,6 +399,33 @@ def test_f072_r27_una_fuente_inyectada_no_se_llama_al_descartar_ni_al_recuperar(
     assert fuente.lecturas == 0
 
 
+@pytest.mark.parametrize("accion", [A.DESCARTAR, A.RECUPERAR])
+def test_f072_r27_la_aplicacion_no_lee_los_tipos_al_descartar_ni_al_recuperar(
+    accion: AccionRevision,
+) -> None:
+    """Aunque reciba la fuente: el borde no se la pasa, pero la aplicación tampoco la usa."""
+    llamadas: list[str] = []
+    revision = RevisionEnMemoria(llamadas, (incidencia(),))
+    previa = None
+    if accion is A.RECUPERAR:
+        previa = revision.sembrar(UUID(int=1), A.DESCARTAR, _vigentes_con(), motivo="Ejemplo")
+    fuente = TiposEnMemoria(llamadas)
+
+    revisada = aplicar_accion(
+        PeticionDeAccion(UUID(int=1), accion, Quien(oid=OID, correo=CORREO), previa, None, None),
+        revision=revision,
+        catalogo_obra=None,
+        listas=CONFIG.listas,
+        ahora=AHORA,
+        ubicaciones=None,
+        tipos=fuente,
+    )
+
+    assert fuente.lecturas == 0
+    assert "tipos" not in llamadas
+    assert revisada.motivos is None
+
+
 # --------------------------------------------------------------------------
 # R20 · el catálogo y el tipo efectivo de cada fila
 # --------------------------------------------------------------------------

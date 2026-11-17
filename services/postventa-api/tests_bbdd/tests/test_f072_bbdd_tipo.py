@@ -43,6 +43,7 @@ from domain.models.revision import (
     AccionRevision,
     Quien,
     RevisionNueva,
+    ValoresIncidencia,
     huella_de_valores,
     valores_importados,
 )
@@ -196,6 +197,30 @@ def _fila_de_la_revision(incidencia_id: uuid.UUID, valores, tipo: str | None) ->
     return dict(zip(sentencias_revision.COLUMNAS_INSERT, parametros, strict=True))
 
 
+def _valores_de_la_bandeja(fila: dict) -> ValoresIncidencia:
+    """Los valores importados, desde la fila de la bandeja en memoria.
+
+    Para R17, donde la base aún no tiene la columna: el repositorio ya la pide
+    en su `SELECT` (en el servicio el DDL corre al arrancar, antes de leer), así
+    que no se le puede preguntar. Mismo resultado que `valores_importados`.
+    """
+    return ValoresIncidencia(
+        unidad_codigo=fila["unidad_codigo"],
+        unidad_nombre=fila["unidad_nombre"],
+        ubicacion=fila["ubicacion"],
+        descripcion=fila["descripcion"],
+        detalle=fila["detalle"],
+        oficio_codigo=fila["oficio_codigo"],
+        oficio_nombre=fila["oficio_nombre"],
+        oficio_ambiguo=fila["oficio_ambiguo"],
+        proveedor_codigo=fila["proveedor_codigo"],
+        proveedor_nombre=fila["proveedor_nombre"],
+        proveedor_ambiguo=fila["proveedor_ambiguo"],
+        urgencia=None if fila["urgencia"] is None else Urgencia(fila["urgencia"]),
+        listado=None if fila["listado"] is None else Listado(fila["listado"]),
+    )
+
+
 def _sin_tipo(fila: dict) -> dict:
     """La misma fila con las columnas que había antes de F-072."""
     return {c: v for c, v in fila.items() if c != COLUMNA}
@@ -239,12 +264,9 @@ def test_f072_r17_el_ddl_dos_veces_sobre_filas_de_f036_y_f056(preparada, ajustes
     _insertar(preparada, "bandeja_incidencias", bandeja)
     preparada.commit()
     incidencia_id = bandeja["incidencia_id"]
-    situacion = RepositorioRevisionPostgres(preparada, esquema=ESQUEMA).situacion(
-        incidencia_id=incidencia_id
-    )
-    assert situacion is not None
+    # Sin la columna no se lee por el repositorio: su SELECT ya la pide.
     revision = _sin_tipo(
-        _fila_de_la_revision(incidencia_id, valores_importados(situacion.incidencia), None)
+        _fila_de_la_revision(incidencia_id, _valores_de_la_bandeja(bandeja), None)
     )
     _insertar(preparada, "revisiones_bandeja", revision)
     preparada.commit()

@@ -136,3 +136,31 @@ Cada cambio lleva en el propio test un comentario `F-072 (R…)`.
 
 T13 (MANUAL, humano: base efímera con Docker), T14 (mutación y review del Bloque 4), `bash harness/init.sh` (líder)
 y la observación 2.
+
+## Corrección tras T13
+
+**Fallo** (T13 del humano, `infra\pruebas_bbdd_efimera.ps1`: 119 passed, 1 failed):
+`test_f072_r17_el_ddl_dos_veces_sobre_filas_de_f036_y_f056` → `psycopg.errors.UndefinedColumn: column
+r.tipo_reclamacion does not exist` en `RepositorioRevisionPostgres.situacion`. Fallo del test, no del código
+ni del DDL: tras `_quitar_la_columna` el test leía la revisión con el repositorio, cuyo `SELECT` ya pide la
+columna; en el servicio el DDL corre al arrancar, antes de cualquier lectura.
+
+**Arreglo** (solo `tests_bbdd/tests/test_f072_bbdd_tipo.py`): nuevo `_valores_de_la_bandeja(fila)`, que
+construye los `ValoresIncidencia` importados desde la fila de la bandeja **en memoria** (mismo mapeo que
+`valores_importados`: `urgencia` y `listado` de su texto al enum, sin tipo). R17 ya no toca el repositorio
+con la base sin la columna. Lo que comprueba R17 no cambia: base sin la columna, una fila de bandeja y una
+revisión escritas con las columnas de antes (`_sin_tipo`), DDL dos veces sin fallo, definición igual tras
+la segunda, una fila por tabla y con tipo nulo; R17 de `public` sigue en su test.
+
+**Orden revisado del resto del fichero**: solo R17 quita la columna. Los demás tests usan el fixture
+`preparada`, que aplica el DDL antes (columna presente) y lo reaplica en el teardown, así que el
+repositorio y `sentencias_*` con columnas nuevas se usan siempre con la columna puesta. Dentro de R17, tras
+quitarla solo se usan `insert_importacion` (tabla `importaciones`, que F-072 no toca), `_insertar` con
+`_sin_tipo` y consultas a `information_schema`/`pg_constraint`/`count(*)`.
+
+**Verificación** (sin base: Docker es del humano):
+- `.venv/Scripts/python.exe -m pytest --collect-only -q tests_bbdd/tests/test_f072_bbdd_tipo.py` →
+  `16 tests collected in 0.55s`.
+- En seco, sin base: `_valores_de_la_bandeja` sobre la fila de R17 da `urgencia=URGENTE, listado=None,
+  tipo_reclamacion=None`, y la revisión `_sin_tipo` sale sin `tipo_reclamacion` en sus columnas.
+- Pendiente: repetir T13 (humano) para ver los 120 en verde.

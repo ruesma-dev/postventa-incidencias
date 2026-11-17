@@ -58,7 +58,11 @@ from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
 from interface_adapters.api import revision as modulo
 from interface_adapters.api import tiempos
 
-from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_importacion import (
+    EquivalenciasEnMemoria,
+    PuertoTiposEnMemoria,
+    TiposEnMemoria,
+)
 from tests.utiles_revision import (
     CORREO,
     DESCRIPCION,
@@ -379,6 +383,8 @@ class Mundo:
         self.catalogo = CatalogoDeLaObra(self.llamadas)
         self.ubicaciones: Any = UbicacionesQueCuentan(self.llamadas)
         self.equivalencias = EquivalenciasEnMemoria(self.llamadas)
+        # F-072 (R1): el puerto de los tipos de reclamación; no anota en `llamadas`.
+        self.tipos: Any = PuertoTiposEnMemoria()
         self.construidos: list[str] = []
 
 
@@ -386,6 +392,7 @@ class Mundo:
 COSTES = {
     "catalogo": 0.25,
     "ubicaciones": 0.5,
+    "tipos": 0.25,  # F-072 (R1): construir la fuente de los tipos
     "revision": 1.0,
     "equivalencias": 2.0,
     "configuracion": 0.125,
@@ -394,6 +401,7 @@ COSTES = {
     "catalogo.leer_oficios": 0.5,
     "equivalencias.ultimas_decisiones": 0.125,
     "ubicaciones()": 1.0,
+    "tipos.leer": 0.25,  # F-072 (R1): la lectura de los tipos
     "calculo": 0.375,
     "fila": 0.5,
 }
@@ -419,6 +427,7 @@ def _componer(monkeypatch, mundo: Mundo, reloj: RelojFalso | None = None) -> Non
     monkeypatch.setattr(modulo, "obtener_ajustes", lambda: object())
     monkeypatch.setattr(modulo, "construir_catalogo_obra", fabrica("catalogo"))
     monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", fabrica("ubicaciones"))
+    monkeypatch.setattr(modulo, "construir_tipos_reclamacion", fabrica("tipos"))  # F-072 (R1)
     monkeypatch.setattr(modulo, "construir_revision", fabrica("revision"))
     monkeypatch.setattr(modulo, "construir_equivalencias", fabrica("equivalencias"))
     monkeypatch.setattr(modulo, "configuracion_de_la_plantilla", configuracion)
@@ -441,6 +450,7 @@ def _con_reloj(monkeypatch, mundo: Mundo) -> RelojFalso:
         mundo.equivalencias.ultimas_decisiones,
     )
     mundo.ubicaciones = _avanzando(reloj, COSTES["ubicaciones()"], mundo.ubicaciones)
+    mundo.tipos.leer = _avanzando(reloj, COSTES["tipos.leer"], mundo.tipos.leer)
     monkeypatch.setattr(
         modulo,
         "listar_para_revisar",
@@ -491,13 +501,16 @@ def test_f060_r40_el_listado_deja_una_linea_con_cada_tramo(monkeypatch, caplog) 
     assert respuesta.status_code == 200
     assert _lineas(caplog) == [
         (
-            "F-060 tiempos del listado: obra=9901 resultado=200 total=10.625 "
+            # F-072 (R1): `construir.tipos` y `tipos`, la cuarta lectura de Sigrid
+            # (antes, total=10.625 y aplicacion=6.250, sin esos dos tramos).
+            "F-060 tiempos del listado: obra=9901 resultado=200 total=11.125 "
             "proceso_nuevo=False segundos_de_proceso=812 "
-            "construir.catalogo=0.250 construir.ubicaciones=0.500 construir.bandeja=1.000 "
+            "construir.catalogo=0.250 construir.ubicaciones=0.500 construir.tipos=0.250 "
+            "construir.bandeja=1.000 "
             "construir.equivalencias=2.000 configuracion=0.125 bandeja.listar=4.000 "
             "catalogo.leer_unidades=0.250 catalogo.leer_oficios=0.500 "
-            "equivalencias.ultimas_decisiones=0.125 ubicaciones=1.000 "
-            "aplicacion=6.250 calculo=0.375 serializar=0.500"
+            "equivalencias.ultimas_decisiones=0.125 ubicaciones=1.000 tipos=0.250 "
+            "aplicacion=6.500 calculo=0.375 serializar=0.500"
         )
     ]
 
@@ -511,7 +524,7 @@ def test_f060_r40_la_serializacion_cuenta_cada_fila(monkeypatch, caplog) -> None
 
     linea = _una_linea(caplog)
     assert linea.endswith(" serializar=1.500")
-    assert " total=11.625 " in linea
+    assert " total=12.125 " in linea  # F-072 (R1): +0,5 de los tipos (antes, 11.625)
 
 
 def test_f060_r40_con_los_adaptadores_inyectados_no_hay_tramos_de_construccion(
@@ -526,6 +539,7 @@ def test_f060_r40_con_los_adaptadores_inyectados_no_hay_tramos_de_construccion(
         "construir_catalogo_obra",
         "construir_equivalencias",
         "construir_fuente_de_ubicaciones",
+        "construir_tipos_reclamacion",  # F-072 (R1)
         "configuracion_de_la_plantilla",
     ):
         monkeypatch.setattr(modulo, nombre, prohibido(nombre))
@@ -538,6 +552,7 @@ def test_f060_r40_con_los_adaptadores_inyectados_no_hay_tramos_de_construccion(
         equivalencias=mundo.equivalencias,
         ubicaciones=mundo.ubicaciones,
         configuracion=CONFIG,
+        tipos=TiposEnMemoria(),  # F-072 (R1)
     )
 
     linea = _una_linea(caplog)
@@ -549,6 +564,7 @@ def test_f060_r40_con_los_adaptadores_inyectados_no_hay_tramos_de_construccion(
         "catalogo.leer_oficios",
         "equivalencias.ultimas_decisiones",
         "ubicaciones",
+        "tipos",  # F-072 (R1)
         "aplicacion",
         "calculo",
         "serializar",
@@ -691,6 +707,7 @@ def test_f060_r40_un_400_no_construye_nada_y_tambien_deja_la_linea(monkeypatch, 
         "construir_catalogo_obra",
         "construir_equivalencias",
         "construir_fuente_de_ubicaciones",
+        "construir_tipos_reclamacion",  # F-072 (R1)
         "configuracion_de_la_plantilla",
     ):
         monkeypatch.setattr(modulo, nombre, prohibido(nombre))
@@ -768,6 +785,7 @@ def test_f060_r41_con_y_sin_medicion_la_misma_respuesta_las_mismas_llamadas_y_el
     assert con[2].construidos == sin[2].construidos == [
         "catalogo",
         "ubicaciones",
+        "tipos",  # F-072 (R1): tras las ubicaciones, antes de la base
         "revision",
         "equivalencias",
     ]
@@ -776,7 +794,8 @@ def test_f060_r41_con_y_sin_medicion_la_misma_respuesta_las_mismas_llamadas_y_el
     assert con[2].equivalencias.pedidas == sin[2].equivalencias.pedidas
 
 
-def test_f060_r41_se_miden_los_cuatro_puertos_del_listado(monkeypatch) -> None:
+def test_f060_r41_se_miden_los_cinco_puertos_del_listado(monkeypatch) -> None:
+    """F-072 (R1): con los tipos de reclamación son cinco (antes, cuatro)."""
     cronometros: list[CronometroQueNoMide] = []
 
     def fabrica() -> CronometroQueNoMide:
@@ -786,25 +805,28 @@ def test_f060_r41_se_miden_los_cuatro_puertos_del_listado(monkeypatch) -> None:
     _listado_entero(monkeypatch, fabrica)
 
     assert [c.envueltos for c in cronometros] == [
-        ["bandeja", "catalogo", "equivalencias", "ubicaciones"]
+        ["bandeja", "catalogo", "equivalencias", "ubicaciones", "tipos"]
     ]
 
 
-@pytest.mark.parametrize("donde", ["bandeja", "catalogo", "equivalencias", "ubicaciones"])
+@pytest.mark.parametrize(
+    "donde", ["bandeja", "catalogo", "equivalencias", "ubicaciones", "tipos"]  # F-072: tipos
+)
 def test_f060_r41_las_mismas_excepciones_el_mismo_objeto(monkeypatch, donde: str) -> None:
     mundo = Mundo()
     error = (
         CatalogoNoDisponible("caído")
-        if donde in ("catalogo", "ubicaciones")
+        if donde in ("catalogo", "ubicaciones", "tipos")
         else PersistenciaNoDisponible("caída")
     )
+    tipos = TiposEnMemoria(fallo=error if donde == "tipos" else None)
     if donde == "bandeja":
         mundo.revision._fallo = error
     elif donde == "catalogo":
         mundo.catalogo = CatalogoDeLaObra(mundo.llamadas, fallo=error)
     elif donde == "equivalencias":
         mundo.equivalencias = EquivalenciasEnMemoria(mundo.llamadas, fallo=error)
-    else:
+    elif donde == "ubicaciones":
         mundo.ubicaciones = UbicacionesQueCuentan(mundo.llamadas, fallo=error)
 
     with pytest.raises(type(error)) as capturada:
@@ -815,6 +837,7 @@ def test_f060_r41_las_mismas_excepciones_el_mismo_objeto(monkeypatch, donde: str
             equivalencias=mundo.equivalencias,
             ubicaciones=mundo.ubicaciones,
             configuracion=CONFIG,
+            tipos=tipos,  # F-072 (R1)
         )
 
     assert capturada.value is error

@@ -466,6 +466,7 @@ def valores_importados(incidencia: IncidenciaEnBandeja) -> ValoresIncidencia:
         proveedor_ambiguo=incidencia.proveedor_ambiguo,
         urgencia=incidencia.urgencia,
         listado=incidencia.listado,
+        tipo_reclamacion=incidencia.tipo_reclamacion,  # F-072 (R19, R20)
     )
 
 

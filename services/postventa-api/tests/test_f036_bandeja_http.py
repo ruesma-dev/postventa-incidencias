@@ -174,7 +174,8 @@ def test_f036_r45_cada_incidencia_lleva_los_campos_de_la_spec_y_ni_uno_mas(monke
         "proveedor_nombre": "Juan Ejemplo Ejemplo",
         "proveedor_ambiguo": False,
         "urgencia": "seguridad",
-        "listado": "primero",
+        # F-072 (§8, R19): el tipo efectivo; sin tipo guardado, `0002` (antes, "primero").
+        "listado": "0002",
         "duplicada_de": None,
         "creada_at_utc": "2026-09-30T08:15:00+00:00",
     }
@@ -183,7 +184,7 @@ def test_f036_r45_cada_incidencia_lleva_los_campos_de_la_spec_y_ni_uno_mas(monke
     assert ambigua["oficio_nombre"] == "Mamparas"
     assert ambigua["proveedor_codigo"] is None
     assert ambigua["urgencia"] is None
-    assert ambigua["listado"] is None
+    assert ambigua["listado"] == "0002"  # F-072 (§8, R19): nunca nulo (antes, None)
     assert ambigua["duplicada_de"] == str(UUID(int=1))
     assert ambigua["importacion_id"] is None
     assert ambigua["fila_origen"] is None

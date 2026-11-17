@@ -343,6 +343,9 @@ def test_f056_r39_de_sigrid_solo_se_usa_el_catalogo_de_f036():
         "interface_adapters/api/revision.py": [
             "infrastructure.sigrid.fabrica",
             "infrastructure.sigrid.fabrica.construir_catalogo_obra",
+            # F-072 (R1, Bloque 6): la lectura de los tipos de `auxtrcp`, otra
+            # lectura por `sql/read` con la misma puerta de entorno.
+            "infrastructure.sigrid.fabrica.construir_tipos_reclamacion",
             "infrastructure.sigrid.fabrica.construir_ubicaciones_validas",
         ],
         "infrastructure/sigrid/ubicaciones_validas.py": [

@@ -15,15 +15,26 @@ de la obra ya resuelta, con su techo (409) y el mapa por cada unidad del
 catálogo. `fuente_de_ubicaciones` la deja en la forma de `FuenteDeUbicaciones`,
 que es lo que reciben `listar_para_revisar` y `aplicar_accion`.
 
+## Los tipos de reclamación (F-072, `design.md` §5)
+
+La cuarta lectura de Sigrid (`FuenteTiposReclamacion`, `dbo.auxtrcp`), la
+última y la más barata: **una** por petición, tras el catálogo y las
+ubicaciones, en el listado, al editar y al aprobar (R1); descartar y recuperar
+no la hacen (R27). Con lo leído, `listas_con_tipos` sustituye los `listados`
+de la configuración (el YAML ya no los trae, R9): lo que se ofrece es lo que
+se acepta (R20, R21), y sus códigos son los vigentes de `tipo_fuera_de_sigrid`
+(R24). Su fallo (503, R3) o su techo (409, R4) suben antes de escribir nada.
+
 ## `aplicar_accion`, lo barato primero y Sigrid fuera de la transacción
 
 1. `situacion` → `IncidenciaNoEncontrada` (404, R6) sin Sigrid ni escritura.
 2. `comprobar_sin_sigrid` del dominio: la transición (409, R2) y la frescura
    contra la última leída (409, R7), **antes** de leer Sigrid (O-5 de la
    review del Bloque 1).
-3. Solo en `editar` y `aprobar`: `leer_catalogo` de la obra de la incidencia
-   y las ubicaciones válidas, **una vez** cada una (R46). Descartar y
-   recuperar no leen Sigrid (R18, R19): sus puertos pueden no venir.
+3. Solo en `editar` y `aprobar`: `leer_catalogo` de la obra de la incidencia,
+   las ubicaciones válidas y los tipos de reclamación (F-072), **una vez**
+   cada uno (R46). Descartar y recuperar no leen Sigrid (R18, R19; R27 de
+   F-072): sus puertos pueden no venir.
 4. `decidir` (400/409): lo que no vale no llega a escribirse.
 5. `registrar`, en **una** transacción con las filas bloqueadas: la segunda
    frescura (R7) de la propia y, al aprobar una duplicada, de su original
@@ -85,6 +96,7 @@ from domain.models.plantilla_incidencias import (
     CatalogoObra,
     ListasCerradas,
     OpcionOficio,
+    listas_con_tipos,
     normalizar_codigo_obra,
 )
 from domain.models.revision import (
@@ -120,6 +132,7 @@ from domain.ports.ubicaciones_validas import UbicacionesValidasPort
 
 from application.pipelines.catalogo_obra import leer_catalogo
 from application.pipelines.plantilla import opciones_de_la_obra
+from application.pipelines.tipos_reclamacion import FuenteTiposReclamacion
 
 __all__ = [
     "FuenteDeUbicaciones",
@@ -248,8 +261,13 @@ def listar_para_revisar(
     equivalencias: EquivalenciasPort,
     listas: ListasCerradas,
     ubicaciones: FuenteDeUbicaciones,
+    tipos: FuenteTiposReclamacion,
 ) -> PaginaDeRevision:
-    """Una página de la bandeja de la obra, con su resumen y su catálogo (§7)."""
+    """Una página de la bandeja de la obra, con su resumen y su catálogo (§7).
+
+    F-072: `listas` llega con los `listados` del YAML (vacíos) y sale con los
+    tipos leídos de Sigrid, una vez, tras las ubicaciones (R1, R20).
+    """
     situaciones = revision.listar(
         obra_codigo=peticion.obra_codigo, tope=TOPE_LECTURA_OBRA
     )
@@ -263,8 +281,10 @@ def listar_para_revisar(
     catalogo = leer_catalogo(catalogo_obra, peticion.obra_codigo)
     opciones = opciones_de_la_obra(catalogo, equivalencias)
     validas = ubicaciones(catalogo)
+    con_tipos = listas_con_tipos(listas, tipos())
+    vigentes = _codigos(con_tipos)
     filas = tuple(
-        fila_de_revision(s, catalogo=catalogo, ubicaciones=validas)
+        fila_de_revision(s, catalogo=catalogo, ubicaciones=validas, tipos=vigentes)
         for s in situaciones
     )
     return PaginaDeRevision(
@@ -272,7 +292,7 @@ def listar_para_revisar(
         catalogo=catalogo,
         oficios=opciones.oficios,
         ubicaciones=validas,
-        listas=listas,
+        listas=con_tipos,
         resumen=resumen(filas),
         pagina=paginar(
             filas,
@@ -292,20 +312,28 @@ def aplicar_accion(
     listas: ListasCerradas,
     ahora: datetime,
     ubicaciones: FuenteDeUbicaciones | None,
+    tipos: FuenteTiposReclamacion | None,
 ) -> IncidenciaRevisada:
-    """Aplica una acción y devuelve la incidencia como queda (R2–R22, §7)."""
+    """Aplica una acción y devuelve la incidencia como queda (R2–R22, §7).
+
+    F-072: al editar y aprobar, los tipos se leen una vez, tras las
+    ubicaciones (R1), y `decidir` valida y calcula los motivos con ellos (R21,
+    R24); descartar y recuperar no los leen (R27) y `tipos` puede no venir.
+    """
     situacion = revision.situacion(incidencia_id=peticion.incidencia_id)
     if situacion is None:
         raise IncidenciaNoEncontrada("la incidencia no está en la bandeja")
     comprobar_sin_sigrid(situacion, peticion)
 
-    # Lo leído de Sigrid, una vez: el catálogo y las ubicaciones de cada unidad.
+    # Lo leído de Sigrid, una vez: el catálogo, las ubicaciones de cada unidad
+    # y los tipos de reclamación (F-072, R1), que pasan a ser los `listados`.
     leido: tuple[CatalogoObra, Mapping[str, tuple[str, ...]]] | None = None
     if peticion.accion in _LEEN_SIGRID:
-        if catalogo_obra is None or ubicaciones is None:
+        if catalogo_obra is None or ubicaciones is None or tipos is None:
             raise ValueError("editar y aprobar necesitan leer Sigrid")
         catalogo = leer_catalogo(catalogo_obra, situacion.obra_codigo)
         leido = (catalogo, ubicaciones(catalogo))
+        listas = listas_con_tipos(listas, tipos())
 
     nueva = decidir(
         situacion,
@@ -334,7 +362,9 @@ def aplicar_accion(
     )
     motivos = None
     if leido is not None:
-        motivos = motivos_no_aprobable(tras, catalogo=leido[0], ubicaciones=leido[1])
+        motivos = motivos_no_aprobable(
+            tras, catalogo=leido[0], ubicaciones=leido[1], tipos=_codigos(listas)
+        )
     return IncidenciaRevisada(
         situacion=tras,
         estado=estado_de(tras),
@@ -343,6 +373,11 @@ def aplicar_accion(
         ),
         motivos=motivos,
     )
+
+
+def _codigos(listas: ListasCerradas) -> frozenset[str]:
+    """Los códigos de los tipos vigentes leídos (R24): los de `listas.listados`."""
+    return frozenset(o.codigo for o in listas.listados)
 
 
 def _esperadas(

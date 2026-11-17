@@ -1338,11 +1338,12 @@ optimizar se mide: cada listado deja **una** línea `F-060 tiempos del listado`
 —con 200 o con error— con la obra, el resultado (`200` o el tipo del error), el
 total, `proceso_nuevo` (la primera petición del listado en ese proceso), los
 segundos desde que arrancó el proceso y los de cada tramo:
-`construir.catalogo`, `construir.ubicaciones`, `construir.bandeja`,
-`construir.equivalencias` y `configuracion` (la construcción); `bandeja.listar`
-(y `bandeja.contar` si la obra pasa del tope), `catalogo.leer_unidades`,
-`catalogo.leer_oficios`, `equivalencias.ultimas_decisiones` y `ubicaciones`
-(cada lectura de un puerto); `aplicacion`, `calculo` (la aplicación menos los
+`construir.catalogo`, `construir.ubicaciones`, `construir.tipos` (F-072),
+`construir.bandeja`, `construir.equivalencias` y `configuracion` (la
+construcción); `bandeja.listar` (y `bandeja.contar` si la obra pasa del tope),
+`catalogo.leer_unidades`, `catalogo.leer_oficios`,
+`equivalencias.ultimas_decisiones`, `ubicaciones` y `tipos` (los tipos de
+reclamación de `auxtrcp`, F-072) (cada lectura de un puerto); `aplicacion`, `calculo` (la aplicación menos los
 puertos) y `serializar`. Lleva solo la obra, nombres de tramo y números: **ni
 correo, ni oid, ni textos**.
 

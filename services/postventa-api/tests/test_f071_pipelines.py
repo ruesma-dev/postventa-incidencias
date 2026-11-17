@@ -59,7 +59,7 @@ from infrastructure.documentos.excel_openpyxl import (
     LectorPlantillaOpenpyxl,
 )
 
-from tests.utiles_importacion import BandejaEnMemoria
+from tests.utiles_importacion import BandejaEnMemoria, TiposEnMemoria
 from tests.utiles_plantilla import configuracion
 
 AHORA = datetime(2026, 11, 6, 9, 0, tzinfo=UTC)
@@ -159,6 +159,7 @@ def _plantilla(llamadas: list[str], ubicaciones: Ubicaciones) -> tuple[str, byte
         OBRA,
         catalogo_obra=Catalogo(llamadas),
         ubicaciones=ubicaciones,
+        tipos=TiposEnMemoria(),  # F-072 R1
         generador=Generador(llamadas),
         listas=config.listas,
         textos=config.textos,
@@ -180,6 +181,7 @@ def test_f071_r1_catalogo_y_despues_una_lectura_de_ubicaciones() -> None:
         OBRA,
         catalogo_obra=Catalogo(llamadas),
         ubicaciones=ubicaciones,
+        tipos=TiposEnMemoria(),  # F-072 R1
         generador=generador,
         listas=config.listas,
         textos=config.textos,
@@ -212,6 +214,7 @@ def test_f071_r2_la_plantilla_no_lee_equivalencias() -> None:
         OBRA,
         catalogo_obra=Catalogo(llamadas),
         ubicaciones=Ubicaciones(llamadas),
+        tipos=TiposEnMemoria(),  # F-072 R1
         generador=generador,
         listas=config.listas,
         textos=config.textos,
@@ -310,11 +313,12 @@ def _hasta_el_catalogo(
 
 def test_f071_r24_paso_catalogo_lee_el_catalogo_y_una_vez_las_ubicaciones() -> None:
     parametros = list(inspect.signature(paso_catalogo).parameters)
-    assert parametros == ["contexto", "catalogo_obra", "ubicaciones"]
+    # F-072 R11: el paso lee además los tipos de reclamación, tras las ubicaciones.
+    assert parametros == ["contexto", "catalogo_obra", "ubicaciones", "tipos"]
     llamadas: list[str] = []
     contexto = _hasta_el_catalogo(_fichero(BUENA), llamadas, BandejaEnMemoria([]))
     ubicaciones = Ubicaciones(llamadas)
-    contexto = paso_catalogo(contexto, Catalogo(llamadas), ubicaciones)
+    contexto = paso_catalogo(contexto, Catalogo(llamadas), ubicaciones, TiposEnMemoria())
     assert llamadas == ["catalogo.leer_unidades", "catalogo.leer_oficios", "ubicaciones"]
     assert ubicaciones.catalogos == [contexto.catalogo]
     assert contexto.ubicaciones_por_unidad == MAPA
@@ -334,13 +338,13 @@ def test_f071_r24_con_ya_importado_ni_catalogo_ni_ubicaciones() -> None:
     contenido = _fichero(BUENA)
     # Una primera importación completa deja el atajo de R39.
     primero = _hasta_el_catalogo(contenido, [], bandeja)
-    primero = paso_catalogo(primero, Catalogo([]), Ubicaciones([]))
+    primero = paso_catalogo(primero, Catalogo([]), Ubicaciones([]), TiposEnMemoria())
     primero = paso_validacion(primero, configuracion().listas)
     paso_registro(primero, bandeja, nuevo_id=lambda: UUID(int=1))
 
     segundo = _hasta_el_catalogo(contenido, llamadas, bandeja)
     assert segundo.ya_importado
-    paso_catalogo(segundo, Catalogo(llamadas), Ubicaciones(llamadas))
+    paso_catalogo(segundo, Catalogo(llamadas), Ubicaciones(llamadas), TiposEnMemoria())
     assert llamadas == []
 
 
@@ -356,7 +360,7 @@ def test_f071_r25_la_lectura_de_ubicaciones_que_falla_no_deja_validar_ni_registr
     bandeja = BandejaEnMemoria(llamadas)
     contexto = _hasta_el_catalogo(_fichero(BUENA, MALA), llamadas, bandeja)
     with pytest.raises(type(fallo)):
-        paso_catalogo(contexto, Catalogo(llamadas), Ubicaciones(llamadas, fallo=fallo))
+        paso_catalogo(contexto, Catalogo(llamadas), Ubicaciones(llamadas, fallo=fallo), TiposEnMemoria())
     assert contexto.validas is None
     assert bandeja.registradas == []
 
@@ -367,7 +371,7 @@ def test_f071_r40_el_excel_de_errores_usa_las_ubicaciones_ya_leidas() -> None:
     config = configuracion()
     contexto = _hasta_el_catalogo(_fichero(BUENA, MALA), llamadas, bandeja)
     ubicaciones = Ubicaciones(llamadas)
-    contexto = paso_catalogo(contexto, Catalogo(llamadas), ubicaciones)
+    contexto = paso_catalogo(contexto, Catalogo(llamadas), ubicaciones, TiposEnMemoria())
     contexto = paso_validacion(contexto, config.listas)
     assert [v.fila for v in contexto.validas] == [2]
     assert [f.fila.numero for f in contexto.con_error] == [3]
@@ -394,7 +398,7 @@ def test_f071_r44_el_log_de_la_importacion_solo_lleva_recuentos(caplog) -> None:
     config = configuracion()
     with caplog.at_level(logging.INFO):
         contexto = _hasta_el_catalogo(_fichero(BUENA, MALA), llamadas, bandeja)
-        contexto = paso_catalogo(contexto, Catalogo(llamadas), Ubicaciones(llamadas))
+        contexto = paso_catalogo(contexto, Catalogo(llamadas), Ubicaciones(llamadas), TiposEnMemoria())
         contexto = paso_validacion(contexto, config.listas)
         contexto = paso_registro(contexto, bandeja, nuevo_id=lambda: UUID(int=3))
         paso_excel_errores(contexto, Generador(llamadas), config.listas, config.textos)

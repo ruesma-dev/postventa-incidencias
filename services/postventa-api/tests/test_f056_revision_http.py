@@ -47,7 +47,7 @@ from domain.models.errores import (
     PersistenciaNoDisponible,
     PeticionDeRevisionInvalida,
 )
-from domain.models.plantilla_incidencias import Listado, Urgencia
+from domain.models.plantilla_incidencias import Listado, Urgencia, listas_con_tipos
 from domain.models.revision import (
     MAX_TEXTO_CLAVE,
     TOPE_LECTURA_OBRA,
@@ -63,7 +63,7 @@ from domain.ports.ubicaciones_validas import FilaUbicacionesUnidad
 from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
 from interface_adapters.api import revision as modulo
 
-from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_importacion import TIPOS_FICTICIOS, EquivalenciasEnMemoria
 from tests.utiles_plantilla import mismo
 from tests.utiles_revision import (
     CORREO,
@@ -93,7 +93,11 @@ A = AccionRevision
 
 #: La configuración de la plantilla de verdad (el YAML del repositorio): las
 #: urgencias y los listados que se ofrecen son los que se aceptan.
-CONFIG = cargar_plantilla_yaml()
+#: F-072 (Bloque 5, R9): el YAML ya no trae `listados`; hasta que el Bloque 6
+#: (T18, T19) componga en la revisión los tipos de Sigrid, se ponen aquí los
+#: ficticios, como hará la aplicación (`listas_con_tipos`).
+_DEL_YAML = cargar_plantilla_yaml()
+CONFIG = replace(_DEL_YAML, listas=listas_con_tipos(_DEL_YAML.listas, TIPOS_FICTICIOS))
 
 #: Las claves de una fila de `GET /api/revision` (R29), exactamente estas.
 CLAVES_DE_FILA = {
@@ -619,7 +623,8 @@ def test_f056_o2_la_fuente_por_defecto_lee_las_ubicaciones_de_sigrid(monkeypatch
     # listados que compone hoy el HTTP (los del YAML) y daría `tipo_fuera_de_sigrid`
     # al aprobar. Se edita con un código de esa lista; el Bloque 6 (T18, T19) los
     # vuelve a tocar al componer los tipos de Sigrid.
-    assert _leer(_post(_cuerpo("editar", valores=_valores(listado="primero"))))[0] == 200
+    # F-072 Bloque 5: el código, uno de los tipos ficticios de `CONFIG` (antes, "primero").
+    assert _leer(_post(_cuerpo("editar", valores=_valores(listado="9001"))))[0] == 200
     assert _leer(_post(_cuerpo("aprobar", revision_previa=1)))[0] == 200
     estado, datos = _leer(_listar())
     assert estado == 200
@@ -656,7 +661,7 @@ def test_f056_r10_el_oid_no_sale_en_ninguna_respuesta(mundo: Mundo) -> None:
     # al aprobar. Se edita con un código de esa lista; el Bloque 6 (T18, T19) los
     # vuelve a tocar al componer los tipos de Sigrid.
     respuestas = [
-        _post(_cuerpo("editar", valores=_valores(listado="primero"))),
+        _post(_cuerpo("editar", valores=_valores(listado="9001"))),  # F-072 B5 (antes, "primero")
         _post(_cuerpo("aprobar", revision_previa=1)),
         _post(_cuerpo("aprobar", revision_previa=2)),  # 409: ya aprobada
         _post(_cuerpo(usuario_correo="sin-arroba")),  # 400
@@ -712,7 +717,8 @@ def test_f056_r42_cualquiera_del_grupo_puede_actuar_sin_roles(mundo: Mundo) -> N
     # listados que compone hoy el HTTP (los del YAML) y daría `tipo_fuera_de_sigrid`
     # al aprobar. Se edita con un código de esa lista; el Bloque 6 (T18, T19) los
     # vuelve a tocar al componer los tipos de Sigrid.
-    primera = _leer(_post(_cuerpo("editar", valores=_valores(listado="primero"))))
+    # F-072 Bloque 5: un tipo ficticio de `CONFIG` (antes, "primero").
+    primera = _leer(_post(_cuerpo("editar", valores=_valores(listado="9001"))))
     segunda = _leer(
         _post(
             _cuerpo(

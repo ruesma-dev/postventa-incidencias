@@ -7,7 +7,7 @@
 
 | Caso | Requisito |
 |---|---|
-| urgencias y listados siguen en el YAML, con sus códigos; no se dice que salgan de Sigrid | R16 |
+| urgencias siguen en el YAML, con sus códigos; no se dice que salgan de Sigrid (los listados, F-072) | R16 |
 | la ubicación depende de la unidad, en el mensaje y en «Instrucciones» | R18 |
 | ningún texto nombra «General», «Otra» ni «en la revisión»; todos caben en 255 | R18 |
 | ejemplos indicativos en `Ubicación`, `Oficio` y `Proveedor` | R19 |
@@ -65,7 +65,9 @@ def test_f071_r16_urgencias_y_listados_del_yaml_con_sus_codigos(
     real: ConfiguracionPlantilla,
 ) -> None:
     assert [o.codigo for o in real.listas.urgencias] == ["urgente", "seguridad"]
-    assert [o.codigo for o in real.listas.listados] == ["primero", "segundo"]
+    # F-072 R9 (sustituye a `listados == ["primero", "segundo"]`): los tipos
+    # de reclamación salen de Sigrid y el YAML ya no trae `listados`.
+    assert real.listas.listados == ()
 
 
 def test_f071_r16_instrucciones_no_dicen_que_urgencia_o_listado_salgan_de_sigrid(
@@ -75,9 +77,10 @@ def test_f071_r16_instrucciones_no_dicen_que_urgencia_o_listado_salgan_de_sigrid
         if "Sigrid" in parrafo:
             minusculas = parrafo.lower()
             assert "urgencia" not in minusculas, parrafo
-            assert "listado" not in minusculas, parrafo
+            # F-072 R10 (sustituye a `"listado" not in`): el listado sí sale de
+            # Sigrid, y la instrucción de los desplegables lo dice.
             assert "las listas salen" not in minusculas, (
-                "«las listas» incluiría Urgencia y Listado"
+                "«las listas» incluiría Urgencia"
             )
 
 

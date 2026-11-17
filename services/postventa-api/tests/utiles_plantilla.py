@@ -12,6 +12,7 @@ from __future__ import annotations
 import io
 import warnings
 from collections import Counter
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -33,8 +34,10 @@ from domain.models.plantilla_incidencias import (
     OpcionOficio,
     OpcionProveedor,
     ProveedorEnObra,
+    TipoReclamacion,
     UbicacionesPorUnidad,
     UnidadPosventa,
+    listas_con_tipos,
     oficios_del_desplegable,
     opciones_de_oficio,
     opciones_de_proveedor,
@@ -43,7 +46,10 @@ from domain.models.plantilla_incidencias import (
 )
 from domain.ports.hoja_calculo import FilaPlantilla
 from infrastructure.documentos.excel_openpyxl import GeneradorPlantillaOpenpyxl
-from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
+from infrastructure.documentos.plantilla_yaml import (
+    ConfiguracionPlantilla,
+    cargar_plantilla_yaml,
+)
 
 INSTANTE = datetime(2026, 9, 29, 8, 30, tzinfo=UTC)
 # Construido desde un entero: un GUID literal no entra en el repositorio (F-006 R26).
@@ -118,8 +124,22 @@ def opciones(
     return oficios, opciones_de_proveedor(cat, grupos_proveedor, oficios)
 
 
-def configuracion():
-    return cargar_plantilla_yaml()
+#: Tipos de reclamación **ficticios** de `dbo.auxtrcp` (F-072): nunca los reales.
+TIPOS_FICTICIOS: tuple[TipoReclamacion, ...] = (
+    TipoReclamacion(codigo="9001", nombre="TIPO FICTICIO 1"),
+    TipoReclamacion(codigo="9002", nombre="TIPO FICTICIO 2"),
+)
+
+
+def configuracion() -> ConfiguracionPlantilla:
+    """El YAML real con `listados` relleno como lo hace la aplicación (F-072).
+
+    Desde F-072 (R9) el YAML trae `listados` vacío y la aplicación lo rellena
+    con los tipos de Sigrid (`listas_con_tipos`); aquí, con `TIPOS_FICTICIOS`,
+    para que las plantillas de los tests lleven el desplegable de `Listado`.
+    """
+    real = cargar_plantilla_yaml()
+    return replace(real, listas=listas_con_tipos(real.listas, TIPOS_FICTICIOS))
 
 
 def generar(

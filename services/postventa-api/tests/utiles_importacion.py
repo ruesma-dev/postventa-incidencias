@@ -48,12 +48,19 @@ from domain.ports.catalogo_obra import (
     LecturaCatalogo,
 )
 from domain.ports.hoja_calculo import FilaPlantilla
+from domain.ports.tipos_reclamacion import FilaTipoReclamacion
 from infrastructure.documentos.excel_openpyxl import (
     GeneradorPlantillaOpenpyxl,
     LectorPlantillaOpenpyxl,
 )
 
-from tests.utiles_plantilla import FILAS_OBROFC, OFICIOS, UNIDADES, generar
+from tests.utiles_plantilla import (
+    FILAS_OBROFC,
+    OFICIOS,
+    TIPOS_FICTICIOS,
+    UNIDADES,
+    generar,
+)
 
 #: Una referencia de obra (`upv.obride`) **inventada**.
 OBRA_REF = "987654321"
@@ -218,13 +225,6 @@ class UbicacionesEnMemoria:
 # --- la bandeja ---------------------------------------------------------------
 
 
-#: Tipos de reclamación **ficticios** de `dbo.auxtrcp` (F-072): nunca los reales.
-TIPOS_FICTICIOS: tuple[TipoReclamacion, ...] = (
-    TipoReclamacion(codigo="9001", nombre="TIPO FICTICIO 1"),
-    TipoReclamacion(codigo="9002", nombre="TIPO FICTICIO 2"),
-)
-
-
 class TiposEnMemoria:
     """La fuente de los tipos de reclamación (F-072 R1, R11), con tipos ficticios.
 
@@ -252,6 +252,28 @@ class TiposEnMemoria:
         if self._fallo is not None:
             raise self._fallo
         return self.tipos
+
+
+class PuertoTiposEnMemoria:
+    """Un `TiposReclamacionPort` con los tipos ficticios, para las fábricas.
+
+    Lo que devuelve `construir_tipos_reclamacion` cuando un test deja que el
+    borde componga la fuente (`fuente_de_tipos`) en vez de inyectarla.
+    """
+
+    def __init__(self, tipos: tuple[TipoReclamacion, ...] = TIPOS_FICTICIOS) -> None:
+        self.tipos = tipos
+        self.lecturas = 0
+
+    def leer(self) -> LecturaCatalogo[FilaTipoReclamacion]:
+        self.lecturas += 1
+        return LecturaCatalogo(
+            tuple(
+                FilaTipoReclamacion(codigo=t.codigo, nombre=t.nombre, posicion=n)
+                for n, t in enumerate(self.tipos, start=1)
+            ),
+            False,
+        )
 
 
 class BandejaEnMemoria:

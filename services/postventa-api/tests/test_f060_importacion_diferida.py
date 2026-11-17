@@ -174,7 +174,7 @@ except RemesaSinPdfUtilizable:
 from datetime import UTC, datetime
 from interface_adapters.api.plantilla import descargar_plantilla
 nombre, contenido = descargar_plantilla(
-    "0001", catalogo_obra=Catalogo(), ubicaciones=ubicaciones,
+    "0001", catalogo_obra=Catalogo(), ubicaciones=ubicaciones, tipos=lambda: (),
     ahora=datetime(2026, 10, 14, tzinfo=UTC),
 )
 assert contenido[:2] == b"PK", contenido[:2]
@@ -212,6 +212,7 @@ class Bandeja:
 respuesta = importar_excel(
     [("incidencias.xlsx", b"no se abre: lo lee el doble")], "oid-ficticio",
     bandeja=Bandeja(), lector=Lector(), catalogo_obra=Catalogo(), ubicaciones=ubicaciones,
+    tipos=lambda: (),
     ahora=datetime(2026, 10, 14, tzinfo=UTC),
 )
 contenido = base64.b64decode(respuesta["excel_errores"]["contenido_b64"])

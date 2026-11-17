@@ -12,7 +12,7 @@ composición de los seis pasos vive en el punto de entrada
 |---|---|
 | 1 · `paso_huella` | `hash`; si los bytes ya constan en una importación **completa**, `resultado` (con `ya_importado`) y `obra_codigo` |
 | 2 · `paso_reconocimiento` | `libro` y `obra_codigo` (de los metadatos, normalizado) |
-| 3 · `paso_catalogo` | `catalogo`, `ubicaciones_por_unidad`, `oficios`, `pares` (F-071) |
+| 3 · `paso_catalogo` | `catalogo`, `ubicaciones_por_unidad`, `oficios`, `pares` (F-071), `tipos` (F-072) |
 | 4 · `paso_validacion` | `validas` y `con_error` |
 | 5 · `paso_registro` | `agrupadas` y `resultado` |
 | 6 · `paso_excel_errores` | `excel_errores`, solo si hay filas con error |
@@ -24,7 +24,9 @@ confundirlas (una plantilla sin filas se registra, completa y con cero leídas).
 El contexto guarda las **opciones** de `Oficio` y `Proveedor` por código y
 las **ubicaciones de cada unidad** leídas de Sigrid, calculadas una vez y
 usadas en la validación y en el Excel de errores, sin otra lectura (F-071 §6.2,
-R40). Desde F-071 no hay grupos de equivalencia (D-14).
+R40). Desde F-071 no hay grupos de equivalencia (D-14). Igual los **tipos de
+reclamación** de Sigrid (F-072, R11, R13): una lectura, y con ellos se valida
+`Listado` y se escribe su lista en el Excel de errores.
 
 ## Datos personales (R47)
 
@@ -50,6 +52,7 @@ from domain.models.plantilla_incidencias import (
     CatalogoObra,
     OpcionOficioSigrid,
     ParSigrid,
+    TipoReclamacion,
     UbicacionesPorUnidad,
 )
 from domain.ports.bandeja import ResultadoImportacion
@@ -87,6 +90,9 @@ class ContextoImportacion:
     ubicaciones_por_unidad: UbicacionesPorUnidad = field(
         default_factory=dict, repr=False
     )
+    # F-072: los tipos de reclamación leídos de Sigrid (R11); su `nombre` es
+    # `res`, que nunca va a una traza (R30).
+    tipos: tuple[TipoReclamacion, ...] = field(default=(), repr=False)
     validas: tuple[IncidenciaValida, ...] | None = field(default=None, repr=False)
     con_error: tuple[FilaConError, ...] | None = field(default=None, repr=False)
     agrupadas: tuple[GrupoDeClave, ...] = field(default=(), repr=False)

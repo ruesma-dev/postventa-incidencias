@@ -1,14 +1,21 @@
 # services/postventa-api/infrastructure/documentos/plantilla_yaml.py
 """Carga y valida `config/plantilla_incidencias.yaml` (F-036, `design.md` §3.4).
 
-El YAML trae lo que la plantilla no lee de Sigrid: las urgencias, los
-listados y los textos que lee la propiedad. Se valida **entero al cargar**: un
+El YAML trae lo que la plantilla no lee de Sigrid: las urgencias y los
+textos que lee la propiedad. Se valida **entero al cargar**: un
 fichero roto tiene que tumbar el arranque del handler, no generar una
 plantilla cuyo desplegable ofrezca un valor que luego el importador rechace.
 
 Las ubicaciones **ya no** están aquí (F-071, R21): salen de Sigrid, por
 unidad, al descargar la plantilla. Un YAML que todavía traiga la clave
 `ubicaciones` no carga, para que nadie crea que esa lista sigue mandando.
+
+Los tipos de reclamación de la columna `Listado` tampoco (F-072, R9): salen de
+`dbo.auxtrcp` al descargar e importar, y `ListasCerradas.listados` sale de aquí
+**vacío** para que la aplicación lo rellene (`listas_con_tipos`). Un YAML con la
+clave `listados` no carga, por la misma razón que `ubicaciones`; y el ejemplo de
+`Listado` de «Instrucciones» es indicativo, sin validar contra ninguna lista
+(R10).
 
 La ruta es fija (R49: F-036 no añade variables de entorno) y se resuelve
 **relativa al servicio**, nunca al `cwd`, como la de los prompts.
@@ -27,7 +34,6 @@ from domain.models.plantilla_incidencias import (
     CABECERA,
     COLUMNA_ERRORES,
     MAX_DESCRIPCION,
-    Listado,
     ListasCerradas,
     MensajeColumna,
     Opcion,
@@ -110,11 +116,11 @@ def _ejemplos(crudo: object, listas: ListasCerradas) -> tuple[Mapping[str, str],
         raise _falla(
             f"textos.ejemplos: tienen que ser de {MIN_EJEMPLOS} a {MAX_EJEMPLOS}"
         )
-    # `Ubicación`, `Oficio` y `Proveedor` salen de Sigrid (F-071): sus
-    # ejemplos son textos indicativos (R19) y no se comprueban contra lista.
+    # `Ubicación`, `Oficio` y `Proveedor` salen de Sigrid (F-071), y `Listado`
+    # también (F-072, R10): sus ejemplos son textos indicativos (R19) y no se
+    # comprueban contra lista.
     permitidas = {
         "Urgencia": tuple(o.etiqueta for o in listas.urgencias),
-        "Listado": tuple(o.etiqueta for o in listas.listados),
     }
     ejemplos: list[Mapping[str, str]] = []
     for numero, ejemplo in enumerate(crudo, start=1):
@@ -200,13 +206,13 @@ def cargar_plantilla_yaml(
             "`ubicaciones`: la lista de ubicaciones ya no se configura aquí; "
             "sale de Sigrid, por unidad (F-071)"
         )
+    if "listados" in crudo:
+        raise _falla("`listados`: los tipos de reclamación salen de Sigrid (F-072)")
     listas = ListasCerradas(
         urgencias=_opciones(
             crudo.get("urgencias"), "urgencias", tuple(u.value for u in Urgencia)
         ),
-        listados=_opciones(
-            crudo.get("listados"), "listados", tuple(x.value for x in Listado)
-        ),
+        listados=(),  # F-072: los rellena la aplicación con Sigrid
     )
     return ConfiguracionPlantilla(
         listas=listas,

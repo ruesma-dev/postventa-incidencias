@@ -65,7 +65,7 @@
 
 ## Bloque 7 · Documentación, alcance y cierre del código
 
-- [ ] **T21**: `docs/ARCHITECTURE.md` (sección «El tipo de reclamación (F-072)» y las frases «tipo 0002 siempre» de F-059) y `docs/INTEGRACION.md` (R33); `tests/test_f072_documentacion.py` y `tests/test_f072_alcance_cerrado.py` (R31, R32 contra la base fija); los dos en `ejecutar_siempre` de `api` en `harness/servicios.json`. | Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f072_documentacion.py tests/test_f072_alcance_cerrado.py tests/test_f059_documentacion.py tests/test_f071_documentacion.py` en verde
+- [x] **T21**: `docs/ARCHITECTURE.md` (sección «El tipo de reclamación (F-072)» y las frases «tipo 0002 siempre» de F-059) y `docs/INTEGRACION.md` (R33); `tests/test_f072_documentacion.py` y `tests/test_f072_alcance_cerrado.py` (R31, R32 contra la base fija); los dos en `ejecutar_siempre` de `api` en `harness/servicios.json`. | Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f072_documentacion.py tests/test_f072_alcance_cerrado.py tests/test_f059_documentacion.py tests/test_f071_documentacion.py` en verde
 - [ ] **T22**: `bash harness/init.sh` en verde con la cobertura en `[OK]` (el líder valida además el cierre sin caché, `ARNES_SIN_CACHE=1`, como manda `harness/servicios.json`); campaña de mutación de la feature entera (`--salida progress/mutacion_F-072.md`) sin supervivientes sin justificar. **Review final.** | Verificación: `bash harness/init.sh` en verde; `progress/mutacion_F-072.md` al día
 
 **Parar. Review final APPROVED antes del Bloque 8.**

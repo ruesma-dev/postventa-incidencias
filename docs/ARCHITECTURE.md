@@ -793,6 +793,16 @@ versión y obra— con los que se la reconoce al volver. Todo texto se escribe
 como texto: nada de lo que llegue de Sigrid o de la propiedad se convierte en
 una fórmula.
 
+> **Enmienda del 2026-11-17 (F-072).** Lo de arriba describe F-071. Desde
+> **F-072** el listado **también sale de Sigrid**: el desplegable `Listado`
+> ofrece los **tipos de reclamación** vigentes de `dbo.auxtrcp`, leídos al
+> descargar, y **solo la urgencia** sigue en el YAML, que ya no tiene la clave
+> `listados` (si alguien la vuelve a poner, la configuración no carga). Es una
+> **lectura más** por `sql/read`, después de las tres de F-071: cuatro por
+> descarga. La plantilla
+> sigue en la versión 2, con la misma hoja. El detalle, en la sección «El tipo
+> de reclamación (F-072)».
+
 ### La importación, y el Excel de errores
 
 `POST /api/importaciones` recibe el Excel rellenado y lo lleva por seis pasos,
@@ -813,8 +823,10 @@ en este orden (`application/pipelines/paso_importacion.py`):
    quien la tenga rellenada descarga la versión 2 y copia sus filas.
 3. **Catálogo.** Se vuelve a leer el de la obra en Sigrid: el que vale es el
    del momento de importar, no el de la descarga. Desde F-071 se leen además
-   las **ubicaciones de cada unidad** (la tercera lectura, una vez), y con
-   `ya_importado` o un fichero que no es la plantilla no se lee nada.
+   las **ubicaciones de cada unidad** (la tercera lectura, una vez) y, **desde
+   F-072**, los **tipos de reclamación** vigentes de `dbo.auxtrcp` (una lectura
+   más, una vez, después de las ubicaciones); con `ya_importado` o un fichero que no
+   es la plantilla no se lee nada.
 4. **Validación**, fila a fila. Primero la **comparación exacta**: un valor
    tasado vale si es exactamente una opción de su desplegable, y el texto
    libre, si cabe en su tope. Una fórmula, una fecha o un número en una
@@ -1052,7 +1064,8 @@ decisiones, en `specs/F-056-revision-bandeja-backend/`.
 
 Cada acción aceptada añade **una** fila a `postventa.revisiones_bandeja` con la
 **foto completa** de los valores vigentes tras ella —unidad, ubicación,
-descripción, detalle, oficio, proveedor, urgencia y listado—, su huella
+descripción, detalle, oficio, proveedor, urgencia y listado; desde F-072,
+también el tipo de reclamación—, su huella
 `sha256`, el motivo de un descarte, el instante UTC, el `oid` y el correo de
 quien la pidió. Es **append-only**, como `historico_estado`: nada la actualiza
 ni la borra, y **manda la de mayor `revision_id`**, nunca la hora.
@@ -1193,7 +1206,8 @@ candidatas.
 **Enmienda de F-059 (2026-10-17).** F-040 se partió por el límite de servicio
 (D-1 de F-059): lo que este apartado deja «fuera» para F-040 lo hace en el
 backend **F-059** —el login de quien vuelca, el ensayo, la referencia `PVI-`,
-el tipo `0002`, la tabla `postventa.volcados_sigrid` y los estados `volcada` y
+el tipo `0002` (desde F-072, el tipo efectivo de cada incidencia), la tabla
+`postventa.volcados_sigrid` y los estados `volcada` y
 `en_duda`—, y F-040 se queda con la página. Las candidatas siguen saliendo de
 `candidatas_al_volcado`, sin cambiarla; la urgencia sigue sin mandarse. Todo,
 en la sección «Volcado a Sigrid (F-059)».
@@ -1202,8 +1216,9 @@ en la sección «Volcado a Sigrid (F-059)».
 
 - **Nada de F-056 escribe en Sigrid.** Solo hace **tres lecturas** por
   `POST /api/sql/read` —las dos del catálogo de F-036 y la de las ubicaciones
-  válidas—, ninguna pieza nombra una ruta de escritura de la pasarela y un test
-  lo vigila. Por eso ningún endpoint depende de `CIERRE_HABILITADO` ni de
+  válidas; desde F-072, una cuarta por petición, los tipos de reclamación de
+  `dbo.auxtrcp`—, ninguna pieza nombra una ruta de escritura de la pasarela y
+  un test lo vigila. Por eso ningún endpoint depende de `CIERRE_HABILITADO` ni de
   `ARCHIVO_HABILITADO`.
 - **No crea las incidencias en Sigrid**: es **F-040**.
 - **No tiene pantalla**: la página de revisión, con su paginación, es **F-038**.
@@ -1518,9 +1533,12 @@ solo el código. `bandeja_incidencias` y `revisiones_bandeja` no se tocan.
 
 Campo a campo contra §8.9 (`design.md` §5): la obra, la unidad, la
 descripción, el detalle solo si lo hay, el oficio, la ubicación y, si hay
-proveedor, **un** interviniente con `causante: false` (Q-2); **tipo 0002**
-siempre (PRIMER LISTADO POSTVENTA, Q-1: el `listado` de la bandeja no lo
-decide), `forma_comunicacion` 1 («Escrita»), los dos explícitos aunque sean
+proveedor, **un** interviniente con `causante: false` (Q-2); el **tipo de
+reclamación** —con F-059, **tipo 0002** siempre (PRIMER LISTADO POSTVENTA,
+Q-1: el `listado` de la bandeja no lo decidía); **desde F-072, el tipo
+efectivo** de la incidencia, el código de `dbo.auxtrcp` elegido al importar o
+en la revisión, y `0002` solo si no tiene ninguno (sección «El tipo de
+reclamación (F-072)»)—, `forma_comunicacion` 1 («Escrita»), los dos explícitos aunque sean
 el defecto de la pasarela. Ni `clase`, ni urgencia (D-10), ni propietario, ni
 persona: esos los copia la pasarela de la UPV. El `usu` es el login de Sigrid
 **de la persona que pide** (F-009), nunca uno técnico. Y la **referencia**
@@ -1674,6 +1692,126 @@ imprimen sus valores en su `repr`, y ningún error repite una fila.
 - **No toca `GET /api/revision`**, ni su línea de tiempos: es una ruta aparte.
 - **No lee por trozos**: una sola lectura con el techo de 500.000 filas; si
   llega, 409 `reclamaciones_sin_verificar` y ningún conflicto a medias.
+
+## El tipo de reclamación (F-072)
+
+**Añadida el 2026-11-17 por F-072, implementada en su rama y sin desplegar.**
+Hasta F-072 la columna `Listado` de la plantilla ofrecía dos valores fijos del
+YAML (`primero`, `segundo`), la bandeja los guardaba y el volcado mandaba
+**siempre** el tipo `0002`. Desde F-072 el **tipo de reclamación** sale de
+Sigrid de punta a punta: la plantilla ofrece los tipos vigentes de
+`dbo.auxtrcp`, la importación guarda el **código** elegido, la revisión lo
+enseña y deja cambiarlo, y el volcado lo manda. **En blanco, `0002`**. Todo
+cae en `services/postventa-api`: **el front no cambia**, porque el contrato
+conserva la forma (abajo). Qué consume y qué expone, en `docs/INTEGRACION.md`
+(§1, §2, §3 bis y §8); el diseño y sus decisiones, en
+`specs/F-072-tipo-reclamacion-sigrid/`.
+
+### La lectura: `dbo.auxtrcp`
+
+Una lectura más por `POST /api/sql/read`, **sin parámetros**:
+`SELECT cod, res, pos FROM dbo.auxtrcp WHERE ISNULL(fecbaj, 0) = 0 ORDER BY
+pos, cod` (los tipos vigentes, en su orden). Se hace **una vez por petición** y
+**sin caché entre peticiones**, en la plantilla, en la importación de un
+fichero reconocido y no importado, en el listado de la revisión y al editar o
+aprobar; siempre **después** del catálogo y de las ubicaciones, que es la más
+barata. Descartar, recuperar, el historial, la bandeja y el volcado **no la
+hacen**. Con el techo y los errores del catálogo: al techo de filas,
+`CatalogoSinVerificar` (409), sin ofrecer ni validar con una lista cortada;
+si falla o agota su tiempo, `CatalogoNoDisponible` (503). Las filas sin código
+se ignoran y, de dos con el mismo código recortado, vale la primera. Al log va
+una línea, `F-072 tipos de reclamación leídos en Sigrid`, con `tipos`,
+`sin_codigo`, `repetidos`, `al_techo` y `segundos`: **nunca un `res`**.
+
+### La columna `tipo_reclamacion` y el tipo efectivo
+
+`17_tipo_reclamacion.sql` añade la columna `tipo_reclamacion` (texto de 1 a 24
+caracteres, que admite nulo) a `postventa.bandeja_incidencias` y a
+`postventa.revisiones_bandeja`, con `ALTER TABLE … ADD COLUMN IF NOT EXISTS`:
+el primer `ALTER TABLE` del proyecto, aceptado por la guarda del DDL sin
+cambiarla. Es una **columna nueva** y no un `CHECK` nuevo sobre `listado`,
+porque la guarda no deja cambiar un `CHECK` ya creado; y no lleva `UPDATE`:
+**lo heredado no se migra en la base, se interpreta en el dominio**.
+
+El **tipo efectivo** de una incidencia es su `tipo_reclamacion` o, si es nulo
+(las filas anteriores a F-072), `0002` (`tipo_efectivo`, en
+`domain/models/plantilla_incidencias.py`). El `listado` heredado
+(`primero`/`segundo`) se sigue leyendo y copiando, pero ya no decide nada ni se
+enseña: lo nuevo nace con `listado` nulo y `tipo_reclamacion` no nulo.
+
+### Plantilla e importación
+
+La columna `Listado` ofrece una opción por tipo vigente, en su orden, con la
+etiqueta `<res> (<cod>)` (o solo el código, si no tiene nombre); sin ningún
+tipo vigente, solo admite el blanco. Misma cabecera, mismas hojas y **versión
+2**. Al importar, la celda se casa con esas etiquetas con la regla de F-060 y
+F-071 (`casar_con_lista`) y la fila guarda el **código**; **en blanco, guarda
+`0002`** sin mirarlo contra la lista. Una celda que no casa —también «Primer
+listado» o «Segundo listado» de una plantilla descargada antes de F-072— vuelve
+en el Excel de errores, que ya lleva la lista de tipos leída en esa
+importación.
+
+### La revisión: el contrato de `listado`
+
+**La forma del contrato no cambia**, y por eso el front publicado sigue
+funcionando sin tocar una línea: la clave sigue siendo `listado`, ahora con el
+código de `auxtrcp`.
+
+- `GET /api/revision`: `catalogo.listados` son los tipos vigentes como
+  `{codigo, etiqueta}`, y `valores.listado` e `importados.listado`, el **tipo
+  efectivo**, **nunca `null`**. `GET /api/bandeja` también devuelve el tipo
+  efectivo en `listado`.
+- `POST /api/revision/acciones`, al editar: `valores.listado` es un código
+  vigente leído en esa petición, o el tipo efectivo que ya tiene la incidencia
+  (se conserva aunque esté de baja); con `null`, se guarda `0002`; con otro, 400
+  con el error en `listado`, sin repetir lo recibido.
+- Aprobar exige que el tipo guardado esté vigente: si no lo está, el motivo
+  `tipo_fuera_de_sigrid` (entre `proveedor_ambiguo` y `duplicada`).
+- `cambios`, el historial, el estado y `sin_cambios` comparan por el **tipo
+  efectivo** —nulo y `0002` son iguales— e ignoran el `listado` heredado. La
+  **huella** de una foto sin tipo es la de F-056; con tipo, lleva el código al
+  final: una incidencia aprobada antes de F-072 **conserva su huella** y sigue
+  siendo candidata al volcado.
+
+### El volcado
+
+El parte de cada candidata lleva `tipo` = su **tipo efectivo**, no una
+constante (`parte_de`, en `domain/models/volcado.py`; `TIPO_RECLAMACION` queda
+como el defecto, `0002`). El volcado **no lee `auxtrcp`**: si un tipo se da de
+baja entre aprobar y volcar, `sigrid-api` rechaza el parte con
+`tipo_no_valido`, que sale en el ensayo como cualquier rechazo de F-059, sin
+escribir nada.
+
+### Dónde vive cada pieza
+
+- **Dominio**: `domain/models/plantilla_incidencias.py` (`TipoReclamacion`,
+  `TIPO_RECLAMACION_POR_DEFECTO`, `tipos_del_desplegable`, `listas_con_tipos`,
+  `tipo_efectivo`), `importacion.py`, `revision.py` y `volcado.py`.
+- **Puerto**: `domain/ports/tipos_reclamacion.py` (`TiposReclamacionPort`).
+- **Adaptador**: `infrastructure/sigrid/tipos_reclamacion.py`, hijo de
+  `AdaptadorCatalogoSigridApi` sin tocarlo, con su consulta en
+  `consultas_tipos_reclamacion.py`, y `construir_tipos_reclamacion` en
+  `infrastructure/sigrid/fabrica.py`, con la puerta de entorno de las
+  ubicaciones.
+- **Aplicación**: `application/pipelines/tipos_reclamacion.py`
+  (`leer_tipos_reclamacion`, `fuente_de_tipos`), que usan la plantilla, la
+  importación y la revisión.
+- **Persistencia**: `17_tipo_reclamacion.sql`, `sentencias_bandeja.py` y
+  `sentencias_revision.py`.
+
+**Ninguna variable de entorno nueva**, ninguna dependencia, ningún endpoint.
+
+### Lo que no hace
+
+- **No escribe en Sigrid** más de lo que ya escribía F-059: la lectura es solo
+  `sql/read`, y el volcado sigue siendo el de F-059.
+- **No toca el front**: los textos «Listado», «Sin listado», el motivo nuevo y
+  los del panel de volcado van con **F-040**.
+- **No traduce el `listado` heredado** a un tipo ni filtra los tipos internos:
+  se ofrecen todos los vigentes.
+- **No cambia** las consultas de Sigrid que ya existían, ni `ddl.py`, ni los
+  `.sql` anteriores, ni el generador de `excel_openpyxl.py`, que recibe
+  `Listado` como una lista más.
 
 ## Acceso a datos y sistemas externos
 

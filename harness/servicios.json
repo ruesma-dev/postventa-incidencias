@@ -47,7 +47,9 @@
         "tests/test_f065_datos_personales.py",
         "tests/test_f065_documentacion.py",
         "tests/test_f071_alcance_cerrado.py",
-        "tests/test_f071_documentacion.py"
+        "tests/test_f071_documentacion.py",
+        "tests/test_f072_alcance_cerrado.py",
+        "tests/test_f072_documentacion.py"
       ]
     },
     {

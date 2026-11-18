@@ -1,6 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-040 · spec puesta al día para retomarla (spec-author, 2026-11-18) · sigue `blocked`
+> `specs/F-040-volcado-sigrid/` sobre la base `4b1eb21` (F-038, F-071 y F-072 `done`), condensada para la puerta
+> TAMAÑO (requirements 149/150, design 246/250; el texto íntegro anterior, en `git show 4b1eb21:…`), con las
+> enmiendas marcadas [E-1118]: tipo efectivo en el ensayo con la etiqueta de `catalogo.listados` (R63), recuento por
+> tipo (R64), `tipo_no_valido` y `tipo_fuera_de_sigrid` (R65, R66), el campo «Listado» (R67), la miga sin enlace (R68),
+> la primera escritura real desde el entorno desplegado (R69); la tarjeta del inicio ya la hizo F-038 (T8). Tareas
+> nuevas: T8 (líder), Bloque 1 bis T9–T11, T12 (publicar); T5 partida en T5.1–T5.6. **Decisiones abiertas para el
+> humano: D-1..D-8** (`design.md` §12): literales de Q-11, recuento por tipo, opción «Sin listado», enlace de R57,
+> orden al retomar, tipo `0003` en la escritura de T5.4, T5 bis paso 1 por la API, y **D-8: `impl_F-040.md`
+> (520/220) y `review_F-040.md` (457/140) ponen la puerta TAMAÑO en rojo en esta rama** (`python -m harness.tamano
+> --feature F-040`, rc 1). Ni `features.json` ni `init.sh` tocados.
+
 > ## F-072 · CERRADA (líder, 2026-11-18)
 > T24 y T26 en verde en producción (`progress/impl_F-072_despliegue.md`), T27 y T28 hechos:
 > F-072 `done`, resumen en `progress/history.md`. F-040 sigue `blocked` (aparcada por el humano)

@@ -12,6 +12,7 @@ from __future__ import annotations
 import io
 import warnings
 from collections import Counter
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -33,13 +34,22 @@ from domain.models.plantilla_incidencias import (
     OpcionOficio,
     OpcionProveedor,
     ProveedorEnObra,
+    TipoReclamacion,
+    UbicacionesPorUnidad,
     UnidadPosventa,
+    listas_con_tipos,
+    oficios_del_desplegable,
     opciones_de_oficio,
     opciones_de_proveedor,
+    pares_del_desplegable,
+    ubicaciones_de_la_plantilla,
 )
 from domain.ports.hoja_calculo import FilaPlantilla
 from infrastructure.documentos.excel_openpyxl import GeneradorPlantillaOpenpyxl
-from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
+from infrastructure.documentos.plantilla_yaml import (
+    ConfiguracionPlantilla,
+    cargar_plantilla_yaml,
+)
 
 INSTANTE = datetime(2026, 9, 29, 8, 30, tzinfo=UTC)
 # Construido desde un entero: un GUID literal no entra en el repositorio (F-006 R26).
@@ -114,8 +124,22 @@ def opciones(
     return oficios, opciones_de_proveedor(cat, grupos_proveedor, oficios)
 
 
-def configuracion():
-    return cargar_plantilla_yaml()
+#: Tipos de reclamación **ficticios** de `dbo.auxtrcp` (F-072): nunca los reales.
+TIPOS_FICTICIOS: tuple[TipoReclamacion, ...] = (
+    TipoReclamacion(codigo="9001", nombre="TIPO FICTICIO 1"),
+    TipoReclamacion(codigo="9002", nombre="TIPO FICTICIO 2"),
+)
+
+
+def configuracion() -> ConfiguracionPlantilla:
+    """El YAML real con `listados` relleno como lo hace la aplicación (F-072).
+
+    Desde F-072 (R9) el YAML trae `listados` vacío y la aplicación lo rellena
+    con los tipos de Sigrid (`listas_con_tipos`); aquí, con `TIPOS_FICTICIOS`,
+    para que las plantillas de los tests lleven el desplegable de `Listado`.
+    """
+    real = cargar_plantilla_yaml()
+    return replace(real, listas=listas_con_tipos(real.listas, TIPOS_FICTICIOS))
 
 
 def generar(
@@ -125,14 +149,23 @@ def generar(
     filas: tuple[FilaPlantilla, ...] = (),
     importacion_origen: UUID | None = None,
     generada_at: datetime = INSTANTE,
+    ubicaciones: UbicacionesPorUnidad | None = None,
 ) -> bytes:
+    """La plantilla v2 de `cat` (F-071): oficios y pares de Sigrid por código.
+
+    `decisiones` ya no cambia el libro (F-071, R12: la plantilla no agrupa);
+    se sigue aceptando para no tocar a quien la pasa. `ubicaciones`, las de
+    cada unidad (por defecto, ninguna).
+    """
+    del decisiones  # F-071, R12
     cat = cat or catalogo()
-    oficios, pares = opciones(cat, decisiones)
+    oficios = oficios_del_desplegable(cat)
     config = configuracion()
     return GeneradorPlantillaOpenpyxl().generar(
         catalogo=cat,
-        opciones_oficio=oficios,
-        opciones_proveedor=pares,
+        oficios=oficios,
+        pares=pares_del_desplegable(cat, oficios),
+        ubicaciones=ubicaciones_de_la_plantilla(cat.unidades, ubicaciones or {}),
         listas=config.listas,
         textos=config.textos,
         generada_at=generada_at,

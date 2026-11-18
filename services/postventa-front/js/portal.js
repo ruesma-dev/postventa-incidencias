@@ -18,7 +18,7 @@
 //   pasoDeSeccion                           el paso de la tira que marca una sección (R83, R86)
 //   fichasDeSeccion                         las fichas que nombra su rótulo (R65)
 //   textoPlaceholder / seleccionadasPara    el aviso de un placeholder (R11, R12)
-//   filtrarIncidencias / filtrarBandeja / alternarSeleccion   solo en pantalla (R19, R20)
+//   filtrarIncidencias / alternarSeleccion                    solo en pantalla (R19, R20)
 //   etiquetaEstado / formatoImporte / etiquetaCatalogo        cómo se enseña (R21, R22, R39)
 //   resumenVolcado / etiquetaEstadoVolcado                    el panel de volcado (R40)
 //   buscarPorId                                               abrir una ficha o un detalle (R6)
@@ -56,13 +56,15 @@
    * a la que llevan la pestaña, los pasos de la tira y la tarjeta de una
    * sección que vive en el portal, en vez de su ruta `#/<id>` de la maqueta;
    * `null` = su ruta. Hoy solo `bandeja` → `bandeja.html`. La ruta `#/bandeja`
-   * sigue existiendo (`resolverRuta`): solo deja de enlazarse desde ahí, y el
-   * `estado` no cambia (lo dan las fichas, R62).
+   * sigue existiendo (`resolverRuta`): solo deja de enlazarse desde ahí. El
+   * `estado` no lo da el enlace sino las fichas (R62): `bandeja` pasó a
+   * `parcial` en el cierre de F-038 (R17 de F-038), la primera de sus fichas
+   * en `done`.
    */
   const SECCIONES = congelarLista([
     { id: "inicio", etiqueta: "Inicio", fichas: [], pagina: null, enlace: null, estado: "parcial" },
     { id: "entrada", etiqueta: "Entrada", fichas: ["F-036", "F-037"], pagina: null, enlace: null, estado: "parcial" },
-    { id: "bandeja", etiqueta: "Bandeja de revisión", fichas: ["F-038", "F-039", "F-040", "F-043"], pagina: null, enlace: "bandeja.html", estado: "construccion" },
+    { id: "bandeja", etiqueta: "Bandeja de revisión", fichas: ["F-038", "F-039", "F-040", "F-043"], pagina: null, enlace: "bandeja.html", estado: "parcial" },
     { id: "incidencias", etiqueta: "Incidencias", fichas: ["F-041", "F-042", "F-043", "F-047"], pagina: null, enlace: null, estado: "construccion" },
     { id: "impresion", etiqueta: "Impresión de partes", fichas: ["F-044"], pagina: null, enlace: null, estado: "construccion" },
     { id: "partes", etiqueta: "Partes firmados", fichas: ["F-045"], pagina: "partes.html", enlace: null, estado: "parcial" },
@@ -114,7 +116,6 @@
    */
   const TITULOS_FICHAS = Object.freeze({
     "F-037": "Entrada desde la web de clientes: el contrato con el proyecto independiente",
-    "F-038": "Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado",
     "F-039": "Propuesta del industrial al crear la incidencia",
     "F-040": "Volcar a Sigrid las incidencias aprobadas",
     "F-041": "Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid",
@@ -132,7 +133,10 @@
    * 2026-09-25). El prefijo del `id` es la sección de la que es la acción, no
    * el bloque donde se pinta: `partes.registrarSinFirma` se dibuja en la
    * tarjeta «Partes firmados» de `inicio` (D-7). `enBloque` marca las que
-   * dicen a cuántas afectarían con la selección actual (R12).
+   * dicen a cuántas afectarían con la selección actual (R12). Desde el cierre
+   * de F-038 (`design.md` §3.2 de F-038) `#/bandeja` ya no tiene filas que
+   * seleccionar: `bandeja.aprobarSeleccionadas` y `bandeja.reintentarVolcado`
+   * pasaron a `enBloque: false`.
    */
   const PLACEHOLDERS = congelarLista([
     {
@@ -140,27 +144,6 @@
       ficha: "F-037",
       etiqueta: "Ver el contrato de entrada",
       explicacion: "Enseñará el contrato con el que la web de clientes dejará sus incidencias en la misma bandeja, con origen «Web».",
-      enBloque: false,
-    },
-    {
-      id: "bandeja.editar",
-      ficha: "F-038",
-      etiqueta: "Editar",
-      explicacion: "Permitirá corregir los campos de la fila antes del volcado (ubicación, oficio, intervinientes) y dejará constancia de quién y cuándo.",
-      enBloque: false,
-    },
-    {
-      id: "bandeja.descartar",
-      ficha: "F-038",
-      etiqueta: "Descartar",
-      explicacion: "Descartará la fila: no se volcará a Sigrid y quedará en el historial de revisión.",
-      enBloque: false,
-    },
-    {
-      id: "bandeja.aprobar",
-      ficha: "F-038",
-      etiqueta: "Aprobar",
-      explicacion: "Aprobará la fila: solo lo aprobado es candidato al volcado a Sigrid.",
       enBloque: false,
     },
     {
@@ -175,7 +158,7 @@
       ficha: "F-043",
       etiqueta: "Aprobar las seleccionadas",
       explicacion: "Aprobará de una vez todas las filas marcadas de la bandeja.",
-      enBloque: true,
+      enBloque: false,
     },
     {
       id: "bandeja.verVolcado",
@@ -196,7 +179,7 @@
       ficha: "F-040",
       etiqueta: "Reintentar los rechazados y no procesados",
       explicacion: "Reenviará, obra a obra, los partes rechazados una vez corregidos y los no procesados; la referencia PVI- impide duplicar lo ya creado.",
-      enBloque: true,
+      enBloque: false,
     },
     {
       id: "incidencias.cambiarEstadoBloque",
@@ -467,8 +450,9 @@
 
   /**
    * Cuántos elementos marcados cuenta un placeholder en bloque (R12): la
-   * selección de la sección de su prefijo (`incidencias.*`, `bandeja.*`,
-   * `impresion.*`). Cualquier otro, cero.
+   * selección de la sección de su prefijo (`incidencias.*`, `impresion.*`;
+   * `bandeja.*` ya no tiene selección desde el cierre de F-038). Cualquier
+   * otro, cero.
    */
   function seleccionadasPara(id, selecciones) {
     const prefijo = String(id || "").split(".")[0];
@@ -518,17 +502,6 @@
         const donde = [fila.cod, fila.descripcionCorta, fila.descripcionLarga].map(normalizar).join("\n");
         if (donde.indexOf(texto) === -1) return false;
       }
-      return true;
-    });
-  }
-
-  /** R19, para la bandeja: origen, estado de revisión y obra, todos a la vez. */
-  function filtrarBandeja(filas, filtros) {
-    const f = filtros || {};
-    return (filas || []).filter(function (fila) {
-      if (f.origen && fila.origen !== f.origen) return false;
-      if (f.estado && fila.estado !== f.estado) return false;
-      if (f.obra && fila.obra !== f.obra) return false;
       return true;
     });
   }
@@ -622,7 +595,6 @@
     seleccionadasPara: seleccionadasPara,
     textoPlaceholder: textoPlaceholder,
     filtrarIncidencias: filtrarIncidencias,
-    filtrarBandeja: filtrarBandeja,
     alternarSeleccion: alternarSeleccion,
     buscarPorId: buscarPorId,
     etiquetaEstado: etiquetaEstado,

@@ -1,0 +1,389 @@
+{
+ "version": 1,
+ "criterio": "codigo_1",
+ "fiable": true,
+ "feature": "F-072",
+ "sha": "43b472c1230d8f6178c16c1bd1cdf6549c679ec3",
+ "nivel": "critico",
+ "regla": {
+  "por_linea": true,
+  "fraccion": 0.6,
+  "suelo": 100,
+  "techo": 300,
+  "origen": "nivel"
+ },
+ "semilla": 20261030,
+ "generados": 70,
+ "candidatos": 41,
+ "evaluados": [
+  {
+   "fichero": "services/postventa-api/application/pipelines/contexto_importacion.py",
+   "linea": 95,
+   "col": 64,
+   "operador": "booleano",
+   "original": "tipos: tuple[TipoReclamacion, ...] = field(default=(), repr=False)",
+   "mutado": "tipos: tuple[TipoReclamacion, ...] = field(default=(), repr=True)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/revision.py",
+   "linea": 332,
+   "col": 65,
+   "operador": "comparacion",
+   "original": "if catalogo_obra is None or ubicaciones is None or tipos is None:",
+   "mutado": "if catalogo_obra is None or ubicaciones is None or tipos is not None:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/revision.py",
+   "linea": 366,
+   "col": 55,
+   "operador": "entero",
+   "original": "tras, catalogo=leido[0], ubicaciones=leido[1], tipos=_codigos(listas)",
+   "mutado": "tras, catalogo=leido[0], ubicaciones=leido[2], tipos=_codigos(listas)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/tipos_reclamacion.py",
+   "linea": 46,
+   "col": 17,
+   "operador": "entero",
+   "original": "sin_codigo = 0",
+   "mutado": "sin_codigo = 1",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/tipos_reclamacion.py",
+   "linea": 48,
+   "col": 30,
+   "operador": "logico",
+   "original": "codigo = (fila.codigo or \"\").strip()",
+   "mutado": "codigo = (fila.codigo and \"\").strip()",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/tipos_reclamacion.py",
+   "linea": 49,
+   "col": 11,
+   "operador": "not",
+   "original": "if not codigo:",
+   "mutado": "if codigo:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/tipos_reclamacion.py",
+   "linea": 50,
+   "col": 26,
+   "operador": "entero",
+   "original": "sin_codigo += 1",
+   "mutado": "sin_codigo += 2",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/tipos_reclamacion.py",
+   "linea": 51,
+   "col": 20,
+   "operador": "comparacion",
+   "original": "elif codigo not in tipos:",
+   "mutado": "elif codigo in tipos:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/tipos_reclamacion.py",
+   "linea": 58,
+   "col": 40,
+   "operador": "aritmetico",
+   "original": "len(lectura.filas) - sin_codigo - len(tipos),",
+   "mutado": "len(lectura.filas) - sin_codigo + len(tipos),",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/tipos_reclamacion.py",
+   "linea": 60,
+   "col": 25,
+   "operador": "aritmetico",
+   "original": "time.monotonic() - arranque,",
+   "mutado": "time.monotonic() + arranque,",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/application/pipelines/tipos_reclamacion.py",
+   "linea": 62,
+   "col": 7,
+   "operador": "negacion",
+   "original": "if lectura.llego_al_techo:",
+   "mutado": "if not lectura.llego_al_techo:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/importacion.py",
+   "linea": 604,
+   "col": 11,
+   "operador": "veracidad",
+   "original": "if etiqueta_listado is None",
+   "mutado": "if not etiqueta_listado",
+   "veredicto": "superviviente"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/plantilla_incidencias.py",
+   "linea": 66,
+   "col": 23,
+   "operador": "entero",
+   "original": "MAX_TIPO_RECLAMACION = 24  # `auxtrcp.cod` (F-072, R16)",
+   "mutado": "MAX_TIPO_RECLAMACION = 25  # `auxtrcp.cod` (F-072, R16)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/plantilla_incidencias.py",
+   "linea": 193,
+   "col": 18,
+   "operador": "booleano",
+   "original": "@dataclass(frozen=True)",
+   "mutado": "@dataclass(frozen=False)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/plantilla_incidencias.py",
+   "linea": 579,
+   "col": 43,
+   "operador": "veracidad",
+   "original": "return TIPO_RECLAMACION_POR_DEFECTO if codigo is None else codigo",
+   "mutado": "return TIPO_RECLAMACION_POR_DEFECTO if not codigo else codigo",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 494,
+   "col": 7,
+   "operador": "not",
+   "original": "if not _mismos_valores(",
+   "mutado": "if _mismos_valores(",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 512,
+   "col": 6,
+   "operador": "comparacion",
+   "original": ") == replace(b, tipo_reclamacion=tipo_efectivo(b.tipo_reclamacion), listado=None)",
+   "mutado": ") != replace(b, tipo_reclamacion=tipo_efectivo(b.tipo_reclamacion), listado=None)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 533,
+   "col": 45,
+   "operador": "comparacion",
+   "original": "if tipo_efectivo(antes.tipo_reclamacion) != tipo_efectivo(",
+   "mutado": "if tipo_efectivo(antes.tipo_reclamacion) == tipo_efectivo(",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 755,
+   "col": 14,
+   "operador": "comparacion",
+   "original": "if pedido is None:",
+   "mutado": "if pedido is not None:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 757,
+   "col": 31,
+   "operador": "logico",
+   "original": "if isinstance(pedido, str) and (",
+   "mutado": "if isinstance(pedido, str) or (",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 758,
+   "col": 15,
+   "operador": "comparacion",
+   "original": "pedido in {o.codigo for o in listas.listados}",
+   "mutado": "pedido not in {o.codigo for o in listas.listados}",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 759,
+   "col": 18,
+   "operador": "comparacion",
+   "original": "or pedido == tipo_efectivo(vigentes.tipo_reclamacion)",
+   "mutado": "or pedido != tipo_efectivo(vigentes.tipo_reclamacion)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 858,
+   "col": 8,
+   "operador": "veracidad",
+   "original": "tipos is not None",
+   "mutado": "tipos",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 859,
+   "col": 8,
+   "operador": "logico",
+   "original": "and v.tipo_reclamacion is not None",
+   "mutado": "or v.tipo_reclamacion is not None",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 860,
+   "col": 31,
+   "operador": "comparacion",
+   "original": "and v.tipo_reclamacion not in tipos",
+   "mutado": "and v.tipo_reclamacion in tipos",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 887,
+   "col": 22,
+   "operador": "comparacion",
+   "original": "if campo.name == \"tipo_reclamacion\":",
+   "mutado": "if campo.name != \"tipo_reclamacion\":",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 891,
+   "col": 32,
+   "operador": "comparacion",
+   "original": "if valores.tipo_reclamacion is not None:",
+   "mutado": "if valores.tipo_reclamacion is None:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/models/revision.py",
+   "linea": 975,
+   "col": 15,
+   "operador": "negacion",
+   "original": "if _mismos_valores(valores, vigentes):  # F-072 (R25): nulo y 0002",
+   "mutado": "if not _mismos_valores(valores, vigentes):  # F-072 (R25): nulo y 0002",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/ports/tipos_reclamacion.py",
+   "linea": 35,
+   "col": 18,
+   "operador": "booleano",
+   "original": "@dataclass(frozen=True)",
+   "mutado": "@dataclass(frozen=False)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/domain/ports/tipos_reclamacion.py",
+   "linea": 44,
+   "col": 36,
+   "operador": "booleano",
+   "original": "nombre: str | None = field(repr=False)",
+   "mutado": "nombre: str | None = field(repr=True)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/infrastructure/documentos/plantilla_yaml.py",
+   "linea": 209,
+   "col": 18,
+   "operador": "comparacion",
+   "original": "if \"listados\" in crudo:",
+   "mutado": "if \"listados\" not in crudo:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/infrastructure/persistencia/sentencias_bandeja.py",
+   "linea": 375,
+   "col": 30,
+   "operador": "entero",
+   "original": "tipo_reclamacion=fila[18],",
+   "mutado": "tipo_reclamacion=fila[19],",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/infrastructure/sigrid/consultas_tipos_reclamacion.py",
+   "linea": 30,
+   "col": 17,
+   "operador": "entero",
+   "original": "COLUMNAS_TIPOS = 3",
+   "mutado": "COLUMNAS_TIPOS = 4",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/infrastructure/sigrid/consultas_tipos_reclamacion.py",
+   "linea": 51,
+   "col": 7,
+   "operador": "not",
+   "original": "if not isinstance(fila, (list, tuple)) or len(fila) != COLUMNAS_TIPOS:",
+   "mutado": "if isinstance(fila, (list, tuple)) or len(fila) != COLUMNAS_TIPOS:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/infrastructure/sigrid/consultas_tipos_reclamacion.py",
+   "linea": 61,
+   "col": 19,
+   "operador": "veracidad",
+   "original": "return None if valor is None else str(valor)",
+   "mutado": "return None if not valor else str(valor)",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/infrastructure/sigrid/consultas_tipos_reclamacion.py",
+   "linea": 66,
+   "col": 13,
+   "operador": "comparacion",
+   "original": "if valor is None:",
+   "mutado": "if valor is not None:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/interface_adapters/api/importar.py",
+   "linea": 218,
+   "col": 11,
+   "operador": "veracidad",
+   "original": "if tipos is None:",
+   "mutado": "if not tipos:",
+   "veredicto": "superviviente"
+  },
+  {
+   "fichero": "services/postventa-api/interface_adapters/api/plantilla.py",
+   "linea": 92,
+   "col": 7,
+   "operador": "veracidad",
+   "original": "if tipos is None:",
+   "mutado": "if not tipos:",
+   "veredicto": "superviviente"
+  },
+  {
+   "fichero": "services/postventa-api/interface_adapters/api/revision.py",
+   "linea": 288,
+   "col": 17,
+   "operador": "comparacion",
+   "original": "if tipos is None:",
+   "mutado": "if tipos is not None:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/interface_adapters/api/revision.py",
+   "linea": 520,
+   "col": 17,
+   "operador": "comparacion",
+   "original": "if tipos is None:",
+   "mutado": "if tipos is not None:",
+   "veredicto": "muerto"
+  },
+  {
+   "fichero": "services/postventa-api/interface_adapters/api/revision.py",
+   "linea": 534,
+   "col": 23,
+   "operador": "ternario",
+   "original": "tipos=tipos if lee_sigrid else None,",
+   "mutado": "tipos=tipos if not lee_sigrid else None,",
+   "veredicto": "muerto"
+  }
+ ]
+}

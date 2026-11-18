@@ -157,8 +157,10 @@ def test_f056_r36_el_fichero_va_detras_de_los_de_f036():
 
     # F-059 (R41, F-1 (a); design.md §21.3 A): el último es ahora el `16_` (lee de este);
     # el `15_` va justo antes.
-    assert nombres[-2] == FICHERO
-    assert nombres[-1] == "16_volcados_sigrid.sql"
+    # F-072 (R16): detrás va `17_tipo_reclamacion.sql` (amplía la bandeja y esta).
+    assert nombres[-3] == FICHERO
+    assert nombres[-2] == "16_volcados_sigrid.sql"
+    assert nombres[-1] == "17_tipo_reclamacion.sql"
     assert nombres.index("14_decisiones_equivalencia.sql") < nombres.index(FICHERO)
     assert nombres.index(BANDEJA) < nombres.index(FICHERO)
 

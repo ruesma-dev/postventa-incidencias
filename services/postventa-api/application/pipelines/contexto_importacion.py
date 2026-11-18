@@ -12,7 +12,7 @@ composición de los seis pasos vive en el punto de entrada
 |---|---|
 | 1 · `paso_huella` | `hash`; si los bytes ya constan en una importación **completa**, `resultado` (con `ya_importado`) y `obra_codigo` |
 | 2 · `paso_reconocimiento` | `libro` y `obra_codigo` (de los metadatos, normalizado) |
-| 3 · `paso_catalogo` | `catalogo`, `grupos_oficio`, `grupos_proveedor`, `opciones_oficio`, `opciones_proveedor` |
+| 3 · `paso_catalogo` | `catalogo`, `ubicaciones_por_unidad`, `oficios`, `pares` (F-071), `tipos` (F-072) |
 | 4 · `paso_validacion` | `validas` y `con_error` |
 | 5 · `paso_registro` | `agrupadas` y `resultado` |
 | 6 · `paso_excel_errores` | `excel_errores`, solo si hay filas con error |
@@ -21,10 +21,12 @@ composición de los seis pasos vive en el punto de entrada
 validado» y «no hay ninguna» son cosas distintas, y el registro no puede
 confundirlas (una plantilla sin filas se registra, completa y con cero leídas).
 
-**Desviación anotada respecto de §7.3** (heredada de T5, decisión 2 del
-Bloque 1): el contexto guarda también las **opciones** de `Oficio` y
-`Proveedor`, calculadas una vez con los grupos vigentes y usadas en la
-validación y en el Excel de errores («con el mismo catálogo y opciones»).
+El contexto guarda las **opciones** de `Oficio` y `Proveedor` por código y
+las **ubicaciones de cada unidad** leídas de Sigrid, calculadas una vez y
+usadas en la validación y en el Excel de errores, sin otra lectura (F-071 §6.2,
+R40). Desde F-071 no hay grupos de equivalencia (D-14). Igual los **tipos de
+reclamación** de Sigrid (F-072, R11, R13): una lectura, y con ellos se valida
+`Listado` y se escribe su lista en el Excel de errores.
 
 ## Datos personales (R47)
 
@@ -40,7 +42,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from domain.models.equivalencias import GruposVigentes
 from domain.models.importacion import (
     FilaConError,
     GrupoDeClave,
@@ -49,8 +50,10 @@ from domain.models.importacion import (
 )
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
-    OpcionOficio,
-    OpcionProveedor,
+    OpcionOficioSigrid,
+    ParSigrid,
+    TipoReclamacion,
+    UbicacionesPorUnidad,
 )
 from domain.ports.bandeja import ResultadoImportacion
 
@@ -80,10 +83,16 @@ class ContextoImportacion:
     libro: LibroLeido | None = field(default=None, repr=False)
     obra_codigo: str | None = None
     catalogo: CatalogoObra | None = field(default=None, repr=False)
-    grupos_oficio: GruposVigentes | None = field(default=None, repr=False)
-    grupos_proveedor: GruposVigentes | None = field(default=None, repr=False)
-    opciones_oficio: tuple[OpcionOficio, ...] = field(default=(), repr=False)
-    opciones_proveedor: tuple[OpcionProveedor, ...] = field(default=(), repr=False)
+    # F-071: las opciones por código y las ubicaciones de cada unidad con las
+    # que se valida y se escribe el Excel de errores (sin otra lectura, R40).
+    oficios: tuple[OpcionOficioSigrid, ...] = field(default=(), repr=False)
+    pares: tuple[ParSigrid, ...] = field(default=(), repr=False)
+    ubicaciones_por_unidad: UbicacionesPorUnidad = field(
+        default_factory=dict, repr=False
+    )
+    # F-072: los tipos de reclamación leídos de Sigrid (R11); su `nombre` es
+    # `res`, que nunca va a una traza (R30).
+    tipos: tuple[TipoReclamacion, ...] = field(default=(), repr=False)
     validas: tuple[IncidenciaValida, ...] | None = field(default=None, repr=False)
     con_error: tuple[FilaConError, ...] | None = field(default=None, repr=False)
     agrupadas: tuple[GrupoDeClave, ...] = field(default=(), repr=False)

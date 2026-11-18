@@ -61,6 +61,7 @@ from application.pipelines.plantilla import (
 from domain.models.equivalencias import DISTINTO, Catalogo, DecisionPar
 from domain.models.errores import (
     CatalogoNoDisponible,
+    CatalogoSinVerificar,
     CodigoDeObraInvalido,
     FicheroDemasiadoGrande,
     FicheroNoEsPlantilla,
@@ -69,7 +70,7 @@ from domain.models.errores import (
 )
 from domain.models.importacion import (
     FALTA_DESCRIPCION,
-    UNIDAD_FUERA_DE_LISTA,
+    ya_no_esta_en_sigrid,
     CeldaLeida,
     ErrorDeFila,
     EstadoFilaImportada,
@@ -84,6 +85,8 @@ from domain.models.plantilla_incidencias import (
     IDENTIFICADOR_PLANTILLA,
     OficioObra,
     ProveedorEnObra,
+    listas_con_tipos,
+    ubicaciones_de_la_plantilla,
 )
 from domain.ports.catalogo_obra import FilaOficioCatalogo
 from infrastructure.documentos.excel_openpyxl import HOJA_INCIDENCIAS
@@ -99,6 +102,9 @@ from tests.utiles_importacion import (
     EquivalenciasEnMemoria,
     GeneradorQueAnota,
     LectorQueAnota,
+    TIPOS_FICTICIOS,
+    TiposEnMemoria,
+    UbicacionesEnMemoria,
     fichero,
     fila,
     filas_de_oficios,
@@ -114,11 +120,15 @@ OID = "oid-inventado-de-quien-sube"
 DESCRIPCION = "Grieta en el tabique del salón"
 DETALLE = "Llamar a Fulanita de Tal antes de ir"
 
-#: Las filas de ejemplo: una buena y una con la unidad tecleada en minúsculas.
+#: Las filas de ejemplo: una buena y una con una unidad que no está en Sigrid.
+#: F-071 R36: la unidad tecleada en minúsculas («viviendas bloque villa 2»), la
+#: mala de F-036, ahora casa con su opción y entra con aviso; la mala es la de
+#: R37, una unidad que ya no está en la obra.
+UNIDAD_FUERA = "Viviendas Bloque Villa 9"
 BUENA = fila(
     unidad=VILLA_1, ubicacion="Almacén", descripcion=DESCRIPCION, detalle=DETALLE
 )
-MALA = fila(unidad="viviendas bloque villa 2", descripcion="Puerta que no cierra")
+MALA = fila(unidad=UNIDAD_FUERA, descripcion="Puerta que no cierra")
 
 #: Los pasos, por el nombre de la llamada que hace cada uno.
 ORDEN_COMPLETO = [
@@ -126,7 +136,10 @@ ORDEN_COMPLETO = [
     "lector.leer",
     "catalogo.leer_unidades",
     "catalogo.leer_oficios",
-    "equivalencias.ultimas_decisiones",
+    # F-071 R24: después del catálogo, una lectura de las ubicaciones de cada
+    # unidad; ninguna de las decisiones de equivalencia (antes,
+    # "equivalencias.ultimas_decisiones").
+    "ubicaciones",
     "bandeja.registrar",
     "generador.generar",
 ]
@@ -144,7 +157,13 @@ class Mundo:
         self.bandeja = BandejaEnMemoria(self.llamadas)
         self.lector = LectorQueAnota(self.llamadas)
         self.catalogo = CatalogoEnMemoria(self.llamadas)
+        # F-071 R24: las decisiones siguen en la base, pero la importación ya no
+        # las lee; el doble queda para probar justo eso (`pedidas == []`).
         self.equivalencias = EquivalenciasEnMemoria(self.llamadas, self.decisiones)
+        self.ubicaciones = UbicacionesEnMemoria(self.llamadas)
+        # F-072 R1, R11: los tipos de reclamación, sin anotar en `llamadas` (el
+        # orden con ellos lo fijan `test_f072_plantilla.py` y `..._importacion.py`).
+        self.tipos = TiposEnMemoria()
         self.generador = GeneradorQueAnota(self.llamadas)
 
     def nuevo_id(self) -> UUID:
@@ -163,7 +182,7 @@ class Mundo:
         )
         contexto = paso_huella(contexto, self.bandeja)
         contexto = paso_reconocimiento(contexto, self.lector)
-        contexto = paso_catalogo(contexto, self.catalogo, self.equivalencias)
+        contexto = paso_catalogo(contexto, self.catalogo, self.ubicaciones, self.tipos)
         contexto = paso_validacion(contexto, CONFIG.listas)
         contexto = paso_registro(contexto, self.bandeja, nuevo_id=self.nuevo_id)
         return paso_excel_errores(
@@ -222,7 +241,8 @@ def test_f036_t17_leer_el_catalogo_sin_reconocer_es_un_paso_fuera_de_orden():
         paso_catalogo(
             _contexto(hash="h"),
             CatalogoEnMemoria(llamadas),
-            EquivalenciasEnMemoria(llamadas),
+            UbicacionesEnMemoria(llamadas),  # F-071 R24
+            TiposEnMemoria(llamadas),  # F-072 R11
         )
     assert llamadas == []
 
@@ -364,7 +384,9 @@ def test_f036_r39_con_el_atajo_cada_paso_siguiente_no_hace_nada(paso):
 
     llamadas = {
         "reconocimiento": lambda c: paso_reconocimiento(c, mundo.lector),
-        "catalogo": lambda c: paso_catalogo(c, mundo.catalogo, mundo.equivalencias),
+        "catalogo": lambda c: paso_catalogo(
+            c, mundo.catalogo, mundo.ubicaciones, mundo.tipos
+        ),
         "validacion": lambda c: paso_validacion(c, CONFIG.listas),
         "registro": lambda c: paso_registro(c, mundo.bandeja, nuevo_id=mundo.nuevo_id),
         "excel_errores": lambda c: paso_excel_errores(
@@ -412,7 +434,7 @@ def test_f036_r39_los_mismos_bytes_de_una_parcial_se_procesan_otra_vez():
 def _libro(**campos) -> LibroLeido:
     base = {
         "identificador": IDENTIFICADOR_PLANTILLA,
-        "version": 1,
+        "version": 2,  # F-071 R22: la versión vigente (antes, 1)
         "obra_codigo": "0677",
         "cabecera": CABECERA,
         "filas": (),
@@ -427,7 +449,10 @@ def _libro(**campos) -> LibroLeido:
     [
         (_libro(identificador=None), "no_es_la_plantilla"),
         (_libro(identificador=None, parece_formato_antiguo=True), "formato_antiguo"),
-        (_libro(version=2), "version_no_soportada"),
+        # F-071 R23: la v1 es `version_anterior`; una distinta de 1 y 2 sigue
+        # siendo `version_no_soportada` (antes, `version=2`).
+        (_libro(version=1), "version_anterior"),
+        (_libro(version=3), "version_no_soportada"),
         (_libro(cabecera=CABECERA[1:]), "cabecera_distinta"),
         (_libro(obra_codigo="06 77/"), "obra_invalida"),
     ],
@@ -497,9 +522,10 @@ def test_f036_t17_el_catalogo_se_lee_con_la_obra_de_los_metadatos():
 
     assert mundo.catalogo.codigos_pedidos == ["0677"]
     assert contexto.catalogo == catalogo()
-    assert mundo.equivalencias.pedidas == [
-        (Catalogo.OFICIO, frozenset({"0046", "0085", "0133", "0166"}))
-    ]
+    # F-071 R24: las ubicaciones se piden una vez, con el catálogo ya leído, y
+    # las decisiones de equivalencia no se leen (antes: las de oficio de la obra).
+    assert mundo.ubicaciones.catalogos == [catalogo()]
+    assert mundo.equivalencias.pedidas == []
 
 
 @pytest.mark.parametrize(
@@ -520,35 +546,46 @@ def test_f036_t17_si_el_catalogo_falla_no_se_escribe_nada(fallo):
     assert "generador.generar" not in mundo.llamadas
 
 
-def test_f036_t17_si_la_base_no_da_los_grupos_no_se_escribe_nada():
+@pytest.mark.parametrize(
+    "fallo",
+    [CatalogoSinVerificar("al techo"), CatalogoNoDisponible("sin pasarela")],
+)
+def test_f036_t17_si_las_ubicaciones_no_se_leen_no_se_escribe_nada(fallo):
+    """F-071 R25 (sustituye a «si la base no da los grupos»: ya no se leen, R24)."""
     mundo = Mundo()
-    mundo.equivalencias = EquivalenciasEnMemoria(
-        mundo.llamadas, fallo=PersistenciaNoDisponible("sin base")
-    )
+    mundo.ubicaciones = UbicacionesEnMemoria(mundo.llamadas, fallo=fallo)
 
-    with pytest.raises(PersistenciaNoDisponible):
+    with pytest.raises(type(fallo)):
         mundo.importar(fichero(BUENA))
 
     assert mundo.bandeja.registradas == []
+    assert "generador.generar" not in mundo.llamadas
 
 
-def test_f036_t17_el_paso_de_catalogo_deja_grupos_y_opciones():
+def test_f036_t17_el_paso_de_catalogo_deja_oficios_pares_y_ubicaciones():
+    """F-071 R12–R14, R24: por código y sin grupos, aunque haya un «mismo»."""
     mundo = Mundo(decisiones=(mismo("0085", "0166"),))
 
     contexto = mundo.importar(fichero(BUENA))
 
-    assert contexto.grupos_oficio.catalogo is Catalogo.OFICIO
-    assert contexto.grupos_proveedor.catalogo is Catalogo.PROVEEDOR
-    assert [o.etiqueta for o in contexto.opciones_oficio] == [
-        "Carpintería de madera",
-        "Mamparas",
-        "Albañilería",
+    # F-071 R12, R13 (antes: tres opciones, 0085 y 0166 agrupadas en «Mamparas»).
+    assert [o.etiqueta for o in contexto.oficios] == [
+        "Carpintería de madera (0046)",
+        "Mamparas (0085)",
+        "Albañilería (0133)",
+        "Mampara (0166)",
     ]
-    assert [p.etiqueta for p in contexto.opciones_proveedor] == [
-        "Carpintería de madera · Carpinterías Ejemplo S.L.",
-        "Carpintería de madera · Juan Ejemplo Ejemplo",
-        "Mamparas · Mamparas Ejemplo S.A.",
+    # F-071 R14 (antes: tres pares por grupo, sin códigos).
+    assert [p.etiqueta for p in contexto.pares] == [
+        "Carpintería de madera (0046) · Carpinterías Ejemplo S.L. (P001)",
+        "Carpintería de madera (0046) · Juan Ejemplo Ejemplo (P003)",
+        "Mamparas (0085) · Mamparas Ejemplo S.A. (P002)",
+        "Mampara (0166) · Mamparas Ejemplo S.A. (P002)",
     ]
+    # F-071 R24: las de la fuente, tal cual.
+    assert contexto.ubicaciones_por_unidad == mundo.ubicaciones.mapa
+    for antiguo in ("grupos_oficio", "grupos_proveedor", "opciones_oficio"):
+        assert not hasattr(contexto, antiguo)
 
 
 # --------------------------------------------------------------------------
@@ -556,52 +593,58 @@ def test_f036_t17_el_paso_de_catalogo_deja_grupos_y_opciones():
 # --------------------------------------------------------------------------
 
 
-def test_f036_r92_con_el_grupo_confirmado_el_oficio_del_grupo_entra_ambiguo():
-    """D-19 = (a): dos códigos en la obra y sin proveedor → `oficio_ambiguo`."""
+def test_f036_r92_con_el_grupo_confirmado_el_oficio_entra_con_su_codigo():
+    """F-071 R12, R32, R35 (antes, D-19 = (a): el grupo entraba `oficio_ambiguo`)."""
     mundo = Mundo(decisiones=(mismo("0085", "0166"),))
-    con_grupo = fila(unidad=VILLA_1, descripcion="Mampara rota", oficio="Mamparas")
+    con_grupo = fila(unidad=VILLA_1, descripcion="Mampara rota", oficio="Mamparas (0085)")
 
     contexto = mundo.importar(fichero(con_grupo, decisiones=mundo.decisiones))
 
     (valida,) = contexto.validas
-    assert valida.oficio.ambiguo is True
-    assert valida.oficio.codigo is None
-    assert valida.oficio.etiqueta == "Mamparas"
+    assert valida.oficio.ambiguo is False
+    assert valida.oficio.codigo == "0085"
+    assert valida.oficio.etiqueta == "Mamparas"  # F-071 R32: el nombre de Sigrid
     assert contexto.con_error == ()
 
 
-def test_f036_r94_con_el_grupo_confirmado_el_par_resuelve_el_proveedor():
+def test_f036_r94_con_el_grupo_confirmado_el_par_resuelve_oficio_y_proveedor():
+    """F-071 R33, R35 (antes: proveedor resuelto y oficio del grupo ambiguo)."""
     mundo = Mundo(decisiones=(mismo("0085", "0166"),))
     con_par = fila(
         unidad=VILLA_1,
         descripcion="Mampara rota",
-        proveedor="Mamparas · Mamparas Ejemplo S.A.",
+        proveedor="Mampara (0166) · Mamparas Ejemplo S.A. (P002)",
     )
 
     contexto = mundo.importar(fichero(con_par, decisiones=mundo.decisiones))
 
     (valida,) = contexto.validas
-    assert valida.oficio.ambiguo is True
+    assert valida.oficio.ambiguo is False
+    assert valida.oficio.codigo == "0166"
     assert valida.proveedor.codigo == "P002"
+    assert valida.proveedor.ambiguo is False
 
 
-def test_f036_r92_con_el_grupo_confirmado_el_nombre_suelto_ya_no_vale():
-    """Sin la decisión «Mampara» (0166) es una opción; con ella, un error de fila."""
+def test_f036_r92_con_el_grupo_confirmado_cada_codigo_sigue_valiendo():
+    """F-071 R12 (antes: con la decisión, «Mampara» suelto era un error de fila)."""
     sin_grupo = Mundo()
     con_grupo = Mundo(decisiones=(mismo("0085", "0166"),))
-    suelta = fila(unidad=VILLA_1, descripcion="Mampara rota", oficio="Mampara")
+    suelta = fila(unidad=VILLA_1, descripcion="Mampara rota", oficio="Mampara (0166)")
 
     antes = sin_grupo.importar(fichero(suelta))
     despues = con_grupo.importar(fichero(suelta))
 
     assert antes.validas[0].oficio.codigo == "0166"
-    assert despues.validas == ()
-    (error,) = despues.con_error[0].errores
-    assert error.columna == "Oficio"
+    assert despues.validas[0].oficio.codigo == "0166"
+    assert despues.con_error == ()
 
 
 def test_f036_r82_una_decision_distinto_anula_la_componente_entera():
-    """0046–0085 y 0085–0166 «mismo», pero 0046–0166 «distinto»: no se aplica."""
+    """0046–0085 y 0085–0166 «mismo», pero 0046–0166 «distinto»: no se aplica.
+
+    F-071 R24 y `design.md` §6.3: la importación ya no agrupa; la regla sigue
+    en `opciones_de_la_obra`, que solo usa la revisión, y se prueba ahí.
+    """
     distinto = DecisionPar(
         catalogo=Catalogo.OFICIO,
         codigo_a="0046",
@@ -612,17 +655,17 @@ def test_f036_r82_una_decision_distinto_anula_la_componente_entera():
         decidido_por="oid-de-prueba",
         decidido_at_utc=AHORA,
     )
-    mundo = Mundo(decisiones=(mismo("0046", "0085"), mismo("0085", "0166"), distinto))
+    decisiones = (mismo("0046", "0085"), mismo("0085", "0166"), distinto)
 
-    contexto = mundo.importar(fichero(BUENA))
+    opciones = opciones_de_la_obra(catalogo(), EquivalenciasEnMemoria([], decisiones))
 
-    assert [o.etiqueta for o in contexto.opciones_oficio] == [
+    assert [o.etiqueta for o in opciones.oficios] == [
         "Carpintería de madera",
         "Mamparas",
         "Albañilería",
         "Mampara",
     ]
-    assert contexto.grupos_oficio.no_aplicados == (frozenset({"0046", "0085", "0166"}),)
+    assert opciones.grupos_oficio.no_aplicados == (frozenset({"0046", "0085", "0166"}),)
 
 
 def test_f036_r86_la_etiqueta_del_grupo_es_la_del_oficio_con_mas_filas_en_obrofc():
@@ -716,7 +759,7 @@ def test_f036_r42_el_registro_lleva_quien_cuando_que_fichero_y_que_plantilla():
     assert registro.hash_fichero == hashlib.sha256(contenido).hexdigest()
     assert registro.nombre_fichero == "mi fichero.xlsx"
     assert registro.obra_codigo == "0677"
-    assert registro.plantilla_version == 1
+    assert registro.plantilla_version == 2  # F-071 R22 (antes, 1)
     assert registro.importado_por == OID
     assert registro.importado_at_utc == AHORA
     assert registro.estado is EstadoImportacion.COMPLETA
@@ -748,7 +791,7 @@ def test_f036_r40_si_la_base_falla_no_hay_excel_de_errores():
     )
     contexto = paso_huella(contexto, mundo.bandeja)
     contexto = paso_reconocimiento(contexto, mundo.lector)
-    contexto = paso_catalogo(contexto, mundo.catalogo, mundo.equivalencias)
+    contexto = paso_catalogo(contexto, mundo.catalogo, mundo.ubicaciones, mundo.tipos)
     contexto = paso_validacion(contexto, CONFIG.listas)
 
     with pytest.raises(PersistenciaNoDisponible):
@@ -779,11 +822,11 @@ def test_f036_r62_el_excel_de_errores_lleva_solo_las_filas_con_error_tal_como_ll
     contexto = mundo.importar(fichero(MALA, BUENA, otra_mala))
 
     filas = _incidencias(contexto.excel_errores.contenido)
-    assert [f[0] for f in filas] == ["viviendas bloque villa 2", VILLA_2]
+    assert [f[0] for f in filas] == [UNIDAD_FUERA, VILLA_2]  # F-071 R36, R37
     assert filas[0][2] == "Puerta que no cierra"
     assert filas[1][4] == "Fontanería"
     assert filas[0][CABECERA.index(COLUMNA_ERRORES)] == (
-        f"Fila 2 del fichero subido · Unidad: {UNIDAD_FUERA_DE_LISTA}"
+        f"Fila 2 del fichero subido · Unidad: {ya_no_esta_en_sigrid('Unidad')}"
     )
     assert filas[1][CABECERA.index(COLUMNA_ERRORES)].startswith(
         f"Fila 4 del fichero subido · Descripción corta: {FALTA_DESCRIPCION} · Oficio: "
@@ -797,9 +840,17 @@ def test_f036_r62_el_excel_de_errores_usa_el_mismo_catalogo_y_opciones():
 
     (argumentos,) = mundo.generador.argumentos
     assert argumentos["catalogo"] is contexto.catalogo
-    assert argumentos["opciones_oficio"] is contexto.opciones_oficio
-    assert argumentos["opciones_proveedor"] is contexto.opciones_proveedor
-    assert argumentos["listas"] is CONFIG.listas
+    # F-071 R40: las mismas opciones por código y las mismas ubicaciones, sin
+    # otra lectura (antes, `opciones_oficio` y `opciones_proveedor` del contexto).
+    assert argumentos["oficios"] is contexto.oficios
+    assert argumentos["pares"] is contexto.pares
+    assert argumentos["ubicaciones"] == ubicaciones_de_la_plantilla(
+        contexto.catalogo.unidades, mundo.ubicaciones.mapa
+    )
+    assert mundo.llamadas.count("ubicaciones") == 1
+    # F-072 R6, R13 (sustituye a `is CONFIG.listas`): `listados` lo rellena la
+    # aplicación con los tipos leídos (los ficticios de `TiposEnMemoria`).
+    assert argumentos["listas"] == listas_con_tipos(CONFIG.listas, TIPOS_FICTICIOS)
     assert argumentos["textos"] is CONFIG.textos
     assert argumentos["generada_at"] == AHORA
     assert (
@@ -948,7 +999,7 @@ def test_f036_r67_el_excel_de_errores_generado_se_puede_volver_a_subir():
     assert segunda.obra_codigo == "0677"
     assert segunda.validas == ()
     assert [e.problema for f in segunda.con_error for e in f.errores] == [
-        UNIDAD_FUERA_DE_LISTA
+        ya_no_esta_en_sigrid("Unidad")
     ]
 
 
@@ -1022,7 +1073,8 @@ def _plantilla(mundo: Mundo, codigo: object = "0677", ahora: datetime = AHORA):
     return generar_plantilla(
         codigo,
         catalogo_obra=mundo.catalogo,
-        equivalencias=mundo.equivalencias,
+        ubicaciones=mundo.ubicaciones,  # F-071 R1 (antes, `equivalencias`)
+        tipos=mundo.tipos,  # F-072 R1
         generador=mundo.generador,
         listas=CONFIG.listas,
         textos=CONFIG.textos,
@@ -1030,17 +1082,20 @@ def _plantilla(mundo: Mundo, codigo: object = "0677", ahora: datetime = AHORA):
     )
 
 
-def test_f036_r1_la_plantilla_lee_el_catalogo_los_grupos_y_genera():
+def test_f036_r1_la_plantilla_lee_el_catalogo_las_ubicaciones_y_genera():
     mundo = Mundo()
 
     nombre, contenido = _plantilla(mundo)
 
+    # F-071 R1, R2: catálogo, después las ubicaciones, y ninguna decisión
+    # (antes, "equivalencias.ultimas_decisiones" en lugar de "ubicaciones").
     assert mundo.llamadas == [
         "catalogo.leer_unidades",
         "catalogo.leer_oficios",
-        "equivalencias.ultimas_decisiones",
+        "ubicaciones",
         "generador.generar",
     ]
+    assert mundo.equivalencias.pedidas == []
     assert nombre == "plantilla_incidencias_0677_20260930.xlsx"
     assert contenido.startswith(b"PK\x03\x04")
     (argumentos,) = mundo.generador.argumentos
@@ -1048,27 +1103,31 @@ def test_f036_r1_la_plantilla_lee_el_catalogo_los_grupos_y_genera():
     assert argumentos["filas"] == ()
     assert argumentos["importacion_origen"] is None
     assert argumentos["generada_at"] == AHORA
-    assert argumentos["listas"] is CONFIG.listas
+    # F-072 R6, R13 (sustituye a `is CONFIG.listas`): `listados` lo rellena la
+    # aplicación con los tipos leídos (los ficticios de `TiposEnMemoria`).
+    assert argumentos["listas"] == listas_con_tipos(CONFIG.listas, TIPOS_FICTICIOS)
     assert argumentos["textos"] is CONFIG.textos
 
 
-def test_f036_r92_la_plantilla_ofrece_un_oficio_por_grupo_confirmado():
+def test_f036_r92_la_plantilla_ofrece_un_oficio_por_codigo_aunque_haya_grupo():
+    """F-071 R12, R14 (antes: un oficio por grupo confirmado)."""
     mundo = Mundo(decisiones=(mismo("0085", "0166"),))
 
     _, contenido = _plantilla(mundo)
 
     (argumentos,) = mundo.generador.argumentos
-    assert [o.etiqueta for o in argumentos["opciones_oficio"]] == [
-        "Carpintería de madera",
-        "Mamparas",
-        "Albañilería",
+    assert [o.etiqueta for o in argumentos["oficios"]] == [
+        "Carpintería de madera (0046)",
+        "Mamparas (0085)",
+        "Albañilería (0133)",
+        "Mampara (0166)",
     ]
-    assert [p.etiqueta for p in argumentos["opciones_proveedor"]][-1] == (
-        "Mamparas · Mamparas Ejemplo S.A."
+    assert [p.etiqueta for p in argumentos["pares"]][-1] == (
+        "Mampara (0166) · Mamparas Ejemplo S.A. (P002)"
     )
-    # La plantilla generada se importa con esas mismas opciones.
+    # La plantilla generada se importa con esas mismas opciones (F-071 R40).
     importada = Mundo(decisiones=mundo.decisiones)
-    fila_ = fila(unidad=VILLA_1, descripcion="Mampara rota", oficio="Mamparas")
+    fila_ = fila(unidad=VILLA_1, descripcion="Mampara rota", oficio="Mamparas (0085)")
     assert importada.importar(contenido).obra_codigo == "0677"
     assert importada.importar(fichero(fila_, decisiones=mundo.decisiones)).validas
 
@@ -1108,7 +1167,9 @@ def test_f036_r9_un_codigo_inadmisible_no_llama_a_sigrid_ni_a_la_base(codigo):
     [
         ("catalogo", ObraSinUnidades("sin unidades")),
         ("catalogo", CatalogoNoDisponible("sin pasarela")),
-        ("equivalencias", PersistenciaNoDisponible("sin base")),
+        # F-071 R3 (antes, la base de las decisiones caída: ya no se lee, R2).
+        ("ubicaciones", CatalogoSinVerificar("al techo")),
+        ("ubicaciones", CatalogoNoDisponible("sin pasarela")),
     ],
 )
 def test_f036_r10_r11_si_algo_falla_no_hay_plantilla(donde, fallo):
@@ -1116,7 +1177,7 @@ def test_f036_r10_r11_si_algo_falla_no_hay_plantilla(donde, fallo):
     if donde == "catalogo":
         mundo.catalogo = CatalogoEnMemoria(mundo.llamadas, fallo=fallo)
     else:
-        mundo.equivalencias = EquivalenciasEnMemoria(mundo.llamadas, fallo=fallo)
+        mundo.ubicaciones = UbicacionesEnMemoria(mundo.llamadas, fallo=fallo)
 
     with pytest.raises(type(fallo)):
         _plantilla(mundo)
@@ -1131,8 +1192,10 @@ def test_f036_r12_la_plantilla_de_una_obra_sin_oficios_se_genera_igual():
     _nombre, contenido = _plantilla(mundo)
 
     (argumentos,) = mundo.generador.argumentos
-    assert argumentos["opciones_oficio"] == ()
-    assert argumentos["opciones_proveedor"] == ()
+    # F-071 R12, R14: los argumentos nuevos (antes, `opciones_oficio` y
+    # `opciones_proveedor`).
+    assert argumentos["oficios"] == ()
+    assert argumentos["pares"] == ()
     assert contenido.startswith(b"PK")
 
 
@@ -1218,7 +1281,8 @@ def test_f036_t17_el_catalogo_exige_libro_y_obra_a_la_vez(campos):
         paso_catalogo(
             _contexto(**campos),
             CatalogoEnMemoria(llamadas),
-            EquivalenciasEnMemoria(llamadas),
+            UbicacionesEnMemoria(llamadas),  # F-071 R24
+            TiposEnMemoria(llamadas),  # F-072 R11
         )
     assert llamadas == []
 

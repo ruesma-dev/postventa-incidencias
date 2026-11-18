@@ -69,7 +69,8 @@ __all__ = [
 #: aquí, como la cola de F-019: el servidor es de 1 vCPU y compartido.
 LIMITE_MAXIMO_BANDEJA = 500
 
-#: Las columnas de `13_bandeja_incidencias.sql`, en su orden.
+#: Las columnas de `13_bandeja_incidencias.sql`, en su orden, y detrás la que
+#: añade `17_tipo_reclamacion.sql` (F-072), que `ADD COLUMN` deja la última.
 COLUMNAS_BANDEJA: tuple[str, ...] = (
     "incidencia_id",
     "origen",
@@ -92,6 +93,7 @@ COLUMNAS_BANDEJA: tuple[str, ...] = (
     "clave_duplicado",
     "duplicada_de",
     "creada_at_utc",
+    "tipo_reclamacion",
 )
 
 #: Las que se escriben al registrar la importación: los tres recuentos de la
@@ -146,6 +148,7 @@ _COLUMNAS_LISTADO: tuple[str, ...] = (
     "listado",
     "duplicada_de",
     "creada_at_utc",
+    "tipo_reclamacion",
 )
 
 #: Las de `14_decisiones_equivalencia.sql` que se escriben y se leen (sin el
@@ -273,6 +276,9 @@ def valores_de_fila(
     `unidad_nombre` es la etiqueta que vio quien rellenó (§4.1); `creada_at_utc`,
     el instante de la importación, para que el listado ponga las de la más
     reciente primero (R45).
+
+    F-072 (R15): la fila nueva lleva el `tipo_reclamacion` de la fila válida y
+    `listado` a `NULL`; el `listado` de F-036 ya no se escribe, solo se lee.
     """
     oficio_codigo, oficio_nombre, oficio_ambiguo = _columnas_de(valida.oficio)
     proveedor_codigo, proveedor_nombre, proveedor_ambiguo = _columnas_de(
@@ -296,10 +302,11 @@ def valores_de_fila(
         proveedor_nombre,
         proveedor_ambiguo,
         None if valida.urgencia is None else valida.urgencia.value,
-        None if valida.listado is None else valida.listado.value,
+        None,  # `listado`: F-072 (R15), lo nuevo nace sin él
         clave,
         duplicada_de,
         importacion.importado_at_utc,
+        valida.tipo_reclamacion,
     )
 
 
@@ -365,6 +372,7 @@ def fila_a_incidencia(fila: Sequence[Any]) -> IncidenciaEnBandeja:
         listado=None if fila[15] is None else Listado(fila[15]),
         duplicada_de=_uuid_o_nada(fila[16]),
         creada_at_utc=fila[17],
+        tipo_reclamacion=fila[18],
     )
 
 

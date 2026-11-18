@@ -25,6 +25,12 @@ a mano; `opciones_de_oficio` y `opciones_de_proveedor` son de T7), y deja que
 la importación calcule las opciones **una vez** y use las mismas en la
 validación y en el Excel de errores (§7.3, paso 6).
 
+F-072 (`specs/F-072-tipo-reclamacion-sigrid/design.md` §3.2): la celda
+`Listado` se casa con las etiquetas de los tipos de reclamación de Sigrid que
+trae `listas.listados` (R12) y la fila guarda su **código** en
+`tipo_reclamacion`; en blanco, `0002` sin mirarlo en la lista (R14). El
+`listado` de F-036 ya no se rellena: toda fila nueva lo lleva a `None` (R15).
+
 Sin `openpyxl`, sin red, sin base de datos y sin reloj.
 """
 
@@ -37,6 +43,11 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
+from domain.models.casado_con_lista import (
+    Coincidencia,
+    casar_con_lista,
+    ubicacion_de_sigrid,
+)
 from domain.models.errores import CodigoDeObraInvalido, FicheroNoEsPlantilla
 from domain.models.plantilla_incidencias import (
     CABECERA,
@@ -44,18 +55,24 @@ from domain.models.plantilla_incidencias import (
     MAX_DESCRIPCION,
     MAX_DETALLE,
     MAX_FILAS,
+    VERSION_ANTERIOR,
+    TIPO_RECLAMACION_POR_DEFECTO,
     VERSIONES_SOPORTADAS,
     CatalogoObra,
     Listado,
     ListasCerradas,
     Opcion,
     OpcionOficio,
+    OpcionOficioSigrid,
     OpcionProveedor,
+    ParSigrid,
+    UbicacionesPorUnidad,
     Urgencia,
     etiquetas_de_unidades,
     normalizar_codigo_obra,
     normalizar_para_clave,
     plegar,
+    ubicaciones_de_la_plantilla,
 )
 
 # Nombres de columna, por legibilidad; salen de la cabecera del contrato.
@@ -98,11 +115,6 @@ FECHA_EN_TEXTO = "la celda lleva una fecha o un valor verdadero/falso: escribe e
 FECHA_EN_TASADA = "la celda lleva una fecha o un valor verdadero/falso: elige un valor del desplegable"
 NUMERO_EN_TASADA = "la celda lleva un número: elige un valor del desplegable"
 FALTA_UNIDAD = "falta la unidad; en esta plantilla no se hereda de la fila de arriba"
-UNIDAD_FUERA_DE_LISTA = (
-    "ese valor no está en la lista de unidades de la obra: elígelo del desplegable "
-    "(cuidado con mayúsculas, tildes y espacios); si la plantilla es antigua, "
-    "descarga una nueva"
-)
 FALTA_DESCRIPCION = "falta la descripción corta"
 PROVEEDOR_DE_OTRO_OFICIO = (
     "ese proveedor no está dado de alta en la obra para ese oficio"
@@ -115,6 +127,50 @@ AVISO_MAYUSCULAS = (
     "la descripción corta va casi toda en mayúsculas: escríbela normal y marca la "
     "urgencia en su columna"
 )
+
+# Textos de F-071 (`design.md` §5.6): sin el valor tecleado ni la unidad.
+UBICACION_FUERA_DE_LA_UNIDAD = (
+    "esa ubicación no es de la unidad de esta fila: elígela del desplegable, "
+    "que enseña solo las de su unidad (si has cambiado la unidad, vuelve a "
+    "elegir la ubicación); si el sitio no está, deja la ubicación en blanco y "
+    "explícalo en «Detalle»"
+)
+UNIDAD_SIN_UBICACIONES = (
+    "esta unidad no tiene ubicaciones en Sigrid: deja la ubicación en blanco y "
+    "explica el sitio en «Detalle»"
+)
+UBICACION_FUERA_DE_LA_OBRA = (
+    "esa ubicación no es de ninguna unidad de la obra: elige primero la unidad "
+    "y luego la ubicación del desplegable"
+)
+VERSION_ANTERIOR_MOTIVO = (
+    "Esta plantilla es de una versión anterior: sus listas ya no son las de "
+    "Sigrid. Descarga una nueva desde el portal y copia en ella tus filas."
+)
+_YA_NO_ESTA_EN_SIGRID = (
+    "ese valor no está en Sigrid para esta obra (puede que haya cambiado desde "
+    "que descargaste la plantilla): elígelo del desplegable de este fichero, que "
+    "trae las listas de hoy"
+)
+
+
+def aviso_ubicacion_ajustada(texto: str) -> str:
+    """El aviso de una ubicación casada con la de Sigrid (R28)."""
+    return f"la ubicación se ha ajustado al texto de Sigrid: «{texto}»"
+
+
+def aviso_valor_tomado(columna: str, opcion: str) -> str:
+    """El aviso de un valor tasado casado con una opción no exacta (R36)."""
+    return f"{columna}: se ha tomado «{opcion}»"
+
+
+def ya_no_esta_en_sigrid(columna: str) -> str:
+    """El problema de un valor de `columna` que no está en Sigrid hoy (R37).
+
+    El texto es el mismo para `Unidad`, `Oficio` y `Proveedor`: el error ya va
+    en su columna.
+    """
+    return _YA_NO_ESTA_EN_SIGRID
 
 
 def _fuera_de_lista(lista: str) -> str:
@@ -204,6 +260,8 @@ def reconocer_plantilla(libro: LibroLeido) -> str:
             "no_es_la_plantilla",
             f"Este fichero no es la plantilla de incidencias. {_DESCARGA}",
         )
+    if libro.version == VERSION_ANTERIOR:
+        raise FicheroNoEsPlantilla("version_anterior", VERSION_ANTERIOR_MOTIVO)
     if libro.version not in VERSIONES_SOPORTADAS:
         raise FicheroNoEsPlantilla(
             "version_no_soportada",
@@ -277,6 +335,7 @@ class IncidenciaValida:
     urgencia: Urgencia | None
     listado: Listado | None
     avisos: tuple[str, ...]
+    tipo_reclamacion: str | None = None  # F-072: el código de `dbo.auxtrcp` (R12, R14)
 
     def __post_init__(self) -> None:
         if self.proveedor is not None and self.oficio is None:
@@ -346,6 +405,7 @@ class _Fila:
     def __init__(self, fila: FilaLeida) -> None:
         self.fila = fila
         self.errores: list[ErrorDeFila] = []
+        self.avisos: list[str] = []  # los del casado, en el orden de las columnas
 
     def error(self, columna: str, problema: str) -> None:
         self.errores.append(
@@ -372,8 +432,12 @@ class _Fila:
             return str(int(valor))
         return str(valor)
 
-    def tasado(self, columna: str, etiquetas: Iterable[str], lista: str) -> str | None:
-        """La etiqueta de una columna tasada, comparada **exacta** (decisión 7)."""
+    def _texto_tasado(self, columna: str) -> str | None:
+        """El texto de una columna tasada, o None: vacía, o con su error (R38).
+
+        Una fórmula, una fecha o un booleano, o un número, son error y no se
+        comparan con ninguna lista.
+        """
         celda = self.celda(columna)
         if celda is None:
             return None
@@ -383,11 +447,60 @@ class _Fila:
             self.error(columna, FECHA_EN_TASADA)
         elif not isinstance(celda.valor, str):
             self.error(columna, NUMERO_EN_TASADA)
-        elif celda.valor not in etiquetas:
-            self.error(columna, lista)
         else:
             return celda.valor
         return None
+
+    def tasado(self, columna: str, etiquetas: Iterable[str], lista: str) -> str | None:
+        """La opción de una columna tasada con el casado de F-060 (F-071, R36).
+
+        La exacta, o la **única** con la misma clave, con el aviso
+        `aviso_valor_tomado`; con dos o ninguna, el error `lista`.
+        """
+        valor = self._texto_tasado(columna)
+        if valor is None:
+            return None
+        opcion = casar_con_lista(valor, etiquetas)
+        if opcion is None:
+            self.error(columna, lista)
+            return None
+        if opcion != valor:
+            self.avisos.append(aviso_valor_tomado(columna, opcion))
+        return opcion
+
+    def ubicacion(
+        self, lista: tuple[str, ...] | None, union: tuple[str, ...]
+    ) -> str | None:
+        """La ubicación de la fila contra la lista de su unidad (F-071 §5.3).
+
+        `lista` es la de la unidad de la fila, o None si la unidad falta o no
+        vale: entonces se compara con la `union` de la obra y no se guarda
+        nada (R31). Con lista: la exacta tal cual (R27); la casada, el texto
+        de Sigrid con aviso (R28); si no, error (R29, R30).
+        """
+        valor = self._texto_tasado(UBICACION)
+        if valor is None:
+            return None
+        if lista is None:
+            if ubicacion_de_sigrid(valor, union).coincidencia not in _CASAN:
+                self.error(UBICACION, UBICACION_FUERA_DE_LA_OBRA)
+            return None
+        if not lista:
+            self.error(UBICACION, UNIDAD_SIN_UBICACIONES)
+            return None
+        resultado = ubicacion_de_sigrid(valor, lista)
+        if resultado.coincidencia is Coincidencia.EXACTA:
+            return valor
+        if resultado.coincidencia is Coincidencia.NORMALIZABLE:
+            assert resultado.texto is not None
+            self.avisos.append(aviso_ubicacion_ajustada(resultado.texto))
+            return resultado.texto
+        self.error(UBICACION, UBICACION_FUERA_DE_LA_UNIDAD)
+        return None
+
+
+#: Lo que casa con una lista: tal cual o por la clave de F-060.
+_CASAN = frozenset({Coincidencia.EXACTA, Coincidencia.NORMALIZABLE})
 
 
 def _avisos(
@@ -407,29 +520,44 @@ def _avisos(
     return avisos
 
 
-def _aviso_de_ambiguo(que: str, elegido: Elegido | None) -> list[str]:
-    if elegido is None or not elegido.ambiguo:
-        return []
-    return [
-        f"el {que} «{elegido.etiqueta}» tiene varios códigos en la obra: se elegirá en la bandeja"
-    ]
+def _elegido_de_oficio(opcion: OpcionOficioSigrid) -> Elegido:
+    """El oficio resuelto: su código y, como nombre, el de Sigrid (R32)."""
+    return Elegido(
+        etiqueta=opcion.nombre or opcion.codigo, codigo=opcion.codigo, ambiguo=False
+    )
+
+
+def _elegido_de_proveedor(par: ParSigrid) -> Elegido:
+    """El proveedor resuelto: su código y su nombre de Sigrid (R33)."""
+    return Elegido(
+        etiqueta=par.proveedor_nombre or par.proveedor_codigo,
+        codigo=par.proveedor_codigo,
+        ambiguo=False,
+    )
 
 
 def _validar_fila(
     fila: FilaLeida,
     *,
     unidades: Mapping[str, Opcion],
-    oficios: Mapping[str, OpcionOficio],
-    pares: Mapping[str, OpcionProveedor],
+    oficios: Mapping[str, OpcionOficioSigrid],
+    pares: Mapping[str, ParSigrid],
     listas: ListasCerradas,
+    ubicaciones_por_unidad: UbicacionesPorUnidad,
+    union: tuple[str, ...],
 ) -> IncidenciaValida | FilaConError:
     f = _Fila(fila)
 
-    etiqueta_unidad = f.tasado(UNIDAD, unidades, UNIDAD_FUERA_DE_LISTA)
+    etiqueta_unidad = f.tasado(UNIDAD, unidades, ya_no_esta_en_sigrid(UNIDAD))
     if f.celda(UNIDAD) is None:
         f.error(UNIDAD, FALTA_UNIDAD)
 
-    ubicacion = f.tasado(UBICACION, listas.ubicaciones, _fuera_de_lista("ubicaciones"))
+    lista_de_la_unidad = (
+        None
+        if etiqueta_unidad is None
+        else tuple(ubicaciones_por_unidad.get(unidades[etiqueta_unidad].codigo, ()))
+    )
+    ubicacion = f.ubicacion(lista_de_la_unidad, union)
 
     texto_descripcion = f.texto(DESCRIPCION)
     descripcion = " ".join((texto_descripcion or "").split())
@@ -449,11 +577,11 @@ def _validar_fila(
             f"el detalle tiene {len(detalle)} caracteres y el máximo es {MAX_DETALLE}",
         )
 
-    etiqueta_oficio = f.tasado(OFICIO, oficios, _fuera_de_lista("oficios de la obra"))
-    etiqueta_par = f.tasado(PROVEEDOR, pares, _fuera_de_lista("proveedores de la obra"))
-    oficio = oficios.get(etiqueta_oficio) if etiqueta_oficio is not None else None
-    par = pares.get(etiqueta_par) if etiqueta_par is not None else None
-    if oficio is not None and par is not None and par.oficio != oficio:
+    etiqueta_oficio = f.tasado(OFICIO, oficios, ya_no_esta_en_sigrid(OFICIO))
+    etiqueta_par = f.tasado(PROVEEDOR, pares, ya_no_esta_en_sigrid(PROVEEDOR))
+    oficio = None if etiqueta_oficio is None else oficios[etiqueta_oficio]
+    par = None if etiqueta_par is None else pares[etiqueta_par]
+    if oficio is not None and par is not None and par.oficio.codigo != oficio.codigo:
         f.error(PROVEEDOR, PROVEEDOR_DE_OTRO_OFICIO)
 
     urgencias = {o.etiqueta: o.codigo for o in listas.urgencias}
@@ -469,24 +597,28 @@ def _validar_fila(
     urgencia = (
         None if etiqueta_urgencia is None else Urgencia(urgencias[etiqueta_urgencia])
     )
-    listado = None if etiqueta_listado is None else Listado(listados[etiqueta_listado])
-    oficio_elegido, proveedor_elegido = resolver_oficio_y_proveedor(oficio, par)
-    avisos = (
-        _aviso_de_ambiguo("oficio", oficio_elegido)
-        + _aviso_de_ambiguo("proveedor", proveedor_elegido)
-        + _avisos(descripcion, detalle, urgencia)
+    # F-072: el código del tipo casado (R12) o, en blanco, el de por defecto
+    # sin mirarlo en la lista (R14); el `listado` de F-036 ya no se escribe (R15).
+    tipo_reclamacion = (
+        TIPO_RECLAMACION_POR_DEFECTO
+        if etiqueta_listado is None
+        else listados[etiqueta_listado]
     )
+    # Con proveedor, el oficio es el del par (R33, D-17 de F-036): con un
+    # `Oficio` distinto ya habría salido el error de R34.
+    opcion_oficio = par.oficio if par is not None else oficio
     return IncidenciaValida(
         fila=fila.numero,
         unidad=unidades[etiqueta_unidad],
         ubicacion=ubicacion,
         descripcion=descripcion,
         detalle=detalle,
-        oficio=oficio_elegido,
-        proveedor=proveedor_elegido,
+        oficio=None if opcion_oficio is None else _elegido_de_oficio(opcion_oficio),
+        proveedor=None if par is None else _elegido_de_proveedor(par),
         urgencia=urgencia,
-        listado=listado,
-        avisos=tuple(avisos),
+        listado=None,
+        avisos=tuple(f.avisos + _avisos(descripcion, detalle, urgencia)),
+        tipo_reclamacion=tipo_reclamacion,
     )
 
 
@@ -494,28 +626,38 @@ def validar_filas(
     filas: Iterable[FilaLeida],
     *,
     catalogo: CatalogoObra,
-    opciones_oficio: tuple[OpcionOficio, ...],
-    opciones_proveedor: tuple[OpcionProveedor, ...],
+    oficios: tuple[OpcionOficioSigrid, ...],
+    pares: tuple[ParSigrid, ...],
     listas: ListasCerradas,
+    ubicaciones_por_unidad: UbicacionesPorUnidad,
 ) -> tuple[tuple[IncidenciaValida, ...], tuple[FilaConError, ...]]:
-    """Separa las filas válidas de las que tienen algún error (R23–R34, R73–R77).
+    """Separa las filas válidas de las que tienen algún error (F-036; F-071 §5.3, §5.4).
 
     Se recorren **todas** las filas y todas sus columnas: el error de una no
-    esconde el de otra (R33). Las filas vacías —sin contar `Errores`— se
-    ignoran (R23, R66). Las unidades salen del catálogo **recién leído** de
-    Sigrid (R26); las opciones de oficio y proveedor, de quien llama, que las
-    calcula con ese mismo catálogo y los grupos vigentes (§4.4).
+    esconde el de otra (R33 de F-036, R39). Las filas vacías —sin contar
+    `Errores`— se ignoran. Las unidades, las opciones de oficio, los pares y
+    las ubicaciones de cada unidad salen de lo **recién leído** de Sigrid
+    (R24): quien llama calcula `oficios` y `pares` con ese mismo catálogo
+    (`oficios_del_desplegable`, `pares_del_desplegable`). Ninguna fila sale
+    con oficio o proveedor ambiguo (R35).
     """
     unidades = {o.etiqueta: o for o in etiquetas_de_unidades(catalogo.unidades)}
-    oficios = {o.etiqueta: o for o in opciones_oficio}
-    pares = {o.etiqueta: o for o in opciones_proveedor}
+    por_etiqueta_oficio = {o.etiqueta: o for o in oficios}
+    por_etiqueta_par = {p.etiqueta: p for p in pares}
+    union = ubicaciones_de_la_plantilla(catalogo.unidades, ubicaciones_por_unidad).union()
     validas: list[IncidenciaValida] = []
     con_error: list[FilaConError] = []
     for fila in filas:
         if all(_vacia(fila.celdas.get(c)) for c in CABECERA if c != ERRORES):
             continue
         resultado = _validar_fila(
-            fila, unidades=unidades, oficios=oficios, pares=pares, listas=listas
+            fila,
+            unidades=unidades,
+            oficios=por_etiqueta_oficio,
+            pares=por_etiqueta_par,
+            listas=listas,
+            ubicaciones_por_unidad=ubicaciones_por_unidad,
+            union=union,
         )
         if isinstance(resultado, FilaConError):
             con_error.append(resultado)
@@ -618,6 +760,7 @@ class IncidenciaEnBandeja:
     listado: Listado | None
     duplicada_de: UUID | None
     creada_at_utc: datetime
+    tipo_reclamacion: str | None = None  # F-072: nulo = anterior a F-072 (R19)
 
     def __post_init__(self) -> None:
         hay_oficio = _comprobar_elegido(

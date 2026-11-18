@@ -120,8 +120,9 @@ def test_f036_r6_r18_identificador_y_version() -> None:
     assert (
         IDENTIFICADOR_PLANTILLA == "ruesma.postventa-incidencias.plantilla-incidencias"
     )
-    assert VERSION_PLANTILLA == 1
-    assert VERSIONES_SOPORTADAS == frozenset({1})
+    # F-071, R17: la versión es la 2 y es la única que se admite.
+    assert VERSION_PLANTILLA == 2
+    assert VERSIONES_SOPORTADAS == frozenset({2})
     assert VERSION_PLANTILLA in VERSIONES_SOPORTADAS
 
 
@@ -168,9 +169,10 @@ def test_f036_estructuras_inmutables() -> None:
     )
     with pytest.raises(FrozenInstanceError):
         catalogo.obra_codigo = "0678"  # type: ignore[misc]
-    listas = ListasCerradas(ubicaciones=("Cocina",), urgencias=(), listados=())
+    # F-071, R22: `ListasCerradas` ya no lleva ubicaciones.
+    listas = ListasCerradas(urgencias=(), listados=())
     with pytest.raises(FrozenInstanceError):
-        listas.ubicaciones = ()  # type: ignore[misc]
+        listas.urgencias = ()  # type: ignore[misc]
 
 
 def test_f036_opciones_de_oficio_y_proveedor_se_construyen_a_mano() -> None:
@@ -421,6 +423,7 @@ def test_f036_fichero_no_es_plantilla_lleva_codigo_y_motivo() -> None:
             "fichero_sospechoso",
             "no_es_la_plantilla",
             "formato_antiguo",
+            "version_anterior",  # F-071, R23
             "version_no_soportada",
             "cabecera_distinta",
             "demasiadas_filas",

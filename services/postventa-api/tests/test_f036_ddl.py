@@ -193,6 +193,7 @@ def test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden()
         *FICHEROS,
         "15_revisiones_bandeja.sql",
         "16_volcados_sigrid.sql",  # F-059 (R41, F-1 (a); design.md §21.3 A)
+        "17_tipo_reclamacion.sql",  # F-072 (R16): la columna tipo_reclamacion
     ]
     assert nombres.index("11_historico_estado.sql") < nombres.index(IMPORTACIONES)
 

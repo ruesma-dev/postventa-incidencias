@@ -1379,9 +1379,11 @@ def plantilla(req: func.HttpRequest) -> func.HttpResponse:
       `plantilla_incidencias_<obra>_<AAAAMMDD>.xlsx`;
     - **400** · la obra falta o no es admisible (R9), sin llamar a Sigrid;
     - **404** · ninguna obra con ese código tiene unidades de posventa (R10);
-    - **409** · hay dos obras con ese código o el catálogo llegó al techo de
-      filas (R10): lo tiene que mirar una persona;
-    - **503** · Sigrid, su configuración, el entorno o la base (R11).
+    - **409** · hay dos obras con ese código o el catálogo —o, desde F-071,
+      la lectura de las ubicaciones de cada unidad— llegó al techo de filas
+      (R10; F-071 R3): lo tiene que mirar una persona;
+    - **503** · Sigrid, su configuración o el entorno (R11; F-071 R3). Desde
+      F-071 la plantilla no lee la base (R2).
 
     Ningún error lleva fichero. El log lleva la obra y el tamaño (R47).
     """
@@ -1426,11 +1428,13 @@ def importaciones(req: func.HttpRequest) -> func.HttpResponse:
     - **200** · importada, completa o **parcial** (las filas con error vuelven
       en `errores` y en `excel_errores`), o `ya_importado` (R39);
     - **400** · falta quién importa o el fichero, vienen dos (R22), o el
-      fichero no es la plantilla (`{error, codigo}`, R16–R20), sin llamar a
-      Sigrid ni escribir nada (R21);
+      fichero no es la plantilla (`{error, codigo}`, R16–R20; también una
+      plantilla v1, `version_anterior`, F-071 R23), sin llamar a Sigrid ni
+      escribir nada (R21);
     - **413** · el fichero pasa de 2 MiB (R15), sin abrirlo;
     - **409** · la obra de la plantilla ya no tiene unidades, es ambigua o su
-      catálogo llegó al techo (`{error, codigo}`);
+      catálogo —o la lectura de sus ubicaciones, F-071 R25— llegó al techo
+      (`{error, codigo}`);
     - **503** · Sigrid o la base (R11, R40): no queda nada a medias; o la
       lectura aislada (octava enmienda): otra importación en curso en este
       proceso (R120) o, en `dev`/`pro`, una plataforma sin tope de memoria

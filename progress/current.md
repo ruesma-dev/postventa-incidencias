@@ -1,6 +1,151 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · CERRADA (líder, 2026-11-18)
+> T24 y T26 en verde en producción (`progress/impl_F-072_despliegue.md`), T27 y T28 hechos:
+> F-072 `done`, resumen en `progress/history.md`. F-040 sigue `blocked` (aparcada por el humano)
+> pero ya sin la dependencia de F-072: T5.4 puede hacerse. Siguiente propuesta al humano:
+> actualizar la spec de F-040 (textos de Q-11, tipo, motivo) y retomarla.
+
+> ## F-072 · T23 y T25 (líder, 2026-11-18)
+> T23: merge `a269341` a `dev` en `postventa-merge`; `bash harness/init.sh` en verde en `dev`
+> (2201 / 10365 / 911 passed). T25: `azure-apps` 31334dd (`postventa_incidencias.md` y la tabla de
+> consumidores de `sigrid_api.md`, que está en §10, no en §8.9), sin push. Pendiente para T27:
+> `docs/INTEGRACION.md` dice «DDL al arrancar» (l. ~737; es en la primera petición que abre la base)
+> y «sin desplegar» (l. 411, 2077); `progress/impl_F-072.md` está en el tope (220/220): las notas de
+> T24 y T26 irán en `progress/impl_F-072_despliegue.md`. Siguiente: T24 y T26 (humano).
+
+> ## F-072 · T22 cerrada (líder, 2026-11-18)
+> Campaña serie de la feature VÁLIDA: 41 evaluados, 38 muertos, 3 supervivientes de veracidad
+> (`importacion.py:604`, `importar.py:218`, `plantilla.py:92`) declarados EQUIVALENTES
+> (`progress/mutacion_F-072.md`, 1db3049/5bd518c), review APROBADO condicionado
+> (`progress/review_F-072_t22.md`, c860367). **Aceptación escrita del humano, 2026-11-18, en el
+> chat: «acepto»** (respuesta a «acepto los 3 equivalentes de F-072»). RM7 del líder: 3/3 muertos.
+> `ARNES_SIN_CACHE=1 bash harness/init.sh` en verde sobre c860367 (2202 / 10377 / 911 passed,
+> cobertura 158/158). Siguiente: T23 (merge a `dev`).
+
+> ## F-072 · `in_progress` · 2026-11-17 · T13 en verde; OK del humano a la mutación a mano por bloque
+> **T13 (humano, 2026-11-17)**: `infra\pruebas_bbdd_efimera.ps1` repetido tras `201b8f6`: **120 passed**.
+> **OK del humano (2026-11-17, en el chat: «ok, t13 hecha y 120 passed»)** a la propuesta (b) del líder: en los
+> Bloques 4–6 la mutación se cierra con la tabla a mano del implementer reproducida por el reviewer (sin campaña
+> por bloque, que tarda ~4 h y la invalidan los tests de tiempo `test_f036_r115_*` bajo carga), y una única
+> campaña de la feature entera en T22 con menos workers.
+
+> ## F-072 · `in_progress` · 2026-11-17 · OK del humano al veredicto a mano del Bloque 3; T13 en rojo
+> **OK explícito del humano (2026-11-17, en el chat: «a ok a cerrarla»)** a cerrar la mutación del Bloque 3 con el
+> veredicto a mano en lugar de una campaña válida (condición de `progress/review_F-072_bloque3.md` §5 para C4 bis).
+> **T13 (humano, base efímera)**: 119 passed, 1 failed: `test_f072_r17_el_ddl_dos_veces_sobre_filas_de_f036_y_f056`
+> lee con `RepositorioRevisionPostgres.situacion` (que ya pide `r.tipo_reclamacion`) **antes** de aplicar el DDL
+> sobre la base a la que le ha quitado la columna → `UndefinedColumn`. Fallo del test de T12, no del DDL; se corrige
+> y el humano repite T13.
+
+> ## F-072 · `in_progress` · 2026-11-16 · Bloque 3: veredicto de mutación a mano (decisión del líder)
+> Dos campañas del Bloque 3 salieron NO VÁLIDAS solo porque un test de tiempo de F-036 (`test_f036_r115_*`, tope de
+> 1 s, `tests/test_f036_excel_lector.py`) se pone rojo con varias suites a la vez; la segunda (4 workers, `c2f842e`):
+> 30/30 muertos, 0 timeouts. El humano pidió el 2026-11-16 terminar F-072 cuanto antes: el líder acepta como veredicto
+> del Bloque 3 la tabla a mano de `progress/mutacion_F-072_bloque3.md` (24/24 muertos con el test que mata cada uno)
+> y lo somete a la review del Bloque 3. Los tests de tiempo de F-036 bajo carga quedan como deuda fuera de F-072.
+> Bloque 4 arranca en paralelo en un worktree aparte.
+
+> ## F-072 · `in_progress` · 2026-11-15 · Bloque 2 desbloqueado con la opción (b) del humano
+> T4 `143802a` y T5 `fd0673d`. Los 7 rojos de F-056 (detalle en `progress/impl_F-072.md`, «Bloque 2») se cierran con
+> (b): los 3 HTTP de aprobar editan con un código de la lista que aún compone el HTTP (citado con R22/R24; el Bloque 6
+> los vuelve a tocar), r27 y r29 citando R24/R25, y la mención de `tipo_fuera_de_sigrid` en `docs/ARCHITECTURE.md`
+> adelantada a este bloque. Descartadas (a) (R24 opcional en `decidir`) y (c). `_mismos_valores` por tipo efectivo
+> queda para la review del Bloque 2.
+> **Implementer (2026-11-15)**: (b) hecho en `0fb864e`; suite de api `10045 passed, 353 skipped`; T4 y T5 marcadas
+> (`9b22088`). Un superviviente real a mano (`revision.py:856`, lista de vigentes vacía) cerrado con un test (`85d3c36`).
+> Campaña `progress/mutacion_F-072_bloque2.md`: 24 generados, 16 evaluados y 8 descartados a mano, 0 supervivientes.
+> Siguiente: review del Bloque 2 (líder; T6 sin marcar).
+
+> ## F-072 · `in_progress` · 2026-11-15 · desbloqueada; Bloque 1, relanzando la mutación de T3
+> T1 RED `50efef2` y T2 GREEN `0a3ed7e`. El bloqueo de T3 (13 tests de «configuración que falta» que veían el `.env`
+> volcado a `os.environ` por `volcar_variables` del arnés 1.10) se resolvió con la opción (a) del humano: arreglo de
+> tests en `fix/tests-configuracion-sin-entorno` (`a18956e`, informe `progress/impl_fix_tests_config_entorno.md`;
+> `conftest.py` quita del entorno las variables de `Ajustes` en cada test; 11 tests frágiles más de F-006/F-013/F-031/
+> F-051 cubiertos), `init.sh` verde (raíz 2202, api 9932, front 911), mergeado en `dev` `05c8a5a` y traído a F-072
+> `299f21c`. **Pendiente de proponer para `arnes-base`**: que `volcar_variables` sea opt-in.
+> **T3 relanzada (implementer)**: 5 mutantes, 5 muertos, 0 supervivientes (`progress/mutacion_F-072_bloque1.md`).
+> Siguiente: review del Bloque 1 (líder).
+
+> ## F-072 · `in_progress` · 2026-11-15 · spec aprobada por el humano; siguiente, Bloque 1
+> `specs/F-072-tipo-reclamacion-sigrid/`, base fija `dev` `6994cb0`. **T0 (líder, solo lecturas, 2026-11-15)**:
+> Q-1 `dbo.auxtrcp` tiene 4 tipos, todos vigentes (`0001` PREVENTA, `0002` PRIMER LISTADO POSTVENTA, `0003` POST VENTA,
+> `0004` VISITA DE CORTESIA; catálogo, no datos personales); Q-2 la bandeja tiene 285 `primero`, 4 nulos y ningún
+> `segundo` (288 sin volcar); Q-3 `postventa_app` es dueño de `bandeja_incidencias` y `revisiones_bandeja` y es el rol de
+> la sesión. **Decidido por el humano el 2026-11-15**: Q-1..Q-11 la opción (a) (`design.md` §12). Implementación un
+> bloque por encargo, con review al final de cada uno; se para antes del Bloque 8 (despliegue y T26 en la 0677).
+
+> ## Arnés · caché de suites ajustada · 2026-11-13 · mergeado en `dev`
+> `harness/servicios.json` con `depende_de` y `ejecutar_siempre` (inventario, ampliación (b) y recorte de F-059/F-060/F-065
+> aprobados por el humano). Detalle en `progress/impl_arnes_servicios_cache.md`. Con caché, `init.sh` ejecuta igualmente
+> 36 rutas de `api` (~2 min) y 5 de `front`. **Pendiente para `arnes-base`** (no portado, el humano no lo ha pedido):
+> `tests/test_f059_ejecucion.py::test_f059_r9_timeout_mata_el_arbol_y_no_es_rojo` es intermitente con la máquina
+> cargada (`timeout_s=3`; el nieto no llega a escribir su pid); falló una vez el 2026-11-13 y pasó en 3 repeticiones.
+> Siguiente: F-072, con su rama sacada en la carpeta principal para arrancar ya con el arnés 1.10.
+
+> ## Arnés 1.10.0 · instalado · 2026-11-13 · mergeado en `dev`
+> Desde la 1.5.2 (con parches). Detalle en `progress/arnes_1.10.md`. Review APROBADO e `init.sh` en verde. El humano
+> aprobó `rigor.local.json` (`critico` por defecto, 8 workers) y el `critico` de la 1.10 (cobertura 90 %, mutación
+> muestreada). Ninguna feature en curso. Siguiente: el ajuste de `harness/servicios.json` (caché de suites) en su rama;
+> después F-072 y luego retomar F-040.
+
+> ## F-038 · `done` · 2026-11-12 · mergeada en `dev` `eca6ae3`, front publicado y verificado (T10)
+> Detalle en `progress/history.md` y `progress/impl_F-038.md`. Ninguna feature en curso. Pendientes del humano:
+> comprobaciones 2–4 de T14 de F-071; cerrar F-058 y retirar su worktree si lo aprueba. Siguiente según el
+> backlog: F-072, luego retomar F-040 (Q-3 de F-071).
+
+> ## F-071 · `done` · 2026-11-10 · mergeada en `dev` `c201f29`, backend publicado y verificado (T16)
+> Detalle en `progress/history.md` y `progress/impl_F-071.md` «Bloque 5». Pendientes del humano: comprobaciones 2–4
+> de T14; cerrar F-058 y retirar su worktree si lo aprueba.
+
+> ## F-071 · (histórico de la sesión) · 2026-11-06 · URGENTE (prioridad 1) · spec aprobada por el humano
+> **Bloque 4 · T11 hecha (2026-11-09, implementer):** `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` al día (R46),
+> con `test_f071_documentacion.py` y `test_f071_alcance_cerrado.py` (R42, R43, R45) en verde. La cabecera de
+> `INTEGRACION.md` (fecha y «Última feature que lo tocó») **no se tocó**: la fija `test_f065_documentacion.py` y la spec
+> no la pide; queda para el líder al desplegar, con `azure-apps/`. Siguiente: T12 (líder). Detalle en
+> `progress/impl_F-071.md`, «Bloque 4 · T11».
+> **Tanda 2 en curso (2026-11-06, implementer):** T7 RED (`80abee2`), T8 GREEN (`862b384`) y T9 adelantada
+> (`266e384`) hechas: plantilla e importación leen las ubicaciones de Sigrid por unidad y no leen las decisiones;
+> migración de F-036 retirada. **Tanda 2 terminada**:
+> - `init.sh` en verde: 9860 passed, 447 skipped; cobertura 100 % de 232 líneas.
+> - Mutación de los Bloques 1–3: 66 mutantes, 62 muertos y 4 vivos. De los 4, uno se cierra con un test
+>   (`d0dc548`) y los otros 3 son equivalentes, **pendientes de que el humano los acepte**.
+> - Siguiente: review de los Bloques 1–3 (la encarga el líder) y después el Bloque 4.
+> Detalle en `progress/impl_F-071.md` y `progress/mutacion_F-071.md`.
+> **El humano aceptó por escrito el 2026-11-09 los 3 mutantes equivalentes** (`excel_openpyxl.py:401` `+3`, `:405` `−2`,
+> `:426` `+=4`; C-1 de la review): siguiente, re-review de los Bloques 1–3 y luego el Bloque 4 (T11, T12).
+> **El humano aceptó por escrito el 2026-11-06 la desviación de §7.3** (dos párrafos); anotada en el informe y en `design.md`.
+> **Tanda 1 hecha (2026-11-06):** T4 RED y T5 GREEN, el generador v2 con `INDIRECT`. Detalle y recuento de rojos en
+> `progress/impl_F-071.md`, «Tanda 1». **Desviación anotada para el humano:** el párrafo de §7.3 («Las listas salen de
+> Sigrid…», 276 caracteres) va partido en dos y dice «Los desplegables de unidad, ubicación, oficio y proveedor salen de
+> Sigrid…», porque «las listas» incluiría Urgencia y Listado, y R16 pide no decir que salen de Sigrid. Queda la tanda 2.
+> **Opción (d) aprobada por el humano el 2026-11-06:** un solo GREEN para los Bloques 1–3 (T2 ya hecha, T5 y T8, con T9
+> adelantada), en dos tandas seguidas. Tanda 1: T4/T5 (generador v2). Tanda 2: T7/T8 y T9. Entre tandas la suite puede
+> estar en rojo. Al final: `init.sh` en verde, mutación de todo lo cambiado y una sola review. Lo de abajo ya está resuelto.
+> **Bloqueada otra vez en T2 (2026-11-06):** con (b) el dominio queda en verde, pero la suite no: hay 230 rojos en 12
+> ficheros, porque la importación no tiene ubicaciones de Sigrid hasta T8 y la migración de F-036 depende de los grupos.
+> Propuestas (d) juntar el GREEN de los Bloques 1–3 (recomendada), (e) adelantar la lectura de T8 y T9, o (c), en
+> `progress/impl_F-071.md`, «T2 con la opción (b)». Trabajo en el commit «F-071 T2 (a medias)». T3 sin lanzar.
+> **Desbloqueada: opción (b) autorizada por el humano el 2026-11-06** (T2 con el mínimo imprescindible en los
+> llamadores para mantener la suite en verde; T3 con la suite en verde). Lo de abajo es el bloqueo ya resuelto.
+> **Bloque 1 (implementer, 2026-11-05): T1 RED hecha (`89a01d1`); T2 y T3 bloqueadas.** T2 cambia solo el dominio
+> y rompe a sus llamadores de los Bloques 2 y 3 (`plantilla_yaml.py`, `excel_openpyxl.py`, `paso_importacion.py`,
+> `plantilla.py`, el puerto): suite en rojo, y la mutación de T3 (suite entera) no mediría nada. Opciones (a)/(b)/(c)
+> y recomendación (b) en `progress/impl_F-071.md` «Bloqueo de T2–T3». Decide el líder o el humano.
+>
+> Plantilla de incidencias con TODOS sus desplegables de Sigrid al descargar (petición del humano del 2026-11-04).
+> Spec en `specs/F-071-plantilla-desde-sigrid/` (worktree `postventa-f071`, rama `feature/F-071-plantilla-desde-sigrid`,
+> **rebasada sobre `dev` `ed935ad` el 2026-11-05**). **El estado del backlog se lleva en esta rama mientras esté en curso.**
+> Absorbe F-058. Respuestas del humano (2026-11-05) a Q-1..Q-13 de `progress/spec_F-071.md`: todas según
+> recomendación, con estos matices: **Q-2** la urgencia sigue en el YAML de momento; el humano pasará una lista
+> interna de prioridades que la sustituirá. **Q-3** tipo de reclamación en ficha aparte **F-072**, orden
+> F-071 → F-072 → F-040; en blanco = `0002`. **Q-7** se normalizan mayúsculas en todas las columnas.
+> Siguiente: spec-author incorpora las decisiones; luego T0 (prueba manual de los prototipos, humano) y Bloque 1.
+>
+> F-040 aparcada (`blocked`, sin fallo) el 2026-11-05; motivo y punto de retorno en su `blocked_by`.
+> El humano aceptó por escrito M4 y M5 de T6a, miga de pan sin enlace y tarjeta «En producción» (2026-11-05).
+
 > ## F-065 · `done` · 2026-10-31 · desplegada desde `dev` `ed590bd` y verificada en solo lectura
 > Bloques A1 a A6 aprobados (mutación 182/182, cobertura 100 %, review final APPROVED); merge a `dev` en `ed590bd`,
 > publicada por el humano el 2026-10-31. T-A11 a T-A17 pasan (`progress/impl_F-065.md` «Bloque A7»). **T-A18 aplazada

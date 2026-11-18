@@ -12,12 +12,17 @@ punto de entrada (`interface_adapters/api/importar.py`), no aquí.
    fichero que no es la plantilla se rechaza **entero** aquí: ni Sigrid, ni
    base, ni Excel de errores (R21).
 3. **`paso_catalogo`** — el catálogo de la obra de los metadatos, leído de
-   Sigrid en este momento, y los grupos vigentes y opciones de la obra (§7.2).
-4. **`paso_validacion`** — `validar_filas`: válidas y con error (R33).
+   Sigrid en este momento, **después** una sola lectura de las ubicaciones
+   válidas de cada unidad, y las opciones de `Oficio` y `Proveedor` por código
+   (F-071 §6.2, R24). Sin decisiones de equivalencia (D-14). **Después**, una
+   lectura de los tipos de reclamación de Sigrid (F-072, R11).
+4. **`paso_validacion`** — `validar_filas`: válidas y con error (R33), con
+   `Listado` contra los tipos leídos (`listas_con_tipos`, F-072 R12).
 5. **`paso_registro`** — `agrupar_por_clave` sobre las válidas y
    `BandejaPort.registrar`, también con cero válidas (R70).
 6. **`paso_excel_errores`** — si hay filas con error, el **mismo** generador
-   de la plantilla con el mismo catálogo y opciones (R62–R65). Va **después**
+   de la plantilla con el mismo catálogo, opciones, ubicaciones y tipos, sin
+   otra lectura (R62–R65; F-071 R40; F-072 R13). Va **después**
    del registro: si la base falla, no se entrega un Excel de errores de una
    importación que no consta (R40).
 
@@ -28,11 +33,12 @@ Cada paso exige lo que deja el anterior y, si falta, levanta `ValueError`
 programación, no de la petición: así nadie puede, por ejemplo, generar un
 Excel de errores sin haber registrado la importación.
 
-## Logs (R47)
+## Logs (R47; F-071 R44)
 
 Código de obra, recuentos e `importacion_id`. Nunca el nombre del fichero, el
-`oid`, los textos de las filas, los nombres de unidad o de proveedor, ni el
-`sha256` (identifica el fichero de una persona).
+`oid`, los textos de las filas, los nombres de unidad, de oficio o de
+proveedor, una ubicación, ni el `sha256` (identifica el fichero de una
+persona).
 """
 
 from __future__ import annotations
@@ -55,10 +61,13 @@ from domain.models.plantilla_incidencias import (
     COLUMNA_ERRORES,
     ListasCerradas,
     TextosPlantilla,
+    listas_con_tipos,
+    oficios_del_desplegable,
+    pares_del_desplegable,
+    ubicaciones_de_la_plantilla,
 )
 from domain.ports.bandeja import BandejaPort, RegistroImportacion
 from domain.ports.catalogo_obra import CatalogoObraPort
-from domain.ports.equivalencias import EquivalenciasPort
 from domain.ports.hoja_calculo import (
     FilaPlantilla,
     GeneradorPlantillaPort,
@@ -70,7 +79,11 @@ from application.pipelines.contexto_importacion import (
     ContextoImportacion,
     ExcelDeErrores,
 )
-from application.pipelines.plantilla import opciones_de_la_obra
+from application.pipelines.plantilla import (
+    FuenteUbicacionesValidas,
+    recuento_de_ubicaciones,
+)
+from application.pipelines.tipos_reclamacion import FuenteTiposReclamacion
 
 __all__ = [
     "fila_del_excel_de_errores",
@@ -179,20 +192,42 @@ def paso_reconocimiento(
 def paso_catalogo(
     contexto: ContextoImportacion,
     catalogo_obra: CatalogoObraPort,
-    equivalencias: EquivalenciasPort,
+    ubicaciones: FuenteUbicacionesValidas,
+    tipos: FuenteTiposReclamacion,
 ) -> ContextoImportacion:
-    """Paso 3: el catálogo de la obra de los metadatos y sus opciones (§7.1, §7.2)."""
+    """Paso 3: el catálogo, las ubicaciones, los tipos y las opciones (F-071 §6.2).
+
+    Las lecturas de Sigrid, en este orden y una vez cada una (R24; F-072
+    R11): catálogo, ubicaciones —con el catálogo ya leído— y tipos de
+    reclamación. Al techo, `CatalogoSinVerificar` (→ 409) y, caída,
+    `CatalogoNoDisponible` (→ 503): suben sin validar ni registrar nada (R25;
+    F-072 R3, R4). Las opciones de `Oficio` y `Proveedor` son las mismas que
+    escribe la plantilla, por código (R12–R14).
+    """
     if contexto.ya_importado:
         return contexto
     if contexto.libro is None or contexto.obra_codigo is None:
         raise _fuera_de_orden("catálogo", "reconocimiento")
     catalogo = leer_catalogo(catalogo_obra, contexto.obra_codigo)
-    opciones = opciones_de_la_obra(catalogo, equivalencias)
+    por_unidad = ubicaciones(catalogo)
+    contexto.tipos = tipos()
     contexto.catalogo = catalogo
-    contexto.grupos_oficio = opciones.grupos_oficio
-    contexto.grupos_proveedor = opciones.grupos_proveedor
-    contexto.opciones_oficio = opciones.oficios
-    contexto.opciones_proveedor = opciones.proveedores
+    contexto.ubicaciones_por_unidad = por_unidad
+    contexto.oficios = oficios_del_desplegable(catalogo)
+    contexto.pares = pares_del_desplegable(catalogo, contexto.oficios)
+    listas_ubicaciones, sin_ubicaciones = recuento_de_ubicaciones(
+        ubicaciones_de_la_plantilla(catalogo.unidades, por_unidad)
+    )
+    log.info(
+        "F-071 catálogo leído: obra=%s unidades=%d oficios=%d pares=%d "
+        "listas_ubicaciones=%d unidades_sin_ubicaciones=%d",
+        catalogo.obra_codigo,
+        len(catalogo.unidades),
+        len(contexto.oficios),
+        len(contexto.pares),
+        listas_ubicaciones,
+        sin_ubicaciones,
+    )
     return contexto
 
 
@@ -207,9 +242,10 @@ def paso_validacion(
     contexto.validas, contexto.con_error = validar_filas(
         contexto.libro.filas,
         catalogo=contexto.catalogo,
-        opciones_oficio=contexto.opciones_oficio,
-        opciones_proveedor=contexto.opciones_proveedor,
-        listas=listas,
+        oficios=contexto.oficios,
+        pares=contexto.pares,
+        listas=listas_con_tipos(listas, contexto.tipos),
+        ubicaciones_por_unidad=contexto.ubicaciones_por_unidad,
     )
     log.info(
         "F-036 filas validadas: obra=%s validas=%d con_error=%d",
@@ -284,9 +320,12 @@ def paso_excel_errores(
     importacion_id = contexto.resultado.importacion.importacion_id
     contenido = generador.generar(
         catalogo=contexto.catalogo,
-        opciones_oficio=contexto.opciones_oficio,
-        opciones_proveedor=contexto.opciones_proveedor,
-        listas=listas,
+        oficios=contexto.oficios,
+        pares=contexto.pares,
+        ubicaciones=ubicaciones_de_la_plantilla(
+            contexto.catalogo.unidades, contexto.ubicaciones_por_unidad
+        ),
+        listas=listas_con_tipos(listas, contexto.tipos),
         textos=textos,
         generada_at=contexto.ahora,
         filas=tuple(fila_del_excel_de_errores(f) for f in contexto.con_error),

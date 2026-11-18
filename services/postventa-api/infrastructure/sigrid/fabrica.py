@@ -78,6 +78,13 @@ sello de `gra.cod` lo pone la pasarela y aquí no hay ninguna hora que escribir.
 > todas las reclamaciones de la obra
 > (`specs/F-065-revision-sigrid-backend/design.md` §9.2, R2). Sin ninguna
 > ventana de escritura: solo lee.
+
+> **Enmienda del 2026-11-16 (F-072, Bloque 3).** Hay una **novena**,
+> `construir_tipos_reclamacion`, **añadida** sin cambiar las demás: las mismas
+> dos puertas, en el mismo orden y con los mismos errores que
+> `construir_ubicaciones_validas` (entorno → configuración), para la lectura de
+> los tipos de reclamación vigentes de `dbo.auxtrcp`
+> (`specs/F-072-tipo-reclamacion-sigrid/design.md` §3.2, R31). Solo lee.
 """
 
 from __future__ import annotations
@@ -92,6 +99,7 @@ from domain.models.volcado import validar_partes_por_llamada
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.erp import ErpPort
 from domain.ports.reclamaciones_obra import ReclamacionesObraPort
+from domain.ports.tipos_reclamacion import TiposReclamacionPort
 from domain.ports.grafico import GraficoPort
 from domain.ports.ubicacion import UbicacionPort
 from domain.ports.ubicaciones_validas import UbicacionesValidasPort
@@ -110,6 +118,9 @@ from infrastructure.sigrid.cliente import (
 from infrastructure.sigrid.graficos import AdaptadorGraficoSigridApi
 from infrastructure.sigrid.reclamaciones_obra import (
     AdaptadorReclamacionesObraSigridApi,
+)
+from infrastructure.sigrid.tipos_reclamacion import (
+    AdaptadorTiposReclamacionSigridApi,
 )
 from infrastructure.sigrid.ubicacion import (
     AdaptadorUbicacionSigridApi,
@@ -131,6 +142,7 @@ __all__ = [
     "construir_erp",
     "construir_graficos",
     "construir_reclamaciones_obra",
+    "construir_tipos_reclamacion",
     "construir_ubicaciones",
     "construir_ubicaciones_validas",
     "construir_volcador",
@@ -332,6 +344,36 @@ def construir_reclamaciones_obra(ajustes: Ajustes) -> ReclamacionesObraPort:
         ajustes.entorno,
     )
     return AdaptadorReclamacionesObraSigridApi(
+        entorno=ajustes.entorno,
+        base_url=str(ajustes.sigrid_api_base_url),
+        api_key=str(ajustes.sigrid_api_key),
+        base_datos=str(ajustes.sigrid_base_datos),
+        timeout_s=ajustes.sigrid_timeout_s,
+        reintentos=ajustes.sigrid_reintentos,
+    )
+
+
+def construir_tipos_reclamacion(ajustes: Ajustes) -> TiposReclamacionPort:
+    """El lector de los tipos de reclamación de Sigrid, o el motivo por el que aquí no.
+
+    F-072, `specs/F-072-tipo-reclamacion-sigrid/design.md` §3.2: las dos
+    puertas de `construir_ubicaciones_validas`, en el mismo orden y con los
+    mismos errores —entorno → configuración—. Sin la de ninguna ventana de
+    escritura: solo lee `dbo.auxtrcp` (R31).
+
+    Levanta `CatalogoNoDisponible` (→ 503) si este entorno no lee Sigrid
+    —**antes** de mirar la configuración— y `ConfiguracionSigridIncompleta`
+    (→ 503) si falta configuración, **nombrando las variables y jamás sus
+    valores**.
+    """
+    exigir_entorno_con_catalogo(ajustes.entorno)
+    _exigir_configuracion(ajustes)
+
+    log.info(
+        "F-072 lector de los tipos de reclamación en Sigrid construido en el entorno %s",
+        ajustes.entorno,
+    )
+    return AdaptadorTiposReclamacionSigridApi(
         entorno=ajustes.entorno,
         base_url=str(ajustes.sigrid_api_base_url),
         api_key=str(ajustes.sigrid_api_key),

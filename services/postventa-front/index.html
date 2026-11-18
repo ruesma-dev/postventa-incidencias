@@ -15,8 +15,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=6e073b5414">
-  <link rel="stylesheet" href="css/portal.css?v=6e073b5414">
+  <link rel="stylesheet" href="css/styles.css?v=80c9887e36">
+  <link rel="stylesheet" href="css/portal.css?v=80c9887e36">
 </head>
 <!--
   F-035 · El PORTAL de posventa: la portada `/`. Enseña el ciclo entero: lo que
@@ -126,8 +126,9 @@
           <h1 class="rs-hero__titulo">Portal de <em>posventa</em></h1>
           <p class="rs-hero__entradilla">
             El portal de posventa. Funcionan ya la entrada de incidencias (importar el Excel de la
-            obra y los oficios repetidos) y el circuito de partes firmados. El resto del ciclo está
-            en construcción: lo enseñamos con datos inventados para que veáis cómo será.
+            obra y los oficios repetidos), la bandeja de revisión y el circuito de partes firmados.
+            El resto del ciclo está en construcción: lo enseñamos con datos inventados para que
+            veáis cómo será.
           </p>
         </header>
 
@@ -149,15 +150,15 @@
               <a href="oficios.html" class="rs-btn rs-btn--secundario">Oficios repetidos</a>
             </div>
           </div>
-          <a href="bandeja.html" class="rs-tarjeta">
+          <a href="bandeja.html" class="rs-tarjeta rs-tarjeta--produccion">
             <span class="rs-tarjeta__indice" aria-hidden="true">02</span>
-            <span class="rs-chip rs-chip--atencion rs-tarjeta__chip">En construcción</span>
+            <span class="rs-chip rs-chip--ok rs-tarjeta__chip">En producción</span>
             <p class="rs-tarjeta__rotulo">Bandeja de revisión</p>
             <p class="rs-tarjeta__texto">
-              Lo importado, antes de Sigrid: revisar cada entrada, proponer el industrial, aprobar
-              y volcar a Sigrid obra a obra.
+              Lo importado, antes de Sigrid: corregir cada incidencia, descartarla o aprobarla,
+              obra a obra y con su historial.
             </p>
-            <span class="rs-tarjeta__llamada">Ver cómo será <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+            <span class="rs-tarjeta__llamada">Revisar la bandeja <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
           </a>
           <a href="#/incidencias" class="rs-tarjeta">
             <span class="rs-tarjeta__indice" aria-hidden="true">03</span>
@@ -277,7 +278,13 @@
         </div>
       </section>
 
-      <!-- ── bandeja (§5.3): F-038, F-039, F-040 y F-043 ────────────────── -->
+      <!-- ── bandeja (§5.3): F-038 en producción, F-039, F-040 y F-043 ──── -->
+      <!-- F-038 está done (su design.md §3.2, R17): la revisión es la página
+           real bandeja.html, que la tarjeta abre en la misma pestaña. Lo que
+           sigue sin funcionar va en sus recuadros de bloque (R64, R65): el
+           industrial propuesto (F-039), la aprobación en bloque (F-043) y el
+           volcado (F-040). La tabla de ejemplo de la bandeja, sus filtros, su
+           selección y los botones de F-038 salieron con el cierre. -->
       <section data-seccion="bandeja" x-show="seccion === 'bandeja'" x-cloak class="rs-seccion">
         <header class="rs-cabecera-seccion">
           <div>
@@ -286,62 +293,33 @@
           </div>
         </header>
 
-        <div data-en-construccion="bandeja" class="rs-obras">
+        <div class="rs-rejilla">
+          <a href="bandeja.html" class="rs-tarjeta rs-tarjeta--produccion">
+            <span class="rs-chip rs-chip--ok rs-tarjeta__chip">En producción</span>
+            <p class="rs-tarjeta__rotulo">Revisar la bandeja</p>
+            <p class="rs-tarjeta__texto">
+              Lo importado de una obra, antes de Sigrid: corregir cada incidencia, descartarla o
+              aprobarla, con quién y cuándo lo hizo.
+            </p>
+            <span class="rs-tarjeta__llamada">Revisar la bandeja <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+          </a>
+        </div>
+
+        <div data-en-construccion="F-039" class="rs-obras rs-obras--bloque">
           <div class="rs-obras__rotulo">
             <span class="rs-obras__cinta" aria-hidden="true"></span>
             <p class="rs-obras__linea">
               <span class="rs-chip rs-chip--atencion">En construcción</span>
               Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
               no es información real y no se guarda nada.
-            </p>
-            <p class="rs-obras__linea">La construirán:</p>
-            <ul class="rs-obras__fichas">
-              <template x-for="f in fichasDeSeccion('bandeja')" :key="f.ficha">
-                <li><span class="rs-obras__ficha" x-text="f.ficha"></span> · <span x-text="f.titulo"></span></li>
-              </template>
-            </ul>
-            <p class="rs-obras__linea">
-              Mientras tanto, la bandeja de una obra ya se puede ver, en solo lectura, en
-              <a href="importar.html#bandeja" class="rs-enlace">Importar incidencias</a>.
+              Lo construirá <span class="rs-obras__ficha">F-039</span> · <span x-text="titulos['F-039']"></span>.
             </p>
           </div>
-
           <div class="rs-panel rs-panel--lista">
-            <div class="rs-filtros">
-              <label class="rs-filtro">
-                <span class="rs-campo__etiqueta">Origen</span>
-                <select x-model="filtros.bandeja.origen" class="rs-campo">
-                  <option value="">Todos</option>
-                  <template x-for="o in datos.bandeja.origenes" :key="o"><option :value="o" x-text="o"></option></template>
-                </select>
-              </label>
-              <label class="rs-filtro">
-                <span class="rs-campo__etiqueta">Estado de revisión</span>
-                <select x-model="filtros.bandeja.estado" class="rs-campo">
-                  <option value="">Todos</option>
-                  <template x-for="e in datos.bandeja.estadosRevision" :key="e"><option :value="e" x-text="e"></option></template>
-                </select>
-              </label>
-              <label class="rs-filtro rs-filtro--ancho">
-                <span class="rs-campo__etiqueta">Obra</span>
-                <select x-model="filtros.bandeja.obra" class="rs-campo">
-                  <option value="">Todas</option>
-                  <template x-for="o in datos.obras.filas" :key="o.cod"><option :value="o.cod" x-text="obra(o.cod)"></option></template>
-                </select>
-              </label>
-              <div class="rs-filtros__acciones">
-                <span class="rs-contador"><strong x-text="seleccionBandeja.length"></strong> seleccionadas</span>
-                <button type="button" data-placeholder="F-043" @click="placeholder('bandeja.aprobarSeleccionadas')"
-                        class="placeholder" aria-disabled="true"
-                        title="Todavía no hace nada: lo construye F-043">Aprobar las seleccionadas <span class="placeholder-ficha">F-043</span></button>
-              </div>
-            </div>
-
-            <div class="rs-desplazable" x-show="bandejaFiltrada().length">
+            <div class="rs-desplazable">
               <table class="rs-tabla">
                 <thead>
                   <tr>
-                    <th><span class="sr-only">Seleccionar</span></th>
                     <th>Origen</th>
                     <th>Obra</th>
                     <th>Unidad de posventa</th>
@@ -349,18 +327,12 @@
                     <th>Oficio</th>
                     <th>Entrada</th>
                     <th>Industrial propuesto</th>
-                    <th>Estado</th>
-                    <th>Código de Sigrid</th>
                     <th><span class="sr-only">Detalle</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  <template x-for="fila in bandejaFiltrada()" :key="fila.id">
+                  <template x-for="fila in datos.propuestas.filas" :key="fila.id">
                     <tr :class="filaBandejaAbierta === fila.id ? 'rs-fila--abierta' : ''">
-                      <td>
-                        <input type="checkbox" :aria-label="'Seleccionar ' + fila.id"
-                               :checked="seleccionBandeja.includes(fila.id)" @change="alternarBandeja(fila.id)">
-                      </td>
                       <td x-text="fila.origen"></td>
                       <td x-text="obra(fila.obra)"></td>
                       <td class="rs-mono whitespace-nowrap" x-text="fila.unidad.cod"></td>
@@ -373,13 +345,6 @@
                         <span class="rs-nota block" x-show="propuesta(fila.id)" x-text="propuesta(fila.id) ? propuesta(fila.id).motivo : ''"></span>
                       </td>
                       <td>
-                        <span class="flex flex-wrap items-center gap-1">
-                          <span class="rs-chip" :data-estado="fila.estado" x-text="fila.estado"></span>
-                          <span x-show="fila.duplicada" class="rs-chip rs-chip--atencion">duplicada</span>
-                        </span>
-                      </td>
-                      <td class="rs-mono whitespace-nowrap" x-text="fila.codSigrid || '—'"></td>
-                      <td>
                         <button type="button" data-local @click="abrirFilaBandeja(fila.id)"
                                 class="rs-btn rs-btn--secundario rs-btn--compacto">Ver</button>
                       </td>
@@ -388,14 +353,11 @@
                 </tbody>
               </table>
             </div>
-            <div data-vacio x-show="!bandejaFiltrada().length" class="rs-vacio">
-              <p class="rs-vacio__titulo">Ninguna entrada de ejemplo cumple esos filtros.</p>
-              <p class="rs-vacio__pista">Prueba a quitar algún filtro.</p>
-            </div>
           </div>
 
           <!-- Panel de detalle [L]: los campos del alta, en el orden de la ficha
-               del parte de Sigrid (R38, R39), en solo lectura. -->
+               del parte de Sigrid (R38, R39), en solo lectura; y los
+               intervinientes, que salen de los oficios de la obra. -->
           <template x-for="fila in [filaBandeja()].filter(Boolean)" :key="fila.id">
             <div class="rs-panel rs-aparece space-y-6">
               <div class="rs-panel__cabecera">
@@ -462,37 +424,50 @@
                 <dl class="rs-datos">
                   <div><dt>Referencia externa</dt><dd><span class="rs-mono" x-text="fila.referenciaExterna"></span>
                     <span class="rs-nota">(la forma exacta la fija el volcado)</span></dd></div>
-                  <div><dt>Código de Sigrid</dt><dd class="rs-mono" x-text="fila.codSigrid || '—'"></dd></div>
                 </dl>
               </div>
 
               <div class="rs-acciones rs-acciones--separadas">
-                <button type="button" data-placeholder="F-038" @click="placeholder('bandeja.editar')"
-                        class="placeholder" aria-disabled="true"
-                        title="Todavía no hace nada: lo construye F-038">Editar <span class="placeholder-ficha">F-038</span></button>
-                <button type="button" data-placeholder="F-038" @click="placeholder('bandeja.descartar')"
-                        class="placeholder" aria-disabled="true"
-                        title="Todavía no hace nada: lo construye F-038">Descartar <span class="placeholder-ficha">F-038</span></button>
-                <button type="button" data-placeholder="F-038" @click="placeholder('bandeja.aprobar')"
-                        class="placeholder" aria-disabled="true"
-                        title="Todavía no hace nada: lo construye F-038">Aprobar <span class="placeholder-ficha">F-038</span></button>
                 <button type="button" data-placeholder="F-039" @click="placeholder('bandeja.cambiarIndustrial')"
                         class="placeholder" aria-disabled="true"
                         title="Todavía no hace nada: lo construye F-039">Cambiar industrial <span class="placeholder-ficha">F-039</span></button>
               </div>
-
-              <div class="rs-bloque space-y-3">
-                <h3 class="rs-rotulo">Historial de revisión</h3>
-                <ul class="rs-historial">
-                  <template x-for="(h, n) in datos.bandeja.historial.filter((h) => h.fila === fila.id)" :key="n">
-                    <li x-text="h.fecha + ' · ' + h.usuario + ' · ' + h.accion"></li>
-                  </template>
-                  <li x-show="!datos.bandeja.historial.some((h) => h.fila === fila.id)" class="rs-vacio-linea">Sin cambios de revisión todavía.</li>
-                </ul>
-              </div>
             </div>
           </template>
+        </div>
 
+        <div data-en-construccion="F-043" class="rs-obras rs-obras--bloque">
+          <div class="rs-obras__rotulo">
+            <span class="rs-obras__cinta" aria-hidden="true"></span>
+            <p class="rs-obras__linea">
+              <span class="rs-chip rs-chip--atencion">En construcción</span>
+              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+              no es información real y no se guarda nada.
+              Lo construirá <span class="rs-obras__ficha">F-043</span> · <span x-text="titulos['F-043']"></span>.
+            </p>
+          </div>
+          <div class="rs-panel space-y-4">
+            <p class="rs-entradilla">
+              Aprobar de una vez varias incidencias de la bandeja, en lugar de una a una.
+            </p>
+            <div class="rs-acciones">
+              <button type="button" data-placeholder="F-043" @click="placeholder('bandeja.aprobarSeleccionadas')"
+                      class="placeholder" aria-disabled="true"
+                      title="Todavía no hace nada: lo construye F-043">Aprobar las seleccionadas <span class="placeholder-ficha">F-043</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div data-en-construccion="F-040" class="rs-obras rs-obras--bloque">
+          <div class="rs-obras__rotulo">
+            <span class="rs-obras__cinta" aria-hidden="true"></span>
+            <p class="rs-obras__linea">
+              <span class="rs-chip rs-chip--atencion">En construcción</span>
+              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+              no es información real y no se guarda nada.
+              Lo construirá <span class="rs-obras__ficha">F-040</span> · <span x-text="titulos['F-040']"></span>.
+            </p>
+          </div>
           <!-- Panel de volcado a Sigrid (F-040), con el vocabulario del contrato
                del alta en lote (R40). Solo se enseña: no se llama a nada. -->
           <div class="rs-panel space-y-5">
@@ -502,14 +477,6 @@
             <p class="rs-entradilla">
               Solo lo aprobado es candidato al volcado. Se vuelca obra a obra: cada lote es de una sola obra.
             </p>
-            <ul class="rs-por-obra">
-              <template x-for="o in datos.obras.filas" :key="o.cod">
-                <li>
-                  <span x-text="obra(o.cod)"></span>:
-                  <strong x-text="Portal.filtrarBandeja(datos.bandeja.filas, { estado: 'aprobada', obra: o.cod }).length"></strong> aprobadas
-                </li>
-              </template>
-            </ul>
             <div class="rs-acciones">
               <button type="button" data-placeholder="F-040" @click="placeholder('bandeja.verVolcado')"
                       class="placeholder" aria-disabled="true"

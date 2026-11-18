@@ -38,10 +38,20 @@ fallo es un 400 que no repite el cursor.
 
 ## Qué se construye y cuándo
 
-Siempre la revisión, para las tres. El catálogo de Sigrid y la fuente de las
-ubicaciones, **solo** para listar, editar y aprobar: descartar, recuperar y el
-historial no leen Sigrid (R18, R19, R32, R46), y por eso tampoco pasan por su
-puerta de entorno. Las equivalencias, solo para listar.
+Siempre la revisión, para las tres. El catálogo de Sigrid, la fuente de las
+ubicaciones y la de los tipos de reclamación (F-072), **solo** para listar,
+editar y aprobar, y en ese orden, antes de la base: descartar, recuperar y el
+historial no leen Sigrid (R18, R19, R32, R46; R27 de F-072), y por eso
+tampoco pasan por su puerta de entorno. Las equivalencias, solo para listar.
+
+**Los tipos de reclamación** (F-072, `design.md` §8): la fuente por defecto es
+`fuente_de_tipos(construir_tipos_reclamacion(...))`, con la misma puerta de
+entorno que las ubicaciones; una lectura por petición (R1). El contrato no
+cambia de forma: `catalogo.listados` son los tipos leídos como
+`{codigo, etiqueta}` (R20); `valores.listado` de una edición es un código de
+`auxtrcp` o `null` (= `0002`, R21, R22); y el `listado` de `importados` y
+`vigentes` es el **tipo efectivo**, nunca `null` (R19, R20). El `listado`
+heredado (`primero`/`segundo`) ya no sale.
 
 **La fuente de las ubicaciones** (Bloque 3 bis, §16.3):
 `construir_fuente_de_ubicaciones` compone el lector de Sigrid
@@ -85,12 +95,17 @@ from application.pipelines.revision import (
     historial,
     listar_para_revisar,
 )
+from application.pipelines.tipos_reclamacion import (
+    FuenteTiposReclamacion,
+    fuente_de_tipos,
+)
 from config.settings import obtener_ajustes
 from domain.models.errores import PeticionDeRevisionInvalida
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
     OpcionOficio,
     normalizar_codigo_obra,
+    tipo_efectivo,
 )
 from domain.models.revision import (
     CAMPOS_PEDIDOS,
@@ -123,6 +138,7 @@ from infrastructure.persistencia.fabrica import (
 )
 from infrastructure.sigrid.fabrica import (
     construir_catalogo_obra,
+    construir_tipos_reclamacion,
     construir_ubicaciones_validas,
 )
 
@@ -237,6 +253,7 @@ def listar_revision(
     equivalencias: EquivalenciasPort | None = None,
     ubicaciones: FuenteDeUbicaciones | None = None,
     configuracion: ConfiguracionPlantilla | None = None,
+    tipos: FuenteTiposReclamacion | None = None,
 ) -> dict[str, Any]:
     """Una página de la bandeja de la obra para revisarla (R23–R31).
 
@@ -268,6 +285,9 @@ def listar_revision(
         if ubicaciones is None:
             with cronometro.tramo("construir.ubicaciones"):
                 ubicaciones = construir_fuente_de_ubicaciones(obtener_ajustes())
+        if tipos is None:
+            with cronometro.tramo("construir.tipos"):
+                tipos = fuente_de_tipos(construir_tipos_reclamacion(obtener_ajustes()))
         if revision is None:
             with cronometro.tramo("construir.bandeja"):
                 revision = construir_revision(obtener_ajustes())
@@ -285,6 +305,7 @@ def listar_revision(
                 equivalencias=cronometro.medir(equivalencias, "equivalencias"),
                 listas=configuracion.listas,
                 ubicaciones=cronometro.medir(ubicaciones, "ubicaciones"),
+                tipos=cronometro.medir(tipos, "tipos"),
             )
         with cronometro.tramo("serializar"):
             pagina = resultado.pagina
@@ -486,6 +507,7 @@ def accion_de_revision(
     ubicaciones: FuenteDeUbicaciones | None = None,
     configuracion: ConfiguracionPlantilla | None = None,
     ahora: datetime | None = None,
+    tipos: FuenteTiposReclamacion | None = None,
 ) -> dict[str, Any]:
     """Aplica la acción del cuerpo y devuelve la incidencia como queda (R5–R22)."""
     peticion = _peticion(cuerpo)
@@ -495,6 +517,8 @@ def accion_de_revision(
             catalogo_obra = construir_catalogo_obra(obtener_ajustes())
         if ubicaciones is None:
             ubicaciones = construir_fuente_de_ubicaciones(obtener_ajustes())
+        if tipos is None:
+            tipos = fuente_de_tipos(construir_tipos_reclamacion(obtener_ajustes()))
     if revision is None:
         revision = construir_revision(obtener_ajustes())
     config = (
@@ -507,6 +531,7 @@ def accion_de_revision(
         listas=config.listas,
         ahora=ahora if ahora is not None else datetime.now(UTC),
         ubicaciones=ubicaciones if lee_sigrid else None,
+        tipos=tipos if lee_sigrid else None,
     )
     ultima = revisada.situacion.ultima
     log.info(
@@ -644,7 +669,11 @@ def _fila(
 
 
 def _valores_de(valores: ValoresIncidencia) -> dict[str, Any]:
-    """Los trece valores, con las claves de `GET /api/bandeja` (R29)."""
+    """Los trece valores, con las claves de `GET /api/bandeja` (R29).
+
+    F-072 (R20): `listado` es el tipo efectivo —el `tipo_reclamacion`, o
+    `0002` si es nulo—, nunca `null`; el `listado` heredado no sale (Q-2).
+    """
     return {
         "unidad_codigo": valores.unidad_codigo,
         "unidad_nombre": valores.unidad_nombre,
@@ -658,7 +687,7 @@ def _valores_de(valores: ValoresIncidencia) -> dict[str, Any]:
         "proveedor_nombre": valores.proveedor_nombre,
         "proveedor_ambiguo": valores.proveedor_ambiguo,
         "urgencia": None if valores.urgencia is None else valores.urgencia.value,
-        "listado": None if valores.listado is None else valores.listado.value,
+        "listado": tipo_efectivo(valores.tipo_reclamacion),
     }
 
 

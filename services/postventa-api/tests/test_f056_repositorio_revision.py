@@ -116,6 +116,7 @@ LEIDAS_DE_LA_BANDEJA = (
     "listado",
     "duplicada_de",
     "creada_at_utc",
+    "tipo_reclamacion",  # F-072 (R16, design.md §6.2): la de `17_tipo_reclamacion.sql`
 )
 LEIDAS_DE_LA_REVISION = (
     "revision_id",
@@ -138,6 +139,7 @@ LEIDAS_DE_LA_REVISION = (
     "motivo",
     "revisado_correo",
     "revisado_at_utc",
+    "tipo_reclamacion",  # F-072 (R16, design.md §6.2)
 )
 #: F-059 (R41, F-1 (a); design.md §21.3 C): las que gana `_select_situaciones`
 #: con sus dos `LEFT JOIN LATERAL` sobre `volcados_sigrid` (§12 de F-059): el
@@ -174,6 +176,7 @@ ESCRITAS = (
     "revisado_por",
     "revisado_correo",
     "revisado_at_utc",
+    "tipo_reclamacion",  # F-072 (R16, design.md §6.2)
 )
 
 
@@ -216,6 +219,7 @@ def _fila_bandeja(
         listado,
         duplicada_de,
         creada,
+        None,  # F-072 (§6.2): `tipo_reclamacion`, nulo = anterior a F-072
     )
 
 
@@ -249,6 +253,7 @@ def _fila_revision(
         motivo,
         CORREO,
         cuando,
+        None,  # F-072 (§6.2): `tipo_reclamacion`, nulo = anterior a F-072
     )
 
 
@@ -369,6 +374,7 @@ def _fila_aprobada(revision_id: int, n: int) -> tuple:
         None,
         CORREO,
         AHORA,
+        None,  # F-072 (§6.2): `tipo_reclamacion`, nulo = anterior a F-072
     )
 
 
@@ -624,6 +630,7 @@ def test_f056_r4_el_insert_es_una_fila_con_la_foto_el_oid_y_el_correo():
         OID,
         CORREO,
         AHORA,
+        None,  # F-072 (R16, §6.2): `tipo_reclamacion` de la foto, nulo aquí
     )
 
 

@@ -2336,3 +2336,106 @@ Lo que enseñó:
 - **Lecciones.** `init.sh` cae por los tests de tiempo de F-036 con 40–50 procesos Python de otros proyectos en la
   máquina; aislados pasan, y al bajar la carga sale en verde. El clasificador de permisos no deja al líder leer
   secretos del Key Vault ni publicar en producción: eso va siempre en un script para el humano.
+
+---
+
+## F-071 · La plantilla saca de Sigrid todos sus desplegables — 2026-11-10
+
+**Cerrada.** Rama `feature/F-071-plantilla-desde-sigrid`, mergeada en `dev`
+`c201f29` y publicada (backend) el 2026-11-10. Rigor `critico`, urgente.
+
+Qué cambió: la plantilla de incidencias (versión 2) saca de Sigrid, al
+descargarla, la unidad, la **ubicación dependiente de la unidad** de cada fila
+(desplegable con `INDIRECT` sobre una tabla de la hoja oculta), el oficio y el
+par oficio · proveedor **por código**; urgencia y listado siguen en el YAML.
+Los grupos de equivalencia ya no se aplican a la plantilla y la plantilla no
+lee PostgreSQL; la lista fija de ubicaciones del YAML desaparece. La
+importación lee las ubicaciones de Sigrid antes de validar y rechaza la
+plantilla v1. Ninguna lectura nueva de `sigrid-api` ni escritura en Sigrid.
+Absorbe F-058.
+
+Evidencias: `init.sh` verde en la rama (9942 passed, cobertura 100 % de 232
+líneas) y en `dev` tras el merge; mutación de los Bloques 1–3 con 66 mutantes,
+1 hueco cerrado con test y 3 equivalentes aceptados por escrito por el humano;
+reviews APPROVED (Bloques 1–3 y final). Verificación en producción (T16) con
+la 0677: los cuatro pasos cumplen (`progress/impl_F-071.md`, «Bloque 5»).
+
+Lo que enseñó:
+
+- **El desplegable dependiente tiene un límite de Excel**: con la fila sin
+  unidad, la lista está vacía pero Excel acepta un texto tecleado. Se aceptó
+  porque la importación lo rechaza (riesgo de `design.md` §4.2).
+- **Un GREEN conjunto de varios bloques** (opción d) evitó una suite en rojo
+  a medias cuando el cambio de dominio rompía a todos sus llamadores.
+- La copia de `dev` acumulaba ficheros «modificados» que solo tenían otros
+  finales de línea: comprobar con un diff sin CR antes de restaurarlos.
+
+Pendiente fuera de la ficha: las comprobaciones 2 a 4 de T14 (App Settings,
+`POST /api/archivar` al host desnudo, restricción de acceso público), del
+humano; cerrar F-058 y retirar su worktree si el humano lo aprueba.
+
+---
+
+## F-038 · Bandeja de revisión: editar, descartar y aprobar — 2026-11-12
+
+**Cerrada.** Rama `feature/F-038-bandeja-revision`, mergeada en `dev`
+`eca6ae3`; la página se publicó el 2026-10-21 (T6) y el cierre de la sección
+el 2026-11-12 (`-SoloFront`). Rigor `critico`.
+
+Qué queda: `bandeja.html`, la revisión de la bandeja de una obra (editar,
+descartar, recuperar y aprobar, con quién y cuándo; las volcadas y en duda
+solo se ven), sobre las rutas de F-056; la sección «Bandeja de revisión» del
+portal «En producción», sin botones de maqueta; los textos de `importar.html`
+y de la portada al día (Q-11 y Q-12).
+
+Evidencias: T7 en producción el 2026-11-09 (pasos 1 a 10; el 2 y el 10 con
+aceptación escrita del humano), review de T8 APROBADA, `init.sh` en verde
+(API 9932, front 911) y T10 verificada en producción.
+
+Queda abierto fuera de la ficha: **F-073** (las tres lecturas de Sigrid de
+`GET /api/revision` en paralelo) y **F-074** (instancia siempre preparada en
+`sigrid-api`), de T7 paso 2; O-B1b-3; y que el historial del detalle no se
+refresca solo tras guardar (T7 paso 3).
+
+Lo que enseñó:
+
+- **Un worktree nuevo no es un entorno**: le faltaba el enlace al venv de la
+  API y sacó el front con CRLF, y la suite JS fallaba por eso. Comprobar las
+  dos cosas antes de leer un rojo como fallo del código.
+- **El paso «los recuentos no cambian»** de una verificación larga en el tiempo
+  no se cumple en una obra viva: la foto de antes tiene que ser del mismo día.
+
+---
+
+## F-072 · El tipo de reclamación sale de Sigrid de punta a punta — 2026-11-18
+
+**Cerrada.** Rama `feature/F-072-tipo-reclamacion-sigrid`, mergeada en `dev`
+`a269341` y publicada por el humano el 2026-11-18. Rigor `critico`.
+
+Qué queda: los tipos de reclamación vigentes de `dbo.auxtrcp` (quinta lectura
+por `sql/read`) en el desplegable `Listado` de la plantilla, en la importación
+y en la revisión; la columna `tipo_reclamacion` en `bandeja_incidencias` y
+`revisiones_bandeja` (`17_tipo_reclamacion.sql`, el primer `ALTER TABLE`); el
+**tipo efectivo** (nulo → `0002`) en bandeja, revisión y volcado, que manda el
+tipo elegido sin releer `auxtrcp`; el motivo `tipo_fuera_de_sigrid`.
+
+Evidencias: reviews de los Bloques 3–7 y final APROBADAS; campaña de mutación
+de la feature válida (41 evaluados, 38 muertos, 3 equivalentes aceptados por
+escrito por el humano) y RM7 3/3; `init.sh` sin caché en verde (2202 / 10377 /
+911, cobertura 158/158) y en verde en `dev`; T24 y T26 en producción en verde
+(`progress/impl_F-072_despliegue.md`), sin escribir nada en Sigrid.
+
+Queda abierto fuera de la ficha: `docs/INTEGRACION.md` sigue diciendo «sin
+desplegar» (l. 411, 2077; lo fija `test_f072_documentacion.py:451`) y «DDL al
+arrancar» (l. ~737; es en la primera petición que abre la base); al editar,
+`cambios` marca `proveedor` sin tocarlo porque el nombre se relee de Sigrid con
+un espacio al final (T26 paso 4); la clave de Gemini en el `repr` de `Ajustes`.
+
+Lo que enseñó:
+
+- **Las campañas de mutación en paralelo se invalidan** por los tests de
+  tiempo de F-036 (`test_f036_r115_*`, `r117_*`, topes de 1 s): en serie la
+  campaña de la feature salió válida en 8,5 h.
+- **Una verificación en producción por la API del front** (con la sesión del
+  humano) cubre la T26 entera sin interfaz: la plantilla se puede leer y
+  rellenar en el navegador sin descargarla.

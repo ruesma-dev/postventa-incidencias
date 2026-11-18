@@ -54,7 +54,6 @@ from domain.models.plantilla_incidencias import (
     MAX_DETALLE,
     MAX_FILAS,
     CatalogoObra,
-    Listado,
     ListasCerradas,
     OficioObra,
     Opcion,
@@ -63,6 +62,8 @@ from domain.models.plantilla_incidencias import (
     ProveedorEnObra,
     UnidadPosventa,
     Urgencia,
+    oficios_del_desplegable,
+    pares_del_desplegable,
 )
 
 # --------------------------------------------------------------------------
@@ -105,15 +106,22 @@ CATALOGO = CatalogoObra(
     ),
 )
 
+# F-071 (R22): las ubicaciones ya no van en `ListasCerradas`, sino por unidad
+# (`ubicaciones_por_unidad`); las dos villas tienen aquí la lista de F-036.
+UBICACIONES_F036 = (
+    "Sala / estudio",
+    "Dormitorio 1",
+    "Dormitorio 3",
+    "Dormitorio 4",
+    "Baño de planta baja",
+    "Cocina",
+)
+UBICACIONES = {
+    "0677.03VILLA 1.": UBICACIONES_F036,
+    "0677.03VILLA 2.": UBICACIONES_F036,
+}
+
 LISTAS = ListasCerradas(
-    ubicaciones=(
-        "Sala / estudio",
-        "Dormitorio 1",
-        "Dormitorio 3",
-        "Dormitorio 4",
-        "Baño de planta baja",
-        "Cocina",
-    ),
     urgencias=(
         Opcion(etiqueta="Urgente", codigo="urgente"),
         Opcion(etiqueta="Peligro para la seguridad", codigo="seguridad"),
@@ -170,8 +178,11 @@ PINTURA_P3 = OpcionProveedor(
     grupo=_grupo_proveedor("P3", "Pinturas Ejemplo S.A."),
     filas_en_obra=(("0028", "P3"),),
 )
-OPCIONES_OFICIO = (CARPINTERIA, PINTURA)
-OPCIONES_PROVEEDOR = (CARPINTERIA_P1, CARPINTERIA_P2, PINTURA_P3)
+# Las de F-036 (por grupo) siguen sirviendo a `resolver_oficio_y_proveedor`,
+# que usa la bandeja. La importación v2 valida contra las de Sigrid por código
+# (F-071, R12–R14).
+OPCIONES_OFICIO = oficios_del_desplegable(CATALOGO)
+OPCIONES_PROVEEDOR = pares_del_desplegable(CATALOGO, OPCIONES_OFICIO)
 
 
 def celda(
@@ -215,9 +226,10 @@ def validar(
     return validar_filas(
         filas,
         catalogo=CATALOGO,
-        opciones_oficio=OPCIONES_OFICIO,
-        opciones_proveedor=OPCIONES_PROVEEDOR,
+        oficios=OPCIONES_OFICIO,
+        pares=OPCIONES_PROVEEDOR,
         listas=LISTAS,
+        ubicaciones_por_unidad=UBICACIONES,
     )
 
 
@@ -239,7 +251,7 @@ def errores_de(f: FilaLeida) -> list[tuple[str, str]]:
 def libro(**cambios: object) -> LibroLeido:
     base = LibroLeido(
         identificador=IDENTIFICADOR_PLANTILLA,
-        version=1,
+        version=2,  # F-071, R17 (era 1)
         obra_codigo="0677",
         cabecera=CABECERA,
         filas=(fila(2, unidad="Villa 1", descripcion="Sellar sifón"),),
@@ -284,7 +296,7 @@ def test_f036_r17_el_identificador_manda_sobre_la_forma_antigua() -> None:
     assert reconocer_plantilla(libro(parece_formato_antiguo=True)) == "0677"
 
 
-@pytest.mark.parametrize("version", [None, 0, 2, 99])
+@pytest.mark.parametrize("version", [None, 0, 3, 99])  # F-071, R23 (era 2)
 def test_f036_r18_version_no_soportada(version: int | None) -> None:
     with pytest.raises(FicheroNoEsPlantilla) as exc:
         reconocer_plantilla(libro(version=version))
@@ -294,7 +306,7 @@ def test_f036_r18_version_no_soportada(version: int | None) -> None:
 
 def test_f036_r18_la_version_se_mira_antes_que_la_cabecera() -> None:
     with pytest.raises(FicheroNoEsPlantilla) as exc:
-        reconocer_plantilla(libro(version=2, cabecera=("Otra",)))
+        reconocer_plantilla(libro(version=3, cabecera=("Otra",)))  # F-071, R23
     assert exc.value.codigo == "version_no_soportada"
 
 
@@ -417,7 +429,7 @@ def test_f036_r9_obra_de_los_metadatos_invalida(obra: str | None) -> None:
 def test_f036_reconocer_orden_de_comprobaciones() -> None:
     # identificador → versión → cabecera → filas → obra (design §4.2).
     todo_mal = {
-        "version": 2,
+        "version": 3,  # F-071, R23: la versión mala ya no es la 2
         "cabecera": ("x",),
         "filas": tuple(fila(n, unidad="Villa 1") for n in range(MAX_FILAS + 1)),
         "obra_codigo": "06/77",
@@ -427,7 +439,7 @@ def test_f036_reconocer_orden_de_comprobaciones() -> None:
         cambios = {"identificador": None, **todo_mal}
         buenos = {
             "identificador": IDENTIFICADOR_PLANTILLA,
-            "version": 1,
+            "version": 2,  # F-071, R17
             "cabecera": CABECERA,
             "filas": (),
             "obra_codigo": "0677",
@@ -466,6 +478,7 @@ def test_f036_fila_minima_valida() -> None:
         urgencia=None,
         listado=None,
         avisos=(),
+        tipo_reclamacion="0002",  # F-072 R14: en blanco, `0002`
     )
 
 
@@ -477,8 +490,8 @@ def test_f036_fila_completa_valida() -> None:
             ubicacion="Cocina",
             descripcion="Faltan topes de puerta corredera",
             detalle="  Para cerrar y abrir.\nLas dos hojas.  ",
-            oficio="Pintura",
-            proveedor="Pintura · Pinturas Ejemplo S.A.",
+            oficio="Pintura (0028)",  # F-071, R13 (era «Pintura»)
+            proveedor="Pintura (0028) · Pinturas Ejemplo S.A. (P3)",  # F-071, R14
             urgencia="Peligro para la seguridad",
             listado="Segundo listado",
         )
@@ -494,7 +507,8 @@ def test_f036_fila_completa_valida() -> None:
         etiqueta="Pinturas Ejemplo S.A.", codigo="P3", ambiguo=False
     )
     assert v.urgencia is Urgencia.SEGURIDAD
-    assert v.listado is Listado.SEGUNDO
+    # F-072 R12, R15 (sustituye a `listado is Listado.SEGUNDO`).
+    assert (v.tipo_reclamacion, v.listado) == ("segundo", None)
     assert v.avisos == ()
 
 
@@ -509,7 +523,8 @@ def test_f036_r31_urgente_y_primer_listado() -> None:
         )
     )
     assert v.urgencia is Urgencia.URGENTE
-    assert v.listado is Listado.PRIMERO
+    # F-072 R12, R15 (sustituye a `listado is Listado.PRIMERO`).
+    assert (v.tipo_reclamacion, v.listado) == ("primero", None)
 
 
 def test_f036_r23_fila_vacia_se_ignora() -> None:
@@ -548,14 +563,13 @@ def test_f036_r25_fila_sin_unidad_debajo_de_una_con_unidad() -> None:
     ]
 
 
+# F-071, R36: «villa 1», «Villa 1 », « Villa 1» y «VILLA 1» ya no son error
+# (se toman como «Villa 1», con aviso; lo fija `test_f036_r26_unidad_casada`);
+# R37: el motivo de lo que no casa es el de «ya no está en Sigrid».
 @pytest.mark.parametrize(
     "valor",
     [
-        "villa 1",
-        "Villa 1 ",
-        " Villa 1",
         "Villa  1",
-        "VILLA 1",
         "Villa 1.",
         "0677.03VILLA 1.",
     ],
@@ -565,12 +579,19 @@ def test_f036_r26_unidad_exacta(valor: str) -> None:
         (
             "Unidad",
             (
-                "ese valor no está en la lista de unidades de la obra: elígelo del desplegable "
-                "(cuidado con mayúsculas, tildes y espacios); si la plantilla es antigua, "
-                "descarga una nueva"
+                "ese valor no está en Sigrid para esta obra (puede que haya cambiado desde "
+                "que descargaste la plantilla): elígelo del desplegable de este fichero, que "
+                "trae las listas de hoy"
             ),
         )
     ]
+
+
+@pytest.mark.parametrize("valor", ["villa 1", "Villa 1 ", " Villa 1", "VILLA 1"])
+def test_f036_r26_unidad_casada(valor: str) -> None:
+    v = una_valida(fila(2, unidad=valor, descripcion="x"))
+    assert v.unidad == Opcion(etiqueta="Villa 1", codigo="0677.03VILLA 1.")
+    assert v.avisos == ("Unidad: se ha tomado «Villa 1»",)
 
 
 def test_f036_r27_descripcion_obligatoria() -> None:
@@ -657,31 +678,36 @@ def test_f036_r28_detalle_se_mide_recortado() -> None:
     assert v.detalle == "d" * 2000
 
 
-@pytest.mark.parametrize(
-    "valor", ["cocina", "Cocina ", "COCINA", "Sala/estudio", "SALA/ ESTUDIO"]
-)
+# F-071, R28: «cocina», «Cocina » y «COCINA» se ajustan a «Cocina» con aviso
+# (`test_f036_r29_ubicacion_casada`); R29: lo que no casa con la lista de su
+# unidad lleva el motivo `UBICACION_FUERA_DE_LA_UNIDAD`.
+@pytest.mark.parametrize("valor", ["Sala/estudio", "SALA/ ESTUDIO"])
 def test_f036_r29_ubicacion_exacta(valor: str) -> None:
     assert errores_de(fila(2, unidad="Villa 1", ubicacion=valor, descripcion="x")) == [
-        (
-            "Ubicación",
-            (
-                "ese valor no está en la lista de ubicaciones: elígelo del desplegable "
-                "(cuidado con mayúsculas, tildes y espacios)"
-            ),
-        )
+        ("Ubicación", importacion.UBICACION_FUERA_DE_LA_UNIDAD)
     ]
+
+
+@pytest.mark.parametrize("valor", ["cocina", "Cocina ", "COCINA"])
+def test_f036_r29_ubicacion_casada(valor: str) -> None:
+    v = una_valida(fila(2, unidad="Villa 1", ubicacion=valor, descripcion="x"))
+    assert v.ubicacion == "Cocina"
+    assert v.avisos == ("la ubicación se ha ajustado al texto de Sigrid: «Cocina»",)
 
 
 @pytest.mark.parametrize(
     "valor", ["pintura", "Pintura ", "Carpinteria de madera", "0028"]
 )
 def test_f036_r30_oficio_exacto(valor: str) -> None:
+    # F-071, R13 y R37: las etiquetas llevan el código, así que «pintura» o
+    # «0028» no casan; el motivo es el de «ya no está en Sigrid».
     assert errores_de(fila(2, unidad="Villa 1", descripcion="x", oficio=valor)) == [
         (
             "Oficio",
             (
-                "ese valor no está en la lista de oficios de la obra: elígelo del desplegable "
-                "(cuidado con mayúsculas, tildes y espacios)"
+                "ese valor no está en Sigrid para esta obra (puede que haya cambiado desde "
+                "que descargaste la plantilla): elígelo del desplegable de este fichero, que "
+                "trae las listas de hoy"
             ),
         )
     ]
@@ -690,11 +716,10 @@ def test_f036_r30_oficio_exacto(valor: str) -> None:
 @pytest.mark.parametrize(
     ("columna", "valor", "lista"),
     [
-        ("urgencia", "urgente", "urgencias"),
+        # F-071, R36: «urgente» y «primer listado» ya casan (con aviso).
         ("urgencia", "Normal", "urgencias"),
         ("urgencia", "Peligro de seguridad", "urgencias"),
         ("listado", "Primero", "listados"),
-        ("listado", "primer listado", "listados"),
     ],
 )
 def test_f036_r31_urgencia_y_listado_exactos(
@@ -784,13 +809,15 @@ def test_f036_r32_numero_en_columna_tasada(columna: str, numero: float) -> None:
 
 
 def test_f036_r24_r33_errores_de_varias_filas_y_columnas_a_la_vez() -> None:
-    f2 = fila(2, ubicacion="cocina", descripcion="a" * 200, oficio="Fontanería")
+    # F-071: sin unidad, «cocina» casaría con la unión (R31), y «URGENTE», con
+    # «Urgente» (R36): se cambian por valores que no casan.
+    f2 = fila(2, ubicacion="Patio", descripcion="a" * 200, oficio="Fontanería")
     f3 = fila(3, unidad="Villa 1", descripcion="Sellar sifón")
     f4 = fila(
         4,
         unidad="Villa 9",
         descripcion="",
-        urgencia="URGENTE",
+        urgencia="Muy urgente",
         listado=celda("=1", formula=True),
     )
     validas, con_error = validar(f2, f3, f4)
@@ -999,16 +1026,14 @@ def test_f036_resolver_rechaza_opciones_sin_codigos() -> None:
 
 
 def test_f036_r93_fila_con_oficio_ambiguo_avisa() -> None:
-    v = una_valida(
-        fila(2, unidad="Villa 1", descripcion="x", oficio="Carpintería de madera")
-    )
+    # F-071, R32 y R35 (sustituyen a R93 en la importación): los dos códigos
+    # del grupo son dos opciones; elegir una da su código, sin ambigüedad.
+    v = una_valida(fila(2, unidad="Villa 1", descripcion="x", oficio="Carpintería de madera (0143)"))
     assert v.oficio == Elegido(
-        etiqueta="Carpintería de madera", codigo=None, ambiguo=True
+        etiqueta="Carpintería de madera", codigo="0143", ambiguo=False
     )
     assert v.proveedor is None
-    assert v.avisos == (
-        "el oficio «Carpintería de madera» tiene varios códigos en la obra: se elegirá en la bandeja",
-    )
+    assert v.avisos == ()
 
 
 def test_f036_r94_fila_con_proveedor_que_resuelve() -> None:
@@ -1017,12 +1042,12 @@ def test_f036_r94_fila_con_proveedor_que_resuelve() -> None:
             2,
             unidad="Villa 1",
             descripcion="x",
-            oficio="Carpintería de madera",
-            proveedor="Carpintería de madera · Carpinterías Ejemplo S.L.",
+            oficio="Carpinteria de madera (0046)",  # F-071, R13, R14
+            proveedor="Carpinteria de madera (0046) · Carpinterías Ejemplo S.L. (P1)",
         )
     )
     assert v.oficio == Elegido(
-        etiqueta="Carpintería de madera", codigo="0046", ambiguo=False
+        etiqueta="Carpinteria de madera", codigo="0046", ambiguo=False
     )
     assert v.proveedor == Elegido(
         etiqueta="Carpinterías Ejemplo S.L.", codigo="P1", ambiguo=False
@@ -1041,21 +1066,20 @@ def test_f036_r75_fila_con_proveedor_ambiguo_avisa() -> None:
         ),
         filas_en_obra=(("0028", "P3"), ("0028", "P4")),
     )
-    validas, con_error = validar_filas(
-        [
-            fila(
-                2, unidad="Villa 1", descripcion="x", proveedor="Pintura · Grupo de dos"
-            )
-        ],
-        catalogo=CATALOGO,
-        opciones_oficio=OPCIONES_OFICIO,
-        opciones_proveedor=(par,),
-        listas=LISTAS,
-    )
-    assert con_error == ()
-    assert validas[0].avisos == (
-        "el proveedor «Grupo de dos» tiene varios códigos en la obra: se elegirá en la bandeja",
-    )
+    # F-071, R14 y R35 (sustituyen a R75 en la importación): un par ya no es
+    # un grupo de proveedores; el P2, que está en dos oficios, da dos pares y
+    # cada uno resuelve oficio y proveedor sin ambigüedad. `par` (de grupo)
+    # sigue valiendo para `resolver_oficio_y_proveedor`, que usa la bandeja.
+    assert resolver_oficio_y_proveedor(PINTURA, par)[1].ambiguo  # type: ignore[union-attr]
+    pares_p2 = [p for p in OPCIONES_PROVEEDOR if p.proveedor_codigo == "P2"]
+    assert [p.oficio.codigo for p in pares_p2] == ["0046", "0143"]
+    for p in pares_p2:
+        v = una_valida(fila(2, unidad="Villa 1", descripcion="x", proveedor=p.etiqueta))
+        assert v.oficio is not None and not v.oficio.ambiguo
+        assert v.proveedor == Elegido(
+            etiqueta="Juan Ejemplo Ejemplo", codigo="P2", ambiguo=False
+        )
+        assert v.avisos == ()
 
 
 def test_f036_r74_d17_fila_con_proveedor_y_sin_oficio() -> None:
@@ -1064,7 +1088,7 @@ def test_f036_r74_d17_fila_con_proveedor_y_sin_oficio() -> None:
             2,
             unidad="Villa 1",
             descripcion="x",
-            proveedor="Pintura · Pinturas Ejemplo S.A.",
+            proveedor="Pintura (0028) · Pinturas Ejemplo S.A. (P3)",  # F-071, R14
         )
     )
     assert v.oficio == Elegido(etiqueta="Pintura", codigo="0028", ambiguo=False)
@@ -1079,21 +1103,24 @@ def test_f036_r74_proveedor_de_otro_oficio_es_error() -> None:
             2,
             unidad="Villa 1",
             descripcion="x",
-            oficio="Pintura",
-            proveedor="Carpintería de madera · Carpinterías Ejemplo S.L.",
+            oficio="Pintura (0028)",  # F-071, R13, R14
+            proveedor="Carpinteria de madera (0046) · Carpinterías Ejemplo S.L. (P1)",
         )
     ) == [
         ("Proveedor", "ese proveedor no está dado de alta en la obra para ese oficio")
     ]
 
 
+# F-071, R14, R36 y R37: las etiquetas v2; en otra mayúscula ya casa (R36,
+# lo fija `test_f071_r36_oficio_y_proveedor_con_otra_mayuscula`), así que ese
+# caso sale de la lista; el motivo es el de «ya no está en Sigrid».
 @pytest.mark.parametrize(
     "valor",
     [
-        "Carpinterías Ejemplo S.L.",  # sin el oficio del par
-        "Carpintería de madera · carpinterías ejemplo s.l.",
-        "Carpintería de madera ·  Carpinterías Ejemplo S.L.",
-        "Pintura · Carpinterías Ejemplo S.L.",  # par que no existe en la obra
+        "Carpinterías Ejemplo S.L. (P1)",  # sin el oficio del par
+        "Carpinteria de madera (0046) ·  Carpinterías Ejemplo S.L. (P1)",
+        "Pintura (0028) · Carpinterías Ejemplo S.L. (P1)",  # par que no existe
+        "Carpinteria de madera · Carpinterías Ejemplo S.L.",  # etiqueta v1
     ],
 )
 def test_f036_r73_proveedor_exacto(valor: str) -> None:
@@ -1101,8 +1128,9 @@ def test_f036_r73_proveedor_exacto(valor: str) -> None:
         (
             "Proveedor",
             (
-                "ese valor no está en la lista de proveedores de la obra: elígelo del desplegable "
-                "(cuidado con mayúsculas, tildes y espacios)"
+                "ese valor no está en Sigrid para esta obra (puede que haya cambiado desde "
+                "que descargaste la plantilla): elígelo del desplegable de este fichero, que "
+                "trae las listas de hoy"
             ),
         )
     ]
@@ -1117,14 +1145,14 @@ def test_f036_r73_oficio_malo_y_proveedor_bueno_solo_marca_el_oficio() -> None:
                 unidad="Villa 1",
                 descripcion="x",
                 oficio="Nada",
-                proveedor="Pintura · Pinturas Ejemplo S.A.",
+                proveedor="Pintura (0028) · Pinturas Ejemplo S.A. (P3)",  # F-071, R14
             )
         )
     ] == ["Oficio"]
 
 
 def test_f036_r76_sin_proveedor_no_se_propone_ninguno() -> None:
-    v = una_valida(fila(2, unidad="Villa 1", descripcion="x", oficio="Pintura"))
+    v = una_valida(fila(2, unidad="Villa 1", descripcion="x", oficio="Pintura (0028)"))  # F-071, R13
     assert v.oficio == Elegido(etiqueta="Pintura", codigo="0028", ambiguo=False)
     assert v.proveedor is None
 
@@ -1133,9 +1161,10 @@ def test_f036_r12_sin_opciones_de_oficio_la_fila_sin_oficio_entra() -> None:
     validas, con_error = validar_filas(
         [fila(2, unidad="Villa 1", descripcion="x")],
         catalogo=CATALOGO,
-        opciones_oficio=(),
-        opciones_proveedor=(),
+        oficios=(),
+        pares=(),
         listas=LISTAS,
+        ubicaciones_por_unidad=UBICACIONES,
     )
     assert con_error == ()
     assert validas[0].oficio is None
@@ -1404,12 +1433,12 @@ def test_f036_r37_duplicadas_en_el_fichero_agrupadas_la_primera_manda() -> None:
 
 
 def test_f036_r77_la_clave_no_incluye_oficio_ni_proveedor() -> None:
-    f2 = fila(2, unidad="Villa 1", descripcion="Sellar sifón", oficio="Pintura")
+    f2 = fila(2, unidad="Villa 1", descripcion="Sellar sifón", oficio="Pintura (0028)")  # F-071, R13
     f3 = fila(
         3,
         unidad="Villa 1",
         descripcion="Sellar sifón",
-        proveedor="Carpintería de madera · Carpinterías Ejemplo S.L.",
+        proveedor="Carpinteria de madera (0046) · Carpinterías Ejemplo S.L. (P1)",  # F-071, R14
     )
     f4 = fila(
         4,

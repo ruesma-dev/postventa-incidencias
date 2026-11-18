@@ -19,7 +19,8 @@
 // nombres de los campos del alta; lo que no nombra, lo fija aquí):
 //
 //   obras.filas[]         {cod: "99NN", res: "… EJEMPLO …"}
-//   bandeja.filas[]       {id, origen, estado, obra, …campos del alta}
+//   propuestas.filas[]    {id, origen, fecha, obra, …campos del alta} (F-039;
+//                          hasta el cierre de F-038, `bandeja.filas`)
 //   incidencias.filas[]   {id: "EJ-NNNN", cod: "RS99.NN/NNNN", obra, estado,
 //                          …campos del alta, carpetaArchivo?}
 //   campos del alta       unidad {cod, res}, descripcionCorta,
@@ -70,7 +71,7 @@ function cadenas(raiz) {
 
 function filasConAlta(d) {
   return [
-    ...d.bandeja.filas.map((fila) => ({ fila, donde: `bandeja ${fila.id}` })),
+    ...d.propuestas.filas.map((fila) => ({ fila, donde: `propuestas ${fila.id}` })),
     ...d.incidencias.filas.map((fila) => ({ fila, donde: `incidencia ${fila.id}` })),
   ];
 }
@@ -81,10 +82,11 @@ function codigos(catalogo) {
 
 //: Bloques de `design.md` §7.1 y la ficha que retira cada uno (R23, R28). El
 //: de `entrada` (F-036) se retiró en la enmienda del 2026-10-05: F-036 está done.
+//: El de `bandeja` (F-038) se retiró en el cierre de F-038 (su `design.md`
+//: §3.2): sus filas de ejemplo que enseñan la propuesta pasaron a `propuestas`.
 const BLOQUES = {
   obras: "F-041",
   web: "F-037",
-  bandeja: "F-038",
   propuestas: "F-039",
   incidencias: "F-041",
   noProcede: "F-042",
@@ -416,7 +418,7 @@ test("f035 R26: están los pendientes mínimos (plantilla, proforma y las dudas 
 
 // ── R38 · Los campos del alta en cada fila ──────────────────────────────────
 
-test("f035 R38: cada fila de la bandeja y de incidencias trae todos los campos del alta", () => {
+test("f035 R38: cada fila de ejemplo (propuestas e incidencias) trae todos los campos del alta", () => {
   const d = datos();
 
   for (const { fila, donde } of filasConAlta(d)) {
@@ -442,7 +444,7 @@ test("f035 R38: hay al menos una fila de Excel sin ubicación ni oficio, para en
   const d = datos();
 
   assert.ok(
-    d.bandeja.filas.some((f) => f.origen === "Excel" && f.ubicacion === null && f.oficio === null),
+    d.propuestas.filas.some((f) => f.origen === "Excel" && f.ubicacion === null && f.oficio === null),
     "falta una fila de Excel con ubicación y oficio sin completar",
   );
 });
@@ -517,10 +519,12 @@ test("f035 R39: todo tipo, forma y oficio usado en los datos está en su catálo
   }
 });
 
-test("f035 R39: exactamente una fila de la bandeja usa el tipo 0003, para enseñar su pendiente", () => {
+// Cierre de F-038: las filas de ejemplo de la bandeja que siguen son las del
+// industrial propuesto (F-039); la del tipo 0003 (BJ-0003) es una de ellas.
+test("f035 R39: exactamente una fila de ejemplo de la bandeja (bloque de F-039) usa el tipo 0003, para enseñar su pendiente", () => {
   const d = datos();
 
-  assert.equal(d.bandeja.filas.filter((fila) => String(fila.tipo) === "0003").length, 1);
+  assert.equal(d.propuestas.filas.filter((fila) => String(fila.tipo) === "0003").length, 1);
 });
 
 // ── R40 · El panel de volcado, con el contrato de sigrid/partes-reclamacion ─

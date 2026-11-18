@@ -1458,3 +1458,162 @@ Los 141 omitidos son todos de `test_f056_alcance_cerrado.py` y `test_f059_alcanc
   review que la feature que pasa a ser «la última» deje **su propio** test de cabecera con el patrón ampliable. Si no
   lo hace, la cabecera queda vigilada solo por los genéricos, que aceptan cualquier feature existente. El caso es
   O-R20-2.
+
+
+## Review de T8 · 2026-11-11
+
+- **Veredicto: APPROVED** (de `8480c66`, solo T8). Vale con una condición, la que pone T9: que la
+  `bash harness/init.sh` que lanza el líder sobre este commit salga en verde. Si sale en rojo, este veredicto no
+  cuenta y se revierte T8 entero (`git revert`), sin arreglar nada encima.
+- **Nivel de rigor:** `critico` (`harness/features.json`). Pide fase RED, cobertura, mutación y que ningún mutante
+  sobreviva salvo que el humano lo acepte por escrito.
+  - **Cobertura y `harness.mutacion`: N/A justificado.** `git show --stat 8480c66` solo trae HTML, JS, CSS, tests,
+    docs, `features.json`, `tasks.md` y el informe. No hay ningún `.py` de producción, y las dos herramientas solo
+    miden y mutan Python. Por eso la verificación son los mutantes a mano: los del implementer y los míos, abajo.
+- **P-4:** no he ejecutado `init.sh` (lo hace el líder en paralelo) ni he tocado `.env`. El árbol de trabajo no lo he
+  modificado. El `BACKLOG.md` modificado que hay en el worktree es del `init.sh` del líder, y no entra en mi commit.
+
+### Suites (worktree `postventa-f038`, en LF tras la nueva extracción del líder, sin `.env`)
+
+| Suite | Resultado |
+|---|---|
+| `node --test "tests_js/*.test.js"` (front) | 1132 tests · 1132 pass · 0 fail |
+| `python -m pytest tests` (front) | 911 passed · 7 skipped · 0 failed |
+| `python -m pytest tests/test_f035_placeholders_vivos.py` (raíz) | 19 passed |
+
+Con el front en LF, los 16 fallos que el informe atribuía al CRLF desaparecen, y también el de
+`test_f007_r32` que los arrastraba. El diagnóstico del implementer era correcto: no son de T8.
+
+### Las cuatro decisiones que pidió mirar el líder
+
+1. **`rs-por-obra` fuera de `css/portal.css` y `?v=6e073b5414` → `?v=80c9887e36` en las cinco páginas. Aceptable, no
+   necesita al humano.** Es la consecuencia mecánica de lo que pide la spec: la lista «aprobadas por obra» se va
+   (`design.md` §3.2 punto 5), la clase se queda sin uso y la guarda H-5 lo prohíbe. La `?v=` es la que calcula
+   `version_de_las_hojas()`: las seis `<link>` llevan el mismo valor (`grep`) y el test de la versión está en verde.
+   Mi mutante V9 (devolver una regla `rs-por-obra`) lo tumban H-5 y la versión: 13 fallos. **Aviso para T10:** la
+   publicación lleva hoja nueva. `-SoloFront` publica el front entero, así que no hay que hacer nada aparte, pero sí
+   comprobar en producción que se ve la hoja nueva (sin caché vieja).
+2. **Cuatro filas a `MaquetaDatos.propuestas.filas`, entre ellas la única con tipo 0003. Aceptable, no necesita al
+   humano, pero hay que saber que se aparta de la letra.** La letra del punto 3 de T8 dice que se muden «las filas
+   que use `propuestas.porFila`», y en `60daef7` `porFila` usaba las **ocho** (BJ-0001 a BJ-0008). El implementer
+   mudó cuatro y **recortó `porFila`** a esas cuatro. Las otras cuatro solo enseñaban estados de revisión (aprobada,
+   duplicada y descartada, volcada), que ya son reales en `bandeja.html`. Lo que la spec pone como condición sí se
+   cumple: ninguna fila queda en un bloque sin ficha ni con F-038, R38 sigue con filas completas, y R39 de F-035
+   sigue teniendo qué probar con BJ-0003 (lo tumba M11). `oficiosObra["9902"]` se queda sin filas en la tabla, pero
+   no sobra, porque lo usa el volcado de ejemplo (`interviniente_ambiguo`). Es contenido de ejemplo de F-039, que lo
+   rehará. El recorte reduce el ejemplo, no cambia ningún comportamiento.
+3. **La tarjeta de la portada sigue siendo `<a>`. Aceptable.** R67 de F-035 solo exige el chip «En producción», y lo
+   tiene: `rs-chip--ok`, `rs-tarjeta--produccion` y la llamada «Revisar la bandeja», sin «Ver cómo será». Lo de «la
+   forma de "Entrada de incidencias"» que menciona T8 lo concreta la propia T8 entre paréntesis: «sin "Ver cómo
+   será"». Esa tarjeta es un `div` porque tiene **dos** acciones, y la de la bandeja solo tiene una. Además la guarda
+   de F-040 T6a la busca como `<a … rs-tarjeta href="bandeja.html">`. Mi mutante V1 (`href="#/bandeja"`) cae con
+   2 fallos JS.
+4. **Mutación a mano, 13 puntos, 2 vivos que se cerraron con tests. Verificado.** He repetido M12 y M13 en una copia
+   desechable (`git archive 8480c66` en mi scratchpad; el árbol no lo he tocado). M12 (`filaBandeja` lee
+   `incidencias.filas`) cae con 1 fallo JS. M13 (vuelve «llegará con F-038») cae con
+   `test_f038_q11_importar_ya_no_dice_que_la_revision_llegara`. Los dos los caza un test **de F-038**, no una suite
+   vecina.
+
+### Mis mutantes (copia desechable; suites JS y pytest del front y la guarda de la raíz)
+
+| Mutante | Resultado |
+|---|---|
+| R12 = M12 del implementer | muerto (js 1) |
+| R13 = M13 del implementer | muerto (py 1, el test nuevo de Q-11) |
+| V1 la tarjeta de la portada a `#/bandeja` | muerto (js 2) |
+| V2 «Revisar la bandeja» con `target="_blank"` | muerto (py 3: R73, f038 R17, R17 de F-035) |
+| V3 la pestaña `bandeja` de `index.html` vuelve a llevar la marca | muerto (js 2) |
+| V4 el paso 03 de `index.html` vuelve a llevar la marca | muerto (js 3, py 2) |
+| V5 el recuadro F-039 rotulado F-038 | muerto (py 13, raíz 3) |
+| V6 `porFila["BJ-0002"]` con propuesta (la fila sin oficio) | **vive** |
+| V7 BJ-0007 de origen `Excel` en vez de `Web` | **vive** |
+| V8 una fila de `propuestas` vuelve a llevar `estado: "nueva"` | **vive** |
+| V9 vuelve una regla `rs-por-obra` | muerto (py 13) |
+
+**V6, V7 y V8 no bloquean**, porque ningún requisito de F-038 ni de F-035 los cubre:
+
+- **V6:** «sin oficio no se propone» es un criterio de **F-039** (sin implementar). Hoy solo lo dice un comentario
+  del ejemplo.
+- **V7:** ningún requisito pide que el ejemplo traiga una fila «Web».
+- **V8:** el campo no se pinta (R57 prohíbe el chip `fila.estado` en `index.html`, y eso sí está fijado). Sería un
+  dato muerto, no un resto que cuente R28.
+
+Fijarlos con tests sería atar datos inventados sin ningún requisito detrás. Quedan como **O-T8-1**, para quien
+escriba la spec de F-039: si quiere que su ejemplo enseñe «sin oficio, sin propuesta», que lo pida en un requisito y
+lo fije con un test. No hace falta que el humano los acepte como equivalentes: no son mutantes del código de T8,
+sino del contenido de ejemplo de otra ficha.
+
+### Contra la letra de T8 (puntos 1 a 8 y su «Verificación»)
+
+- `js/portal.js`: `bandeja` está en `parcial` y el comentario de `enlace` está al día. Las tres entradas de F-038
+  salen de `PLACEHOLDERS`, `"F-038"` sale de `TITULOS_FICHAS`, y `filtrarBandeja` sale entera (función, export y
+  cabecera). `aprobarSeleccionadas` y `reintentarVolcado` pasan a `enBloque: false`. [x]
+- `js/portal_app.js`: salen los filtros, la selección, `bandejaFiltrada` y `alternarBandeja`. [x]
+- `index.html`: sale el envoltorio de sección, entra la tarjeta «Revisar la bandeja» (misma pestaña) y quedan los
+  tres recuadros de bloque F-039, F-043 y F-040, cada uno con su rótulo. Ningún `data-placeholder="F-038"`. La
+  portada lleva el chip «En producción» y la entradilla de Q-12, tal como se aprobó. [x]
+- `bandeja.html`: la pestaña y los pasos 02 y 03 van sin marca. El 02 conserva `aria-current="step"` y el 03 sigue
+  siendo `<span>` sin `href` (R25). Las otras cuatro páginas ya las dejó así F-040 T6a: no hay `data-construccion`
+  en Bandeja, Revisión ni Sigrid. Lo he comprobado con `grep`, y R17 de F-038 («las cinco barras») se cumple. [x]
+- `importar.html` (Q-11): la frase recomendada y el comentario de cabecera. No hay ningún otro cambio en la página, y
+  `js/importacion.js` no aparece en el diff. [x]
+- Tests: cada cambio aparece en el informe con su porqué. Ninguna aserción se quita sin poner otra en su lugar, y los
+  controles que miraban `bandeja` se mudan a `incidencias` o se invierten. He revisado sobre todo el de R57: el chip
+  `fila.estado` pasa de exigido a prohibido. [x]
+- Docs (R19, R20): `ARCHITECTURE.md` («publicada el 2026-10-21 y verificada en producción el 2026-11-09», la viñeta
+  «En producción» y la nota fechada en la enmienda) y el README del front. [x]
+- `harness/features.json`: F-038 en `done`, en el mismo commit (D-11). [x]
+- **La atomicidad está demostrada:** en el RED del informe, F-038 `done` con el front de antes da los siete restos
+  exactos (R28) y el R62. [x]
+
+### Checkpoints
+
+- **C1** · `init.sh` en verde: **pendiente del líder** (el encargo me prohíbe lanzarlo). El APPROVED depende de ese
+  resultado. Los ficheros base existen. [x] por lo que me toca.
+- **C2** · Ninguna feature más en `in_progress`, porque F-038 pasa a `done`. La rama es la de F-038. `current.md`
+  todavía habla de F-038 `in_progress`, y `history.md` aún no tiene el resumen de F-038. N/A con motivo: por diseño
+  de la spec, las dos cosas son del líder en T9 y T11, después de este commit.
+- **C3** · Dominio hexagonal: N/A, porque no toca `postventa-api`. Primera línea con ruta: no hay ficheros nuevos.
+  En el diff añadido no hay `console.log`, `print`, `debugger` ni secretos (`grep`). No hay dependencias nuevas. Las
+  reglas de partes, firmas y Sigrid no se tocan: es front estático, sin escrituras. [x]
+- **C3 bis** · N/A: no toca `docs/referencia/`.
+- **C4** · Requisitos que toca T8 → tests: ver la tabla de abajo, todos en verde y sin red. MANUAL: T10 está en
+  `tasks.md` con sus pasos 1 a 5. Que `current.md` la recoja le toca al líder al cerrar T9. [x]
+- **C4 bis** · `rigor` declarado [x]. RED con trazas reales (23 JS y 10 Python contra el código de `60daef7`, y la
+  guarda de la raíz con los siete restos) [x]. Cobertura y `harness.mutacion`: N/A por el lenguaje, motivo escrito
+  arriba. Mutantes a mano: 13 del implementer, todos muertos al final; de los 11 míos, 8 muertos y 3 vivos fuera de
+  requisito (O-T8-1) [x]. «Evidencias (T8)» con tests, cobertura (N/A), mutación y tiempos; los workers no aplican,
+  porque la campaña fue a mano y en serie [x]. La guarda por definiciones: N/A, no cambia ninguna lista de «no se
+  toca».
+- **C4 ter** · N/A: el diff no toca ninguna ruta sensible declarada (no hay `.py`, prompts ni infra).
+- **C5** · T8 está en `[x]` con su commit `F-038 T8: …`. T9 a T11 siguen abiertas, como manda la spec. No hay
+  temporales en el árbol (solo `__pycache__` y `.pytest_cache`, ignorados). `features.json` dice `done`, que es el
+  estado que exige D-11 para este commit. [x]
+
+### Cobertura de lo que toca T8
+
+| Requisito | Test que lo cubre |
+|---|---|
+| R17: `bandeja` en `parcial` | `f040 T6a: la ruta #/bandeja … está en parcial`; R62 en `test_f035_placeholders_vivos.py` |
+| R17: sin restos de F-038 | R28 en `test_f035_placeholders_vivos.py`; `f035 R8 … PLACEHOLDERS`; `f038 R17: filtrarBandeja salió de Portal …` |
+| R17: la tarjeta de `#/bandeja` y los recuadros de bloque | `test_f038_r17_la_bandeja_del_portal_lleva_a_bandeja_html_en_produccion`; R63, R64 y R65 de `test_f035_paginas.py` |
+| R17: la barra y la tira de `bandeja.html` sin marca | `test_f038_r2_la_pestana_de_la_bandeja_es_la_actual_y_va_sin_marca` y su control; los controles R84-R87 de `portal.test.js` |
+| R17: la portada con el chip «En producción» | R67 (`TARJETAS_EN_PRODUCCION`) |
+| R25: el 03 sin `href` ni `aria-current` | controles de la tira en `portal.test.js` |
+| Q-11 | `test_f038_q11_importar_ya_no_dice_que_la_revision_llegara` |
+| Q-12 | `test_f035_r67_la_ceja_y_la_entradilla_de_inicio_no_hablan_de_maqueta` (`ENTRADILLA_DE_INICIO`) |
+| R39 de F-035 sigue teniendo qué probar | `maqueta_datos.test.js`, R39 sobre `propuestas.filas` |
+| El detalle del ejemplo de F-039 | `f038 R17: abrirFilaBandeja abre cada fila de ejemplo del industrial propuesto …` |
+
+### Para el humano (informativo, no bloquea)
+
+- **Q-11 y Q-12** no las respondió el humano en persona: delegó la decisión en el líder («revisa tu en chrome q11 y
+  12», `progress/spec_F-038.md`). Se eligieron los textos que recomendaba la spec. Si el humano quiere otros, es un
+  cambio de texto de una línea y su test.
+- **O-T8-1:** V6, V7 y V8, más arriba.
+
+### Automejora (propuesta, no aplicada)
+
+- Para `implementer.md` y `arnes-base`: cuando una tarea de la spec diga «mudar las filas que use X», y el
+  implementer decida mudar menos y **recortar X**, que lo anote como desviación de la letra, igual que se hizo con
+  la CSS. Aquí venía como «decisión de diseño», y hubo que comparar `porFila` antes y después para ver que eran ocho.

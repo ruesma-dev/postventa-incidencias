@@ -2,7 +2,9 @@
 """Utilidades de los tests de la importación de F-036 (T17, T18).
 
 Dobles **en memoria** de los puertos que usa la importación —bandeja,
-decisiones de equivalencia y catálogo de Sigrid— y dos envoltorios que anotan
+decisiones de equivalencia, catálogo de Sigrid y, desde F-071, la fuente de
+las ubicaciones válidas de cada unidad (`UbicacionesEnMemoria`)— y dos
+envoltorios que anotan
 las llamadas del lector y del generador de verdad. Todos escriben en una lista
 común de `llamadas`, y así un test puede fijar **el orden** de los pasos sin
 mirar dentro de ellos.
@@ -27,6 +29,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from domain.models.equivalencias import Catalogo, DecisionPar
+from domain.models.plantilla_incidencias import CatalogoObra, TipoReclamacion
 from domain.models.importacion import (
     EstadoFilaImportada,
     EstadoImportacion,
@@ -45,12 +48,19 @@ from domain.ports.catalogo_obra import (
     LecturaCatalogo,
 )
 from domain.ports.hoja_calculo import FilaPlantilla
+from domain.ports.tipos_reclamacion import FilaTipoReclamacion
 from infrastructure.documentos.excel_openpyxl import (
     GeneradorPlantillaOpenpyxl,
     LectorPlantillaOpenpyxl,
 )
 
-from tests.utiles_plantilla import FILAS_OBROFC, OFICIOS, UNIDADES, generar
+from tests.utiles_plantilla import (
+    FILAS_OBROFC,
+    OFICIOS,
+    TIPOS_FICTICIOS,
+    UNIDADES,
+    generar,
+)
 
 #: Una referencia de obra (`upv.obride`) **inventada**.
 OBRA_REF = "987654321"
@@ -176,7 +186,94 @@ class EquivalenciasEnMemoria:
         raise AssertionError("la importación no registra decisiones")
 
 
+# --- las ubicaciones válidas de Sigrid (F-071) ---------------------------------
+
+#: Las ubicaciones de Sigrid de cada unidad de la 0677 inventada: «Almacén», la
+#: de las filas de ejemplo, es válida en Villa 1 y Villa 2; Villa 3 no tiene.
+UBICACIONES_0677: Mapping[str, tuple[str, ...]] = {
+    "0677.03VILLA 1.": ("Almacén", "Cocina"),
+    "0677.03VILLA 2.": ("Almacén",),
+}
+
+
+class UbicacionesEnMemoria:
+    """La fuente de las ubicaciones válidas (F-071 R24): un mapa por unidad.
+
+    Anota `"ubicaciones"` en cada lectura y el catálogo con el que se pidió.
+    """
+
+    def __init__(
+        self,
+        llamadas: list[str],
+        mapa: Mapping[str, tuple[str, ...]] | None = None,
+        *,
+        fallo: Exception | None = None,
+    ) -> None:
+        self.llamadas = llamadas
+        self.mapa = dict(UBICACIONES_0677 if mapa is None else mapa)
+        self._fallo = fallo
+        self.catalogos: list[CatalogoObra] = []
+
+    def __call__(self, catalogo: CatalogoObra) -> Mapping[str, tuple[str, ...]]:
+        self.llamadas.append("ubicaciones")
+        self.catalogos.append(catalogo)
+        if self._fallo is not None:
+            raise self._fallo
+        return self.mapa
+
+
 # --- la bandeja ---------------------------------------------------------------
+
+
+class TiposEnMemoria:
+    """La fuente de los tipos de reclamación (F-072 R1, R11), con tipos ficticios.
+
+    Cada llamada es una lectura: se cuenta en `lecturas` y, si se le da la
+    lista común `llamadas`, se anota `"tipos"` en ella. Sin `llamadas`, los
+    tests anteriores a F-072 conservan el orden que fijan.
+    """
+
+    def __init__(
+        self,
+        llamadas: list[str] | None = None,
+        tipos: tuple[TipoReclamacion, ...] = TIPOS_FICTICIOS,
+        *,
+        fallo: Exception | None = None,
+    ) -> None:
+        self.llamadas = llamadas
+        self.tipos = tipos
+        self._fallo = fallo
+        self.lecturas = 0
+
+    def __call__(self) -> tuple[TipoReclamacion, ...]:
+        self.lecturas += 1
+        if self.llamadas is not None:
+            self.llamadas.append("tipos")
+        if self._fallo is not None:
+            raise self._fallo
+        return self.tipos
+
+
+class PuertoTiposEnMemoria:
+    """Un `TiposReclamacionPort` con los tipos ficticios, para las fábricas.
+
+    Lo que devuelve `construir_tipos_reclamacion` cuando un test deja que el
+    borde componga la fuente (`fuente_de_tipos`) en vez de inyectarla.
+    """
+
+    def __init__(self, tipos: tuple[TipoReclamacion, ...] = TIPOS_FICTICIOS) -> None:
+        self.tipos = tipos
+        self.lecturas = 0
+
+    def leer(self) -> LecturaCatalogo[FilaTipoReclamacion]:
+        self.lecturas += 1
+        return LecturaCatalogo(
+            tuple(
+                FilaTipoReclamacion(codigo=t.codigo, nombre=t.nombre, posicion=n)
+                for n, t in enumerate(self.tipos, start=1)
+            ),
+            False,
+        )
 
 
 class BandejaEnMemoria:

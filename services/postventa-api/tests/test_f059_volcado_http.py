@@ -58,7 +58,7 @@ from infrastructure.sigrid import fabrica as fabrica_sigrid
 from interface_adapters.api import revision as modulo_revision
 from interface_adapters.api import volcado as modulo
 
-from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_importacion import EquivalenciasEnMemoria, PuertoTiposEnMemoria
 from tests.utiles_revision import (
     CORREO,
     CORREO_2,
@@ -210,6 +210,10 @@ def _componer(monkeypatch, mundo: Mundo) -> None:
         modulo_revision,
         "construir_fuente_de_ubicaciones",
         _fabrica(mundo, "ubicaciones", "ubicaciones"),
+    )
+    # F-072 (R1): la fuente de los tipos de Sigrid, sin anotarla en `construidos`.
+    monkeypatch.setattr(
+        modulo_revision, "construir_tipos_reclamacion", lambda _ajustes: PuertoTiposEnMemoria()
     )
     monkeypatch.setattr(modulo_revision, "configuracion_de_la_plantilla", lambda: CONFIG)
 
@@ -484,25 +488,28 @@ def test_f059_r10_d4_el_ensayo_no_mira_la_ventana(monkeypatch, mundo):
 
 
 @pytest.mark.parametrize(
-    ("ajustes", "codigo"),
+    ("construir_ajustes", "codigo"),
     [
-        (_ajustes(ENTORNO="test", **CONFIGURACION_INVENTADA), "volcado_deshabilitado"),
-        (_ajustes(ENTORNO="local", **CONFIGURACION_INVENTADA), "volcado_deshabilitado"),
-        (_ajustes(ENTORNO="dev"), "configuracion_sigrid_incompleta"),
-        (_completos(VOLCADO_PARTES_POR_LLAMADA="cinco"), "configuracion_de_volcado_invalida"),
-        (_completos(VOLCADO_PARTES_POR_LLAMADA="0"), "configuracion_de_volcado_invalida"),
-        (_completos(VOLCADO_PARTES_POR_LLAMADA="51"), "configuracion_de_volcado_invalida"),
+        (lambda: _ajustes(ENTORNO="test", **CONFIGURACION_INVENTADA), "volcado_deshabilitado"),
+        (lambda: _ajustes(ENTORNO="local", **CONFIGURACION_INVENTADA), "volcado_deshabilitado"),
+        (lambda: _ajustes(ENTORNO="dev"), "configuracion_sigrid_incompleta"),
+        (lambda: _completos(VOLCADO_PARTES_POR_LLAMADA="cinco"), "configuracion_de_volcado_invalida"),
+        (lambda: _completos(VOLCADO_PARTES_POR_LLAMADA="0"), "configuracion_de_volcado_invalida"),
+        (lambda: _completos(VOLCADO_PARTES_POR_LLAMADA="51"), "configuracion_de_volcado_invalida"),
         # T17 (A17): con el entorno y `N` mal, manda el entorno (§8.3).
         (
-            _ajustes(ENTORNO="test", VOLCADO_PARTES_POR_LLAMADA="cinco", **CONFIGURACION_INVENTADA),
+            lambda: _ajustes(ENTORNO="test", VOLCADO_PARTES_POR_LLAMADA="cinco", **CONFIGURACION_INVENTADA),
             "volcado_deshabilitado",
         ),
     ],
     ids=["entorno-test", "entorno-local", "sin-configuracion", "n-cinco", "n-cero", "n-51", "entorno-y-n"],
 )
 def test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer(
-    monkeypatch, ajustes, codigo
+    monkeypatch, construir_ajustes, codigo
 ):
+    # Los ajustes se construyen aquí y no al recoger los tests: así los aísla
+    # de `os.environ` el fixture `entorno_de_test` de conftest.py.
+    ajustes = construir_ajustes()
     monkeypatch.setattr(modulo, "obtener_ajustes", lambda: ajustes)
     monkeypatch.setattr(modulo, "construir_ensayador", fabrica_sigrid.construir_ensayador)
     monkeypatch.setattr(modulo, "construir_volcador", prohibido("el volcador"))
@@ -516,22 +523,22 @@ def test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer(
 
 
 @pytest.mark.parametrize(
-    ("ajustes", "codigo"),
+    ("construir_ajustes", "codigo"),
     [
-        (_ajustes(ENTORNO="test", VOLCADO_HABILITADO="true", **CONFIGURACION_INVENTADA), "volcado_deshabilitado"),
-        (_completos(VOLCADO_HABILITADO="false"), "volcado_deshabilitado"),
-        (_completos(), "volcado_deshabilitado"),
+        (lambda: _ajustes(ENTORNO="test", VOLCADO_HABILITADO="true", **CONFIGURACION_INVENTADA), "volcado_deshabilitado"),
+        (lambda: _completos(VOLCADO_HABILITADO="false"), "volcado_deshabilitado"),
+        (lambda: _completos(), "volcado_deshabilitado"),
         (
-            _completos(CIERRE_HABILITADO="true", ARCHIVO_HABILITADO="true"),
+            lambda: _completos(CIERRE_HABILITADO="true", ARCHIVO_HABILITADO="true"),
             "volcado_deshabilitado",
         ),
-        (_ajustes(ENTORNO="dev", VOLCADO_HABILITADO="true"), "configuracion_sigrid_incompleta"),
+        (lambda: _ajustes(ENTORNO="dev", VOLCADO_HABILITADO="true"), "configuracion_sigrid_incompleta"),
         (
-            _completos(VOLCADO_HABILITADO="true", VOLCADO_PARTES_POR_LLAMADA="cinco"),
+            lambda: _completos(VOLCADO_HABILITADO="true", VOLCADO_PARTES_POR_LLAMADA="cinco"),
             "configuracion_de_volcado_invalida",
         ),
         # T17 (A17): la ventana cerrada y `N` mal: manda la ventana (§8.3).
-        (_completos(VOLCADO_PARTES_POR_LLAMADA="cinco"), "volcado_deshabilitado"),
+        (lambda: _completos(VOLCADO_PARTES_POR_LLAMADA="cinco"), "volcado_deshabilitado"),
     ],
     ids=[
         "entorno-test",
@@ -544,8 +551,11 @@ def test_f059_r10_r30_el_ensayo_sin_entorno_configuracion_o_n_es_503_sin_leer(
     ],
 )
 def test_f059_r16_r37_r42_el_volcado_sin_sus_puertas_es_503_antes_de_abrir_la_base(
-    monkeypatch, ajustes, codigo
+    monkeypatch, construir_ajustes, codigo
 ):
+    # Los ajustes se construyen aquí y no al recoger los tests: así los aísla
+    # de `os.environ` el fixture `entorno_de_test` de conftest.py.
+    ajustes = construir_ajustes()
     monkeypatch.setattr(modulo, "obtener_ajustes", lambda: ajustes)
     monkeypatch.setattr(modulo, "construir_volcador", fabrica_sigrid.construir_volcador)
     monkeypatch.setattr(modulo, "construir_ensayador", prohibido("el ensayador"))

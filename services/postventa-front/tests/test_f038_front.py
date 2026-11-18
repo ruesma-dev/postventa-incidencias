@@ -221,11 +221,16 @@ def test_f038_r1_sin_datos_reales():
     assert datos_reales(_bandeja()) == []
 
 
-# --- R2 · La pestaña de su sección, actual y en construcción ------------------------------
+# --- R2 · La pestaña de su sección, actual (y sin marca desde el cierre) -----------------
+#
+# Cierre de F-038 (T8, R17): cambio a propósito, declarado. Mientras F-038 no
+# estaba `done`, la pestaña actual llevaba su marca de construcción (R2); con
+# la sección en `parcial`, la pestaña sigue siendo la actual y va SIN marca. El
+# control pasa a cazar la marca puesta.
 
 
 def problemas_r2(html: str) -> list[str]:
-    """La pestaña «Bandeja de revisión» de `bandeja.html`: actual y con su marca (R2). Vacío = correcto."""
+    """La pestaña «Bandeja de revisión» de `bandeja.html`: actual y sin marca (R2, R17). Vacío = correcto."""
     nav = barra(leer_html_texto(html), "bandeja.html")
     pestanas = [e for e in nav.elementos() if "rs-pestana" in clases(e) and e.texto() == "Bandeja de revisión"]
     if len(pestanas) != 1:
@@ -234,23 +239,29 @@ def problemas_r2(html: str) -> list[str]:
     problemas = []
     if pestana.nombre != "span" or "href" in pestana.atributos or pestana.atributos.get("aria-current") != "page":
         problemas.append('la pestaña de su sección es <span aria-current="page">, sin enlace')
-    if "data-construccion" not in pestana.atributos:
-        problemas.append("la pestaña de una sección en construcción lleva data-construccion (R2)")
-    if pestana.atributos.get("aria-label") != "Bandeja de revisión (en construcción)":
-        problemas.append("la pestaña lleva aria-label «Bandeja de revisión (en construcción)» (R2)")
+    if "data-construccion" in pestana.atributos:
+        problemas.append("la sección está en parcial: la pestaña no lleva data-construccion (R17)")
+    if "aria-label" in pestana.atributos:
+        problemas.append("la sección está en parcial: la pestaña no lleva aria-label de construcción (R17)")
     return problemas
 
 
-def test_f038_r2_la_pestana_de_la_bandeja_es_la_actual_y_lleva_su_marca():
+def test_f038_r2_la_pestana_de_la_bandeja_es_la_actual_y_va_sin_marca():
     assert problemas_r2(_bandeja()) == []
 
 
-def test_f038_r2_control_sin_la_marca_salta():
+def test_f038_r2_control_con_la_marca_salta():
     real = _bandeja()
-    viejo = 'data-construccion aria-label="Bandeja de revisión (en construcción)">Bandeja de revisión</span>'
-    assert real.count(viejo) == 1, "el control no encuentra la pestaña marcada"
+    viejo = '<span aria-current="page" class="rs-pestana">Bandeja de revisión</span>'
+    assert real.count(viejo) == 1, "el control no encuentra la pestaña actual"
 
-    assert len(problemas_r2(real.replace(viejo, ">Bandeja de revisión</span>"))) == 2
+    marcada = (
+        '<span aria-current="page" class="rs-pestana" data-construccion '
+        'aria-label="Bandeja de revisión (en construcción)">Bandeja de revisión</span>'
+    )
+    assert len(problemas_r2(real.replace(viejo, marcada))) == 2
+    sin_actual = '<a href="./#/bandeja" class="rs-pestana">Bandeja de revisión</a>'
+    assert len(problemas_r2(real.replace(viejo, sin_actual))) == 1
 
 
 # --- R3, R6, R7 · Obra, filtros y «Cargar más» --------------------------------------------
@@ -585,6 +596,20 @@ def test_f038_r14_control_el_enlace_estropeado_salta(estropear, senal):
     assert copia != real, "el control no encuentra lo que estropear"
 
     assert any(senal in p for p in problemas_r14(copia)), problemas_r14(copia)
+
+
+#: Q-11 de F-038 (sí, 2026-11-11): la frase del bloque 3 de `importar.html` en el cierre.
+FRASE_SOLO_LECTURA_DE_IMPORTAR = (
+    "Solo lectura: para revisar, corregir o descartar, la bandeja de revisión (abajo)."
+)
+
+
+def test_f038_q11_importar_ya_no_dice_que_la_revision_llegara():
+    """Cierre de F-038 (T8, Q-11): el bloque 3 de `importar.html` no promete lo que ya existe."""
+    texto = leer_html_texto(IMPORTAR.read_text(encoding="utf-8")).texto()
+
+    assert "llegará con F-038" not in texto
+    assert " ".join(FRASE_SOLO_LECTURA_DE_IMPORTAR.split()) in " ".join(texto.split())
 
 
 # --- R15, R23 · Solo sus rutas, nada en consola ni en el navegador, nada de normalizar ---------

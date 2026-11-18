@@ -12,7 +12,8 @@ Aquí vive todo lo que decide:
 - la **referencia** `PVI-<incidencia_id>`, la llave de la idempotencia en
   Sigrid, que sale de **una sola** función (R5);
 - el **parte** y el **cuerpo** del lote, campo a campo contra §8.9 (R6): el
-  `tipo` es siempre `0002`, el interviniente no es causante, y nunca van
+  `tipo` es el tipo efectivo de la incidencia (F-072: el guardado o, sin
+  ninguno, `0002`), el interviniente no es causante, y nunca van
   propietario, persona, urgencia ni las claves que reserva la pasarela;
 - qué se manda en un ensayo y qué en un volcado, y por qué no lo demás (R7,
   R11, R17, R18, R20, R27);
@@ -38,6 +39,10 @@ from typing import Any, Generic, TypeVar
 from uuid import UUID
 
 from domain.models.errores import ConfiguracionDeVolcadoInvalida, EnsayoNoValido
+from domain.models.plantilla_incidencias import (
+    TIPO_RECLAMACION_POR_DEFECTO,
+    tipo_efectivo,
+)
 from domain.models.revision import (
     AccionRevision,
     CandidataAlVolcado,
@@ -108,9 +113,11 @@ __all__ = [
 #: (`SIGRID_RECLAMACION_PREFIJOS_REFERENCIA`, sensible a mayúsculas) y por el
 #: que se reconocen nuestros partes en `conext` `RCPCLI` (R5).
 PREFIJO_REFERENCIA = "PVI-"
-#: PRIMER LISTADO POSTVENTA, **siempre** (Q-1): el `listado` de la bandeja no
-#: decide el tipo. Explícito aunque sea el defecto de §8.9 (§5).
-TIPO_RECLAMACION = "0002"
+#: PRIMER LISTADO POSTVENTA: el tipo de un parte sin tipo guardado (F-072,
+#: R28). Alias del defecto del dominio, con el nombre que usan los tests de
+#: F-059; el `listado` heredado no decide el tipo (Q-1). Explícito aunque sea
+#: el defecto de §8.9 (§5).
+TIPO_RECLAMACION = TIPO_RECLAMACION_POR_DEFECTO
 #: «Escrita», explícito aunque sea el defecto de §8.9 (§5).
 FORMA_ESCRITA = 1
 #: El interviniente no se marca como causante (Q-2).
@@ -376,8 +383,10 @@ def _con_texto(texto: str | None) -> str | None:
 def parte_de(candidata: CandidataAlVolcado) -> ParteAVolcar:
     """El parte de una candidata, campo a campo según la tabla de §5 (R6).
 
-    El `tipo` es `TIPO_RECLAMACION` sin mirar el `listado` (Q-1); el detalle
-    nulo, vacío o en blanco no tiene descripción larga (R6); sin proveedor
+    El `tipo` es el tipo efectivo (F-072, R28): el `tipo_reclamacion`
+    guardado o, si es nulo, `TIPO_RECLAMACION`, sin mirar el `listado`
+    (Q-1); el detalle nulo, vacío o en blanco no tiene descripción larga
+    (R6); sin proveedor
     —nulo, vacío o en blanco— no hay intervinientes (D-9), y con él, uno con
     el oficio del parte y sin causante (Q-2). La urgencia no se manda (D-10).
     """
@@ -399,7 +408,7 @@ def parte_de(candidata: CandidataAlVolcado) -> ParteAVolcar:
         unidad_postventa=v.unidad_codigo,
         descripcion=v.descripcion,
         descripcion_larga=_con_texto(v.detalle),
-        tipo=TIPO_RECLAMACION,
+        tipo=tipo_efectivo(v.tipo_reclamacion),
         oficio=v.oficio_codigo,  # type: ignore[arg-type]
         ubicacion=v.ubicacion,  # type: ignore[arg-type]
         forma_comunicacion=FORMA_ESCRITA,

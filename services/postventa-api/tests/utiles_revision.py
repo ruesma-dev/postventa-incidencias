@@ -36,6 +36,7 @@ from domain.models.plantilla_incidencias import (
     ListasCerradas,
     Opcion,
     OrigenIncidencia,
+    TipoReclamacion,
     Urgencia,
 )
 from domain.models.revision import (
@@ -84,9 +85,18 @@ UBICACIONES: dict[str, tuple[str, ...]] = {
 }
 
 LISTAS = ListasCerradas(
-    ubicaciones=("Esto no se usa: D-4",),
     urgencias=(Opcion("Urgente", "urgente"), Opcion("Seguridad", "seguridad")),
     listados=(Opcion("Primer listado", "primero"), Opcion("Segundo listado", "segundo")),
+)
+
+#: F-072 (Bloque 6): los tipos de reclamación vigentes que leen de Sigrid los
+#: tests de F-056 y F-060 al listar, editar y aprobar (R1). Llevan el `0002`,
+#: como el `auxtrcp` medido en T0: así editar con `listado` nulo (→ `0002`,
+#: R22) sigue siendo aprobable y lo que fijaban esos tests no cambia. Con
+#: ellos, `listas.listados` de la página son estos (R20), no los de `LISTAS`.
+TIPOS_CON_EL_DEFECTO: tuple[TipoReclamacion, ...] = (
+    TipoReclamacion(codigo="9001", nombre="TIPO FICTICIO 1"),
+    TipoReclamacion(codigo="0002", nombre="TIPO FICTICIO 3"),
 )
 
 

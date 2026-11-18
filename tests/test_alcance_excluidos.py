@@ -18,7 +18,13 @@ from __future__ import annotations
 
 import pytest
 
-from harness.alcance import DIRECTORIOS_EXCLUIDOS, es_produccion, filtrar_produccion
+from harness.alcance import (
+    DIRECTORIOS_EXCLUIDOS,
+    DIRECTORIOS_EXCLUIDOS_AL_DECLARAR,
+    alcance_de_ficheros,
+    es_produccion,
+    filtrar_produccion,
+)
 
 
 def test_harness_esta_entre_los_directorios_excluidos() -> None:
@@ -33,7 +39,7 @@ def test_harness_esta_entre_los_directorios_excluidos() -> None:
         "harness/mutacion_paralela.py",
         "harness/alcance.py",
         "harness\\alcance.py",  # separador de Windows
-        "services/postventa-api/harness/parche.py",  # a cualquier profundidad
+        "services/api/harness/parche.py",  # a cualquier profundidad
     ],
 )
 def test_ningun_fichero_del_arnes_es_produccion(ruta: str) -> None:
@@ -47,7 +53,7 @@ def test_ningun_fichero_del_arnes_es_produccion(ruta: str) -> None:
         "specs/F-001-algo/plan.py",
         "progress/apunte.py",
         "docs/ejemplo.py",
-        "services/postventa-api/tests/test_algo.py",
+        "services/api/tests/test_algo.py",
     ],
 )
 def test_las_exclusiones_anteriores_siguen_en_pie(ruta: str) -> None:
@@ -58,8 +64,8 @@ def test_las_exclusiones_anteriores_siguen_en_pie(ruta: str) -> None:
 @pytest.mark.parametrize(
     "ruta",
     [
-        "services/postventa-api/function_app.py",
-        "services/postventa-api/domain/models/cierre.py",
+        "services/api/entrada.py",
+        "services/api/domain/modelos.py",
         "app/harness.py",  # el NOMBRE del fichero no cuenta: es código
         "app/docs.py",
         "harnesses/util.py",  # segmento completo, no prefijo
@@ -74,9 +80,43 @@ def test_filtrar_produccion_saca_el_arnes_del_mapa_de_lineas() -> None:
     """La puerta de cobertura y la campaña comen de aquí: el filtro es la frontera."""
     lineas = {
         "harness/mutacion_paralela.py": {10, 11},
-        "services/postventa-api/function_app.py": {704},
+        "services/api/entrada.py": {704},
         "tests/test_algo.py": {1},
     }
     assert filtrar_produccion(lineas) == {
-        "services/postventa-api/function_app.py": {704}
+        "services/api/entrada.py": {704}
     }
+
+
+# --- La excepción: el alcance que declara una persona ------------------------
+
+
+def test_al_declarar_ficheros_a_mano_el_arnes_si_se_puede_mutar() -> None:
+    """`--ficheros` existe justamente para medir la maquinaria del arnés.
+
+    La exclusión de `harness` protege el alcance AUTOMÁTICO, el que sale del
+    diff y que nadie eligió. Cuando alguien escribe la lista a mano no hay nada
+    de lo que protegerle, y en el repositorio del propio arnés esa maquinaria es
+    el producto: sin esta excepción, el arnés no podría medirse nunca a sí mismo.
+    """
+    assert "harness" not in DIRECTORIOS_EXCLUIDOS_AL_DECLARAR
+    assert es_produccion("harness/mutacion.py", DIRECTORIOS_EXCLUIDOS_AL_DECLARAR)
+
+
+@pytest.mark.parametrize("ruta", ["tests/test_algo.py", "docs/ejemplo.py"])
+def test_declarar_a_mano_no_levanta_las_demas_exclusiones(ruta: str) -> None:
+    """Mutar un test o un documento sigue sin significar nada, lo pida quien lo pida."""
+    assert es_produccion(ruta, DIRECTORIOS_EXCLUIDOS_AL_DECLARAR) is False
+
+
+def test_alcance_de_ficheros_acepta_un_modulo_del_arnes() -> None:
+    """La comprobación de punta a punta: la puerta por la que entra de verdad."""
+    alcance = alcance_de_ficheros(["harness/rigor.py"], "F-999")
+
+    assert alcance.ficheros() == ["harness/rigor.py"]
+    assert alcance.total_lineas() > 0
+
+
+def test_alcance_de_ficheros_sigue_rechazando_un_test() -> None:
+    with pytest.raises(SystemExit):
+        alcance_de_ficheros(["tests/test_alcance_excluidos.py"], "F-999")

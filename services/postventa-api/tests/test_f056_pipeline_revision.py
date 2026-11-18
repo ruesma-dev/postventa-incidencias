@@ -70,8 +70,9 @@ from domain.models.revision import (
     ValoresPedidos,
     valores_importados,
 )
+from domain.models.plantilla_incidencias import listas_con_tipos
 
-from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_importacion import EquivalenciasEnMemoria, TiposEnMemoria
 from tests.utiles_revision import (
     AHORA,
     CORREO,
@@ -79,6 +80,7 @@ from tests.utiles_revision import (
     MOTIVO,
     OBRA,
     OID,
+    TIPOS_CON_EL_DEFECTO,
     U1,
     U2,
     CatalogoDeLaObra,
@@ -122,6 +124,10 @@ class Mundo:
             self.llamadas, mapa, fallo=fallo_ubicaciones
         )
         self.equivalencias = EquivalenciasEnMemoria(self.llamadas)
+        # F-072 (R1): la fuente de los tipos de reclamación, con los ficticios.
+        # No anota en `llamadas`: las secuencias de F-056 no cambian (el orden
+        # de esa lectura lo fija `tests/test_f072_revision_http.py`).
+        self.tipos = TiposEnMemoria(tipos=TIPOS_CON_EL_DEFECTO)
 
     def actuar(
         self,
@@ -148,6 +154,7 @@ class Mundo:
             listas=LISTAS,
             ahora=AHORA,
             ubicaciones=None if sin_sigrid else self.ubicaciones,
+            tipos=None if sin_sigrid else self.tipos,  # F-072 (R1, R27)
         )
 
     def listar(self, **filtros: Any) -> PaginaDeRevision:
@@ -158,6 +165,7 @@ class Mundo:
             equivalencias=self.equivalencias,
             listas=LISTAS,
             ubicaciones=self.ubicaciones,
+            tipos=self.tipos,  # F-072 (R1)
         )
 
     def sembrar(self, n: int, accion: AccionRevision, **cambios: Any) -> int:
@@ -686,7 +694,8 @@ def test_f056_r28_la_pagina_lleva_el_catalogo_leido_y_el_mismo_mapa_que_valida()
     assert resultado.ubicaciones is mundo.ubicaciones.mapa
     assert resultado.catalogo is mundo.ubicaciones.catalogos[0]
     assert [o.codigos_en_obra for o in resultado.oficios] == [("0046",), ("0143",), ("0200",)]
-    assert resultado.listas == LISTAS
+    # F-072 (R20): los `listados` de la página son los tipos leídos de Sigrid.
+    assert resultado.listas == listas_con_tipos(LISTAS, TIPOS_CON_EL_DEFECTO)
     assert resultado.peticion == PeticionDeListado(OBRA)
 
 
@@ -850,7 +859,7 @@ def test_f056_r20_aprobar_guarda_los_vigentes_sin_cambiarlos() -> None:
 
 
 @pytest.mark.parametrize("accion", [A.EDITAR, A.APROBAR])
-@pytest.mark.parametrize("falta", ["catalogo", "ubicaciones"])
+@pytest.mark.parametrize("falta", ["catalogo", "ubicaciones", "tipos"])  # F-072: tipos
 def test_f056_r46_editar_y_aprobar_sin_sus_lecturas_es_un_error_de_programacion(
     accion: AccionRevision, falta: str
 ) -> None:
@@ -865,6 +874,7 @@ def test_f056_r46_editar_y_aprobar_sin_sus_lecturas_es_un_error_de_programacion(
             listas=LISTAS,
             ahora=AHORA,
             ubicaciones=None if falta == "ubicaciones" else mundo.ubicaciones,
+            tipos=None if falta == "tipos" else mundo.tipos,  # F-072 (R1)
         )
 
     assert mundo.llamadas == ["revision.situacion"]

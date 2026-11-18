@@ -150,7 +150,8 @@ const DESDE_DE_PAGINA = {
  * `enConstruccion(id)`. La única diferencia hoy: la pestaña de `bandeja`, que
  * fuera de `bandeja.html` lleva a la página real y no a la maqueta, va sin
  * marca; en `bandeja.html` (la actual, sin enlace) la sigue llevando (R2 de
- * F-038).
+ * F-038). Desde el cierre de F-038 (T8, R17) la sección está en `parcial` y
+ * tampoco la lleva en `bandeja.html`: la guardia no cambia, cambia la fuente.
  */
 function problemasR66(html, Portal, pagina) {
   const desde = DESDE_DE_PAGINA[pagina];
@@ -593,8 +594,10 @@ function componente() {
 test("f035 R65: fichasDeSeccion da cada ficha de la sección con su título, en su orden", () => {
   const { fichasDeSeccion, TITULOS_FICHAS } = portal();
 
+  // Cierre de F-038 (T8): F-038 está done y su título salió de TITULOS_FICHAS
+  // (`design.md` §7.3 de F-035): la sección ya no la nombra.
+  assert.equal("F-038" in TITULOS_FICHAS, false, "F-038 está done: sin título");
   assert.deepEqual(fichasDeSeccion("bandeja"), [
-    { ficha: "F-038", titulo: TITULOS_FICHAS["F-038"] },
     { ficha: "F-039", titulo: TITULOS_FICHAS["F-039"] },
     { ficha: "F-040", titulo: TITULOS_FICHAS["F-040"] },
     { ficha: "F-043", titulo: TITULOS_FICHAS["F-043"] },

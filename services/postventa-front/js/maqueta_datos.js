@@ -106,8 +106,9 @@
   // ── Los bloques ───────────────────────────────────────────────────────────
 
   const MaquetaDatos = {
-    // Tres obras de ejemplo. Las usan la bandeja, las incidencias, el volcado
-    // y el coste; las retira F-041, que es la primera que lee obras reales.
+    // Tres obras de ejemplo. Las usan la propuesta de industrial, las
+    // incidencias, el volcado y el coste; las retira F-041, que es la primera
+    // que lee obras reales.
     obras: {
       ficha: "F-041",
       filas: [
@@ -130,18 +131,23 @@
       ],
     },
 
-    // Lo importado, ANTES de Sigrid (`design.md` §5.3). Vocabulario de
-    // revisión propio, a cerrar en F-038; «duplicada» es una marca aparte.
-    bandeja: {
-      ficha: "F-038",
-      origenes: ["Excel", "Web"],
-      estadosRevision: ["nueva", "editada", "aprobada", "descartada", "volcada"],
+    // Propuesta de industrial (F-039) y los oficios de cada obra con su
+    // proveedor (`obrofc`), que es de donde sale la propuesta y la tabla de
+    // intervinientes (`04_alta_incidencia_sigrid.md` §5). Una fila sin
+    // propuesta: «no se inventa» (criterio de F-039).
+    //
+    // Cierre de F-038 (su `design.md` §3.2): el bloque `bandeja` de F-038 se
+    // retiró (la revisión es `bandeja.html`) y las filas de ejemplo que enseñan
+    // la propuesta se mudaron aquí, sin su estado de revisión ni su código de
+    // Sigrid: lo que queda es el alta que ve el industrial propuesto. Cuatro:
+    // una con propuesta, la de Excel sin completar (sin oficio no se propone),
+    // la ÚNICA con tipo 0003 (R39 de F-035) y una de la web.
+    propuestas: {
+      ficha: "F-039",
       filas: [
         {
           id: "BJ-0001",
           origen: "Excel",
-          estado: "nueva",
-          duplicada: false,
           fecha: "2026-09-10",
           obra: "9901",
           unidad: UPV["9901-2"],
@@ -155,15 +161,12 @@
           persona: PER["9901-2"],
           intervinientes: [{ oficio: "0021", proveedor: PRV.EJ03, causante: true }],
           referenciaExterna: "PVI-EJEMPLO-0001",
-          codSigrid: null,
         },
         {
           // La fila de Excel «sin completar»: ni ubicación ni oficio (R38), y
           // sin oficio no hay de dónde proponer industrial (F-039).
           id: "BJ-0002",
           origen: "Excel",
-          estado: "nueva",
-          duplicada: false,
           fecha: "2026-09-10",
           obra: "9901",
           unidad: UPV["9901-3"],
@@ -177,14 +180,11 @@
           persona: PER["9901-3"],
           intervinientes: null,
           referenciaExterna: "PVI-EJEMPLO-0002",
-          codSigrid: null,
         },
         {
           // La ÚNICA fila con tipo 0003, para enseñar su pendiente (R39).
           id: "BJ-0003",
           origen: "Excel",
-          estado: "editada",
-          duplicada: false,
           fecha: "2026-09-10",
           obra: "9901",
           unidad: UPV["9901-4"],
@@ -198,74 +198,10 @@
           persona: PER["9901-4"],
           intervinientes: [{ oficio: "0143", proveedor: PRV.EJ05, causante: true }],
           referenciaExterna: "PVI-EJEMPLO-0003",
-          codSigrid: null,
-        },
-        {
-          id: "BJ-0004",
-          origen: "Excel",
-          estado: "aprobada",
-          duplicada: false,
-          fecha: "2026-09-10",
-          obra: "9901",
-          unidad: UPV["9901-5"],
-          descripcionCorta: "Ventana del dormitorio no cierra (ejemplo)",
-          descripcionLarga: "La ventana del dormitorio 2 no ajusta al cerrar y entra aire (ejemplo).",
-          ubicacion: "dormitorio 2",
-          oficio: "0005",
-          tipo: PRIMER_LISTADO,
-          forma: ESCRITA,
-          propietario: REF["9901-5"],
-          persona: PER["9901-5"],
-          intervinientes: [{ oficio: "0005", proveedor: PRV.EJ01, causante: true }],
-          referenciaExterna: "PVI-EJEMPLO-0004",
-          codSigrid: null,
-        },
-        {
-          id: "BJ-0005",
-          origen: "Excel",
-          estado: "aprobada",
-          duplicada: false,
-          fecha: "2026-09-11",
-          obra: "9902",
-          unidad: UPV["9902-1"],
-          descripcionCorta: "Riego automático del jardín no arranca (ejemplo)",
-          descripcionLarga: "El programador del riego no arranca a la hora fijada (ejemplo).",
-          ubicacion: "jardín",
-          oficio: "0024",
-          tipo: PRIMER_LISTADO,
-          forma: ESCRITA,
-          propietario: REF["9902-1"],
-          persona: PER["9902-1"],
-          intervinientes: [{ oficio: "0024", proveedor: PRV.EJ04, causante: true }],
-          referenciaExterna: "PVI-EJEMPLO-0005",
-          codSigrid: null,
-        },
-        {
-          // Duplicada de BJ-0005 (F-036) y descartada al revisarla.
-          id: "BJ-0006",
-          origen: "Excel",
-          estado: "descartada",
-          duplicada: true,
-          fecha: "2026-09-11",
-          obra: "9902",
-          unidad: UPV["9902-1"],
-          descripcionCorta: "Riego del jardín sin funcionar (ejemplo)",
-          descripcionLarga: "El riego del jardín no funciona desde hace una semana (ejemplo).",
-          ubicacion: "jardín",
-          oficio: "0024",
-          tipo: PRIMER_LISTADO,
-          forma: ESCRITA,
-          propietario: REF["9902-1"],
-          persona: PER["9902-1"],
-          intervinientes: [{ oficio: "0024", proveedor: PRV.EJ04, causante: true }],
-          referenciaExterna: "PVI-EJEMPLO-0006",
-          codSigrid: null,
         },
         {
           id: "BJ-0007",
           origen: "Web",
-          estado: "nueva",
-          duplicada: false,
           fecha: "2026-09-12",
           obra: "9903",
           unidad: UPV["9903-2"],
@@ -279,55 +215,13 @@
           persona: PER["9903-2"],
           intervinientes: [{ oficio: "0011", proveedor: PRV.EJ02, causante: true }],
           referenciaExterna: "PVI-EJEMPLO-0007",
-          codSigrid: null,
-        },
-        {
-          // Ya volcada: su código de Sigrid es el «creado» del volcado hecho.
-          id: "BJ-0008",
-          origen: "Web",
-          estado: "volcada",
-          duplicada: false,
-          fecha: "2026-09-12",
-          obra: "9902",
-          unidad: UPV["9902-4"],
-          descripcionCorta: "Puerta de entrada roza el suelo (ejemplo)",
-          descripcionLarga: "La puerta de entrada roza el suelo al abrirla del todo (ejemplo).",
-          ubicacion: "entrada",
-          oficio: "0143",
-          tipo: PRIMER_LISTADO,
-          forma: ESCRITA,
-          propietario: REF["9902-4"],
-          persona: PER["9902-4"],
-          intervinientes: [{ oficio: "0143", proveedor: PRV.EJ05, causante: true }],
-          referenciaExterna: "PVI-EJEMPLO-0008",
-          codSigrid: "RS99.09/0004",
         },
       ],
-      // Quién y cuándo (criterio de F-038).
-      historial: [
-        { fila: "BJ-0003", fecha: "2026-09-11 09:20", usuario: "Usuario Ejemplo", accion: "Editada: tipo de reclamación" },
-        { fila: "BJ-0004", fecha: "2026-09-11 09:35", usuario: "Usuario Ejemplo", accion: "Aprobada" },
-        { fila: "BJ-0005", fecha: "2026-09-11 10:05", usuario: "Usuario Ejemplo", accion: "Aprobada" },
-        { fila: "BJ-0006", fecha: "2026-09-11 10:06", usuario: "Usuario Ejemplo", accion: "Descartada: duplicada de BJ-0005" },
-        { fila: "BJ-0008", fecha: "2026-09-12 12:40", usuario: "Usuario Ejemplo", accion: "Volcada a Sigrid" },
-      ],
-    },
-
-    // Propuesta de industrial (F-039) y los oficios de cada obra con su
-    // proveedor (`obrofc`), que es de donde sale la propuesta y la tabla de
-    // intervinientes (`04_alta_incidencia_sigrid.md` §5). Una fila sin
-    // propuesta: «no se inventa» (criterio de F-039).
-    propuestas: {
-      ficha: "F-039",
       porFila: {
         "BJ-0001": { proveedor: PRV.EJ03, motivo: "3 trabajos de impermeabilización en esta obra (ejemplo)" },
         "BJ-0002": null,
         "BJ-0003": { proveedor: PRV.EJ05, motivo: "2 trabajos de carpintería de madera en esta obra (ejemplo)" },
-        "BJ-0004": { proveedor: PRV.EJ01, motivo: "4 trabajos de carpintería PVC en esta obra (ejemplo)" },
-        "BJ-0005": { proveedor: PRV.EJ04, motivo: "1 trabajo de jardinería en esta obra (ejemplo)" },
-        "BJ-0006": { proveedor: PRV.EJ04, motivo: "1 trabajo de jardinería en esta obra (ejemplo)" },
         "BJ-0007": { proveedor: PRV.EJ02, motivo: "2 trabajos de electricidad en esta obra (ejemplo)" },
-        "BJ-0008": { proveedor: PRV.EJ05, motivo: "3 trabajos de carpintería de madera en esta obra (ejemplo)" },
       },
       oficiosObra: {
         "9901": [
@@ -799,7 +693,7 @@
         ],
       },
       // Volcado hecho de la obra 9902: ningún previsto; los cuatro resultados
-      // reales. El primero es la fila BJ-0008 de la bandeja.
+      // reales.
       hecho: {
         obra: "9902",
         partes: [

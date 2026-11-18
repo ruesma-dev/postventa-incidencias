@@ -16,6 +16,10 @@ generador y el importador, así que salen de aquí y solo de aquí.
 `TextosPlantilla` (T6) es la forma de los textos del YAML de §3.4, que carga
 `infrastructure/documentos/plantilla_yaml.py`.
 
+F-072: los tipos de reclamación (`TipoReclamacion`) salen de `dbo.auxtrcp`;
+`tipos_del_desplegable` da las opciones de `Listado` y `tipo_efectivo`, el
+tipo que vale cuando no hay ninguno guardado (`0002`).
+
 Sin `openpyxl`, sin red, sin base de datos y sin reloj.
 """
 
@@ -25,7 +29,7 @@ import re
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from domain.models.equivalencias import Catalogo, Grupo, GruposVigentes
@@ -33,8 +37,10 @@ from domain.models.errores import CodigoDeObraInvalido
 from domain.models.nombrado import normalizar_codigo
 
 IDENTIFICADOR_PLANTILLA = "ruesma.postventa-incidencias.plantilla-incidencias"
-VERSION_PLANTILLA = 1
-VERSIONES_SOPORTADAS: frozenset[int] = frozenset({1})
+VERSION_PLANTILLA = 2  # F-071: listas de Sigrid, ubicación por unidad (R17)
+VERSIONES_SOPORTADAS: frozenset[int] = frozenset({VERSION_PLANTILLA})
+#: La de F-036: se rechaza con su propio motivo (F-071, R23).
+VERSION_ANTERIOR = 1
 COLUMNA_ERRORES = "Errores (lo rellena el sistema)"
 CABECERA: tuple[str, ...] = (
     "Unidad",
@@ -54,6 +60,10 @@ MAX_DETALLE = 2000  # propio (D-11)
 MAX_FILAS = 1000
 MAX_BYTES_FICHERO = 2 * 1024 * 1024  # 2 MiB (D-11, R15)
 MAX_CODIGO_OBRA = 24  # `obra` de sigrid-api §8.9
+#: El tipo de reclamación de un parte sin tipo elegido (F-072, R14, R19, R22):
+#: PRIMER LISTADO POSTVENTA de `dbo.auxtrcp`, el que mandaba siempre F-059.
+TIPO_RECLAMACION_POR_DEFECTO = "0002"
+MAX_TIPO_RECLAMACION = 24  # `auxtrcp.cod` (F-072, R16)
 
 #: Lo único que admite un código de obra una vez normalizado (R9).
 _CODIGO_OBRA_ADMISIBLE = re.compile(r"[0-9A-Za-z._-]+")
@@ -140,9 +150,79 @@ class OpcionProveedor:
 
 @dataclass(frozen=True)
 class ListasCerradas:
-    ubicaciones: tuple[str, ...]
+    """Las listas cerradas de la plantilla y de la revisión: urgencias y listados.
+
+    `urgencias` sale del YAML (F-071, R16, R22): Sigrid no tiene catálogo.
+    `listados` llega **vacío** del YAML y lo rellena la aplicación con los
+    tipos de reclamación de Sigrid (`listas_con_tipos`, F-072). Las
+    ubicaciones tampoco están aquí: salen de Sigrid, por unidad
+    (`UbicacionesPorUnidad`).
+    """
+
     urgencias: tuple[Opcion, ...]
     listados: tuple[Opcion, ...]
+
+
+@dataclass(frozen=True)
+class OpcionOficioSigrid:
+    """Una entrada del desplegable de `Oficio` de la plantilla v2 (F-071, R12, R13).
+
+    Un código de oficio de `obrofc` de la obra, sin agrupar. `nombre` es el de
+    Sigrid recortado (`None` si no tiene): lo que se guarda en la bandeja
+    (R32), no la etiqueta.
+    """
+
+    etiqueta: str  # "<nombre> (<código>)" o "<código>"
+    codigo: str
+    nombre: str | None
+
+
+@dataclass(frozen=True)
+class ParSigrid:
+    """Una entrada del desplegable de `Proveedor` de la plantilla v2 (F-071, R14).
+
+    Una pareja distinta (oficio, proveedor) de `obrofc` de la obra.
+    """
+
+    etiqueta: str  # "<etiqueta del oficio> · <nombre> (<código>)"
+    oficio: OpcionOficioSigrid
+    proveedor_codigo: str
+    proveedor_nombre: str | None
+
+
+@dataclass(frozen=True)
+class TipoReclamacion:
+    """Un tipo de reclamación vigente de `dbo.auxtrcp` (F-072, R1, R5).
+
+    Llega ya limpio de la aplicación (`leer_tipos_reclamacion`): código
+    recortado, no vacío y sin repetir. `nombre` es `res`, que nunca va a un
+    log (R30).
+    """
+
+    codigo: str
+    nombre: str | None
+
+
+#: Las ubicaciones válidas de cada unidad leídas de Sigrid (F-056 §16.3):
+#: `{unidad_codigo: ubicaciones}`, en el orden de Sigrid.
+UbicacionesPorUnidad = Mapping[str, tuple[str, ...]]
+
+
+@dataclass(frozen=True)
+class UbicacionesDeLaPlantilla:
+    """Las listas de ubicaciones del libro y la de cada unidad (F-071, R8).
+
+    `listas`: las tuplas distintas y no vacías, en orden de primera aparición
+    por código de unidad. `lista_de_unidad`: el índice en `listas` de cada
+    unidad, o `None` si no tiene ubicaciones.
+    """
+
+    listas: tuple[tuple[str, ...], ...]
+    lista_de_unidad: Mapping[str, int | None]
+
+    def union(self) -> tuple[str, ...]:
+        """Todas las ubicaciones de la obra, sin repetidos exactos y en orden."""
+        return tuple(dict.fromkeys(u for lista in self.listas for u in lista))
 
 
 @dataclass(frozen=True)
@@ -350,3 +430,150 @@ def _exigir_distintas(etiquetas: Iterable[str]) -> None:
     plegadas = [plegar(e) for e in etiquetas]
     if len(set(plegadas)) != len(plegadas):
         raise ValueError("dos opciones del desplegable dan la misma etiqueta")
+
+
+# --------------------------------------------------------------------------
+# F-071 · las opciones de la plantilla v2, todas de Sigrid
+# --------------------------------------------------------------------------
+
+
+def _nombre_recortado(nombre: str | None) -> str | None:
+    return (nombre or "").strip() or None
+
+
+def _con_codigo(nombre: str | None, codigo: str) -> str:
+    return codigo if nombre is None else f"{nombre} ({codigo})"
+
+
+def oficios_del_desplegable(catalogo: CatalogoObra) -> tuple[OpcionOficioSigrid, ...]:
+    """Las opciones de `Oficio` de la plantilla v2: un código por entrada (R12, R13).
+
+    Ordenadas por código y **sin grupos** de equivalencia (D-14): no se
+    reciben. El nombre es el primero no vacío de ese código, recortado; la
+    etiqueta, `<nombre> (<código>)` o, sin nombre, el código. Si dos etiquetas
+    chocan plegadas, `ValueError` (R15).
+    """
+    nombres: dict[str, str | None] = {}
+    for oficio in catalogo.oficios:
+        if nombres.get(oficio.codigo) is None:
+            nombres[oficio.codigo] = _nombre_recortado(oficio.nombre)
+    opciones = tuple(
+        OpcionOficioSigrid(
+            etiqueta=_con_codigo(nombres[codigo], codigo),
+            codigo=codigo,
+            nombre=nombres[codigo],
+        )
+        for codigo in sorted(nombres)
+    )
+    _exigir_distintas(o.etiqueta for o in opciones)
+    return opciones
+
+
+def pares_del_desplegable(
+    catalogo: CatalogoObra, oficios: tuple[OpcionOficioSigrid, ...]
+) -> tuple[ParSigrid, ...]:
+    """Las opciones de `Proveedor` de la plantilla v2: una por pareja de `obrofc` (R14).
+
+    Una por cada pareja distinta (oficio, proveedor) con proveedor y con un
+    oficio de `oficios`. El nombre del proveedor es el primero no vacío,
+    recortado. En el orden de `oficios` y, dentro de cada uno, por nombre
+    plegado y código. Si dos etiquetas chocan plegadas, `ValueError` (R15).
+    """
+    posicion = {o.codigo: i for i, o in enumerate(oficios)}
+    nombres: dict[tuple[str, str], str | None] = {}
+    for fila in catalogo.proveedores:
+        if fila.proveedor_codigo is None or fila.oficio_codigo not in posicion:
+            continue
+        pareja = (fila.oficio_codigo, fila.proveedor_codigo)
+        if nombres.get(pareja) is None:
+            nombres[pareja] = _nombre_recortado(fila.proveedor_nombre)
+    ordenadas = sorted(
+        nombres,
+        key=lambda p: (posicion[p[0]], plegar(nombres[p] or ""), p[1]),
+    )
+    pares = tuple(
+        ParSigrid(
+            etiqueta=(
+                f"{oficios[posicion[oficio]].etiqueta}{SEPARADOR_PAR}"
+                f"{_con_codigo(nombres[(oficio, proveedor)], proveedor)}"
+            ),
+            oficio=oficios[posicion[oficio]],
+            proveedor_codigo=proveedor,
+            proveedor_nombre=nombres[(oficio, proveedor)],
+        )
+        for oficio, proveedor in ordenadas
+    )
+    _exigir_distintas(p.etiqueta for p in pares)
+    return pares
+
+
+def ubicaciones_de_la_plantilla(
+    unidades: Iterable[UnidadPosventa], por_unidad: UbicacionesPorUnidad
+) -> UbicacionesDeLaPlantilla:
+    """Las listas de ubicaciones del libro y la de cada unidad (R8, D-2).
+
+    Unidades por código; cada tupla no vacía **distinta** (igualdad exacta)
+    es una lista, en orden de primera aparición; una unidad sin entrada o con
+    la tupla vacía no tiene lista (`None`). Lo de unidades que no están en
+    `unidades` se ignora. Una ubicación vacía, con blancos en los extremos o
+    de más de `MAX_UBICACION` es `ValueError`, sin el texto en el mensaje (el
+    texto de Sigrid no va a un log, R44).
+    """
+    listas: dict[tuple[str, ...], int] = {}
+    lista_de_unidad: dict[str, int | None] = {}
+    for unidad in sorted(unidades, key=lambda u: u.codigo):
+        ubicaciones = tuple(por_unidad.get(unidad.codigo, ()))
+        for ubicacion in ubicaciones:
+            if (
+                not ubicacion
+                or ubicacion != ubicacion.strip()
+                or len(ubicacion) > MAX_UBICACION
+            ):
+                raise ValueError(
+                    "una ubicación de Sigrid está vacía, lleva blancos en los "
+                    f"extremos o pasa de {MAX_UBICACION} caracteres"
+                )
+        if not ubicaciones:
+            lista_de_unidad[unidad.codigo] = None
+            continue
+        lista_de_unidad[unidad.codigo] = listas.setdefault(ubicaciones, len(listas))
+    return UbicacionesDeLaPlantilla(
+        listas=tuple(listas), lista_de_unidad=lista_de_unidad
+    )
+
+
+# --------------------------------------------------------------------------
+# F-072 · los tipos de reclamación, de Sigrid
+# --------------------------------------------------------------------------
+
+
+def tipos_del_desplegable(tipos: Iterable[TipoReclamacion]) -> tuple[Opcion, ...]:
+    """Las opciones de `Listado`: una por tipo, en el orden leído (R6, R7).
+
+    La etiqueta es `<nombre recortado> (<código>)` o, sin nombre, el código
+    (Q-6, como el oficio de F-071). Sin tipos, ninguna opción: el generador
+    deja entonces solo el blanco (R7).
+    """
+    return tuple(
+        Opcion(
+            etiqueta=_con_codigo(_nombre_recortado(t.nombre), t.codigo),
+            codigo=t.codigo,
+        )
+        for t in tipos
+    )
+
+
+def listas_con_tipos(
+    listas: ListasCerradas, tipos: Iterable[TipoReclamacion]
+) -> ListasCerradas:
+    """`listas` con `listados` sustituido por el desplegable de `tipos` (R6)."""
+    return replace(listas, listados=tipos_del_desplegable(tipos))
+
+
+def tipo_efectivo(codigo: str | None) -> str:
+    """El tipo que vale de una incidencia (R19): el guardado o, si es nulo, `0002`.
+
+    Nulo solo lo tienen las filas anteriores a F-072; su `listado` heredado no
+    lo cambia (Q-2).
+    """
+    return TIPO_RECLAMACION_POR_DEFECTO if codigo is None else codigo

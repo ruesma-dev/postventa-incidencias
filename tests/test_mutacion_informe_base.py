@@ -1,16 +1,16 @@
 # tests/test_mutacion_informe_base.py
 """El comando de la cabecera no reproduce nada si se calla contra qué base midió.
 
-Pasó de verdad con F-012: su rama nació de `feature/F-009-cierre-sigrid` y la
-campaña se lanzó con `--base feature/F-009-cierre-sigrid`, pero el informe
-imprimió `python -m harness.mutacion --feature F-012 --workers 8`. Copiado tal
-cual, ese comando mide **otro alcance**: el diff contra `dev` de una rama que
-nace de otra feature arrastra las líneas de la feature madre, así que ni el
-número de mutantes ni la lista de supervivientes son comparables.
+Pasó de verdad el 2026-09-06. La rama de una feature nació de la rama de otra
+feature, la campaña se lanzó con `--base feature/F-009-cierre-sigrid` y el
+informe imprimió `python -m harness.mutacion --feature F-012 --workers 8`.
+Copiado tal cual, ese comando mide **otro alcance**: el diff contra `dev` de
+una rama que nace de otra feature arrastra las líneas de la feature madre, así
+que ni el número de mutantes ni la lista de supervivientes son comparables.
 
-Es el mismo agujero que ya se tapó con `--workers`: la cabecera del informe es
-la única memoria de cómo se midió, porque la línea de comando se la lleva el
-scrollback.
+Es el mismo agujero que ya se tapó con `--workers` el 2026-09-02: la cabecera
+del informe es la única memoria de cómo se midió, porque la línea de comando se
+la lleva el scrollback.
 """
 
 from __future__ import annotations
@@ -106,20 +106,28 @@ def test_la_base_convive_con_los_workers() -> None:
 # --- Y el dato llega ahí desde la línea de comando --------------------------
 
 
+def _campania_falsa(medido: InformeMutacion):
+    def falsa(alcance, ejecutor, **kwargs):
+        return medido
+
+    return falsa
+
+
 def test_main_registra_en_el_informe_la_base_con_la_que_se_lanzo(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """De nada sirve el campo si `main` no lo rellena: esto cierra el circuito."""
     medido = informe()
-    monkeypatch.setattr(mutacion, "cargar_servicios", lambda raiz=".": {})
     monkeypatch.setattr(mutacion, "alcance_de_feature", lambda *a, **k: ALCANCE)
-    monkeypatch.setattr(mutacion, "ejecutar_campania", lambda *a, **k: medido)
+    monkeypatch.setattr(mutacion, "ejecutar_campania", _campania_falsa(medido))
 
     destino = tmp_path / "mutacion_F-000.md"
     mutacion.main(
         [
             "--feature",
             "F-000",
+            "--raiz",
+            str(tmp_path),
             "--base",
             BASE_HEREDADA,
             "--salida",

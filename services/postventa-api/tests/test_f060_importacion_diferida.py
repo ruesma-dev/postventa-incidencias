@@ -132,9 +132,10 @@ class Catalogo:
     def leer_oficios(self, *, obra_ref):
         return LecturaCatalogo((FilaOficioCatalogo(oficio_codigo="0001",
             oficio_nombre="Oficio Ficticio", proveedor_codigo=None, proveedor_nombre=None),), False)
-class Equivalencias:
-    def ultimas_decisiones(self, *, catalogo, codigos):
-        return ()
+# F-071 R1, R24: la fuente de ubicaciones de cada unidad, en lugar de las
+# decisiones de equivalencia, que ni la plantilla ni la importación leen ya.
+def ubicaciones(catalogo):
+    return {}
 """
 
 #: Cada pieza diferida (`design.md` §12): la biblioteca que carga y cómo se usa.
@@ -173,7 +174,7 @@ except RemesaSinPdfUtilizable:
 from datetime import UTC, datetime
 from interface_adapters.api.plantilla import descargar_plantilla
 nombre, contenido = descargar_plantilla(
-    "0001", catalogo_obra=Catalogo(), equivalencias=Equivalencias(),
+    "0001", catalogo_obra=Catalogo(), ubicaciones=ubicaciones, tipos=lambda: (),
     ahora=datetime(2026, 10, 14, tzinfo=UTC),
 )
 assert contenido[:2] == b"PK", contenido[:2]
@@ -210,7 +211,8 @@ class Bandeja:
             con_error=importacion.filas_con_error, filas=())
 respuesta = importar_excel(
     [("incidencias.xlsx", b"no se abre: lo lee el doble")], "oid-ficticio",
-    bandeja=Bandeja(), lector=Lector(), catalogo_obra=Catalogo(), equivalencias=Equivalencias(),
+    bandeja=Bandeja(), lector=Lector(), catalogo_obra=Catalogo(), ubicaciones=ubicaciones,
+    tipos=lambda: (),
     ahora=datetime(2026, 10, 14, tzinfo=UTC),
 )
 contenido = base64.b64decode(respuesta["excel_errores"]["contenido_b64"])

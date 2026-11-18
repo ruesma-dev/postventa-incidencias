@@ -78,9 +78,9 @@ from interface_adapters.api.plantilla import configuracion_de_la_plantilla
 
 from tests.utiles_importacion import (
     BandejaEnMemoria,
-    EquivalenciasEnMemoria,
     GeneradorQueAnota,
     LectorQueAnota,
+    TiposEnMemoria,
     fila,
 )
 from tests.utiles_normalizacion import RevisionConLote
@@ -109,6 +109,12 @@ DESCRIPCION_I = "Ejemplo de grieta en el tabique del salón"
 BUENA = fila(unidad=NOMBRE_U1, ubicacion="Almacén", descripcion=DESCRIPCION_I)
 OTRA_BUENA = fila(unidad=NOMBRE_U1, ubicacion="Almacén", descripcion="Ejemplo de puerta")
 MALA = fila(unidad="unidad ejemplo que no existe", descripcion="Ejemplo que no cierra")
+
+#: F-071 R24: las ubicaciones de Sigrid con las que **valida la importación**
+#: (las filas de arriba llevan «Almacén»). Son otra fuente que la de la
+#: normalización posterior (`LISTAS_DE_SIGRID`, más abajo), que F-071 deja como
+#: estaba (`design.md` §6.2).
+UBICACIONES_AL_IMPORTAR = {U1: ("Almacén",)}
 
 #: Un recuento con todas las cifras distintas: cada una tiene que ir a su sitio.
 RECUENTO = RecuentoNormalizacion(
@@ -189,7 +195,8 @@ class Mundo:
         self.bandeja = bandeja(self.llamadas)
         self.lector = LectorQueAnota(self.llamadas)
         self.catalogo = CatalogoDeLaObra(self.llamadas)
-        self.equivalencias = EquivalenciasEnMemoria(self.llamadas)
+        # F-071 R24: la fuente de ubicaciones en lugar de las decisiones.
+        self.ubicaciones = UbicacionesQueCuentan(self.llamadas, UBICACIONES_AL_IMPORTAR)
         self.generador = GeneradorQueAnota(self.llamadas)
         self._ids = itertools.count(1)
 
@@ -201,7 +208,8 @@ class Mundo:
             "bandeja": self.bandeja,
             "lector": self.lector,
             "catalogo_obra": self.catalogo,
-            "equivalencias": self.equivalencias,
+            "ubicaciones": self.ubicaciones,  # F-071 R24 (antes, `equivalencias`)
+            "tipos": TiposEnMemoria(),  # F-072 R11
             "generador": self.generador,
             "ahora": AHORA_I,
             "nuevo_id": self.nuevo_id,
@@ -262,7 +270,9 @@ def _sin_normalizar(contenido: bytes) -> dict[str, Any]:
     )
     contexto = paso_huella(contexto, mundo.bandeja)
     contexto = paso_reconocimiento(contexto, mundo.lector)
-    contexto = paso_catalogo(contexto, mundo.catalogo, mundo.equivalencias)
+    contexto = paso_catalogo(
+        contexto, mundo.catalogo, mundo.ubicaciones, TiposEnMemoria()  # F-071 R24; F-072 R11
+    )
     contexto = paso_validacion(contexto, config.listas)
     contexto = paso_registro(contexto, mundo.bandeja, nuevo_id=mundo.nuevo_id)
     contexto = paso_excel_errores(contexto, mundo.generador, config.listas, config.textos)

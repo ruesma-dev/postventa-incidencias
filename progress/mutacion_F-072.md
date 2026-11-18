@@ -286,3 +286,7 @@ El líder aplicó a mano tres mutantes de orden que adelantan la llamada a `tipo
 | `application/pipelines/plantilla.py` | `tipos()` antes de `leer_catalogo` | `tests/test_f072_plantilla.py` | 1 failed / 13 passed: muerto |
 
 Los tres murieron con un test de la propia feature, y el líder restauró el árbol.
+
+## Aceptación del humano
+
+Los 3 equivalentes de rigor `critico` (supervivientes 1–3) quedan aceptados por escrito por el humano el 2026-11-18, en el chat: «acepto» (respuesta a «acepto los 3 equivalentes de F-072»). Cierra la condición de `progress/review_F-072_t22.md`.

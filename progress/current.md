@@ -1,6 +1,15 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · T22 cerrada (líder, 2026-11-18)
+> Campaña serie de la feature VÁLIDA: 41 evaluados, 38 muertos, 3 supervivientes de veracidad
+> (`importacion.py:604`, `importar.py:218`, `plantilla.py:92`) declarados EQUIVALENTES
+> (`progress/mutacion_F-072.md`, 1db3049/5bd518c), review APROBADO condicionado
+> (`progress/review_F-072_t22.md`, c860367). **Aceptación escrita del humano, 2026-11-18, en el
+> chat: «acepto»** (respuesta a «acepto los 3 equivalentes de F-072»). RM7 del líder: 3/3 muertos.
+> `ARNES_SIN_CACHE=1 bash harness/init.sh` en verde sobre c860367 (2202 / 10377 / 911 passed,
+> cobertura 158/158). Siguiente: T23 (merge a `dev`).
+
 > ## F-072 · `in_progress` · 2026-11-17 · T13 en verde; OK del humano a la mutación a mano por bloque
 > **T13 (humano, 2026-11-17)**: `infra\pruebas_bbdd_efimera.ps1` repetido tras `201b8f6`: **120 passed**.
 > **OK del humano (2026-11-17, en el chat: «ok, t13 hecha y 120 passed»)** a la propuesta (b) del líder: en los

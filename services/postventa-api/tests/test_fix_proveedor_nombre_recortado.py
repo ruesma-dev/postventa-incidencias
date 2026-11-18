@@ -27,6 +27,7 @@ from domain.models.plantilla_incidencias import (
     pares_del_desplegable,
 )
 from domain.models.revision import (
+    ValoresIncidencia,
     ValoresPedidos,
     campos_cambiados,
     validar_valores,
@@ -76,7 +77,7 @@ def _importada() -> IncidenciaEnBandeja:
     )
 
 
-def _editar_sin_tocar_el_proveedor():
+def _editar_sin_tocar_el_proveedor() -> tuple[ValoresIncidencia, ValoresIncidencia]:
     vigentes = valores_importados(_importada())
     editados = validar_valores(
         ValoresPedidos(

@@ -437,7 +437,13 @@ def _exigir_distintas(etiquetas: Iterable[str]) -> None:
 # --------------------------------------------------------------------------
 
 
-def _nombre_recortado(nombre: str | None) -> str | None:
+def nombre_recortado(nombre: str | None) -> str | None:
+    """Un nombre de Sigrid sin blancos a los lados; vacío o en blanco, `None`.
+
+    Pública: la edición de la revisión (`validar_valores`) guarda el nombre del
+    proveedor con esta misma regla que la importación, o `cambios` vería
+    distinto un proveedor que nadie ha tocado.
+    """
     return (nombre or "").strip() or None
 
 
@@ -456,7 +462,7 @@ def oficios_del_desplegable(catalogo: CatalogoObra) -> tuple[OpcionOficioSigrid,
     nombres: dict[str, str | None] = {}
     for oficio in catalogo.oficios:
         if nombres.get(oficio.codigo) is None:
-            nombres[oficio.codigo] = _nombre_recortado(oficio.nombre)
+            nombres[oficio.codigo] = nombre_recortado(oficio.nombre)
     opciones = tuple(
         OpcionOficioSigrid(
             etiqueta=_con_codigo(nombres[codigo], codigo),
@@ -486,7 +492,7 @@ def pares_del_desplegable(
             continue
         pareja = (fila.oficio_codigo, fila.proveedor_codigo)
         if nombres.get(pareja) is None:
-            nombres[pareja] = _nombre_recortado(fila.proveedor_nombre)
+            nombres[pareja] = nombre_recortado(fila.proveedor_nombre)
     ordenadas = sorted(
         nombres,
         key=lambda p: (posicion[p[0]], plegar(nombres[p] or ""), p[1]),
@@ -556,7 +562,7 @@ def tipos_del_desplegable(tipos: Iterable[TipoReclamacion]) -> tuple[Opcion, ...
     """
     return tuple(
         Opcion(
-            etiqueta=_con_codigo(_nombre_recortado(t.nombre), t.codigo),
+            etiqueta=_con_codigo(nombre_recortado(t.nombre), t.codigo),
             codigo=t.codigo,
         )
         for t in tipos

@@ -64,6 +64,7 @@ from domain.models.plantilla_incidencias import (
     ListasCerradas,
     OrigenIncidencia,
     Urgencia,
+    nombre_recortado,
     tipo_efectivo,
 )
 from domain.models.situacion_volcado import SituacionDeVolcado, estado_de_volcado
@@ -608,7 +609,8 @@ def validar_valores(
     (`ValoresNoValidos`). La ubicación, contra la lista **de la unidad
     pedida** (R48): cambiar la unidad la revalida. Los nombres salen del
     catálogo (R14): la unidad y el oficio sin nombre en Sigrid guardan su
-    código; el proveedor, el nombre de la primera fila de `obrofc` de su par.
+    código; el proveedor, el primer nombre no vacío de su par en `obrofc`,
+    recortado como en la importación.
     La urgencia, entre las que se ofrecen (`listas`); el tipo de reclamación
     (la clave `listado`), con `_tipo_pedido` (F-072, R21, R22), y el `listado`
     heredado se copia de los vigentes (R23).
@@ -677,9 +679,12 @@ def validar_valores(
     pares: dict[tuple[str, str], str | None] = {}
     for fila in catalogo.proveedores:
         if fila.proveedor_codigo is not None:
-            pares.setdefault(
-                (fila.oficio_codigo, fila.proveedor_codigo), fila.proveedor_nombre
-            )
+            # El primero no vacío, recortado: la regla de la importación
+            # (`pares_del_desplegable`), para que editar sin tocar el proveedor
+            # no lo marque en `cambios` por el espacio final de Sigrid.
+            clave = (fila.oficio_codigo, fila.proveedor_codigo)
+            if pares.get(clave) is None:
+                pares[clave] = nombre_recortado(fila.proveedor_nombre)
     proveedor: tuple[str | None, str | None, bool] = (None, None, False)
     pedido = pedidos.proveedor_codigo
     if pedido is None:

@@ -78,9 +78,10 @@ from domain.ports.ubicaciones_validas import FilaUbicacionesUnidad
 from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
 from interface_adapters.api import revision as handlers_de_f056
 
-from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_importacion import EquivalenciasEnMemoria, TiposEnMemoria
 from tests.utiles_normalizacion import RevisionConLote
 from tests.utiles_revision import (
+    TIPOS_CON_EL_DEFECTO,
     AHORA,
     CORREO,
     DESCRIPCION,
@@ -406,6 +407,7 @@ def _listado(mundo: Mundo) -> dict[str, Any]:
         equivalencias=EquivalenciasEnMemoria(mundo.llamadas),
         ubicaciones=mundo.ubicaciones,
         configuracion=CONFIG,
+        tipos=TiposEnMemoria(tipos=TIPOS_CON_EL_DEFECTO),  # F-072 (R1): fuera de `llamadas`
     )
 
 
@@ -489,6 +491,7 @@ def _actuar(mundo: Mundo, accion: AccionRevision, *, previa: int | None, valores
         listas=LISTAS,
         ahora=AHORA,
         ubicaciones=mundo.ubicaciones,
+        tipos=TiposEnMemoria(tipos=TIPOS_CON_EL_DEFECTO),  # F-072 (R1): fuera de `llamadas`
     )
 
 

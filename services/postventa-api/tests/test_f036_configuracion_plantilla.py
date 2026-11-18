@@ -29,7 +29,6 @@ from domain.models.plantilla_incidencias import (
     CABECERA,
     COLUMNA_ERRORES,
     MAX_DESCRIPCION,
-    Listado,
     ListasCerradas,
     Opcion,
     TextosPlantilla,
@@ -107,10 +106,9 @@ def test_f036_t6_urgencias_y_listados_son_los_del_dominio(
         Opcion(etiqueta="Urgente", codigo=Urgencia.URGENTE.value),
         Opcion(etiqueta="Peligro para la seguridad", codigo=Urgencia.SEGURIDAD.value),
     )
-    assert real.listas.listados == (
-        Opcion(etiqueta="Primer listado", codigo=Listado.PRIMERO.value),
-        Opcion(etiqueta="Segundo listado", codigo=Listado.SEGUNDO.value),
-    )
+    # F-072 R9 (sustituye a `listados == (Primer listado, Segundo listado)`):
+    # los tipos de reclamación salen de Sigrid y el YAML no trae ninguno.
+    assert real.listas.listados == ()
 
 
 def test_f036_t6_ningun_nombre_propio_ni_dato_personal() -> None:
@@ -175,7 +173,6 @@ def test_f036_r5_dos_o_tres_ejemplos_validos(real: ConfiguracionPlantilla) -> No
     ejemplos = real.textos.ejemplos
     assert 2 <= len(ejemplos) <= 3
     urgencias = {o.etiqueta for o in real.listas.urgencias}
-    listados = {o.etiqueta for o in real.listas.listados}
     for ejemplo in ejemplos:
         assert set(ejemplo) <= set(CABECERA) - {COLUMNA_ERRORES}
         assert ejemplo["Unidad"] and ejemplo["Descripción corta"]
@@ -187,7 +184,12 @@ def test_f036_r5_dos_o_tres_ejemplos_validos(real: ConfiguracionPlantilla) -> No
             "Estancia (elígela de la lista de su unidad)",
         )
         assert ejemplo.get("Urgencia") in (None, *urgencias)
-        assert ejemplo.get("Listado") in (None, *listados)
+        # F-072 R10 (sustituye a `Listado in (None, *listados)`): el ejemplo
+        # de `Listado` es indicativo, sin lista contra la que validarlo.
+        assert ejemplo.get("Listado") in (
+            None,
+            "Tipo de reclamación (elígelo de la lista)",
+        )
     assert any(e.get("Urgencia") for e in ejemplos)  # uno enseña la columna Urgencia
 
 
@@ -267,7 +269,9 @@ def test_f036_t6_raiz_que_no_es_un_mapping(tmp_path: Path, contenido: str) -> No
 # `ubicaciones` tumba la carga: lo fija `test_f071_configuracion.py`.
 
 
-@pytest.mark.parametrize("seccion", ["urgencias", "listados"])
+# F-072 R9 (quita `listados` de los parámetros): el YAML ya no la trae y, si la
+# trae, no carga; lo fija `test_f072_r9_un_yaml_con_listados_no_carga`.
+@pytest.mark.parametrize("seccion", ["urgencias"])
 def test_f036_t6_codigo_fuera_del_dominio(
     tmp_path: Path, crudo: dict, seccion: str
 ) -> None:
@@ -275,14 +279,18 @@ def test_f036_t6_codigo_fuera_del_dominio(
     assert seccion in motivo
 
 
-@pytest.mark.parametrize("seccion", ["urgencias", "listados"])
+# F-072 R9 (quita `listados` de los parámetros): el YAML ya no la trae y, si la
+# trae, no carga; lo fija `test_f072_r9_un_yaml_con_listados_no_carga`.
+@pytest.mark.parametrize("seccion", ["urgencias"])
 def test_f036_t6_falta_un_codigo_del_dominio(
     tmp_path: Path, crudo: dict, seccion: str
 ) -> None:
     assert seccion in _roto(tmp_path, crudo, lambda d: d[seccion].pop())
 
 
-@pytest.mark.parametrize("seccion", ["urgencias", "listados"])
+# F-072 R9 (quita `listados` de los parámetros): el YAML ya no la trae y, si la
+# trae, no carga; lo fija `test_f072_r9_un_yaml_con_listados_no_carga`.
+@pytest.mark.parametrize("seccion", ["urgencias"])
 def test_f036_t6_codigo_repetido(tmp_path: Path, crudo: dict, seccion: str) -> None:
     def cambio(d: dict) -> None:
         d[seccion][1]["codigo"] = d[seccion][0]["codigo"]
@@ -290,7 +298,9 @@ def test_f036_t6_codigo_repetido(tmp_path: Path, crudo: dict, seccion: str) -> N
     assert seccion in _roto(tmp_path, crudo, cambio)
 
 
-@pytest.mark.parametrize("seccion", ["urgencias", "listados"])
+# F-072 R9 (quita `listados` de los parámetros): el YAML ya no la trae y, si la
+# trae, no carga; lo fija `test_f072_r9_un_yaml_con_listados_no_carga`.
+@pytest.mark.parametrize("seccion", ["urgencias"])
 def test_f036_t6_etiqueta_vacia_o_repetida(
     tmp_path: Path, crudo: dict, seccion: str
 ) -> None:
@@ -302,7 +312,9 @@ def test_f036_t6_etiqueta_vacia_o_repetida(
     assert seccion in _roto(tmp_path, crudo, repetida)
 
 
-@pytest.mark.parametrize("seccion", ["urgencias", "listados"])
+# F-072 R9 (quita `listados` de los parámetros): el YAML ya no la trae y, si la
+# trae, no carga; lo fija `test_f072_r9_un_yaml_con_listados_no_carga`.
+@pytest.mark.parametrize("seccion", ["urgencias"])
 def test_f036_t6_seccion_que_no_es_lista_de_mappings(
     tmp_path: Path, crudo: dict, seccion: str
 ) -> None:
@@ -352,7 +364,8 @@ def test_f036_t6_ejemplos_uno_o_cuatro(tmp_path: Path, crudo: dict) -> None:
         # F-071, §7.2 y R19: `Ubicación` ya no se comprueba contra lista; lo
         # fija `test_f036_t6_la_ubicacion_del_ejemplo_no_se_comprueba`.
         {"Urgencia": "urgente"},
-        {"Listado": "Tercer listado"},
+        # F-072 R10: `{"Listado": "Tercer listado"}` ya no es inválido; lo fija
+        # `test_f072_r10_ningun_ejemplo_se_valida_contra_la_lista_de_listado`.
     ],
 )
 def test_f036_t6_ejemplo_invalido(tmp_path: Path, crudo: dict, cambio: dict) -> None:
@@ -465,11 +478,12 @@ def test_f036_r5_dos_ejemplos_se_admiten_cuatro_no(tmp_path: Path, crudo: dict) 
 
 def test_f036_t6_el_error_de_ejemplo_dice_cual(tmp_path: Path, crudo: dict) -> None:
     motivo = _roto(
-        tmp_path, crudo, lambda d: d["textos"]["ejemplos"][0].update({"Listado": "x"})
+        tmp_path, crudo, lambda d: d["textos"]["ejemplos"][0].update({"Urgencia": "x"})
     )
     assert "ejemplo 1:" in motivo
+    # F-072 R10: con `Urgencia` y no con `Listado`, que ya no se valida.
     motivo = _roto(
-        tmp_path, crudo, lambda d: d["textos"]["ejemplos"][1].update({"Listado": "x"})
+        tmp_path, crudo, lambda d: d["textos"]["ejemplos"][1].update({"Urgencia": "x"})
     )
     assert "ejemplo 2:" in motivo
 

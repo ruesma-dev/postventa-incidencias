@@ -85,6 +85,7 @@ from domain.models.plantilla_incidencias import (
     IDENTIFICADOR_PLANTILLA,
     OficioObra,
     ProveedorEnObra,
+    listas_con_tipos,
     ubicaciones_de_la_plantilla,
 )
 from domain.ports.catalogo_obra import FilaOficioCatalogo
@@ -101,6 +102,8 @@ from tests.utiles_importacion import (
     EquivalenciasEnMemoria,
     GeneradorQueAnota,
     LectorQueAnota,
+    TIPOS_FICTICIOS,
+    TiposEnMemoria,
     UbicacionesEnMemoria,
     fichero,
     fila,
@@ -158,6 +161,9 @@ class Mundo:
         # las lee; el doble queda para probar justo eso (`pedidas == []`).
         self.equivalencias = EquivalenciasEnMemoria(self.llamadas, self.decisiones)
         self.ubicaciones = UbicacionesEnMemoria(self.llamadas)
+        # F-072 R1, R11: los tipos de reclamación, sin anotar en `llamadas` (el
+        # orden con ellos lo fijan `test_f072_plantilla.py` y `..._importacion.py`).
+        self.tipos = TiposEnMemoria()
         self.generador = GeneradorQueAnota(self.llamadas)
 
     def nuevo_id(self) -> UUID:
@@ -176,7 +182,7 @@ class Mundo:
         )
         contexto = paso_huella(contexto, self.bandeja)
         contexto = paso_reconocimiento(contexto, self.lector)
-        contexto = paso_catalogo(contexto, self.catalogo, self.ubicaciones)
+        contexto = paso_catalogo(contexto, self.catalogo, self.ubicaciones, self.tipos)
         contexto = paso_validacion(contexto, CONFIG.listas)
         contexto = paso_registro(contexto, self.bandeja, nuevo_id=self.nuevo_id)
         return paso_excel_errores(
@@ -236,6 +242,7 @@ def test_f036_t17_leer_el_catalogo_sin_reconocer_es_un_paso_fuera_de_orden():
             _contexto(hash="h"),
             CatalogoEnMemoria(llamadas),
             UbicacionesEnMemoria(llamadas),  # F-071 R24
+            TiposEnMemoria(llamadas),  # F-072 R11
         )
     assert llamadas == []
 
@@ -377,7 +384,9 @@ def test_f036_r39_con_el_atajo_cada_paso_siguiente_no_hace_nada(paso):
 
     llamadas = {
         "reconocimiento": lambda c: paso_reconocimiento(c, mundo.lector),
-        "catalogo": lambda c: paso_catalogo(c, mundo.catalogo, mundo.ubicaciones),
+        "catalogo": lambda c: paso_catalogo(
+            c, mundo.catalogo, mundo.ubicaciones, mundo.tipos
+        ),
         "validacion": lambda c: paso_validacion(c, CONFIG.listas),
         "registro": lambda c: paso_registro(c, mundo.bandeja, nuevo_id=mundo.nuevo_id),
         "excel_errores": lambda c: paso_excel_errores(
@@ -782,7 +791,7 @@ def test_f036_r40_si_la_base_falla_no_hay_excel_de_errores():
     )
     contexto = paso_huella(contexto, mundo.bandeja)
     contexto = paso_reconocimiento(contexto, mundo.lector)
-    contexto = paso_catalogo(contexto, mundo.catalogo, mundo.ubicaciones)
+    contexto = paso_catalogo(contexto, mundo.catalogo, mundo.ubicaciones, mundo.tipos)
     contexto = paso_validacion(contexto, CONFIG.listas)
 
     with pytest.raises(PersistenciaNoDisponible):
@@ -839,7 +848,9 @@ def test_f036_r62_el_excel_de_errores_usa_el_mismo_catalogo_y_opciones():
         contexto.catalogo.unidades, mundo.ubicaciones.mapa
     )
     assert mundo.llamadas.count("ubicaciones") == 1
-    assert argumentos["listas"] is CONFIG.listas
+    # F-072 R6, R13 (sustituye a `is CONFIG.listas`): `listados` lo rellena la
+    # aplicación con los tipos leídos (los ficticios de `TiposEnMemoria`).
+    assert argumentos["listas"] == listas_con_tipos(CONFIG.listas, TIPOS_FICTICIOS)
     assert argumentos["textos"] is CONFIG.textos
     assert argumentos["generada_at"] == AHORA
     assert (
@@ -1063,6 +1074,7 @@ def _plantilla(mundo: Mundo, codigo: object = "0677", ahora: datetime = AHORA):
         codigo,
         catalogo_obra=mundo.catalogo,
         ubicaciones=mundo.ubicaciones,  # F-071 R1 (antes, `equivalencias`)
+        tipos=mundo.tipos,  # F-072 R1
         generador=mundo.generador,
         listas=CONFIG.listas,
         textos=CONFIG.textos,
@@ -1091,7 +1103,9 @@ def test_f036_r1_la_plantilla_lee_el_catalogo_las_ubicaciones_y_genera():
     assert argumentos["filas"] == ()
     assert argumentos["importacion_origen"] is None
     assert argumentos["generada_at"] == AHORA
-    assert argumentos["listas"] is CONFIG.listas
+    # F-072 R6, R13 (sustituye a `is CONFIG.listas`): `listados` lo rellena la
+    # aplicación con los tipos leídos (los ficticios de `TiposEnMemoria`).
+    assert argumentos["listas"] == listas_con_tipos(CONFIG.listas, TIPOS_FICTICIOS)
     assert argumentos["textos"] is CONFIG.textos
 
 
@@ -1268,6 +1282,7 @@ def test_f036_t17_el_catalogo_exige_libro_y_obra_a_la_vez(campos):
             _contexto(**campos),
             CatalogoEnMemoria(llamadas),
             UbicacionesEnMemoria(llamadas),  # F-071 R24
+            TiposEnMemoria(llamadas),  # F-072 R11
         )
     assert llamadas == []
 

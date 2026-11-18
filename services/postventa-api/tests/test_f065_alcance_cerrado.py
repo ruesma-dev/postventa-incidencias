@@ -919,7 +919,11 @@ def test_f065_r28_los_sql_son_los_dieciseis_de_antes():
     """La mitad que no depende de `git`: ni un `17_…sql`."""
     carpeta = RAIZ_DEL_SERVICIO / "infrastructure" / "persistencia" / "sql"
 
-    assert tuple(sorted(f.name for f in carpeta.glob("*.sql"))) == SQL_DE_LA_BASE
+    # F-072 (R16): el `17_` es de F-072, no de F-065.
+    assert tuple(sorted(f.name for f in carpeta.glob("*.sql"))) == (
+        *SQL_DE_LA_BASE,
+        "17_tipo_reclamacion.sql",
+    )
 
 
 def test_f065_r28_el_codigo_de_f065_no_lee_el_entorno_ni_escribe_ni_guarda():

@@ -172,7 +172,7 @@ def test_f056_t15_los_controles_leen_algo_del_codigo():
         "aprobar",
         "recuperar",
     ]
-    assert len(MotivoNoAprobable) == 9
+    assert len(MotivoNoAprobable) == 10  # F-072 (R24): `tipo_fuera_de_sigrid`
     registradas = _leer(FUNCTION_APP)
     for metodo, ruta in ENDPOINTS_DE_F056:
         assert re.search(

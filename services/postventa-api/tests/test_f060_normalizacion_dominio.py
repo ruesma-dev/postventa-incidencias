@@ -483,7 +483,10 @@ def test_f060_r8_la_revision_cambia_solo_la_ubicacion_de_los_vigentes() -> None:
     assert nueva.accion is A.EDITAR
     assert nueva.valores.ubicacion == "Sala Ejemplo"
     otros = [f.name for f in fields(ValoresIncidencia) if f.name != "ubicacion"]
-    assert len(otros) == 12
+    # 13 desde F-072 (R26): la foto gana `tipo_reclamacion` como último campo.
+    # Aquí va nulo, así que no prueba su copia: la de un tipo no nulo en la
+    # revisión del sistema (R23) la fija `test_f072_revision_dominio.py` (Bloque 2).
+    assert len(otros) == 13
     for nombre in otros:
         assert getattr(nueva.valores, nombre) == getattr(vigentes, nombre), nombre
     assert nueva.valores == replace(vigentes, ubicacion="Sala Ejemplo")

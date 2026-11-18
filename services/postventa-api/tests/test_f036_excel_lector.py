@@ -701,7 +701,7 @@ BUENA = {
     "Oficio": "Carpintería de madera (0046)",
     "Proveedor": "Carpintería de madera (0046) · Juan Ejemplo Ejemplo (P003)",
     "Urgencia": "Urgente",
-    "Listado": "Segundo listado",
+    "Listado": "TIPO FICTICIO 2 (9002)",  # F-072 R6 (antes, «Segundo listado»)
 }
 MALA = {"Unidad": "villa 2", "Descripción corta": "=HOY()"}
 
@@ -718,7 +718,12 @@ def test_f036_ida_y_vuelta_de_la_plantilla_rellena() -> None:
     assert valida.detalle == "Línea 1\nLínea 2"
     assert valida.oficio.codigo == "0046"
     assert valida.proveedor.codigo == "P003"
-    assert (valida.urgencia, valida.listado) == ("urgente", "segundo")
+    # F-072 R12, R15 (sustituye a `listado == "segundo"`): el código del tipo.
+    assert (valida.urgencia, valida.tipo_reclamacion, valida.listado) == (
+        "urgente",
+        "9002",
+        None,
+    )
 
 
 def test_f036_ida_y_vuelta_con_filas_malas_tecleadas() -> None:

@@ -58,7 +58,7 @@ from infrastructure.sigrid import fabrica as fabrica_sigrid
 from interface_adapters.api import revision as modulo_revision
 from interface_adapters.api import volcado as modulo
 
-from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_importacion import EquivalenciasEnMemoria, PuertoTiposEnMemoria
 from tests.utiles_revision import (
     CORREO,
     CORREO_2,
@@ -210,6 +210,10 @@ def _componer(monkeypatch, mundo: Mundo) -> None:
         modulo_revision,
         "construir_fuente_de_ubicaciones",
         _fabrica(mundo, "ubicaciones", "ubicaciones"),
+    )
+    # F-072 (R1): la fuente de los tipos de Sigrid, sin anotarla en `construidos`.
+    monkeypatch.setattr(
+        modulo_revision, "construir_tipos_reclamacion", lambda _ajustes: PuertoTiposEnMemoria()
     )
     monkeypatch.setattr(modulo_revision, "configuracion_de_la_plantilla", lambda: CONFIG)
 

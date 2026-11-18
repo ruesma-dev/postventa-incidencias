@@ -54,7 +54,6 @@ from domain.models.plantilla_incidencias import (
     MAX_DETALLE,
     MAX_FILAS,
     CatalogoObra,
-    Listado,
     ListasCerradas,
     OficioObra,
     Opcion,
@@ -479,6 +478,7 @@ def test_f036_fila_minima_valida() -> None:
         urgencia=None,
         listado=None,
         avisos=(),
+        tipo_reclamacion="0002",  # F-072 R14: en blanco, `0002`
     )
 
 
@@ -507,7 +507,8 @@ def test_f036_fila_completa_valida() -> None:
         etiqueta="Pinturas Ejemplo S.A.", codigo="P3", ambiguo=False
     )
     assert v.urgencia is Urgencia.SEGURIDAD
-    assert v.listado is Listado.SEGUNDO
+    # F-072 R12, R15 (sustituye a `listado is Listado.SEGUNDO`).
+    assert (v.tipo_reclamacion, v.listado) == ("segundo", None)
     assert v.avisos == ()
 
 
@@ -522,7 +523,8 @@ def test_f036_r31_urgente_y_primer_listado() -> None:
         )
     )
     assert v.urgencia is Urgencia.URGENTE
-    assert v.listado is Listado.PRIMERO
+    # F-072 R12, R15 (sustituye a `listado is Listado.PRIMERO`).
+    assert (v.tipo_reclamacion, v.listado) == ("primero", None)
 
 
 def test_f036_r23_fila_vacia_se_ignora() -> None:

@@ -1044,7 +1044,7 @@ def test_f065_r24_proceso_nuevo_es_propio_y_no_toca_el_del_listado(mundo, monkey
     from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
     from interface_adapters.api import revision as modulo_revision
 
-    from tests.utiles_importacion import EquivalenciasEnMemoria
+    from tests.utiles_importacion import EquivalenciasEnMemoria, TiposEnMemoria
     from tests.utiles_revision import (
         CatalogoDeLaObra,
         RevisionEnMemoria,
@@ -1060,6 +1060,7 @@ def test_f065_r24_proceso_nuevo_es_propio_y_no_toca_el_del_listado(mundo, monkey
         equivalencias=EquivalenciasEnMemoria(llamadas),
         ubicaciones=UbicacionesQueCuentan(llamadas),
         configuracion=cargar_plantilla_yaml(),
+        tipos=TiposEnMemoria(),  # F-072 (R1): la cuarta lectura de Sigrid del listado
     )
     (del_listado,) = [r.getMessage() for r in caplog.records if r.getMessage().startswith("F-060 tiempos del listado")]
     assert "proceso_nuevo=True" in del_listado

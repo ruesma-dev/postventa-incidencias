@@ -77,8 +77,13 @@ from infrastructure.sigrid.ubicaciones_validas import (
 )
 from interface_adapters.api import revision as borde
 
-from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_importacion import (
+    EquivalenciasEnMemoria,
+    PuertoTiposEnMemoria,
+    TiposEnMemoria,
+)
 from tests.utiles_revision import (
+    TIPOS_CON_EL_DEFECTO,
     AHORA,
     CORREO,
     DESCRIPCION,
@@ -672,6 +677,7 @@ def test_f056_r46_listar_lee_las_ubicaciones_una_vez_tras_el_catalogo() -> None:
         equivalencias=EquivalenciasEnMemoria(llamadas),
         listas=LISTAS,
         ubicaciones=fuente_de_ubicaciones(puerto),
+        tipos=TiposEnMemoria(tipos=TIPOS_CON_EL_DEFECTO),  # F-072 (R1): fuera de `llamadas`, el orden de F-056 no cambia
     )
 
     assert llamadas == [
@@ -715,6 +721,7 @@ def _editar(revision, catalogo, puerto, ubicacion: str, unidad: str = U1, previa
         listas=LISTAS,
         ahora=AHORA,
         ubicaciones=fuente_de_ubicaciones(puerto),
+        tipos=TiposEnMemoria(tipos=TIPOS_CON_EL_DEFECTO),  # F-072 (R1): fuera de `llamadas`, el orden de F-056 no cambia
     )
 
 
@@ -833,6 +840,12 @@ class Borde:
             borde, "construir_equivalencias", lambda _a: EquivalenciasEnMemoria(self.llamadas)
         )
         monkeypatch.setattr(borde, "configuracion_de_la_plantilla", lambda: CONFIG)
+        # F-072 (R1): el borde compone también la fuente de los tipos de Sigrid.
+        monkeypatch.setattr(
+            borde,
+            "construir_tipos_reclamacion",
+            lambda _a: PuertoTiposEnMemoria(TIPOS_CON_EL_DEFECTO),
+        )
         self.parchear(monkeypatch, self._construir)
 
     def _construir(self, ajustes: object) -> object:

@@ -47,6 +47,7 @@ from domain.models.plantilla_incidencias import (
     UbicacionesPorUnidad,
     UnidadPosventa,
     etiquetas_de_unidades,
+    listas_con_tipos,
     oficios_del_desplegable,
     pares_del_desplegable,
     ubicaciones_de_la_plantilla,
@@ -56,6 +57,7 @@ from infrastructure.documentos.excel_openpyxl import (
     GeneradorPlantillaOpenpyxl,
     LectorPlantillaOpenpyxl,
 )
+from tests.utiles_importacion import TIPOS_FICTICIOS
 from tests.utiles_plantilla import INSTANTE, abrir, configuracion
 
 #: La fórmula a1 de `design.md` §4.2 (D-1 = a1, T0).
@@ -135,7 +137,9 @@ def _generar(
         oficios=oficios,
         pares=pares,
         ubicaciones=ubicaciones_de_la_plantilla(cat.unidades, por_unidad),
-        listas=config.listas,
+        # F-072 (R6, R9): `listados` llega vacío del YAML y la aplicación lo
+        # rellena con los tipos de Sigrid; aquí, con los ficticios.
+        listas=listas_con_tipos(config.listas, TIPOS_FICTICIOS),
         textos=config.textos,
         generada_at=INSTANTE,
         filas=filas,

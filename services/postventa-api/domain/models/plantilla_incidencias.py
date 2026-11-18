@@ -16,6 +16,10 @@ generador y el importador, así que salen de aquí y solo de aquí.
 `TextosPlantilla` (T6) es la forma de los textos del YAML de §3.4, que carga
 `infrastructure/documentos/plantilla_yaml.py`.
 
+F-072: los tipos de reclamación (`TipoReclamacion`) salen de `dbo.auxtrcp`;
+`tipos_del_desplegable` da las opciones de `Listado` y `tipo_efectivo`, el
+tipo que vale cuando no hay ninguno guardado (`0002`).
+
 Sin `openpyxl`, sin red, sin base de datos y sin reloj.
 """
 
@@ -25,7 +29,7 @@ import re
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from domain.models.equivalencias import Catalogo, Grupo, GruposVigentes
@@ -56,6 +60,10 @@ MAX_DETALLE = 2000  # propio (D-11)
 MAX_FILAS = 1000
 MAX_BYTES_FICHERO = 2 * 1024 * 1024  # 2 MiB (D-11, R15)
 MAX_CODIGO_OBRA = 24  # `obra` de sigrid-api §8.9
+#: El tipo de reclamación de un parte sin tipo elegido (F-072, R14, R19, R22):
+#: PRIMER LISTADO POSTVENTA de `dbo.auxtrcp`, el que mandaba siempre F-059.
+TIPO_RECLAMACION_POR_DEFECTO = "0002"
+MAX_TIPO_RECLAMACION = 24  # `auxtrcp.cod` (F-072, R16)
 
 #: Lo único que admite un código de obra una vez normalizado (R9).
 _CODIGO_OBRA_ADMISIBLE = re.compile(r"[0-9A-Za-z._-]+")
@@ -142,9 +150,12 @@ class OpcionProveedor:
 
 @dataclass(frozen=True)
 class ListasCerradas:
-    """Las listas que no salen de Sigrid (F-071, R16, R22): urgencias y listados.
+    """Las listas cerradas de la plantilla y de la revisión: urgencias y listados.
 
-    Las ubicaciones ya no están aquí: salen de Sigrid, por unidad
+    `urgencias` sale del YAML (F-071, R16, R22): Sigrid no tiene catálogo.
+    `listados` llega **vacío** del YAML y lo rellena la aplicación con los
+    tipos de reclamación de Sigrid (`listas_con_tipos`, F-072). Las
+    ubicaciones tampoco están aquí: salen de Sigrid, por unidad
     (`UbicacionesPorUnidad`).
     """
 
@@ -177,6 +188,19 @@ class ParSigrid:
     oficio: OpcionOficioSigrid
     proveedor_codigo: str
     proveedor_nombre: str | None
+
+
+@dataclass(frozen=True)
+class TipoReclamacion:
+    """Un tipo de reclamación vigente de `dbo.auxtrcp` (F-072, R1, R5).
+
+    Llega ya limpio de la aplicación (`leer_tipos_reclamacion`): código
+    recortado, no vacío y sin repetir. `nombre` es `res`, que nunca va a un
+    log (R30).
+    """
+
+    codigo: str
+    nombre: str | None
 
 
 #: Las ubicaciones válidas de cada unidad leídas de Sigrid (F-056 §16.3):
@@ -516,3 +540,40 @@ def ubicaciones_de_la_plantilla(
     return UbicacionesDeLaPlantilla(
         listas=tuple(listas), lista_de_unidad=lista_de_unidad
     )
+
+
+# --------------------------------------------------------------------------
+# F-072 · los tipos de reclamación, de Sigrid
+# --------------------------------------------------------------------------
+
+
+def tipos_del_desplegable(tipos: Iterable[TipoReclamacion]) -> tuple[Opcion, ...]:
+    """Las opciones de `Listado`: una por tipo, en el orden leído (R6, R7).
+
+    La etiqueta es `<nombre recortado> (<código>)` o, sin nombre, el código
+    (Q-6, como el oficio de F-071). Sin tipos, ninguna opción: el generador
+    deja entonces solo el blanco (R7).
+    """
+    return tuple(
+        Opcion(
+            etiqueta=_con_codigo(_nombre_recortado(t.nombre), t.codigo),
+            codigo=t.codigo,
+        )
+        for t in tipos
+    )
+
+
+def listas_con_tipos(
+    listas: ListasCerradas, tipos: Iterable[TipoReclamacion]
+) -> ListasCerradas:
+    """`listas` con `listados` sustituido por el desplegable de `tipos` (R6)."""
+    return replace(listas, listados=tipos_del_desplegable(tipos))
+
+
+def tipo_efectivo(codigo: str | None) -> str:
+    """El tipo que vale de una incidencia (R19): el guardado o, si es nulo, `0002`.
+
+    Nulo solo lo tienen las filas anteriores a F-072; su `listado` heredado no
+    lo cambia (Q-2).
+    """
+    return TIPO_RECLAMACION_POR_DEFECTO if codigo is None else codigo

@@ -1,6 +1,67 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · T22 cerrada (líder, 2026-11-18)
+> Campaña serie de la feature VÁLIDA: 41 evaluados, 38 muertos, 3 supervivientes de veracidad
+> (`importacion.py:604`, `importar.py:218`, `plantilla.py:92`) declarados EQUIVALENTES
+> (`progress/mutacion_F-072.md`, 1db3049/5bd518c), review APROBADO condicionado
+> (`progress/review_F-072_t22.md`, c860367). **Aceptación escrita del humano, 2026-11-18, en el
+> chat: «acepto»** (respuesta a «acepto los 3 equivalentes de F-072»). RM7 del líder: 3/3 muertos.
+> `ARNES_SIN_CACHE=1 bash harness/init.sh` en verde sobre c860367 (2202 / 10377 / 911 passed,
+> cobertura 158/158). Siguiente: T23 (merge a `dev`).
+
+> ## F-072 · `in_progress` · 2026-11-17 · T13 en verde; OK del humano a la mutación a mano por bloque
+> **T13 (humano, 2026-11-17)**: `infra\pruebas_bbdd_efimera.ps1` repetido tras `201b8f6`: **120 passed**.
+> **OK del humano (2026-11-17, en el chat: «ok, t13 hecha y 120 passed»)** a la propuesta (b) del líder: en los
+> Bloques 4–6 la mutación se cierra con la tabla a mano del implementer reproducida por el reviewer (sin campaña
+> por bloque, que tarda ~4 h y la invalidan los tests de tiempo `test_f036_r115_*` bajo carga), y una única
+> campaña de la feature entera en T22 con menos workers.
+
+> ## F-072 · `in_progress` · 2026-11-17 · OK del humano al veredicto a mano del Bloque 3; T13 en rojo
+> **OK explícito del humano (2026-11-17, en el chat: «a ok a cerrarla»)** a cerrar la mutación del Bloque 3 con el
+> veredicto a mano en lugar de una campaña válida (condición de `progress/review_F-072_bloque3.md` §5 para C4 bis).
+> **T13 (humano, base efímera)**: 119 passed, 1 failed: `test_f072_r17_el_ddl_dos_veces_sobre_filas_de_f036_y_f056`
+> lee con `RepositorioRevisionPostgres.situacion` (que ya pide `r.tipo_reclamacion`) **antes** de aplicar el DDL
+> sobre la base a la que le ha quitado la columna → `UndefinedColumn`. Fallo del test de T12, no del DDL; se corrige
+> y el humano repite T13.
+
+> ## F-072 · `in_progress` · 2026-11-16 · Bloque 3: veredicto de mutación a mano (decisión del líder)
+> Dos campañas del Bloque 3 salieron NO VÁLIDAS solo porque un test de tiempo de F-036 (`test_f036_r115_*`, tope de
+> 1 s, `tests/test_f036_excel_lector.py`) se pone rojo con varias suites a la vez; la segunda (4 workers, `c2f842e`):
+> 30/30 muertos, 0 timeouts. El humano pidió el 2026-11-16 terminar F-072 cuanto antes: el líder acepta como veredicto
+> del Bloque 3 la tabla a mano de `progress/mutacion_F-072_bloque3.md` (24/24 muertos con el test que mata cada uno)
+> y lo somete a la review del Bloque 3. Los tests de tiempo de F-036 bajo carga quedan como deuda fuera de F-072.
+> Bloque 4 arranca en paralelo en un worktree aparte.
+
+> ## F-072 · `in_progress` · 2026-11-15 · Bloque 2 desbloqueado con la opción (b) del humano
+> T4 `143802a` y T5 `fd0673d`. Los 7 rojos de F-056 (detalle en `progress/impl_F-072.md`, «Bloque 2») se cierran con
+> (b): los 3 HTTP de aprobar editan con un código de la lista que aún compone el HTTP (citado con R22/R24; el Bloque 6
+> los vuelve a tocar), r27 y r29 citando R24/R25, y la mención de `tipo_fuera_de_sigrid` en `docs/ARCHITECTURE.md`
+> adelantada a este bloque. Descartadas (a) (R24 opcional en `decidir`) y (c). `_mismos_valores` por tipo efectivo
+> queda para la review del Bloque 2.
+> **Implementer (2026-11-15)**: (b) hecho en `0fb864e`; suite de api `10045 passed, 353 skipped`; T4 y T5 marcadas
+> (`9b22088`). Un superviviente real a mano (`revision.py:856`, lista de vigentes vacía) cerrado con un test (`85d3c36`).
+> Campaña `progress/mutacion_F-072_bloque2.md`: 24 generados, 16 evaluados y 8 descartados a mano, 0 supervivientes.
+> Siguiente: review del Bloque 2 (líder; T6 sin marcar).
+
+> ## F-072 · `in_progress` · 2026-11-15 · desbloqueada; Bloque 1, relanzando la mutación de T3
+> T1 RED `50efef2` y T2 GREEN `0a3ed7e`. El bloqueo de T3 (13 tests de «configuración que falta» que veían el `.env`
+> volcado a `os.environ` por `volcar_variables` del arnés 1.10) se resolvió con la opción (a) del humano: arreglo de
+> tests en `fix/tests-configuracion-sin-entorno` (`a18956e`, informe `progress/impl_fix_tests_config_entorno.md`;
+> `conftest.py` quita del entorno las variables de `Ajustes` en cada test; 11 tests frágiles más de F-006/F-013/F-031/
+> F-051 cubiertos), `init.sh` verde (raíz 2202, api 9932, front 911), mergeado en `dev` `05c8a5a` y traído a F-072
+> `299f21c`. **Pendiente de proponer para `arnes-base`**: que `volcar_variables` sea opt-in.
+> **T3 relanzada (implementer)**: 5 mutantes, 5 muertos, 0 supervivientes (`progress/mutacion_F-072_bloque1.md`).
+> Siguiente: review del Bloque 1 (líder).
+
+> ## F-072 · `in_progress` · 2026-11-15 · spec aprobada por el humano; siguiente, Bloque 1
+> `specs/F-072-tipo-reclamacion-sigrid/`, base fija `dev` `6994cb0`. **T0 (líder, solo lecturas, 2026-11-15)**:
+> Q-1 `dbo.auxtrcp` tiene 4 tipos, todos vigentes (`0001` PREVENTA, `0002` PRIMER LISTADO POSTVENTA, `0003` POST VENTA,
+> `0004` VISITA DE CORTESIA; catálogo, no datos personales); Q-2 la bandeja tiene 285 `primero`, 4 nulos y ningún
+> `segundo` (288 sin volcar); Q-3 `postventa_app` es dueño de `bandeja_incidencias` y `revisiones_bandeja` y es el rol de
+> la sesión. **Decidido por el humano el 2026-11-15**: Q-1..Q-11 la opción (a) (`design.md` §12). Implementación un
+> bloque por encargo, con review al final de cada uno; se para antes del Bloque 8 (despliegue y T26 en la 0677).
+
 > ## Arnés · caché de suites ajustada · 2026-11-13 · mergeado en `dev`
 > `harness/servicios.json` con `depende_de` y `ejecutar_siempre` (inventario, ampliación (b) y recorte de F-059/F-060/F-065
 > aprobados por el humano). Detalle en `progress/impl_arnes_servicios_cache.md`. Con caché, `init.sh` ejecuta igualmente

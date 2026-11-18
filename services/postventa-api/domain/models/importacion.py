@@ -25,6 +25,12 @@ a mano; `opciones_de_oficio` y `opciones_de_proveedor` son de T7), y deja que
 la importación calcule las opciones **una vez** y use las mismas en la
 validación y en el Excel de errores (§7.3, paso 6).
 
+F-072 (`specs/F-072-tipo-reclamacion-sigrid/design.md` §3.2): la celda
+`Listado` se casa con las etiquetas de los tipos de reclamación de Sigrid que
+trae `listas.listados` (R12) y la fila guarda su **código** en
+`tipo_reclamacion`; en blanco, `0002` sin mirarlo en la lista (R14). El
+`listado` de F-036 ya no se rellena: toda fila nueva lo lleva a `None` (R15).
+
 Sin `openpyxl`, sin red, sin base de datos y sin reloj.
 """
 
@@ -50,6 +56,7 @@ from domain.models.plantilla_incidencias import (
     MAX_DETALLE,
     MAX_FILAS,
     VERSION_ANTERIOR,
+    TIPO_RECLAMACION_POR_DEFECTO,
     VERSIONES_SOPORTADAS,
     CatalogoObra,
     Listado,
@@ -328,6 +335,7 @@ class IncidenciaValida:
     urgencia: Urgencia | None
     listado: Listado | None
     avisos: tuple[str, ...]
+    tipo_reclamacion: str | None = None  # F-072: el código de `dbo.auxtrcp` (R12, R14)
 
     def __post_init__(self) -> None:
         if self.proveedor is not None and self.oficio is None:
@@ -589,7 +597,13 @@ def _validar_fila(
     urgencia = (
         None if etiqueta_urgencia is None else Urgencia(urgencias[etiqueta_urgencia])
     )
-    listado = None if etiqueta_listado is None else Listado(listados[etiqueta_listado])
+    # F-072: el código del tipo casado (R12) o, en blanco, el de por defecto
+    # sin mirarlo en la lista (R14); el `listado` de F-036 ya no se escribe (R15).
+    tipo_reclamacion = (
+        TIPO_RECLAMACION_POR_DEFECTO
+        if etiqueta_listado is None
+        else listados[etiqueta_listado]
+    )
     # Con proveedor, el oficio es el del par (R33, D-17 de F-036): con un
     # `Oficio` distinto ya habría salido el error de R34.
     opcion_oficio = par.oficio if par is not None else oficio
@@ -602,8 +616,9 @@ def _validar_fila(
         oficio=None if opcion_oficio is None else _elegido_de_oficio(opcion_oficio),
         proveedor=None if par is None else _elegido_de_proveedor(par),
         urgencia=urgencia,
-        listado=listado,
+        listado=None,
         avisos=tuple(f.avisos + _avisos(descripcion, detalle, urgencia)),
+        tipo_reclamacion=tipo_reclamacion,
     )
 
 
@@ -745,6 +760,7 @@ class IncidenciaEnBandeja:
     listado: Listado | None
     duplicada_de: UUID | None
     creada_at_utc: datetime
+    tipo_reclamacion: str | None = None  # F-072: nulo = anterior a F-072 (R19)
 
     def __post_init__(self) -> None:
         hay_oficio = _comprobar_elegido(

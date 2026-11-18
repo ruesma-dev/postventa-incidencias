@@ -17,11 +17,12 @@ con ellos la suite prueba el borde entero sin Sigrid ni base.
    ubicaciones, la **misma** que la importación y la revisión
    (`construir_fuente_de_ubicaciones` de `interface_adapters/api/revision.py`).
    Ninguna base: desde F-071 la plantilla no lee las decisiones de
-   equivalencia (R2).
-3. **La plantilla**: el catálogo y las ubicaciones se leen de Sigrid en ese
-   momento (R1); `ObraSinUnidades` (→ 404), `ObraAmbigua` y
-   `CatalogoSinVerificar` (→ 409, también la lectura de ubicaciones al techo)
-   suben sin fichero (F-071 R3).
+   equivalencia (R2). Y, la última, la fuente de los tipos de reclamación
+   (F-072, `construir_tipos_reclamacion`, con la misma puerta de entorno).
+3. **La plantilla**: el catálogo, las ubicaciones y los tipos se leen de Sigrid
+   en ese momento (R1; F-072 R1); `ObraSinUnidades` (→ 404), `ObraAmbigua` y
+   `CatalogoSinVerificar` (→ 409, también la lectura de ubicaciones o la de
+   tipos al techo) suben sin fichero (F-071 R3; F-072 R3, R4).
 
 Solo lee: ni escribe en Sigrid (R46) ni depende de ninguna ventana de
 escritura del servicio.
@@ -37,6 +38,10 @@ from application.pipelines.plantilla import (
     FuenteUbicacionesValidas,
     generar_plantilla,
 )
+from application.pipelines.tipos_reclamacion import (
+    FuenteTiposReclamacion,
+    fuente_de_tipos,
+)
 from config.settings import obtener_ajustes
 from domain.models.plantilla_incidencias import normalizar_codigo_obra
 from domain.ports.catalogo_obra import CatalogoObraPort
@@ -45,7 +50,10 @@ from infrastructure.documentos.plantilla_yaml import (
     ConfiguracionPlantilla,
     cargar_plantilla_yaml,
 )
-from infrastructure.sigrid.fabrica import construir_catalogo_obra
+from infrastructure.sigrid.fabrica import (
+    construir_catalogo_obra,
+    construir_tipos_reclamacion,
+)
 
 __all__ = ["configuracion_de_la_plantilla", "descargar_plantilla"]
 
@@ -65,6 +73,7 @@ def descargar_plantilla(
     *,
     catalogo_obra: CatalogoObraPort | None = None,
     ubicaciones: FuenteUbicacionesValidas | None = None,
+    tipos: FuenteTiposReclamacion | None = None,
     generador: GeneradorPlantillaPort | None = None,
     configuracion: ConfiguracionPlantilla | None = None,
     ahora: datetime | None = None,
@@ -80,6 +89,8 @@ def descargar_plantilla(
         from interface_adapters.api import revision
 
         ubicaciones = revision.construir_fuente_de_ubicaciones(obtener_ajustes())
+    if tipos is None:
+        tipos = fuente_de_tipos(construir_tipos_reclamacion(obtener_ajustes()))
     config = (
         configuracion if configuracion is not None else configuracion_de_la_plantilla()
     )
@@ -91,6 +102,7 @@ def descargar_plantilla(
         codigo,
         catalogo_obra=catalogo_obra,
         ubicaciones=ubicaciones,
+        tipos=tipos,
         generador=generador if generador is not None else GeneradorPlantillaOpenpyxl(),
         listas=config.listas,
         textos=config.textos,

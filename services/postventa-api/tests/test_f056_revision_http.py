@@ -47,7 +47,7 @@ from domain.models.errores import (
     PersistenciaNoDisponible,
     PeticionDeRevisionInvalida,
 )
-from domain.models.plantilla_incidencias import Listado, Urgencia
+from domain.models.plantilla_incidencias import Listado, Urgencia, tipos_del_desplegable
 from domain.models.revision import (
     MAX_TEXTO_CLAVE,
     TOPE_LECTURA_OBRA,
@@ -63,7 +63,11 @@ from domain.ports.ubicaciones_validas import FilaUbicacionesUnidad
 from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
 from interface_adapters.api import revision as modulo
 
-from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_importacion import (
+    TIPOS_FICTICIOS,
+    EquivalenciasEnMemoria,
+    PuertoTiposEnMemoria,
+)
 from tests.utiles_plantilla import mismo
 from tests.utiles_revision import (
     CORREO,
@@ -93,6 +97,11 @@ A = AccionRevision
 
 #: La configuración de la plantilla de verdad (el YAML del repositorio): las
 #: urgencias y los listados que se ofrecen son los que se aceptan.
+#: F-072 (Bloque 6, R9, R20): el YAML ya no trae `listados`; los que se
+#: ofrecen y se aceptan son los tipos leídos de Sigrid, que aquí sirve
+#: `PuertoTiposEnMemoria` con `TIPOS_FICTICIOS` (`9001`, `9002`) por la
+#: fábrica del borde (`construir_tipos_reclamacion`). El puente del Bloque 5
+#: (los ficticios metidos en `CONFIG`) ya no hace falta.
 CONFIG = cargar_plantilla_yaml()
 
 #: Las claves de una fila de `GET /api/revision` (R29), exactamente estas.
@@ -151,6 +160,7 @@ class Mundo:
         self.catalogo = CatalogoDeLaObra(self.llamadas)
         self.ubicaciones = UbicacionesQueCuentan(self.llamadas)
         self.equivalencias = EquivalenciasEnMemoria(self.llamadas)
+        self.tipos = PuertoTiposEnMemoria(TIPOS_FICTICIOS)  # F-072 (R1)
         self.construidos: list[str] = []
 
     def sembrar(self, n: int, accion: AccionRevision, **cambios: Any) -> int:
@@ -192,6 +202,9 @@ def _componer(monkeypatch, mundo: Mundo) -> None:
         "construir_fuente_de_ubicaciones",
         _fabrica(mundo, "ubicaciones", "ubicaciones"),
     )
+    # F-072 (R1): la fuente de los tipos, sin anotar en `construidos` ni en
+    # `llamadas`: los órdenes de F-056 no cambian (los fija `test_f072_revision_http`).
+    monkeypatch.setattr(modulo, "construir_tipos_reclamacion", lambda _ajustes: mundo.tipos)
     monkeypatch.setattr(modulo, "configuracion_de_la_plantilla", lambda: CONFIG)
 
 
@@ -204,6 +217,7 @@ def nada_se_construye(monkeypatch) -> None:
         "construir_catalogo_obra",
         "construir_equivalencias",
         "construir_fuente_de_ubicaciones",
+        "construir_tipos_reclamacion",  # F-072 (R1)
         "configuracion_de_la_plantilla",
     ):
         monkeypatch.setattr(modulo, nombre, prohibido(nombre))
@@ -406,7 +420,9 @@ def test_f056_r8_editar_devuelve_la_fila_con_motivos(mundo: Mundo) -> None:
     assert fila["importados"]["ubicacion"] == "Baño"
     assert fila["vigentes"]["ubicacion"] == "Cocina"
     assert fila["cambios"] == ["ubicacion"]
-    assert fila["motivos_no_aprobable"] == []
+    # F-072 (R22, R24): con `listado` nulo se guarda `0002`, que no está entre los
+    # tipos leídos (`9001`, `9002`), y la respuesta lo calcula con ellos (antes, []).
+    assert fila["motivos_no_aprobable"] == ["tipo_fuera_de_sigrid"]
     assert fila["revisado_por"] == CORREO
     assert fila["revisado_at_utc"].endswith("+00:00")
     assert OID not in _texto(respuesta)
@@ -590,6 +606,7 @@ def test_f056_r30_descartar_no_necesita_la_configuracion_de_sigrid(
 
     monkeypatch.setattr(modulo, "construir_catalogo_obra", falla)
     monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", falla)
+    monkeypatch.setattr(modulo, "construir_tipos_reclamacion", falla)  # F-072 (R27)
 
     estado, _ = _leer(_post(_cuerpo("descartar")))
 
@@ -615,7 +632,11 @@ def test_f056_o2_la_fuente_por_defecto_lee_las_ubicaciones_de_sigrid(monkeypatch
     monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", _FUENTE_POR_DEFECTO)
     monkeypatch.setattr(modulo, "construir_ubicaciones_validas", lambda _ajustes: PuertoDeSigrid())
 
-    assert _leer(_post(_cuerpo("editar")))[0] == 200
+    # F-072 (R21, R22, R24): se edita con un código vigente de los que lee la
+    # fuente de los tipos (`9001` de `TIPOS_FICTICIOS`; antes, "primero" del YAML).
+    # Con `listado` nulo se guardaría `0002`, que no está entre ellos, y aprobar
+    # daría `tipo_fuera_de_sigrid` (409).
+    assert _leer(_post(_cuerpo("editar", valores=_valores(listado="9001"))))[0] == 200
     assert _leer(_post(_cuerpo("aprobar", revision_previa=1)))[0] == 200
     estado, datos = _leer(_listar())
     assert estado == 200
@@ -647,8 +668,12 @@ def test_f056_r9_el_correo_se_guarda_recortado_y_sale_en_listado_e_historial(
 
 
 def test_f056_r10_el_oid_no_sale_en_ninguna_respuesta(mundo: Mundo) -> None:
+    # F-072 (R21, R22, R24): se edita con un código vigente de los que lee la
+    # fuente de los tipos (`9001` de `TIPOS_FICTICIOS`; antes, "primero" del YAML).
+    # Con `listado` nulo se guardaría `0002`, que no está entre ellos, y aprobar
+    # daría `tipo_fuera_de_sigrid` (409).
     respuestas = [
-        _post(_cuerpo("editar")),
+        _post(_cuerpo("editar", valores=_valores(listado="9001"))),
         _post(_cuerpo("aprobar", revision_previa=1)),
         _post(_cuerpo("aprobar", revision_previa=2)),  # 409: ya aprobada
         _post(_cuerpo(usuario_correo="sin-arroba")),  # 400
@@ -700,7 +725,11 @@ def test_f056_r41_ningun_registro_lleva_oid_correo_ni_textos(caplog, mundo: Mund
 
 
 def test_f056_r42_cualquiera_del_grupo_puede_actuar_sin_roles(mundo: Mundo) -> None:
-    primera = _leer(_post(_cuerpo("editar")))
+    # F-072 (R21, R22, R24): se edita con un código vigente de los que lee la
+    # fuente de los tipos (`9001` de `TIPOS_FICTICIOS`; antes, "primero" del YAML).
+    # Con `listado` nulo se guardaría `0002`, que no está entre ellos, y aprobar
+    # daría `tipo_fuera_de_sigrid` (409).
+    primera = _leer(_post(_cuerpo("editar", valores=_valores(listado="9001"))))
     segunda = _leer(
         _post(
             _cuerpo(
@@ -1063,8 +1092,10 @@ def test_f056_r28_el_catalogo_para_editar(mundo: Mundo) -> None:
     assert catalogo["urgencias"] == [
         {"codigo": o.codigo, "etiqueta": o.etiqueta} for o in CONFIG.listas.urgencias
     ]
+    # F-072 (R20): los `listados` son los tipos leídos de Sigrid, no los del YAML.
     assert catalogo["listados"] == [
-        {"codigo": o.codigo, "etiqueta": o.etiqueta} for o in CONFIG.listas.listados
+        {"codigo": o.codigo, "etiqueta": o.etiqueta}
+        for o in tipos_del_desplegable(TIPOS_FICTICIOS)
     ]
 
 
@@ -1121,7 +1152,7 @@ def test_f056_r29_una_fila_sin_revisiones(mundo: Mundo) -> None:
         "proveedor_nombre": NOMBRE_PROVEEDOR,
         "proveedor_ambiguo": False,
         "urgencia": None,
-        "listado": None,
+        "listado": "0002",  # F-072 (R20): el tipo efectivo de una fila sin tipo (antes, None)
     }
     assert (fila["cambios"], fila["estado"]) == ([], "nueva")
     assert (fila["revision_id"], fila["revisado_at_utc"], fila["revisado_por"]) == (None,) * 3
@@ -1134,7 +1165,14 @@ def test_f056_r29_una_fila_revisada_y_duplicada(monkeypatch) -> None:
     vigentes = replace(
         valores_importados(incidencia(2)), ubicacion="Cocina", detalle=DETALLE
     )
-    vigentes = replace(vigentes, urgencia=Urgencia.SEGURIDAD, listado=Listado.SEGUNDO)
+    # F-072 (R25): el campo lógico `listado` es el tipo efectivo; el heredado ya no
+    # cuenta, así que la foto lleva además un tipo para que siga saliendo en `cambios`.
+    vigentes = replace(
+        vigentes,
+        urgencia=Urgencia.SEGURIDAD,
+        listado=Listado.SEGUNDO,
+        tipo_reclamacion="9001",
+    )
     mundo.revision.sembrar(
         UUID(int=2),
         A.EDITAR,
@@ -1149,7 +1187,8 @@ def test_f056_r29_una_fila_revisada_y_duplicada(monkeypatch) -> None:
     assert fila["duplicada_de"] == ID1
     assert fila["estado"] == "editada"
     assert fila["cambios"] == ["ubicacion", "detalle", "urgencia", "listado"]
-    assert (fila["vigentes"]["urgencia"], fila["vigentes"]["listado"]) == ("seguridad", "segundo")
+    # F-072 (R20): `listado` es el tipo efectivo; el heredado (`segundo`) ya no sale.
+    assert (fila["vigentes"]["urgencia"], fila["vigentes"]["listado"]) == ("seguridad", "9001")
     assert fila["revision_id"] == 1
     assert fila["revisado_at_utc"] == "2026-10-01T08:00:00.000000+00:00"
     assert fila["revisado_por"] == CORREO

@@ -78,10 +78,10 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 - Mutado:   `if not etiqueta_listado`
 - Juicio: MEDIDO
 
-#### Análisis (PENDIENTE del implementer)
+#### Análisis (completado por el implementer)
 
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+> Por qué ningún test lo caza: `etiqueta_listado` nunca es `""`: una celda en blanco da `None` (`_vacia`) y ninguna etiqueta de `listados` puede ser vacía (`leer_tipos_reclamacion` descarta códigos en blanco y `_con_codigo` siempre lleva el código).
+> Decisión: EQUIVALENTE, con demostración ejecutable en «Análisis de supervivientes», al final de este informe.
 
 ### 2. `services/postventa-api/interface_adapters/api/importar.py:218` [veracidad]
 
@@ -89,10 +89,10 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 - Mutado:   `if not tipos:`
 - Juicio: MEDIDO
 
-#### Análisis (PENDIENTE del implementer)
+#### Análisis (completado por el implementer)
 
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+> Por qué ningún test lo caza: `tipos` es `None` o una `FuenteTiposReclamacion` (en producción un `functools.partial`, sin `__bool__` ni `__len__`), siempre veraz; `not tipos` y `tipos is None` no se separan.
+> Decisión: EQUIVALENTE, con demostración ejecutable en «Análisis de supervivientes», al final de este informe.
 
 ### 3. `services/postventa-api/interface_adapters/api/plantilla.py:92` [veracidad]
 
@@ -100,10 +100,10 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 - Mutado:   `if not tipos:`
 - Juicio: MEDIDO
 
-#### Análisis (PENDIENTE del implementer)
+#### Análisis (completado por el implementer)
 
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+> Por qué ningún test lo caza: el mismo caso que el superviviente 2: `tipos` es `None` o un invocable siempre veraz (`fuente_de_tipos` da un `functools.partial`).
+> Decisión: EQUIVALENTE, con demostración ejecutable en «Análisis de supervivientes», al final de este informe.
 
 ## No muertos: código de salida
 
@@ -119,49 +119,49 @@ Cada uno tiene líneas en alcance y el generador no ha sacado de ellas ni un mut
 
 ### `services/postventa-api/application/pipelines/paso_importacion.py` — 20 líneas en alcance, 0 mutantes
 
-#### Declaración (PENDIENTE del implementer)
+#### Declaración (completada por el implementer, contrastada con `git diff 6994cb0 -- services/postventa-api/application/pipelines/paso_importacion.py`)
 
-> Por qué no hay nada que mutar, o qué test lo cubre: PENDIENTE.
+> Solo docstrings, imports, la anotación `tipos: FuenteTiposReclamacion`, la llamada sin operadores `contexto.tipos = tipos()` y dos argumentos `listas=listas_con_tipos(listas, contexto.tipos)`: nada que el generador sepa mutar. Lo cubren de la fase RED `test_f072_r11_paso_catalogo_lee_los_tipos_tras_catalogo_y_ubicaciones`, `test_f072_r12_la_etiqueta_exacta_guarda_el_codigo_sin_aviso` y `test_f072_r13_el_excel_de_errores_lleva_la_lista_de_los_tipos_leidos` (`tests/test_f072_importacion.py`), y el orden de la llamada, el mutante de orden a) de RM7 (muerto).
 
 ### `services/postventa-api/application/pipelines/plantilla.py` — 15 líneas en alcance, 0 mutantes
 
-#### Declaración (PENDIENTE del implementer)
+#### Declaración (completada por el implementer, contrastada con `git diff 6994cb0 -- services/postventa-api/application/pipelines/plantilla.py`)
 
-> Por qué no hay nada que mutar, o qué test lo cubre: PENDIENTE.
+> Solo docstrings, imports, la anotación `tipos: FuenteTiposReclamacion`, `con_tipos = listas_con_tipos(listas, tipos())` y el argumento `listas=con_tipos`: llamadas sin operadores. Lo cubren `test_f072_r6_listado_ofrece_los_tipos_en_su_orden_con_su_etiqueta`, `test_f072_r1_la_plantilla_lee_los_tipos_una_vez_tras_catalogo_y_ubicaciones` y `test_f072_r3_r4_la_lectura_de_tipos_que_falla_no_da_fichero` (`tests/test_f072_plantilla.py`), y el orden, el mutante c) de RM7 (muerto).
 
 ### `services/postventa-api/domain/models/volcado.py` — 16 líneas en alcance, 0 mutantes
 
-#### Declaración (PENDIENTE del implementer)
+#### Declaración (completada por el implementer, contrastada con `git diff 6994cb0 -- services/postventa-api/domain/models/volcado.py`)
 
-> Por qué no hay nada que mutar, o qué test lo cubre: PENDIENTE.
+> Comentarios, docstring, un import, el alias `TIPO_RECLAMACION = TIPO_RECLAMACION_POR_DEFECTO` y el argumento `tipo=tipo_efectivo(v.tipo_reclamacion)`: sin operadores ni constantes mutables (la decisión nulo → `0002` vive en `tipo_efectivo`, en `plantilla_incidencias.py`, que sí está en la campaña). Lo cubren `test_f072_r28_el_parte_lleva_el_tipo_guardado`, `test_f072_r28_sin_tipo_guardado_el_parte_va_con_0002` y `test_f072_r28_tipo_reclamacion_sigue_siendo_0002_y_es_el_defecto` (`tests/test_f072_volcado.py`).
 
 ### `services/postventa-api/infrastructure/persistencia/sentencias_revision.py` — 15 líneas en alcance, 0 mutantes
 
-#### Declaración (PENDIENTE del implementer)
+#### Declaración (completada por el implementer, contrastada con `git diff 6994cb0 -- services/postventa-api/infrastructure/persistencia/sentencias_revision.py`)
 
-> Por qué no hay nada que mutar, o qué test lo cubre: PENDIENTE.
+> Una sección de docstring, tres cadenas `"tipo_reclamacion"` en las listas de columnas, un comentario y tres accesos `v.tipo_reclamacion` / `d["tipo_reclamacion"]` en constructores: sin operadores. Lo cubren `test_f072_las_columnas_de_la_revision_terminan_en_el_tipo`, `test_f072_r23_la_foto_se_escribe_con_el_tipo_y_la_copia_del_listado`, `test_f072_la_foto_se_lee_con_su_tipo_y_nulo_es_nulo` y `test_f072_la_situacion_lee_el_tipo_de_los_importados_y_de_la_foto` (`tests/test_f072_persistencia.py`).
 
 ### `services/postventa-api/infrastructure/sigrid/fabrica.py` — 42 líneas en alcance, 0 mutantes
 
-#### Declaración (PENDIENTE del implementer)
+#### Declaración (completada por el implementer, contrastada con `git diff 6994cb0 -- services/postventa-api/infrastructure/sigrid/fabrica.py`)
 
-> Por qué no hay nada que mutar, o qué test lo cubre: PENDIENTE.
+> Docstrings, imports, una entrada de `__all__` y `construir_tipos_reclamacion`, que es una secuencia de llamadas (las dos puertas compartidas `exigir_entorno_con_catalogo` y `_exigir_configuracion`, un `log.info` y el constructor del adaptador con `str(...)`): sin comparaciones, condiciones ni aritmética. Lo cubren `test_f072_r31_la_fabrica_se_niega_fuera_de_dev_y_pro_antes_que_la_configuracion`, `test_f072_r31_la_fabrica_nombra_lo_que_falta_y_ningun_valor` y `test_f072_r31_la_fabrica_pasa_la_configuracion_al_adaptador` (`tests/test_f072_lectura_sigrid.py`).
 
 ### `services/postventa-api/infrastructure/sigrid/tipos_reclamacion.py` — 51 líneas en alcance, 0 mutantes
 
-#### Declaración (PENDIENTE del implementer)
+#### Declaración (completada por el implementer, contrastada con `git diff 6994cb0 -- services/postventa-api/infrastructure/sigrid/tipos_reclamacion.py`)
 
-> Por qué no hay nada que mutar, o qué test lo cubre: PENDIENTE.
+> Módulo nuevo y delgado: docstring, imports, `__all__` y una clase hija de `AdaptadorCatalogoSigridApi` cuyo único método `leer` compone la consulta y llama a `self._leer(...)`: sin operadores (techo, reintentos y puerta los hereda sin tocarlos). Lo cubren `test_f072_r1_leer_es_un_post_a_sql_read_con_su_cuerpo`, `test_f072_r1_el_adaptador_es_un_puerto_de_tipos_e_hijo_del_catalogo` y `test_f072_r4_mil_filas_o_mas_se_devuelven_marcadas_al_techo` (`tests/test_f072_lectura_sigrid.py`).
 
 ### `services/postventa-api/interface_adapters/api/bandeja.py` — 6 líneas en alcance, 0 mutantes
 
-#### Declaración (PENDIENTE del implementer)
+#### Declaración (completada por el implementer, contrastada con `git diff 6994cb0 -- services/postventa-api/interface_adapters/api/bandeja.py`)
 
-> Por qué no hay nada que mutar, o qué test lo cubre: PENDIENTE.
+> Docstring, un import y el valor `"listado": tipo_efectivo(incidencia.tipo_reclamacion)`: una llamada sin operadores (lo de nulo → `0002` es de `tipo_efectivo`). Lo cubre `test_f072_s8_la_bandeja_lleva_el_tipo_efectivo_en_listado` (`tests/test_f072_revision_http.py`).
 
 ## Análisis de supervivientes
 
-Lo escribe el implementer el 2026-11-18 (T22, rigor `critico`) sobre la campaña serie de arriba (`--base 6994cb0 --sin-seleccion --timeout 3600 --workers 1`: 41 evaluados, 38 muertos, 3 supervivientes, 0 timeouts). Lo generado por la herramienta no se toca; los bloques «Análisis (PENDIENTE del implementer)» de cada superviviente se completan **aquí**.
+Lo escribe el implementer el 2026-11-18 (T22, rigor `critico`) sobre la campaña serie de arriba (`--base 6994cb0 --sin-seleccion --timeout 3600 --workers 1`: 41 evaluados, 38 muertos, 3 supervivientes, 0 timeouts). Lo generado por la herramienta no se toca salvo sus plantillas por rellenar: el análisis de cada superviviente, con su resumen arriba, y las declaraciones de «Ficheros sin mutantes»; el detalle va **aquí**.
 
 ### Reproducción a mano (C4 bis)
 
@@ -273,7 +273,7 @@ Cómo se lee: de las 35 combinaciones de código y nombre, las que traen código
 | `importar.py:218` | equivalente (demostrado arriba) | no |
 | `plantilla.py:92` | equivalente (demostrado arriba) | no |
 
-En rigor `critico`, cada equivalente necesita la **aceptación escrita del humano** (C4 bis) y que el reviewer reproduzca una muestra de uno (RM5). Las dos cosas quedan pendientes. Las declaraciones de «Ficheros sin mutantes» siguen en `PENDIENTE`: quedan fuera de este encargo.
+En rigor `critico`, cada equivalente necesita la **aceptación escrita del humano** (C4 bis) y que el reviewer reproduzca una muestra de uno (RM5). Las dos cosas quedan pendientes. Las declaraciones de «Ficheros sin mutantes» están completadas arriba, cada una contrastada con su `git diff 6994cb0`.
 
 ### RM7 (verificación del líder)
 

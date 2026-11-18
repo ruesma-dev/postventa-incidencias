@@ -1,220 +1,53 @@
 <!-- specs/F-040-volcado-sigrid/tasks.md -->
 # F-040 · Volcar a Sigrid las incidencias aprobadas (el panel de volcado) — Tareas
 
-> **Aprobado por el humano el 2026-10-07.** Tramo B de la spec conjunta (D-1):
-> solo `services/postventa-front`. El backend es **F-059**
-> (`specs/F-059-volcado-sigrid-backend/tasks.md`), **`done`**: desplegada el
-> 2026-10-17 y verificada en producción el 2026-10-19.
->
-> **Conciliado con `dev` el 2026-10-27.** La rama `feature/F-040-volcado-sigrid`
-> se creó de nuevo desde `dev` `f7f63da` (commit `59ce4c9`), que ya trae F-059,
-> F-038 y F-060. Lo conciliado va marcado «(conciliado 2026-10-27)».
->
-> **Respuestas del humano aplicadas el 2026-10-28** (C-1…C-6,
-> `requirements.md` §5): F-040 queda **bloqueada por F-065** (la
-> sincronización con Sigrid de «Registrar», C-4), que va antes; los Bloques 1
-> y 2 no esperan a F-038 y el Bloque 3 sí (C-1); T5 en la 0626 (C-6); el
-> volcado de la VILLA 15 **no** es tarea de esta ficha (C-2): lo hará el
-> humano cuando el panel esté operativo. Marcado «(2026-10-28)».
->
-> **Conciliado con F-065 el 2026-10-31** (T0, base fija `f97ec6e`): T1, T5.2
-> y la **T5 bis** nueva (la T-A18 de F-065; P-3, respuesta del humano
-> 2026-10-31: aparte, en la 0677, solo ensayos, y el cierre no la espera).
->
-> Rigor **`critico`**: RED con la traza pegada en `progress/impl_F-040.md`;
-> cobertura de lo cambiado; mutación: `harness.mutacion` no tiene `.py` de
-> producción que mutar aquí (su informe lo dice y se justifica por escrito) y
-> `js/volcado.js` se muta **a mano por familias**, con cada mutante y su test
-> asesino. Un commit por tarea, `F-040 Tn: …`. **Un bloque por encargo, y
-> parar.** No se toca `services/postventa-api/` (es F-059 y F-065). Datos
-> ficticios en tests: obras `99NN`, correos `@ejemplo.invalid`, proveedores
-> `EJnn`.
+> Aprobado el 2026-10-07; conciliado el 2026-10-27/28 (C-1..C-6) y el 2026-10-31 con F-065 (P-1..P-3). Solo
+> `services/postventa-front` y documentos; **no se toca `services/postventa-api/`** (F-059, F-065, F-072).
+> **Puesta al día del 2026-11-18** (spec-author, base `4b1eb21`): una tarea por línea; lo hecho se conserva con su
+> evidencia condensada (texto anterior: `git show 4b1eb21:specs/F-040-volcado-sigrid/tasks.md`); nuevo el
+> **Bloque 1 bis** (tipo de F-072, textos de su Q-11, miga) y T12; T5 partida en T5.1–T5.6. Orden al retomar
+> (D-5, recomendado): T8 → T9–T11 → review → T12 → T5.3–T5.6 → T6 → T6 bis → T7; T5 bis cuando el humano registre la
+> 0677 (el cierre no la espera, P-3). Las decisiones abiertas D-1..D-8 están en `design.md` §12.
+> Rigor **`critico`**: RED con traza en el informe; cobertura N/A con motivo (sin `.py` de producción); mutación a
+> mano por familias, cada mutante con su test asesino. Un commit por tarea (`F-040 Tn: …`). **Un bloque por encargo,
+> y parar.** Datos ficticios en tests: obras `99NN`, correos `@ejemplo.invalid`, proveedores `EJnn`, tipos `9001`….
+> **Nada contra Sigrid desde local ni desde tests**: lo que escribe (T5.3, T5.4) se hace en el entorno desplegado,
+> con ensayo previo y la confirmación explícita del humano.
 
-## Bloque 0 · La base, cuando F-065 esté en `dev` (2026-10-28)
+## Bloque 0 · La base
 
-- [x] **T0**: con F-065 `done`, mergeada en `dev` y desplegada, la rama trae
-  `dev` (merge) —ese merge es la **base fija**, en
-  `progress/impl_F-040.md`— y el spec-author concilia `requirements.md`
-  R60–R62 y `design.md` §1.1, §3.1, §3.2 y §3.3 con el contrato **implementado**
-  de F-065, sin dejar nada pendiente de su spec; el humano lo valida (y
-  responde P-1 a P-3 de `progress/spec_F-040.md`) antes del Bloque 1.
-  *(P-1 a P-3: respuesta del humano 2026-10-31, las tres como se
-  recomendaron.)*
-  *(2026-10-31: base fija `f97ec6e`, que trae `dev` `7cc0bbb`; la spec,
-  conciliada: `requirements.md` §6, `design.md` §11. Falta `init.sh` sobre
-  el merge, que corre el líder, y la validación del humano.)* |
-  Verificación: `bash harness/init.sh` en verde sobre el merge, y `grep -rn "fijar por F-06[5]" specs/F-040-volcado-sigrid/` sin resultados
+- [x] **T0**: la rama trae `dev` con F-065 (`f97ec6e`) y la spec se concilia con su contrato implementado; P-1..P-3 respondidas el 2026-10-31. | Verificación: `bash harness/init.sh` en verde sobre el merge (líder)
 
-**Parar. Validación del humano.**
+## Bloque 1 · El panel de volcado (hecho, APPROVED tras C-B1-1 y C-B1-2)
 
-## Bloque 1 · El panel de volcado
+- [x] **T1 · RED**: `tests_js/volcado.test.js`, los cuatro endpoints nuevos en `tests_js/api.test.js` (20 → 24, sin reintento) y `tests/test_f040_front.py`; traza en `progress/impl_F-040.md`. | Verificación: `python -m pytest services/postventa-front/tests/test_f040_front.py services/postventa-front/tests/test_f007_js.py` falla
+- [x] **T2 · GREEN**: `js/volcado.js`, el panel en `bandeja.html`, las cuatro funciones de `js/api.js`, la composición en `js/revision.js`, README del front y `docs/ARCHITECTURE.md`; tests de F-036/F-038 citados. | Verificación: `python -m pytest services/postventa-front/tests` y `node --test services/postventa-front/tests_js`
+- [x] **T3 · Mutación** a mano por familias: 82 mutantes, 1 vivo (V3) equivalente, aceptado por el humano. | Verificación: `progress/mutacion_F-040.md`
 
-- [x] **T1 · RED**: `tests_js/volcado.test.js` (`node --test`) con las
-  funciones de `design.md` §3.1 —*(2026-10-28; conciliado 2026-10-31 con el
-  contrato de §1.1)* `agruparSincronizacion` con los cuatro veredictos en va
-  / ya existe / choca, el porqué de cada choque, `sinSincronizar` y el
-  recuento de `por_unidad`, sin `ficha`; `paraEnsayar` sin lo que ya existe y
-  con lo que choca solo tras su casilla; `confirmadosDelTrozo` y
-  `cuerpoDeEnsayo` con `conflictos_confirmados`; `excluidasDeLaGuarda`;
-  `puedeEnsayar` sin sincronización en 200; «Registrar» en su orden
-  (sincronizar → enseñar → ensayar) con un `api` doble, y parado ante cada
-  error de la sincronización de §3.2 (también el 503 sin `codigo`) o un
-  corte; `recuentoPorUnidad`—; `trocear` sin perder ni repetir
-  (también 285 entre 5); `cuerpoDeVolcado` con solo los `previsto` y su
-  `revision_id`, y `null` sin ninguno; `juntarEnsayos` con un ensayo sin
-  `ensayo_id` y nombres del catálogo; `puedeVolcar` con caducado, sin
-  previstos, con un ensayo no-200 y con petición en vuelo;
-  `confirmacionValida` y el texto de la confirmación con el recuento por
-  unidad; `caducado`; `siguientePaso` para en cualquier no-200, sin respuesta
-  del servicio y en un 200 con `sin_respuesta`; `juntarVolcados` con los
-  avisos y las en duda de cada parada de §3.2; `avisoDePte`; un texto para
-  **cada** motivo de exclusión, causa de `ensayo_no_valido` y `codigo` de
-  error de §3.2 (los de F-065 incluidos)—; en `tests_js/api.test.js`, las
-  cuatro funciones nuevas (ruta, método, cuerpo; `LOS_ENDPOINTS` de 20 a 24)
-  y que `volcadoEnsayo`, `volcadoVolcar` y `revisionSigrid` **no** se
-  reintentan ante un 502 ni un corte; y
-  `tests/test_f040_front.py` (pytest: el panel dentro del único `x-data`;
-  «Registrar» como único botón de entrada; `js/volcado.js` detrás de
-  `js/revision.js`; un solo `confirmado: true` en todo el front; sincronizar,
-  ensayar y volcar solo en `@click`; ningún botón que incluya lo que ya
-  existe; ninguna ruta fuera de las de volcado, la de la sincronización, las
-  de F-038 y `/.auth/me`; ningún `console.*` ni almacenamiento con el correo o
-  el `oid`; la guarda de salida de R55, una sola). Traza pegada. |
-  Verificación: `python -m pytest services/postventa-front/tests/test_f040_front.py services/postventa-front/tests/test_f007_js.py` **falla**
-- [x] **T2 · GREEN**: `js/volcado.js`, el panel en `bandeja.html` (con
-  «Registrar», su `<script>` y la guarda de salida ampliada), las funciones
-  en `js/api.js` (las tres de F-059 con `sinReintentos` y
-  `mensajeDelServicio`, y la de la sincronización), la composición en
-  `appRevision()` y el aviso de `cargar()` en `js/revision.js` (`design.md`
-  §3.3; las tablas de F-038 R21 no se tocan), `README.md` del front y
-  `docs/ARCHITECTURE.md` (R58). Los tests de F-036/F-038 que cambien, citados
-  con el porqué *(conciliado 2026-10-27: `tests/test_f038_front.py` —cinco
-  scripts, la guarda ampliada, las rutas de `js/volcado.js`—,
-  `tests_js/revision.test.js` —el recorrido de `bandeja.html` con
-  `volcado`— y `tests_js/api.test.js` —los endpoints, contados contra la base
-  fija—; `design.md` §5)*. |
-  Verificación: `python -m pytest services/postventa-front/tests` y `node --test services/postventa-front/tests_js`
-- [x] **T3 · Mutación**: a mano por familias para `js/volcado.js` (el orden de
-  «Registrar», `paraEnsayar` y `puedeEnsayar`, las condiciones de
-  `puedeVolcar`, `caducado` y `siguientePaso`, el `confirmado`, el filtro de
-  `previsto`, el troceo, el recuento por unidad, el `sinReintentos` de las dos
-  funciones de `js/api.js`) y la herramienta para lo que haya en `.py`. |
-  Verificación: `progress/mutacion_F-040.md` con cada mutante y su test asesino; ninguno vivo sin aceptación escrita del humano
+## Bloque 1 bis · El tipo de reclamación, los textos de Q-11 y la miga (2026-11-18)
 
-**Parar. Review del Bloque 1.**
+- [ ] **T8 · líder**: con D-1..D-8 decididas (escritas en «Decidido» de `design.md` §12), anotar la base fija `4b1eb21` y aplicar D-8 a los informes de `progress/`. | Verificación: `python -m harness.tamano --feature F-040` sale con 0
+- [ ] **T9 · RED**: tests de R63–R68 (`design.md` §7: tipo con etiqueta y código desconocido, recuento por tipo [D-2], textos de `tipo_no_valido` y `tipo_fuera_de_sigrid` [D-1], diez motivos, `opcionesDeListado` sin `option value=""` [D-3], migas con la actual como `span`) y las aserciones de F-038 que cambian (`tests_js/revision.test.js`, `tests_js/volcado.test.js`, `tests/test_f038_front.py`), citadas con el R que las sustituye; traza pegada. | Verificación: `node --test services/postventa-front/tests_js` y `python -m pytest services/postventa-front/tests` fallan solo en esos tests
+- [ ] **T10 · GREEN**: `js/volcado.js` (fuera `TEXTO_TIPO`, tipo por `catalogo.listados`, `recuentoPorTipo`), `js/revision.js` y `bandeja.html` según `design.md` §3.4, y README del front y `docs/ARCHITECTURE.md` con el tipo (R63) y sin «sin publicar todavía». | Verificación: `node --test services/postventa-front/tests_js` y `python -m pytest services/postventa-front/tests tests/test_f035_placeholders_vivos.py` en verde
+- [ ] **T11 · Mutación** a mano por familias de lo cambiado en T10 (etiqueta del tipo y su respaldo, recuento por tipo con uno y dos tipos, orden de los motivos, opción del tipo no vigente, migas). | Verificación: `progress/mutacion_F-040_bloque1bis.md` con cada mutante y su test asesino; ninguno vivo sin aceptación escrita del humano
+
+**Parar. Review del Bloque 1 bis.**
 
 ## Bloque 2 · Publicar y verificar el panel (MANUAL, humano)
 
-- [x] **T4 · MANUAL (humano)**: merge a `dev` desde un worktree aparte y
-  publicar el front desde un worktree limpio:
-  ```
-  git worktree add --detach ..\postventa-publicar dev
-  powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_front.ps1 -SoloFront
-  git worktree remove ..\postventa-publicar
-  ```
-  Verificación: MANUAL (humano)
-- [ ] **T5 · MANUAL (humano)**, en producción, en la **obra 0626** (Q-4,
-  confirmado el 2026-10-28, C-6), con la ventana del volcado **cerrada** al
-  empezar (`infra\27_ventana_volcado.ps1` sin parámetros dice `cerrada`):
-  1. En `bandeja.html?obra=0626`, el panel enseña aprobadas, en duda y
-     volcadas que cuadran con `GET /api/volcado?obra=0626`, y cuántos trozos.
-  2. Fila de prueba «PRUEBA F-040 - ANULAR» importada desde `importar.html` en
-     una UPV de la 0626 con tipología con ubicaciones y un oficio con
-     proveedor, con ubicación y aprobada desde la bandeja. *(2026-10-28)*
-     **«Registrar»**: la sincronización con Sigrid sale antes que cualquier
-     ensayo (en la pestaña de red, **una** petición a `revision/sigrid?obra=0626`
-     y ninguna a `volcado/ensayo` hasta el clic del paso siguiente); la fila
-     de prueba sale en **va**, con su unidad en el recuento, que cuadra con
-     `volcado.por_unidad` de esa respuesta *(conciliado 2026-10-31)*; la
-     incidencia de la prueba de F-059, `volcada`, no sale (no es candidata,
-     aunque su `RS26.10/0074` esté en `NPR`); si la fila de prueba coincidiera
-     con la reclamación `SAT` de la 0626, saldría en **ya existe** o **choca**
-     con su código y el porqué, y se anota. Con
-     el clic de ensayar: la tabla con su `envio` (tipo `0002`) y los nombres
-     del catálogo; la cuenta atrás. *(Conciliado 2026-10-27: el primer ensayo
-     tras un rato parado puede dar 502 `ensayo_sin_respuesta` o el corte de 40
-     s por el arranque en frío de `sigrid-api`, como en T25 de F-059: el panel
-     lo dice y se vuelve a registrar.)*
-  3. Con la ventana **cerrada**, confirmar el volcado (segundo clic y el
-     número; el texto con el recuento por unidad): el panel recibe 503
-     `volcado_deshabilitado`, **para**, dice que la ventana está cerrada y no
-     reintenta (en la pestaña de red, **una** petición a `volcado/volcar`).
-     Foto con
-     `powershell -ExecutionPolicy Bypass -File infra\28_volcado_lectura_sigrid.ps1 -CodigoObra 0626`:
-     sin cambios.
-  4. **Con autorización expresa en el chat para una escritura**:
-     `infra\27_ventana_volcado.ps1 -Abrir`, «Volver a registrar» y volcar
-     desde la página → la fila pasa a «Volcada como RS…» en la lista y sale el
-     aviso de PTE (R59); **enseguida** `infra\27_ventana_volcado.ps1 -Cerrar`.
-     Foto con `28_… -CodigoObra 0626 -Referencia PVI-<id>`: **un** parte, en
-     SAT. **No se pasa a PTE.** Un «Registrar» más, sin ensayar: la fila
-     recién volcada ya no es candidata.
-  5. Consola: sin `oid` ni correo en `console` ni en el almacenamiento.
-  6. **Vuelta atrás y limpieza**, salga bien o mal: ventana cerrada; el parte
-     de prueba se **anula desde la UI de Sigrid** (NO PROCEDE, sin correo),
-     nunca con `DELETE`; la fila queda `volcada` en la bandeja.
+- [x] **T4 · MANUAL (humano)**: merge del Bloque 1 a `dev` (`b9a66db`) y front publicado con `-SoloFront` desde una copia limpia el 2026-11-02; ventana cerrada. | Verificación: MANUAL (humano)
+- [ ] **T12 · MANUAL (humano)**: merge del Bloque 1 bis a `dev` (líder, worktree aparte, `init.sh` en verde) y publicar el front desde una copia limpia: `git worktree add --detach ..\postventa-publicar dev`, `powershell -ExecutionPolicy Bypass -File ..\postventa-publicar\infra\desplegar_front.ps1 -SoloFront`, `git worktree remove ..\postventa-publicar`; después `infra\27_ventana_volcado.ps1` sin parámetros dice `cerrada`. | Verificación: MANUAL (humano)
+- [x] **T5.1** (0626, solo lectura, 2026-11-02): el panel cuadra con `GET /api/volcado?obra=0626` (aprobadas 1, volcadas 1, «1 candidata, en 1 trozo de 5»). | Verificación: MANUAL (humano), en `progress/impl_F-040.md`
+- [x] **T5.2** (2026-11-02): «Registrar» hace una sola lectura de `revision/sigrid` y ninguna de `volcado/ensayo`; la fila «PRUEBA F-040 - ANULAR» sale en **choca** con `RS26.09/0439`; con su casilla, un ensayo 200 con «Se crearía 1» y la cuenta atrás. | Verificación: MANUAL (humano), en `progress/impl_F-040.md`
+- [ ] **T5.3 · MANUAL (humano)**, 0626, con el front de T12 y la ventana **cerrada** (`27_` sin parámetros): «Registrar», casilla de la fila de prueba, ensayo (la columna Tipo con su etiqueta, R63) y confirmar con el número (texto con el recuento por unidad): 503 `volcado_deshabilitado`, el panel para, dice que la ventana está cerrada y no reintenta (en Red, **una** petición a `volcado/volcar`); foto `powershell -ExecutionPolicy Bypass -File infra\28_volcado_lectura_sigrid.ps1 -CodigoObra 0626` sin cambios. El clic de confirmar lo hace **el humano**. | Verificación: MANUAL (humano)
+- [ ] **T5.4 · MANUAL (humano)**, la **única escritura real**, con **autorización expresa en el chat para esa escritura** (R69): [D-6] editar la fila de prueba a `0003` POST VENTA y volver a aprobarla; un ensayo de calentamiento; `infra\27_ventana_volcado.ps1 -Abrir`; «Volver a registrar», casilla, ensayo (`envio.tipo` `0003`) y volcar desde la página → la fila «Volcada como RS…» y el aviso de PTE (R59); **enseguida** `27_ -Cerrar`; foto `28_ -CodigoObra 0626 -Referencia PVI-<id>`: **un** parte, en SAT, tipo `0003`; **no se pasa a PTE**; un «Registrar» más, sin ensayar: ya no es candidata. | Verificación: MANUAL (humano)
+- [ ] **T5.5 · MANUAL (humano)**: tras T5.4, sin `oid` ni correo en `console` ni en el almacenamiento (la parte de antes, hecha el 2026-11-02). | Verificación: MANUAL (humano)
+- [ ] **T5.6 · MANUAL (humano)**, salga bien o mal: ventana cerrada; el parte de prueba se **anula desde la UI de Sigrid** (NO PROCEDE, sin correo), nunca con `DELETE` ni `sql/write`; foto `28_` en `NPR`; la fila queda `volcada`. Si algo falla en T5.3–T5.6, parar y volver al spec-author. | Verificación: MANUAL (humano)
+- [ ] **T5 bis · MANUAL (humano)**, la T-A18 de F-065 (P-3: aparte, en la 0677, **solo ensayos**, con autorización del humano en ese momento; se anota cuando empiece a registrar la 0677 y el cierre no la espera): (1) [D-7] un `choca` ensayado sin confirmar (por la API del front con la sesión del humano) sale excluido `conflicto_sin_confirmar` con su `sigrid_cod`; (2) con su casilla, `previsto` y `confirmada: true` en el bloque `sigrid`; (3) en Application Insights, la línea `F-065 guarda del ensayo` con sus recuentos y `segundos` y la de conflicto confirmado con `codigos=` un número, sin códigos `RS` ni texto; (4) no se vuelca (C-2). | Verificación: MANUAL (humano); solo motivos, estados, recuentos y segundos en `progress/`
 
-  Si algo falla, parar y volver al spec-author. |
-  Verificación: MANUAL (humano)
-- [ ] **T5 bis · MANUAL (humano) · la T-A18 de F-065** *(añadida el
-  2026-10-31: aplazada por el humano al cerrar F-065, `specs/F-065-revision-sigrid-backend/tasks.md`
-  T-A18, y recogida aquí; P-3, **respuesta del humano 2026-10-31**: aparte
-  de T5, en la 0677, y **F-040 se cierra sin esperarla**: se anota hecha
-  cuando el humano empiece a registrar la 0677)*. Solo
-  **ensayos** (`commit: false`: no escribe en Sigrid; sí guarda eventos de
-  ensayo en nuestra base) y con la autorización expresa del humano para esa
-  acción **en ese momento**. En el **primer ensayo real de la 0677 con
-  «Registrar»** (la 0626 no tiene ninguna candidata que choque):
-  1. Una incidencia que la sincronización da **choca**, ensayada **sin**
-     marcar su casilla: sale en las excluidas con `conflicto_sin_confirmar` y
-     su `sigrid_cod` (si era la única del trozo, `ensayo_id` nulo).
-  2. La misma, con su casilla marcada («Volver a registrar» y ensayar): sale
-     `previsto` («Se crearía»), y el bloque `sigrid` del ensayo la trae
-     `confirmada: true`.
-  3. En Application Insights, la línea `F-065 guarda del ensayo` de cada uno
-     (recuentos `choca`, `conflicto_sin_confirmar`, `con_conflicto_confirmado`
-     y `segundos`) y la de «conflicto confirmado» del segundo (con `codigos=`
-     un número), **sin** ningún código `RS` ni texto de Sigrid; y la duración
-     de los ensayos (línea de F-059).
-  4. **No se vuelca** en esta tarea (C-2): el volcado de la VILLA 15 es del
-     humano. Se anotan solo motivos, estados, recuentos y segundos en
-     `progress/impl_F-040.md`.
+## Bloque 3 · El cierre de la ficha
 
-  Verificación: MANUAL (humano)
-
-## Bloque 3 · El cierre de la ficha (con F-038 `done`, C-1)
-
-- [x] **T6a** *(adelantada de T6 por decisión del humano, 2026-11-04; no
-  espera a F-038)*: la navegación del front que llevaba a la maqueta
-  (`#/bandeja`) lleva a la página real. En las cuatro barras con enlace a la
-  sección (`index.html`, `partes.html`, `importar.html`, `oficios.html`) la
-  pestaña «Bandeja de revisión» y los pasos «02 Revisión» y «03 Sigrid» de la
-  tira van a `bandeja.html`, sin `data-construccion` ni «(en construcción)» en
-  su `aria-label`; y la tarjeta «Bandeja de revisión» de la portada
-  (`index.html`) también. La fuente es `Portal.enlaceSeccion` (`js/portal.js`),
-  y las guardias de F-035 se ajustan solo en lo que este cambio toca. La ruta
-  `#/bandeja` de la maqueta sigue existiendo; solo dejan de enlazarla esas
-  navegaciones. La sección sigue en `construccion` (R62: ninguna de sus fichas
-  está `done`) y la pestaña actual y los pasos 02 y 03 de `bandeja.html`
-  conservan su marca (R2 y R25 de F-038). Commit «F-040 T6a: …». |
-  Verificación: `node --test services/postventa-front/tests_js` y `python -m pytest tests/test_f035_placeholders_vivos.py services/postventa-front/tests` en verde; `grep '#/bandeja'` en los `.html` del front no da ninguna pestaña, paso ni tarjeta
-- [ ] **T6**: por encargo del líder, tras T5 (**no** espera a T5 bis: P-3,
-  respuesta del humano 2026-10-31), el APROBADO del Bloque 1 **y con
-  F-038 `done`** (C-1, decidido el 2026-10-28), **un solo commit** con el
-  cierre de R57 (restos de F-040 fuera de la maqueta —la lista de `design.md`
-  §4, con los catálogos mudados y no borrados—, el enlace «Volcar a Sigrid» a
-  `bandeja.html` dentro de `index.html#/bandeja` —las pestañas, los pasos y
-  la tarjeta de la portada van ahí desde T6a—,
-  guardias de F-035 en verde, F-039 y F-043 con sus restos) **y** F-040
-  `done` en `harness/features.json`; review corta de ese commit; si falla, se
-  revierte entero. |
-  Verificación: `python -m pytest tests/test_f035_placeholders_vivos.py services/postventa-front/tests` y `node --test services/postventa-front/tests_js` en verde sobre ese commit
-- [ ] **T6 bis** *(conciliado 2026-10-27, R58)*: en el repositorio
-  `azure-apps`, `postventa_incidencias.md` deja de hablar de F-040 en futuro
-  (el panel existe; qué consume: las tres rutas de F-059 y la de la
-  sincronización de F-065, sin nada nuevo fuera del proyecto); commit local en
-  ese repositorio, en el mismo trabajo. |
-  Verificación: `git -C ..\azure-apps log -1` con el commit, y ninguna frase de F-040 en futuro en `postventa_incidencias.md`
-- [ ] **T7**: resumen de F-040 en `progress/history.md` (el líder) y
-  `bash harness/init.sh` en verde. |
-  Verificación: `bash harness/init.sh`
+- [x] **T6a** (adelantada, 2026-11-04): pestañas, pasos 02 y 03 y tarjeta de la portada a `bandeja.html` en las cuatro barras; publicada el 2026-11-05 (`ed935ad`); M4 y M5 aceptados. | Verificación: `node --test services/postventa-front/tests_js` y `python -m pytest tests/test_f035_placeholders_vivos.py services/postventa-front/tests`
+- [ ] **T6**: por encargo del líder, tras T5.3–T5.6 y el APROBADO del Bloque 1 bis (F-038 ya `done`), **un solo commit** con el cierre de R57 (`design.md` §4: restos de F-040 fuera de la maqueta, catálogos mudados, [D-4] sin enlace nuevo y los textos de las dos tarjetas, la tarjeta 02 sigue «En producción») **y** F-040 `done` en `harness/features.json`; review corta; si falla, se revierte entero. | Verificación: `python -m pytest tests/test_f035_placeholders_vivos.py services/postventa-front/tests` y `node --test services/postventa-front/tests_js` en verde sobre ese commit
+- [ ] **T6 bis**: R58 — en la rama, `docs/INTEGRACION.md` sin F-040 en futuro (`design.md` §5); en `azure-apps`, `git pull --rebase`, lo mismo en `postventa_incidencias.md` (el panel existe; consume las rutas de F-059 y la de F-065, sin nada nuevo fuera del proyecto) en un commit aparte; ante un conflicto, parar; el push es del humano. | Verificación: `git -C ..\azure-apps log -1` con el commit y ninguna frase de F-040 en futuro en los dos documentos
+- [ ] **T7**: resumen de F-040 en `progress/history.md` (el líder) y `bash harness/init.sh` en verde. | Verificación: `bash harness/init.sh`

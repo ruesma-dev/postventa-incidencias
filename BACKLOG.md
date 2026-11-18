@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **73 features**, 40 abiertas y 33 terminadas. Por columna: 0 en Review, 2 en Blocked, 1 en In progress, 2 en Spec aprobada, 0 en To do, 35 en Backlog y 33 en Done.
+Resumen: **73 features**, 39 abiertas y 34 terminadas. Por columna: 0 en Review, 2 en Blocked, 0 en In progress, 2 en Spec aprobada, 0 en To do, 35 en Backlog y 34 en Done.
 
 ## Review
 
@@ -18,9 +18,7 @@ _Nada esperando revisión._
 
 ## In progress
 
-| # | Feature | La tiene | Prioridad | Rigor | Rama |
-|---|---|---|---|---|---|
-| F-072 | El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado | implementer | 2 | critico | `feature/F-072-tipo-reclamacion-sigrid` |
+_Ninguna feature en implementación._
 
 ## Spec aprobada
 
@@ -88,6 +86,7 @@ _Nada comprometido._
 | F-002 | Ingesta y troceado de la remesa en partes | sin fecha | sin anotar | 2 | critico |
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | sin fecha | sin anotar | 2 | critico |
 | F-059 | Volcado a Sigrid en el backend: ensayo, escritura en lote y estado volcada | sin fecha | sin anotar | 2 | critico |
+| F-072 | El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado | sin fecha | sin anotar | 2 | critico |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | sin fecha | sin anotar | 3 | critico |
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | sin fecha | sin anotar | 3 | critico |
 | F-004 | Validación del parte y clasificación de la firma | sin fecha | sin anotar | 4 | critico |
@@ -112,12 +111,6 @@ _Nada comprometido._
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | sin fecha | sin anotar | 134 | critico |
 
 ## Detalle
-
-### F-072 · El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado
-
-estado **en curso** · spec aprobada el 2026-11-15 · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-072-tipo-reclamacion-sigrid`
-
-Alta del 2026-11-05 por decisión del humano (Q-3 de F-071, «toca lo que sea»). Hoy la columna «Listado» de la plantilla ofrece dos valores fijos del YAML (Primer listado / Segundo listado), la bandeja los guarda pero el volcado manda SIEMPRE el tipo 0002 (PRIMER LISTADO POSTVENTA, constante TIPO_RECLAMACION en domain/models/volcado.py): una incidencia de segundo listado entraría en Sigrid como primer listado. Alcance: la plantilla ofrece los tipos vigentes de dbo.auxtrcp (vía sigrid-api, lectura) al descargar; la importación valida contra los de ese momento y guarda el código; la bandeja lo guarda en columna nueva (DDL solo en el schema postventa); la revisión lo enseña y deja cambiarlo; el volcado manda el código elegido. En blanco = 0002, como hoy (decisión del humano 2026-11-05). Orden fijado por el humano: F-071 -> F-072 -> retomar F-040; el primer volcado real (T5.4 de F-040) no se hace antes de F-072.
 
 ### F-070 · Código de obra sin el 0 inicial: 677 y 0677 son la misma obra en todos los campos
 
@@ -418,6 +411,12 @@ Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el cicl
 estado **terminada** · sin fecha de cierre · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-059-volcado-sigrid-backend`
 
 Sacada de F-040 el 2026-10-07 por el límite de servicio (D-1, decisión del humano). El backend del volcado de la bandeja a Sigrid en services/postventa-api: tres endpoints (GET /api/volcado, POST /api/volcado/ensayo, POST /api/volcado/volcar) sobre POST /api/sigrid/partes-reclamacion de sigrid-api (azure-apps/sigrid_api.md §8.9); ensayo guardado obligatorio (misma persona, 30 min); escritura anticipada del evento enviado antes de cada commit; referencia PVI-<incidencia_id> para que reintentar no duplique; tabla append-only postventa.volcados_sigrid (16_volcados_sigrid.sql); estados derivados volcada y en_duda que amplían los de F-056 y bloquean la revisión; tipo 0002 siempre, causante false, sin urgencia ni clase; el parte queda en SAT y Posventa lo pasa a PTE a mano; ventana propia VOLCADO_HABILITADO publicada cerrada (infra/27_ventana_volcado.ps1) y lectura de verificación (infra/28_volcado_lectura_sigrid.ps1); verificación en producción en la obra 0626 con una escritura autorizada y anulación posterior. Q-6: el líder actualiza la fila de consumidores de azure-apps/sigrid_api.md al desplegar. Spec aprobada (2026-10-07): specs/F-059-volcado-sigrid-backend/ (escrita en la rama de F-040, worktree postventa-f040; se lleva a su rama al empezar). El front es F-040. F-056 cerrada y desplegada el 2026-10-09: ya no hay bloqueo. Orden del humano (2026-10-09): justo detrás de F-060, antes de F-038, para llegar antes a la primera escritura real en Sigrid. NOTA DEL LÍDER (2026-10-14, cierre de F-060): F-060 deja las rutas anónimas en veintiuna; la spec de F-059 (worktree postventa-f040) contaba 23→24 y hay que ajustar sus cuentas a partir de 21. PRIORIDAD INMEDIATA (humano, 2026-10-15): camino para que Posventa use la aplicación de punta a punta (importar → revisar en bandeja.html → volcar a Sigrid): F-059 (backend del volcado), F-038 (bandeja.html) y F-040 (panel de volcado), en ese orden y antes que el resto. EN CURSO desde el 2026-10-15: rama desde dev 2d2efd7 (base fija), spec traída del worktree postventa-f040. BLOQUEADA el 2026-10-16 antes de T4 (Bloque 2; Bloque 1 APPROVED en 9fdb222): B-1 R17 frente a R33 (leer actor_oid para comparar la persona del ensayo) y B-2 test de F-056 que falta en el inventario de R41; decisión del humano (progress/impl_F-059.md, «Bloque 2 · BLOQUEADO antes de T4»). DESBLOQUEADA el 2026-10-16 por el humano («ok a b1 y b2»): B-1 (a) la base compara la persona y el dominio recibe de_la_persona: bool; B-2 el test r12 de test_f056_ddl.py entra en las excepciones de R41 ampliando sin relajar. BLOQUEADA el 2026-10-17 en T22 (Bloques 1-4 APPROVED; Bloque 5 T18-T21 hechos): la campaña final de mutación del tramo entero son 203 mutantes, estimados en unas 17 h (más de 12); decide el humano entre A (entera), B (201/203 ya medidos en las campañas de bloque y los 2 restantes muertos a mano) y C (muestreo) (progress/impl_F-059.md, T22). DESBLOQUEADA el 2026-10-17 por el humano: opción B para T22 (las campañas de bloque cubren 201/203 y los 2 restantes se mataron a mano). CERRADA el 2026-10-20: desplegada el 2026-10-17 (dev 81049bc) con la ventana cerrada y verificada en producción en la 0626 el 2026-10-19 (T25: RS26.10/0074 creado en 1,8 s, ventana cerrada enseguida; bandeja, Application Insights y fotos conformes); T26: anulado desde la UI de Sigrid (NO PROCEDE, sin correo), comprobado con 28_ (estado NPR). Resumen en progress/history.md.
+
+### F-072 · El tipo de reclamación sale de Sigrid (auxtrcp) de punta a punta: plantilla, bandeja, revisión y volcado
+
+estado **terminada** · sin fecha de cierre · spec aprobada el 2026-11-15 · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-072-tipo-reclamacion-sigrid`
+
+Alta del 2026-11-05 por decisión del humano (Q-3 de F-071, «toca lo que sea»). Hoy la columna «Listado» de la plantilla ofrece dos valores fijos del YAML (Primer listado / Segundo listado), la bandeja los guarda pero el volcado manda SIEMPRE el tipo 0002 (PRIMER LISTADO POSTVENTA, constante TIPO_RECLAMACION en domain/models/volcado.py): una incidencia de segundo listado entraría en Sigrid como primer listado. Alcance: la plantilla ofrece los tipos vigentes de dbo.auxtrcp (vía sigrid-api, lectura) al descargar; la importación valida contra los de ese momento y guarda el código; la bandeja lo guarda en columna nueva (DDL solo en el schema postventa); la revisión lo enseña y deja cambiarlo; el volcado manda el código elegido. En blanco = 0002, como hoy (decisión del humano 2026-11-05). Orden fijado por el humano: F-071 -> F-072 -> retomar F-040; el primer volcado real (T5.4 de F-040) no se hace antes de F-072.
 
 ### F-003 · Extracción multimodal del parte, manuscritos incluidos
 

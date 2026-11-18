@@ -1,6 +1,20 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · CERRADA (líder, 2026-11-18)
+> T24 y T26 en verde en producción (`progress/impl_F-072_despliegue.md`), T27 y T28 hechos:
+> F-072 `done`, resumen en `progress/history.md`. F-040 sigue `blocked` (aparcada por el humano)
+> pero ya sin la dependencia de F-072: T5.4 puede hacerse. Siguiente propuesta al humano:
+> actualizar la spec de F-040 (textos de Q-11, tipo, motivo) y retomarla.
+
+> ## F-072 · T23 y T25 (líder, 2026-11-18)
+> T23: merge `a269341` a `dev` en `postventa-merge`; `bash harness/init.sh` en verde en `dev`
+> (2201 / 10365 / 911 passed). T25: `azure-apps` 31334dd (`postventa_incidencias.md` y la tabla de
+> consumidores de `sigrid_api.md`, que está en §10, no en §8.9), sin push. Pendiente para T27:
+> `docs/INTEGRACION.md` dice «DDL al arrancar» (l. ~737; es en la primera petición que abre la base)
+> y «sin desplegar» (l. 411, 2077); `progress/impl_F-072.md` está en el tope (220/220): las notas de
+> T24 y T26 irán en `progress/impl_F-072_despliegue.md`. Siguiente: T24 y T26 (humano).
+
 > ## F-072 · T22 cerrada (líder, 2026-11-18)
 > Campaña serie de la feature VÁLIDA: 41 evaluados, 38 muertos, 3 supervivientes de veracidad
 > (`importacion.py:604`, `importar.py:218`, `plantilla.py:92`) declarados EQUIVALENTES

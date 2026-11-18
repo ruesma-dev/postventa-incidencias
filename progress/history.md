@@ -2404,3 +2404,38 @@ Lo que enseñó:
   dos cosas antes de leer un rojo como fallo del código.
 - **El paso «los recuentos no cambian»** de una verificación larga en el tiempo
   no se cumple en una obra viva: la foto de antes tiene que ser del mismo día.
+
+---
+
+## F-072 · El tipo de reclamación sale de Sigrid de punta a punta — 2026-11-18
+
+**Cerrada.** Rama `feature/F-072-tipo-reclamacion-sigrid`, mergeada en `dev`
+`a269341` y publicada por el humano el 2026-11-18. Rigor `critico`.
+
+Qué queda: los tipos de reclamación vigentes de `dbo.auxtrcp` (quinta lectura
+por `sql/read`) en el desplegable `Listado` de la plantilla, en la importación
+y en la revisión; la columna `tipo_reclamacion` en `bandeja_incidencias` y
+`revisiones_bandeja` (`17_tipo_reclamacion.sql`, el primer `ALTER TABLE`); el
+**tipo efectivo** (nulo → `0002`) en bandeja, revisión y volcado, que manda el
+tipo elegido sin releer `auxtrcp`; el motivo `tipo_fuera_de_sigrid`.
+
+Evidencias: reviews de los Bloques 3–7 y final APROBADAS; campaña de mutación
+de la feature válida (41 evaluados, 38 muertos, 3 equivalentes aceptados por
+escrito por el humano) y RM7 3/3; `init.sh` sin caché en verde (2202 / 10377 /
+911, cobertura 158/158) y en verde en `dev`; T24 y T26 en producción en verde
+(`progress/impl_F-072_despliegue.md`), sin escribir nada en Sigrid.
+
+Queda abierto fuera de la ficha: `docs/INTEGRACION.md` sigue diciendo «sin
+desplegar» (l. 411, 2077; lo fija `test_f072_documentacion.py:451`) y «DDL al
+arrancar» (l. ~737; es en la primera petición que abre la base); al editar,
+`cambios` marca `proveedor` sin tocarlo porque el nombre se relee de Sigrid con
+un espacio al final (T26 paso 4); la clave de Gemini en el `repr` de `Ajustes`.
+
+Lo que enseñó:
+
+- **Las campañas de mutación en paralelo se invalidan** por los tests de
+  tiempo de F-036 (`test_f036_r115_*`, `r117_*`, topes de 1 s): en serie la
+  campaña de la feature salió válida en 8,5 h.
+- **Una verificación en producción por la API del front** (con la sesión del
+  humano) cubre la T26 entera sin interfaz: la plantilla se puede leer y
+  rellenar en el navegador sin descargarla.

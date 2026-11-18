@@ -37,6 +37,34 @@ Bloque 8 van aquí.
    reclamación leídos en Sigrid: tipos=4 sin_codigo=0 repetidos=0
    al_techo=False segundos=…` sale **sin `res`** (entre 0,10 s y 4,37 s).
 
-Pasos 3–6 (importar las tres filas de prueba, editar, aprobar, ensayo y
-descartar): escriben en la base propia de producción; **pendientes** de la
-autorización concreta del humano.
+## T26 · pasos con escritura en la base propia (líder), 2026-11-18
+
+Con la autorización concreta del humano en el chat («si» a la lista de los
+pasos 3–6). Por la API del front, con la sesión del humano; **nada en
+Sigrid**: solo `POST /api/volcado/ensayo`, nunca `/api/volcado/volcar`.
+
+3. **Importación** de la plantilla de la 0677 con tres filas «PRUEBA F-072 -
+   DESCARTAR (A/B/C)» (misma unidad, ubicación y par oficio · proveedor):
+   200, `estado: parcial`, `nuevas: 2`, `con_error: 1`. C («Segundo
+   listado») vuelve en el Excel de errores: columna `Listado`, «ese valor no
+   está en la lista de listados». En la revisión, A con `listado` `0002`
+   (en blanco) y B con `0003`, las dos sin motivos.
+4. **Editar A** con `listado` `0003`: 200, `editada`, `vigentes.listado`
+   `0003`, y `cambios` marca `listado`. **Observación (fuera de F-072):**
+   `cambios` marca también `proveedor` sin haberlo tocado: al editar, el
+   nombre del proveedor se relee de Sigrid con un espacio al final
+   (`proveedor_nombre` termina en espacio) y al importar se guardó recortado.
+   F-072 no toca proveedores; queda para una corrección aparte.
+5. **Aprobar B**: 200, `aprobada`, `listado` `0003`. **Ensayo** de B: 200 en
+   6,3 s, `previstos: 1`, sin excluidas, sin rechazos y sin conflictos de la
+   guarda; el `envio` lleva `tipo: "0003"` y el parte sale `previsto`. Sin
+   volcado: el ensayo caduca solo a los 30 minutos.
+6. **Descartar A y B** (motivo «Prueba de F-072»): 200, las dos
+   `descartada`.
+
+Application Insights, después: ninguna traza de aviso o superior de la
+aplicación y una sola excepción, `ConnectionAbortedException` del host de
+Functions a las 18:57 (corte del stream de logs, sin operación asociada), que
+no es de este código. Todas las peticiones, 200.
+
+**T26 en verde.**

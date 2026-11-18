@@ -1,6 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-072 · CERRADA (líder, 2026-11-18)
+> T24 y T26 en verde en producción (`progress/impl_F-072_despliegue.md`), T27 y T28 hechos:
+> F-072 `done`, resumen en `progress/history.md`. F-040 sigue `blocked` (aparcada por el humano)
+> pero ya sin la dependencia de F-072: T5.4 puede hacerse. Siguiente propuesta al humano:
+> actualizar la spec de F-040 (textos de Q-11, tipo, motivo) y retomarla.
+
 > ## F-072 · T23 y T25 (líder, 2026-11-18)
 > T23: merge `a269341` a `dev` en `postventa-merge`; `bash harness/init.sh` en verde en `dev`
 > (2201 / 10365 / 911 passed). T25: `azure-apps` 31334dd (`postventa_incidencias.md` y la tabla de

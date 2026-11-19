@@ -1,11 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Arreglo `Ajustes` sin secretos en `repr` · BLOQUEADO en init.sh (implementer, 2026-11-19)
-> Rama `fix/ajustes-sin-secretos-en-repr`: RED 36a6b3f, GREEN ad3c963, suite del API en verde
-> (10374 passed). `init.sh` en rojo SOLO por el front: 16 controles de mutación de F-038 fallan
-> porque el worktree tiene `services/postventa-front` en CRLF (`core.autocrlf=true`). No es de
-> este cambio. Sin apaños: decide el líder o el humano (`progress/impl_fix_ajustes_sin_secretos_en_repr.md`).
+> ## Arreglo nombre del proveedor recortado · BLOQUEADO por el entorno (implementer, 2026-11-19)
+> Rama `fix/proveedor-nombre-recortado`, segunda corrección (`_pares` alineado con la regla de la
+> importación, decisión del humano sobre el punto 2 del review). Hecho: merge de `dev` (d6be9d6) y
+> test RED escrito en `tests/test_fix_proveedor_nombre_recortado.py`, SIN commitear y SIN ejecutar.
+> Motivo: el venv del API no existe. `services/postventa-api/.venv` del worktree es una junction a
+> la carpeta principal, y `postventa-incidencias/services/postventa-api/.venv` está VACÍO (sin
+> `Scripts/python.exe`; modificado el 2026-11-19 02:14). Sin intérprete no hay RED ni `init.sh`.
+> No lo recreo por mi cuenta: decide el líder o el humano (recrear el venv con
+> `requirements-dev.txt` o apuntar a otro).
+
+> ## Arreglo `Ajustes` sin secretos en `repr`
+> integrado en dev (5e44232), review APROBADO.
 
 > ## F-072 · CERRADA (líder, 2026-11-18)
 > T24 y T26 en verde en producción (`progress/impl_F-072_despliegue.md`), T27 y T28 hechos:

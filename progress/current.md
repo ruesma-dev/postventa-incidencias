@@ -1,6 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Arreglo `Ajustes` sin secretos en `repr` · BLOQUEADO en init.sh (implementer, 2026-11-19)
+> Rama `fix/ajustes-sin-secretos-en-repr`: RED 36a6b3f, GREEN ad3c963, suite del API en verde
+> (10374 passed). `init.sh` en rojo SOLO por el front: 16 controles de mutación de F-038 fallan
+> porque el worktree tiene `services/postventa-front` en CRLF (`core.autocrlf=true`). No es de
+> este cambio. Sin apaños: decide el líder o el humano (`progress/impl_fix_ajustes_sin_secretos_en_repr.md`).
+
 > ## F-072 · CERRADA (líder, 2026-11-18)
 > T24 y T26 en verde en producción (`progress/impl_F-072_despliegue.md`), T27 y T28 hechos:
 > F-072 `done`, resumen en `progress/history.md`. F-040 sigue `blocked` (aparcada por el humano)

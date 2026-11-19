@@ -166,9 +166,6 @@
     sin_respuesta: "En duda",
   };
 
-  /** Q-1 · el tipo con que nace todo parte del volcado. */
-  const TEXTO_TIPO = { "0002": "0002 PRIMER LISTADO POSTVENTA" };
-
   const SIN_DATO = "—";
 
   const TEXTO_SIN_RESPUESTA_SINCRONIZACION =
@@ -445,6 +442,48 @@
     );
   }
 
+  /**
+   * R63 · la etiqueta de un tipo de reclamación, de `catalogo.listados` (F-072
+   * R20); sin ella (de baja, desconocido o sin catálogo), el código tal cual,
+   * nunca un nombre inventado. Sin código, nada.
+   */
+  function nombreDeTipo(catalogo, codigo) {
+    if (codigo === null || codigo === undefined || codigo === "") {
+      return "";
+    }
+    const listados = (catalogo && Array.isArray(catalogo.listados) && catalogo.listados) || [];
+    const tipo = listados.find(function (l) {
+      return l && l.codigo === codigo;
+    });
+    return (tipo && tipo.etiqueta) || String(codigo);
+  }
+
+  /** R64 [D-2] · cuántas por tipo, en el orden de aparición, con su etiqueta (o el código). */
+  function recuentoPorTipo(filas, catalogo) {
+    const cuentas = [];
+    const indice = {};
+    (filas || []).forEach(function (fila) {
+      const codigo = fila.tipo_codigo;
+      if (!propio(indice, codigo)) {
+        indice[codigo] = cuentas.length;
+        cuentas.push({ tipo_codigo: codigo, etiqueta: nombreDeTipo(catalogo, codigo), n: 0 });
+      }
+      cuentas[indice[codigo]].n += 1;
+    });
+    return cuentas;
+  }
+
+  /** R64 [D-2] · el recuento por tipo del resumen del ensayo: solo con más de un tipo. */
+  function textoPorTipo(porTipo) {
+    const tipos = porTipo || [];
+    if (tipos.length < 2) {
+      return "";
+    }
+    return "Por tipo: " + listaConY(tipos.map(function (t) {
+      return t.n + " " + t.etiqueta;
+    }));
+  }
+
   /** R61, R51, R52 · cuántas por unidad, en el orden de aparición, con su nombre (o el código). */
   function recuentoPorUnidad(filas, catalogo) {
     const cuentas = [];
@@ -582,7 +621,8 @@
       proveedor: interviniente ? nombreDeProveedor(catalogo, interviniente.oficio, interviniente.proveedor) : SIN_DATO,
       ubicacion: (envio && envio.ubicacion) || SIN_DATO,
       descripcion: (envio && envio.descripcion) || SIN_DATO,
-      tipo: envio ? textoDe(TEXTO_TIPO, envio.tipo) : SIN_DATO,
+      tipo_codigo: envio && envio.tipo ? envio.tipo : null,
+      tipo: envio ? nombreDeTipo(catalogo, envio.tipo) : SIN_DATO,
       estado: parte.estado,
       etiqueta: etiquetaParte(parte.estado),
       motivo: textoMotivoVolcado(parte.motivo),
@@ -638,6 +678,7 @@
       resumen: resumen,
       n: previstas.length,
       porUnidad: recuentoPorUnidad(previstas, catalogo),
+      porTipo: recuentoPorTipo(previstas, catalogo),
       caduca: caducidadMasTemprana(respuestas),
       hayIdempotente: resumen.idempotentes > 0,
     };
@@ -699,14 +740,24 @@
     return /^[1-9]\d*$/.test(texto) && Number(texto) === n;
   }
 
-  /** R52, C-3 · el texto de la confirmación, con el recuento por unidad. */
-  function textoConfirmacion(n, porUnidad, obra) {
+  /**
+   * R52, C-3 · el texto de la confirmación, con el recuento por unidad; R64
+   * [D-2] · y por tipo, solo cuando hay más de uno (con uno, no cambia).
+   */
+  function textoConfirmacion(n, porUnidad, obra, porTipo) {
     const verbo = n === 1 ? "Se va a crear 1 parte" : "Se van a crear " + n + " partes";
     const unidades = (porUnidad || []).map(function (u) {
       return u.n + " de " + u.nombre;
     });
+    const tipos = porTipo || [];
+    const porTipos =
+      tipos.length > 1
+        ? "; por tipo, " + listaConY(tipos.map(function (t) {
+            return t.n + " " + t.etiqueta;
+          }))
+        : "";
     return (
-      verbo + " en el ERP de producción de la obra " + obra + ": " + listaConY(unidades) +
+      verbo + " en el ERP de producción de la obra " + obra + ": " + listaConY(unidades) + porTipos +
       ". Escribe " + n + " para confirmar."
     );
   }
@@ -1127,7 +1178,13 @@
 
       volcadoConfirmacion() {
         const vista = this.volcado.vistaEnsayo;
-        return vista ? textoConfirmacion(vista.n, vista.porUnidad, this.volcado.obra) : "";
+        return vista ? textoConfirmacion(vista.n, vista.porUnidad, this.volcado.obra, vista.porTipo) : "";
+      },
+
+      /** R64 · el recuento por tipo del resumen del ensayo (vacío con un solo tipo). */
+      volcadoPorTipo() {
+        const vista = this.volcado.vistaEnsayo;
+        return vista ? textoPorTipo(vista.porTipo) : "";
       },
 
       volcadoConfirmacionValida() {
@@ -1251,6 +1308,8 @@
     confirmadosDelTrozo: confirmadosDelTrozo,
     puedeEnsayar: puedeEnsayar,
     recuentoPorUnidad: recuentoPorUnidad,
+    recuentoPorTipo: recuentoPorTipo,
+    textoPorTipo: textoPorTipo,
     trocear: trocear,
     cuerpoDeEnsayo: cuerpoDeEnsayo,
     excluidasDeLaGuarda: excluidasDeLaGuarda,

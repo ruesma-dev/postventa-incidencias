@@ -91,7 +91,7 @@
           <nav aria-label="Estás en" class="rs-migas">
             <a href="index.html" class="rs-enlace">Portal de posventa</a>
             <span aria-hidden="true">›</span>
-            <a href="./#/bandeja" class="rs-enlace">Bandeja de revisión</a>
+            <span aria-current="page">Bandeja de revisión</span>
           </nav>
           <h1 class="rs-titulo">Bandeja de revisión</h1>
           <p class="rs-subtitulo">Revisa lo importado antes de que llegue a Sigrid: corrige, elige el código del oficio, pon la ubicación, descarta o aprueba. Solo lo aprobado se podrá volcar.</p>
@@ -348,6 +348,8 @@
               <li class="rs-chip rs-chip--atencion" x-text="'Sin procesar: ' + volcado.vistaEnsayo.resumen.no_procesados"></li>
               <li class="rs-chip rs-chip--neutro" x-text="'Excluidas: ' + volcado.vistaEnsayo.resumen.excluidas"></li>
             </ul>
+            <!-- R64 [D-2] · el recuento por tipo, solo con más de un tipo entre lo que se crearía. -->
+            <p x-show="volcadoPorTipo()" class="mt-2 rs-nota" x-text="volcadoPorTipo()"></p>
             <p x-show="volcadoCuentaAtras()" class="mt-2 rs-nota rs-nota--info"
                x-text="'El ensayo caduca en ' + volcadoCuentaAtras()"></p>
             <div class="mt-3 rs-desplazable">
@@ -671,9 +673,9 @@
                           <span x-show="erroresPorCampo && erroresPorCampo.urgencia" class="rs-nota rs-nota--error" x-text="erroresPorCampo && erroresPorCampo.urgencia"></span>
                         </label>
                         <label class="flex flex-col gap-1">
-                          <span class="rs-campo__etiqueta">Listado</span>
+                          <span class="rs-campo__etiqueta">Listado (tipo de reclamación)</span>
+                          <!-- F-040 R67 [D-3] · sin opción en blanco: el backend nunca devuelve nulo; el tipo no vigente, de opcionesDeListado. -->
                           <select x-model="formulario.listado" class="rs-campo">
-                            <option value="">Sin listado</option>
                             <template x-for="opcion in opciones().listados" :key="opcion.codigo">
                               <option :value="opcion.codigo" :selected="opcion.codigo === formulario.listado" x-text="opcion.etiqueta"></option>
                             </template>

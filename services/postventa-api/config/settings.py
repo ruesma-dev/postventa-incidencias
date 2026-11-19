@@ -63,6 +63,8 @@ class Ajustes(BaseSettings):
     )
     gemini_api_key: str | None = Field(
         default=None,
+        # Fuera del repr: un traceback o un log no debe enseñar el secreto.
+        repr=False,
         validation_alias="GEMINI_API_KEY",
         description=(
             "Credencial de Gemini. **Opcional a propósito**: si fuera "
@@ -158,6 +160,8 @@ class Ajustes(BaseSettings):
     )
     pg_password: str | None = Field(
         default=None,
+        # Fuera del repr: un traceback o un log no debe enseñar el secreto.
+        repr=False,
         validation_alias="PG_PASSWORD",
         description=(
             "Contraseña del rol. **Secreto**, y opcional a propósito. En "
@@ -359,6 +363,8 @@ class Ajustes(BaseSettings):
     )
     graph_client_secret: str | None = Field(
         default=None,
+        # Fuera del repr: un traceback o un log no debe enseñar el secreto.
+        repr=False,
         validation_alias="GRAPH_CLIENT_SECRET",
         description=(
             "Credencial de la aplicación. **Secreto**: en Azure va por "
@@ -417,6 +423,8 @@ class Ajustes(BaseSettings):
     )
     sigrid_api_key: str | None = Field(
         default=None,
+        # Fuera del repr: un traceback o un log no debe enseñar el secreto.
+        repr=False,
         validation_alias="SIGRID_API_KEY",
         description=(
             "Clave de función de la pasarela. **Secreto**: en Azure va por "

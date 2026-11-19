@@ -59,7 +59,11 @@ function catalogo() {
     oficios: [{ codigo: "OF01", nombre: "FONTANERIA DE EJEMPLO", grupo: null }],
     pares: [{ oficio_codigo: "OF01", proveedor_codigo: "EJ11", proveedor_nombre: "PROVEEDOR EJEMPLO 11" }],
     urgencias: [],
-    listados: [],
+    // F-040 R63 (Bloque 1 bis): la etiqueta del tipo sale de aquí (antes, `listados: []` y la tabla fija `TEXTO_TIPO`).
+    listados: [
+      { codigo: "0002", etiqueta: "PRIMER LISTADO EJEMPLO (0002)" },
+      { codigo: "0003", etiqueta: "POST VENTA EJEMPLO (0003)" },
+    ],
   };
 }
 
@@ -650,13 +654,14 @@ test("f040 R51: juntarEnsayos hace una tabla con los nombres del catálogo, el t
     catalogo(),
   );
 
+  // F-040 R63 sustituye «0002 PRIMER LISTADO POSTVENTA» (la tabla fija TEXTO_TIPO, Q-1) por la etiqueta de catalogo.listados.
   assert.deepEqual(
     vista.filas.map((f) => [f.incidencia_id, f.unidad, f.oficio, f.proveedor, f.ubicacion, f.tipo, f.etiqueta]),
     [
-      [ID(1), "VILLA 91", "FONTANERIA DE EJEMPLO", "PROVEEDOR EJEMPLO 11", "COCINA", "0002 PRIMER LISTADO POSTVENTA", "Se crearía"],
-      [ID(6), "VILLA 91", "FONTANERIA DE EJEMPLO", "PROVEEDOR EJEMPLO 11", "COCINA", "0002 PRIMER LISTADO POSTVENTA", "Ya estaba creado"],
-      [ID(7), "9901-03", "FONTANERIA DE EJEMPLO", "PROVEEDOR EJEMPLO 11", "COCINA", "0002 PRIMER LISTADO POSTVENTA", "No se crea"],
-      [ID(3), "VILLA 92", "FONTANERIA DE EJEMPLO", "PROVEEDOR EJEMPLO 11", "COCINA", "0002 PRIMER LISTADO POSTVENTA", "No se llegó a intentar"],
+      [ID(1), "VILLA 91", "FONTANERIA DE EJEMPLO", "PROVEEDOR EJEMPLO 11", "COCINA", "PRIMER LISTADO EJEMPLO (0002)", "Se crearía"],
+      [ID(6), "VILLA 91", "FONTANERIA DE EJEMPLO", "PROVEEDOR EJEMPLO 11", "COCINA", "PRIMER LISTADO EJEMPLO (0002)", "Ya estaba creado"],
+      [ID(7), "9901-03", "FONTANERIA DE EJEMPLO", "PROVEEDOR EJEMPLO 11", "COCINA", "PRIMER LISTADO EJEMPLO (0002)", "No se crea"],
+      [ID(3), "VILLA 92", "FONTANERIA DE EJEMPLO", "PROVEEDOR EJEMPLO 11", "COCINA", "PRIMER LISTADO EJEMPLO (0002)", "No se llegó a intentar"],
     ],
   );
   assert.equal(vista.filas[0].descripcion, "Descripción de ejemplo 1");
@@ -669,11 +674,12 @@ test("f040 R51: sin nombre en el catálogo, el código del envio (oficio, provee
   const raro = parte(1, "previsto");
   raro.envio.oficio = "OF99";
   raro.envio.intervinientes = [{ oficio: "OF99", proveedor: "EJ99", causante: false }];
-  raro.envio.tipo = "0003";
+  // F-040 R63: «0003» ya tiene etiqueta en el catálogo; el código desconocido es ahora 9001 (ficticio).
+  raro.envio.tipo = "9001";
   const sinEnvio = parte(6, "rechazado", { envio: null, motivo: "unidad_postventa_no_encontrada" });
   const vista = Volcado.juntarEnsayos([ensayo([raro, sinEnvio])], catalogo());
 
-  assert.deepEqual([vista.filas[0].oficio, vista.filas[0].proveedor, vista.filas[0].tipo], ["OF99", "EJ99", "0003"]);
+  assert.deepEqual([vista.filas[0].oficio, vista.filas[0].proveedor, vista.filas[0].tipo], ["OF99", "EJ99", "9001"]);
   assert.deepEqual(
     [vista.filas[1].unidad, vista.filas[1].oficio, vista.filas[1].proveedor, vista.filas[1].ubicacion, vista.filas[1].descripcion],
     ["—", "—", "—", "—", "—"],

@@ -107,6 +107,24 @@ test("f040 R63: un tipo que no está en catalogo.listados (de baja o desconocido
   assert.equal(Volcado.juntarEnsayos([ensayo([parte(1, "previsto", "0002")])], etiquetaVacia).filas[0].tipo, "0002");
 });
 
+// T11 (mutantes A5–A8): los bordes del tipo que ningún test anterior fijaba.
+test("f040 R63 (T11): un envio sin tipo da tipo vacío y tipo_codigo null; sin envio, el guion", () => {
+  const sinTipo = parte(1, "previsto", undefined);
+  delete sinTipo.envio.tipo;
+  const vacio = parte(2, "previsto", "");
+  const sinEnvio = parte(3, "rechazado", "0002", { envio: null, motivo: "unidad_postventa_no_encontrada" });
+  const vista = Volcado.juntarEnsayos([ensayo([sinTipo, vacio, sinEnvio])], catalogo());
+  assert.deepEqual(
+    vista.filas.map((f) => [f.tipo, f.tipo_codigo]),
+    [["", null], ["", null], ["—", null]],
+  );
+});
+
+test("f040 R63 (T11): un catalogo.listados que no es una lista no rompe: el código tal cual", () => {
+  const raro = Object.assign(catalogo(), { listados: { "0002": "no es una lista" } });
+  assert.equal(Volcado.juntarEnsayos([ensayo([parte(1, "previsto", "0002")])], raro).filas[0].tipo, "0002");
+});
+
 test("f040 R63: la tabla fija TEXTO_TIPO (Q-1, «siempre 0002») ya no existe", () => {
   const fuente = fs.readFileSync(path.join(__dirname, "..", "js", "volcado.js"), "utf8");
   assert.equal(Volcado.TEXTO_TIPO, undefined);

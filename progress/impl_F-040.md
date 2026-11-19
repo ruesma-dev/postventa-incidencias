@@ -91,3 +91,76 @@ de este worktree (`core.autocrlf=true`), `bandeja.html` entre ellos; el índice 
 (`revision.test.js`) busca `'@click="cancelarFormulario()"\n'` y con CRLF no lo encuentra: falla en la base sin
 tocar nada (`node --test "tests_js/*.test.js"`: 1131/1132, solo BN12). No se cambian los finales de línea (encargo);
 la verificación en LF va en T10, sobre una copia limpia del commit.
+
+### T10 · GREEN (`288ee16`)
+
+| Fichero | Qué |
+|---|---|
+| `js/volcado.js` | Fuera `TEXTO_TIPO`. `nombreDeTipo` (privada): etiqueta de `catalogo.listados`, si no el código, sin código `""`. La fila del ensayo lleva `tipo` (etiqueta) y `tipo_codigo`. Nuevas `recuentoPorTipo(filas, catalogo)` y `textoPorTipo(porTipo)` (vacío con < 2 tipos); `juntarEnsayos` da `porTipo` (solo `previsto`); `textoConfirmacion(n, porUnidad, obra, porTipo)` añade «; por tipo, …» solo con > 1; método `volcadoPorTipo()` |
+| `js/revision.js` | `MOTIVOS` 10 (`tipo_fuera_de_sigrid` entre `proveedor_ambiguo` y `duplicada`) y su texto D-1; `tipo_no_valido` con el texto de R65; `textoDeCampo("listado")` = etiqueta o código (nunca «sin listado»); nueva `opcionesDeListado(catalogo, actual)`, usada por `opciones().listados` con `f.vigentes.listado` |
+| `bandeja.html` | Miga actual `<span aria-current="page">`; campo «Listado (tipo de reclamación)» sin `<option value="">`; `<p x-show/x-text="volcadoPorTipo()">` en el resumen del ensayo |
+| `README.md` del front, `docs/ARCHITECTURE.md` | Sección del panel: publicado el 2026-11-02 (fuera «sin publicar todavía») y el tipo de reclamación (R63, R64, R65; en ARCHITECTURE también R66/R67) |
+
+Decisiones (dentro de la spec, para el reviewer):
+- **Literal de R64**: confirmación «…: 2 de VILLA 91 y 1 de VILLA 92; por tipo, 2 <etiqueta> y 1 <etiqueta>. Escribe 3
+  para confirmar.»; resumen «Por tipo: 2 <etiqueta> y 1 <etiqueta>». El boceto de §2 («y n₁ …») daba una lista
+  ambigua tras la de unidades; se separa con «; por tipo,». El formato de la etiqueta es el de `catalogo.listados`.
+- **R67, «actual»** = el tipo guardado (`formulario.vigentes.listado`): la opción del no vigente sigue aunque se elija otro
+  en el desplegable, para poder volver a él sin recargar. Su forma `{codigo, etiqueta, fueraDeLista}` (el HTML usa
+  `codigo` y `etiqueta`, como antes).
+- **Listado nulo en el detalle** (no debería llegar: el backend no devuelve nulo): sale vacío, no «sin listado» ni un
+  `0002` inferido.
+- **Finales de línea**: los ficheros CRLF del worktree se editaron conservando CRLF (comprobado: nº de `\r\n` = nº de
+  `\n` en `bandeja.html`, README y ARCHITECTURE); los LF siguen en LF. El índice sigue en LF.
+
+Verificación (comandos del encargo; `node --test services/postventa-front/tests_js` con un directorio no funciona en
+Node v24.14.1 de este equipo —«test at services\postventa-front\tests_js:1:1 … test failed», también en la base—, así
+que se usa el patrón de `test_f007_js.py`, `node --test "tests_js/*.test.js"`):
+
+```
+# worktree postventa-f040 (front en CRLF), tras T11
+$ node --test "tests_js/*.test.js"                     ℹ tests 1151  ℹ pass 1150  ℹ fail 1   ✖ f038 T5 (BN12) ← ajeno (CRLF)
+$ python -m pytest services/postventa-front/tests tests/test_f035_placeholders_vivos.py -q
+FAILED test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde   (el mismo BN12)   1 failed, 938 passed, 7 skipped
+
+# copia limpia de 288ee16 en LF (git -c core.autocrlf=false worktree add --detach, en el scratchpad)
+$ node --test "tests_js/*.test.js"                     ℹ tests 1149  ℹ pass 1149  ℹ fail 0
+$ python -m pytest … (con dev_front.ps1 en CRLF, como pide su test F-007 R36)   939 passed, 7 skipped
+```
+
+O sea: con el front en LF y `dev_front.ps1` en CRLF (lo que el encargo da por hecho) todo está en verde; el único rojo
+del worktree es BN12, por el checkout en CRLF de `bandeja.html`, y no lo toca este bloque.
+
+### T11 · Mutación (`progress/mutacion_F-040_bloque1bis.md`)
+
+50 mutantes en 5 familias (A etiqueta del tipo y respaldo 10, B recuento por tipo con uno y dos tipos 16, C orden de los
+motivos y textos 5, D opción del no vigente, rótulo e historial 13, E migas 5), en la copia LF (BN12 taparía al
+asesino en el worktree). Primera pasada 46/50; **vivos A5–A8** (envio sin `tipo`, `listados` que no es lista, sin
+`envio`): huecos reales, cerrados con dos tests «(T11)» en `tests_js/f040_tipo.test.js`; segunda pasada 4/4.
+**50/50 muertos; ningún superviviente ni equivalente pendiente de aceptación.** Cada mutante se restauró byte a byte;
+`git status` del worktree limpio de mutantes; la copia, retirada (`git worktree remove`).
+
+### `bash harness/init.sh`: NO EJECUTADO
+
+El líder avisó durante el encargo de que el venv del API (`services/postventa-api/.venv`) está vacío y pidió no
+ejecutar `init.sh` ni el pytest del API hasta que avise de que está reconstruido. Ese aviso no ha llegado; el pytest
+del front corre con el `.venv` de la raíz del repositorio principal (no depende del del API). **Pendiente**: lanzar
+`bash harness/init.sh` en este worktree cuando el venv esté; cabe esperar en rojo el BN12 (CRLF, ajeno).
+
+### Evidencias (Bloque 1 bis)
+
+| Evidencia | Valor |
+|---|---|
+| Tests JS | 1151 (antes 1132: +19 de `f040_tipo.test.js`); worktree 1150/1151 (BN12 ajeno); copia LF 1149/1149 en `288ee16` (sin los 2 de T11) |
+| Tests pytest del front + `test_f035_placeholders_vivos` | 939 + 7 skipped; worktree 938 + 1 rojo (el de la suite JS) |
+| Cobertura de líneas cambiadas | N/A: no hay `.py` de producción (la puerta mide Python); rigor crítico cubierto con mutación |
+| Mutantes | 50 generados, 50 muertos, 0 supervivientes, 0 equivalentes |
+| Tiempo de la suite | JS ~6 s; pytest del front ~19 s |
+| Capa e2e | Sin requisitos `(capa: e2e)` en R63–R68 (todos `unit`) |
+| Documento del ecosistema | No en este bloque (R58 de `azure-apps` es T6 bis) |
+
+### Pendiente
+
+- `init.sh` (arriba). Review del Bloque 1 bis. T12 (merge y publicación, humano). La fila de prueba de T5.4 a `0003` (D-6)
+  es del humano.
+- Fuera de alcance tocado: ninguno. `services/postventa-api/` sin tocar. Nada contra Sigrid ni producción.

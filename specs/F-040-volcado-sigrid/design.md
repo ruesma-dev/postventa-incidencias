@@ -29,7 +29,7 @@ RED con traza pegada; cobertura N/A con motivo (la puerta mide `.py` y aquí no 
 
 - **F-059** `done` (desplegada el 2026-10-17, verificada el 2026-10-19 en la 0626). **F-065** `done` (desplegada el
   2026-10-31). **F-038** `done` (2026-11-12, `dev` `eca6ae3`). **F-072** `done` (publicada el 2026-11-18, `dev`
-  `a269341`) **[E-1118]**. La rama trae todo en el merge `4b1eb21`, nueva base fija (`progress/impl_F-040.md`).
+  `a269341`) **[E-1118]**. La rama trae todo en el merge `4b1eb21`, nueva base fija (`progress/impl_F-040.md`; lo anterior, en `progress/impl_F-040_hasta_2026-11-05.md`, D-8).
 - El contrato **implementado**, sin reinterpretarlo, con sus errores en §3.2: `docs/INTEGRACION.md` §1 («Con
   F-065») y §3 bis («Qué escribimos como PARTE NUEVO»); por campo y línea, la versión `4b1eb21` (§1, §1.1):
   - `GET /api/volcado?obra=` → `{partes_por_llamada, resumen, candidatas: [{incidencia_id, revision_id, estado,
@@ -226,7 +226,7 @@ documento, commit aparte, push del humano y, ante un conflicto, parar.
 ## 10 · Hecho y no se rehace
 
 Bloque 1 (T1–T3, APPROVED tras C-B1-1/C-B1-2; V3 aceptado), T4 (publicado el 2026-11-02, `dev` `b9a66db`), T5.1
-y T5.2 (0626, 2026-11-02), T6a (publicada el 2026-11-05, `ed935ad`; M4 y M5 aceptados): `progress/impl_F-040.md`.
+y T5.2 (0626, 2026-11-02), T6a (publicada el 2026-11-05, `ed935ad`; M4 y M5 aceptados): `progress/impl_F-040_hasta_2026-11-05.md`.
 
 ## 11 · Puesta al día del 2026-11-18 (resumen)
 
@@ -236,11 +236,11 @@ Cada cambio va marcado **[E-1118]** en su sitio (§0, §1, §1.1, §2, §3.1, §
 
 | Decisión | Opciones | Recomendado | Decidido |
 |---|---|---|---|
-| D-1 · Literales de Q-11 (R65, R66, R67) | (a) los de R65–R67; (b) otros que dicte el humano | (a) | |
-| D-2 · Recuento por tipo en el resumen del ensayo y en la confirmación (R64) | (a) solo cuando hay más de un tipo entre los previstos; (b) siempre; (c) no, solo la columna | (a) | |
-| D-3 · La opción en blanco «Sin listado» del formulario (R67) | (a) quitarla (nunca llega nulo; `0002` es una opción más) y añadir la del tipo no vigente; (b) renombrarla «En blanco (entra como 0002)»; (c) dejarla | (a) | |
-| D-4 · El enlace «Volcar a Sigrid» de R57 en `#/bandeja` | (a) ninguno nuevo: la tarjeta «Revisar la bandeja» de F-038 y la 02 del inicio dicen también que se vuelca; (b) una tarjeta más «Volcar a Sigrid» a `bandeja.html` | (a) | |
-| D-5 · Orden al retomar | (a) Bloque 1 bis → review → publicar (T11) → T5.3–T5.6 → T6; (b) T5.3–T5.6 con el front de hoy y el Bloque 1 bis después | (a): la primera escritura real se ve con el panel definitivo | |
-| D-6 · El tipo de la única escritura real de T5.4 (0626) | (a) la fila de prueba editada a `0003` POST VENTA y reaprobada, para ver en Sigrid (foto `28_`) que el parte nace con ese tipo; (b) tal cual (`0002`, tipo nulo heredado) | (a): cierra en producción R28 de F-072 con la misma escritura | |
-| D-7 · T5 bis paso 1 (un `choca` ensayado **sin** casilla → `conflicto_sin_confirmar`): desde el panel no se puede, «Ensayar» queda deshabilitado (T5.2, 2026-11-02) | (a) por la API del front con la sesión del humano, solo ensayo (como T26 de F-072); (b) quitar el paso: lo cubren los tests de F-065 | (a) | |
-| D-8 · Informes por encima de la puerta TAMAÑO (`impl_F-040.md` 520/220, `review_F-040.md` 457/140): `init.sh` en rojo en esta rama mientras F-040 no esté `done` | (a) `git mv` a `progress/impl_F-040_hasta_2026-11-05.md` y `progress/review_F-040_bloque1.md`, y unos nuevos que enlacen; (b) otra salida que diga el humano | (a) | |
+| D-1 · Literales de Q-11 (R65, R66, R67) | (a) los de R65–R67; (b) otros que dicte el humano | (a) | (a) · humano, 2026-11-19 |
+| D-2 · Recuento por tipo en el resumen del ensayo y en la confirmación (R64) | (a) solo cuando hay más de un tipo entre los previstos; (b) siempre; (c) no, solo la columna | (a) | (a) · humano, 2026-11-19 |
+| D-3 · La opción en blanco «Sin listado» del formulario (R67) | (a) quitarla (nunca llega nulo; `0002` es una opción más) y añadir la del tipo no vigente; (b) renombrarla «En blanco (entra como 0002)»; (c) dejarla | (a) | (a) · humano, 2026-11-19 |
+| D-4 · El enlace «Volcar a Sigrid» de R57 en `#/bandeja` | (a) ninguno nuevo: la tarjeta «Revisar la bandeja» de F-038 y la 02 del inicio dicen también que se vuelca; (b) una tarjeta más «Volcar a Sigrid» a `bandeja.html` | (a) | (a) · humano, 2026-11-19 |
+| D-5 · Orden al retomar | (a) Bloque 1 bis → review → publicar (T11) → T5.3–T5.6 → T6; (b) T5.3–T5.6 con el front de hoy y el Bloque 1 bis después | (a): la primera escritura real se ve con el panel definitivo | (a) · humano, 2026-11-19 |
+| D-6 · El tipo de la única escritura real de T5.4 (0626) | (a) la fila de prueba editada a `0003` POST VENTA y reaprobada, para ver en Sigrid (foto `28_`) que el parte nace con ese tipo; (b) tal cual (`0002`, tipo nulo heredado) | (a): cierra en producción R28 de F-072 con la misma escritura | (a) · humano, 2026-11-19 |
+| D-7 · T5 bis paso 1 (un `choca` ensayado **sin** casilla → `conflicto_sin_confirmar`): desde el panel no se puede, «Ensayar» queda deshabilitado (T5.2, 2026-11-02) | (a) por la API del front con la sesión del humano, solo ensayo (como T26 de F-072); (b) quitar el paso: lo cubren los tests de F-065 | (a) | (a) · humano, 2026-11-19 |
+| D-8 · Informes por encima de la puerta TAMAÑO (`impl_F-040.md` 520/220, `review_F-040.md` 457/140): `init.sh` en rojo en esta rama mientras F-040 no esté `done` | (a) `git mv` a `progress/impl_F-040_hasta_2026-11-05.md` y `progress/review_F-040_bloque1.md`, y unos nuevos que enlacen; (b) otra salida que diga el humano | (a) | (a) · humano, 2026-11-19 |

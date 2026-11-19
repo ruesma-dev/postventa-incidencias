@@ -106,3 +106,86 @@ propuesta). Con eso, el resto de `init.sh` ya está en verde.
 - `init.sh` en verde tras resolver el CRLF del worktree.
 - Decidir si se arreglan oficio y unidad.
 - Nada de push (lo hace el humano).
+
+## Correcciones del review
+
+Review: `progress/review_fix_proveedor_nombre_recortado.md` (RECHAZADO). En esta
+pasada solo el cambio requerido 1. El 2 (`_pares` del adaptador HTTP y su
+docstring) **no se toca**: espera la decisión del humano. El 3 (`dev_front.ps1`
+en CRLF) ya estaba hecho en el worktree (`git ls-files --eol`: `i/lf w/crlf`);
+no he tocado el front.
+
+### Cambio 1: dos tests nuevos (commit `0827ad6`)
+
+En `services/postventa-api/tests/test_fix_proveedor_nombre_recortado.py`, con el
+mismo esquema (importación → editar sin tocar el proveedor). Los helpers aceptan
+ahora un catálogo (`_catalogo_con(...)`, por defecto el de siempre):
+
+- `test_fix_la_edicion_toma_el_primer_nombre_no_vacio_del_par`: filas de
+  `obrofc` del par EJ07 con nombre `""` y luego `"Carpintería Ejemplo, S.L. "`;
+  la importación y la edición guardan `"Carpintería Ejemplo, S.L."` y
+  `cambios == ("descripcion",)`.
+- `test_fix_el_nombre_en_blanco_se_guarda_none_como_en_la_importacion`: único
+  nombre `"   "`; la importación y la edición guardan `None` y
+  `cambios == ("descripcion",)`.
+
+Con el código actual: `5 passed in 0.42s`.
+
+Mutantes, aplicados con `sed` sobre `domain/models/revision.py`, ejecutando
+`.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_fix_proveedor_nombre_recortado.py`
+y revertidos con `git checkout -- domain/models/revision.py`:
+
+M1 `if pares.get(clave) is None:` → `if clave not in pares:`:
+
+```
+E       AssertionError: assert ('descripcion', 'proveedor') == ('descripcion',)
+E         Left contains one more item: 'proveedor'
+FAILED tests/test_fix_proveedor_nombre_recortado.py::test_fix_la_edicion_toma_el_primer_nombre_no_vacio_del_par
+1 failed, 4 passed in 0.81s
+```
+
+M2 `pares[clave] = nombre_recortado(fila.proveedor_nombre)` →
+`pares[clave] = (fila.proveedor_nombre or "").strip()`:
+
+```
+E       AssertionError: assert ('descripcion', 'proveedor') == ('descripcion',)
+E         Left contains one more item: 'proveedor'
+E       AssertionError: assert ('descripcion', 'proveedor') == ('descripcion',)
+E         Left contains one more item: 'proveedor'
+FAILED tests/test_fix_proveedor_nombre_recortado.py::test_fix_la_edicion_toma_el_primer_nombre_no_vacio_del_par
+FAILED tests/test_fix_proveedor_nombre_recortado.py::test_fix_el_nombre_en_blanco_se_guarda_none_como_en_la_importacion
+2 failed, 3 passed in 0.65s
+```
+
+(M2 también lo caza el primero: con `""` en la primera fila, `pares.get` ya no
+es `None` y se queda el vacío.)
+
+Tras revertir, `git diff -- services/postventa-api/domain/models/revision.py`
+sale **vacío**; `git status --short` solo mostraba el test, que es el que se
+commiteó.
+
+### `ARNES_SIN_CACHE=1 bash harness/init.sh` (raíz del worktree): EN VERDE
+
+```
+2202 passed, 48 skipped in 885.77s (0:14:45)
+[OK] pytest en verde (con medición de cobertura)
+10370 passed, 485 skipped in 1650.57s (0:27:30)
+[OK] servicio api (services/postventa-api): pytest en verde
+911 passed, 7 skipped in 24.01s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: N/A (la rama fix/proveedor-nombre-recortado no corresponde a ninguna feature declarada)
+[AVISO] PUERTA TAMAÑO: N/A (no hay papeleo abierto que medir ...)
+[OK] PUERTA CARRIL: N/A (la rama fix/proveedor-nombre-recortado no corresponde a ninguna feature declarada)
+[OK] CAPA E2E: N/A (sin feature en curso ...)
+ENTORNO LISTO. Puedes trabajar.
+```
+
+(10370 = 10368 + los 2 tests nuevos.)
+
+### Pendiente
+
+- Cambio requerido 2 (`_pares` de `interface_adapters/api/revision.py`):
+  decisión del humano entre alinearlo con `nombre_recortado` + primer no vacío
+  (con test de ofrecido = guardado) o solo corregir el docstring.
+- Oficio y unidad: siguen a decisión del humano.
+- Nada de push.

@@ -64,7 +64,7 @@ from domain.models.plantilla_incidencias import (
     ListasCerradas,
     OrigenIncidencia,
     Urgencia,
-    nombre_recortado,
+    nombres_de_los_pares,
     tipo_efectivo,
 )
 from domain.models.situacion_volcado import SituacionDeVolcado, estado_de_volcado
@@ -676,15 +676,10 @@ def validar_valores(
         oficio = (codigo, oficios[codigo].nombre or codigo, False)
         oficio_valido = True
 
-    pares: dict[tuple[str, str], str | None] = {}
-    for fila in catalogo.proveedores:
-        if fila.proveedor_codigo is not None:
-            # El primero no vacío, recortado: la regla de la importación
-            # (`pares_del_desplegable`), para que editar sin tocar el proveedor
-            # no lo marque en `cambios` por el espacio final de Sigrid.
-            clave = (fila.oficio_codigo, fila.proveedor_codigo)
-            if pares.get(clave) is None:
-                pares[clave] = nombre_recortado(fila.proveedor_nombre)
+    # El primero no vacío, recortado: la regla de la importación, para que
+    # editar sin tocar el proveedor no lo marque en `cambios` por el espacio
+    # final de Sigrid.
+    pares = nombres_de_los_pares(catalogo.proveedores)
     proveedor: tuple[str | None, str | None, bool] = (None, None, False)
     pedido = pedidos.proveedor_codigo
     if pedido is None:

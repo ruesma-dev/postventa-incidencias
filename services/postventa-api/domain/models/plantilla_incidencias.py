@@ -440,11 +440,32 @@ def _exigir_distintas(etiquetas: Iterable[str]) -> None:
 def nombre_recortado(nombre: str | None) -> str | None:
     """Un nombre de Sigrid sin blancos a los lados; vacío o en blanco, `None`.
 
-    Pública: la edición de la revisión (`validar_valores`) guarda el nombre del
-    proveedor con esta misma regla que la importación, o `cambios` vería
-    distinto un proveedor que nadie ha tocado.
+    Pública: la edición de la revisión guarda el nombre del proveedor con esta
+    misma regla que la importación (vía `nombres_de_los_pares`), o `cambios`
+    vería distinto un proveedor que nadie ha tocado.
     """
     return (nombre or "").strip() or None
+
+
+def nombres_de_los_pares(
+    proveedores: Iterable[ProveedorEnObra],
+) -> dict[tuple[str, str], str | None]:
+    """El nombre de cada par (oficio, proveedor) de `obrofc` con proveedor.
+
+    El primero no vacío del par, con `nombre_recortado`; si ninguno lo trae,
+    `None`. Los pares, en el orden de su primera fila. Es la regla de la
+    importación (`pares_del_desplegable`), y la usan la edición
+    (`validar_valores`) y el desplegable de la revisión (`_pares` del
+    adaptador HTTP): lo que se ofrece es lo que se guarda.
+    """
+    nombres: dict[tuple[str, str], str | None] = {}
+    for fila in proveedores:
+        if fila.proveedor_codigo is None:
+            continue
+        pareja = (fila.oficio_codigo, fila.proveedor_codigo)
+        if nombres.get(pareja) is None:
+            nombres[pareja] = nombre_recortado(fila.proveedor_nombre)
+    return nombres
 
 
 def _con_codigo(nombre: str | None, codigo: str) -> str:

@@ -104,6 +104,7 @@ from domain.models.errores import PeticionDeRevisionInvalida
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
     OpcionOficio,
+    nombres_de_los_pares,
     normalizar_codigo_obra,
     tipo_efectivo,
 )
@@ -432,20 +433,18 @@ def _oficios(
 
 
 def _pares(catalogo: CatalogoObra) -> list[dict[str, Any]]:
-    """Los pares oficio–proveedor de `obrofc`, cada uno una vez y con su primer nombre.
+    """Los pares oficio–proveedor de `obrofc`, cada uno una vez, con su nombre.
 
-    El primero, como hace la validación de una edición (R14): lo que se
-    ofrece es lo que se guarda.
+    El nombre sale de `nombres_de_los_pares`, la misma función con la que la
+    validación de una edición (R14) arma el que guarda, que es la regla de la
+    importación: el primero no vacío del par, recortado, o `None` si ninguno lo
+    trae. Lo que se ofrece es lo que se guarda.
     """
-    pares: dict[tuple[str, str], str | None] = {}
-    for fila in catalogo.proveedores:
-        if fila.proveedor_codigo is not None:
-            pares.setdefault(
-                (fila.oficio_codigo, fila.proveedor_codigo), fila.proveedor_nombre
-            )
     return [
         {"oficio_codigo": oficio, "proveedor_codigo": proveedor, "proveedor_nombre": nombre}
-        for (oficio, proveedor), nombre in pares.items()
+        for (oficio, proveedor), nombre in nombres_de_los_pares(
+            catalogo.proveedores
+        ).items()
     ]
 
 

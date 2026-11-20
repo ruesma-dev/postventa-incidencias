@@ -1,15 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Arreglo nombre del proveedor recortado · BLOQUEADO por el entorno (implementer, 2026-11-19)
-> Rama `fix/proveedor-nombre-recortado`, segunda corrección (`_pares` alineado con la regla de la
-> importación, decisión del humano sobre el punto 2 del review). Hecho: merge de `dev` (d6be9d6) y
-> test RED escrito en `tests/test_fix_proveedor_nombre_recortado.py`, SIN commitear y SIN ejecutar.
-> Motivo: el venv del API no existe. `services/postventa-api/.venv` del worktree es una junction a
-> la carpeta principal, y `postventa-incidencias/services/postventa-api/.venv` está VACÍO (sin
-> `Scripts/python.exe`; modificado el 2026-11-19 02:14). Sin intérprete no hay RED ni `init.sh`.
-> No lo recreo por mi cuenta: decide el líder o el humano (recrear el venv con
-> `requirements-dev.txt` o apuntar a otro).
+> ## Arreglo nombre del proveedor recortado · segunda corrección hecha (implementer, 2026-11-20)
+> Rama `fix/proveedor-nombre-recortado`. Punto 2 del review, decidido por el humano: `_pares` del
+> adaptador HTTP alineado con la importación y con `validar_valores` mediante la función de dominio
+> `nombres_de_los_pares` (`plantilla_incidencias.py`). Merge de `dev` d6be9d6, RED b2768b8, GREEN
+> 24acec3; mutante de vuelta al `setdefault` crudo: 3/3 casos lo matan. El venv del API, que estaba
+> vacío, lo reconstruyó el líder. Pendiente: review de esta corrección; oficio y unidad siguen a
+> decisión del humano (`progress/impl_fix_proveedor_nombre_recortado.md`).
 
 > ## Arreglo `Ajustes` sin secretos en `repr`
 > integrado en dev (5e44232), review APROBADO.

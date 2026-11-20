@@ -133,3 +133,75 @@ la siguiente, `ARNES_SIN_CACHE=1 bash harness/init.sh`.
   de los otros sitios que aplican la misma regla (aquí, `setdefault` sobre
   `proveedor_nombre` aparecía dos veces: dominio y adaptador). Habría sacado el
   punto 2 antes de la aprobación.
+
+## Segunda review
+
+Revisión incremental desde `c5dde43` (pasada 2), HEAD `997d5f5`: diff
+`d6be9d6^2..HEAD` (excluye el merge de `dev` d6be9d6, ya aprobado aparte).
+
+- **Veredicto: APROBADO.**
+
+### `ARNES_SIN_CACHE=1 bash harness/init.sh` (raíz del worktree): EN VERDE
+
+Sin caché, como pedía la pasada 1. `exit=0`. Raíz `2202 passed, 48 skipped`;
+api `10382 passed, 485 skipped in 2600.47s`; front `911 passed, 7 skipped`.
+Puertas de cobertura, carril y capa e2e N/A (la rama no es una feature
+declarada); solo avisos previos (ruff 113, features `blocked`). `git status`
+limpio al terminar. `dev_front.ps1`: `i/lf w/crlf`; `js/revision.js`: `w/lf`.
+
+### Los tres cambios requeridos
+
+- [x] **1. M1 y M2 mueren.** La regla vive ahora en `nombres_de_los_pares`
+  (dominio), así que los apliqué ahí, en una copia `git archive HEAD` del
+  scratchpad, contra el test del arreglo + los 6 `tests/test_f0*_*revision*.py`
+  (823 tests):
+  - M1 `if nombres.get(pareja) is None:` → `if pareja not in nombres:`:
+    `1 failed, 822 passed` (`..._toma_el_primer_nombre_no_vacio_del_par`).
+  - M2 `nombre_recortado(fila.proveedor_nombre)` →
+    `(fila.proveedor_nombre or "").strip()`: `2 failed, 821 passed`
+    (el anterior y `..._nombre_en_blanco_se_guarda_none_...`).
+  Restaurado con `cmp` idéntico al original; el worktree no se tocó.
+- [x] **2. `_pares` alineado y cubierto.** Mutante: devolver a `_pares` el
+  `setdefault` con el nombre crudo (el código de antes de 24acec3). Con
+  `-k "revision or fix_proveedor"`: base de la copia `15 failed` (todos
+  `*_documentacion.py`: la copia solo lleva `services/postventa-api`, sin
+  `docs/` ni `specs/`); con el mutante `18 failed`, los 15 mismos + los tres
+  casos de `test_fix_lo_que_ofrece_pares_es_lo_que_guarda_la_edicion`
+  (`espacio-final`, `primera-fila-vacia`, `en-blanco`). Coincide con el RED
+  del informe (b2768b8, `3 failed, 5 passed`).
+- [x] **3. CRLF:** resuelto en el entorno, sin cambio en git (ver arriba).
+
+### Resto de comprobaciones
+
+- [x] **Dominio puro.** `nombres_de_los_pares` está en
+  `domain/models/plantilla_incidencias.py`, cuyas importaciones son solo
+  stdlib y `domain.*`. La usan `domain/models/revision.py` (dominio → dominio)
+  y `interface_adapters/api/revision.py` (adaptador → dominio): la dirección
+  correcta.
+- [x] **Ningún otro uso roto.** `_pares` solo se llama en el `GET` del
+  catálogo de la revisión (`revision.py:326`). El orden de los pares no cambia
+  (el dict conserva el de la primera fila del par, igual que `setdefault`).
+  El nombre `None` ya lo consumía el front: `conCodigo` en `js/revision.js`
+  pinta el código, y `nombreDeProveedor` de `js/volcado.js` cae al código con
+  `||`; los tests JS ya traen pares con `proveedor_nombre: null`. Suites api y
+  front en verde.
+- [x] **Docstrings veraces.** El de `_pares` dice que el nombre sale de
+  `nombres_de_los_pares`, la misma función de `validar_valores`: cierto, y lo
+  ata el test parametrizado. El de `nombres_de_los_pares` y el de
+  `validar_valores` describen la regla tal como está.
+- [x] **Datos ficticios:** los mismos de la pasada 1 (obra `9901`, `EJ07`,
+  «Carpintería Ejemplo, S.L.», «Promoción Ejemplo»), más nombres `""` y `"   "`.
+- [x] **CONVENTIONS:** primera línea con ruta, español, sin prints ni secretos.
+
+### Observaciones (no bloquean)
+
+- `pares_del_desplegable` (importación) no reutiliza `nombres_de_los_pares`:
+  repite el bucle con un filtro de oficio. El nombre de cada par sale igual (el
+  filtro no afecta al nombre) y los tests del arreglo comparan edición con
+  importación en los tres casos, así que una divergencia futura se vería. Que
+  la importación también la use sería un refactor menor, aparte.
+- El test parametrizado compara `_pares` con la edición, no con la
+  importación: por sí solo no cazaría M1/M2 (las dos partes se mueven juntas),
+  pero los otros tests del fichero sí. Combinados, cubren la cadena entera.
+- Comando: ejecuté `ARNES_SIN_CACHE=1 bash harness/init.sh` en vez de
+  `bash harness/init.sh`, por la nota de la pasada 1 y el protocolo del reviewer.

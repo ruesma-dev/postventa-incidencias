@@ -62,8 +62,10 @@ API_JS = RAIZ_FRONT / "js" / "api.js"
 README = RAIZ_FRONT / "README.md"
 ARCHITECTURE = RAIZ_FRONT.parents[1] / "docs" / "ARCHITECTURE.md"
 
-#: Las migas de `bandeja.html` (R1): `(href, texto)`, en su orden.
-MIGAS_DE_BANDEJA = (("index.html", "Portal de posventa"), ("./#/bandeja", "Bandeja de revisión"))
+#: Las migas de `bandeja.html` (R1): `(href, texto)`, en su orden. F-040 R68 (humano, 2026-11-05)
+#: sustituye el segundo enlace («./#/bandeja») por la miga actual como `<span aria-current="page">`,
+#: sin enlace: aquí queda solo el de la portada; el `span`, en `test_f040_front.py`.
+MIGAS_DE_BANDEJA = (("index.html", "Portal de posventa"),)
 
 #: El texto del pie de la sección `bandeja` (R1, conciliado 2026-10-20).
 PIE_DE_BANDEJA = "Construcciones Ruesma · Posventa · bandeja de revisión."
@@ -142,7 +144,8 @@ def test_f038_r1_migas_de_su_seccion_y_sin_subnavegacion():
 @pytest.mark.parametrize(
     ("viejo", "nuevo", "senal"),
     [
-        ('<a href="./#/bandeja" class="rs-enlace">', '<a href="./#/entrada" class="rs-enlace">', "migas"),
+        # F-040 R68: el enlace de la miga a «./#/bandeja» ya no existe; el control estropea el de la portada.
+        ('<a href="index.html" class="rs-enlace">', '<a href="./#/entrada" class="rs-enlace">', "migas"),
         (
             '<h1 class="rs-titulo">',
             '<nav aria-label="Entrada de incidencias" class="rs-subnav"><a href="importar.html" class="rs-subnav__item">x</a></nav>\n'

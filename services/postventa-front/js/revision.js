@@ -55,6 +55,7 @@
     "oficio_fuera_de_la_obra",
     "par_fuera_de_la_obra",
     "proveedor_ambiguo",
+    "tipo_fuera_de_sigrid",
     "duplicada",
   ];
 
@@ -68,6 +69,8 @@
     oficio_fuera_de_la_obra: "Este oficio ya no está en la obra en Sigrid",
     par_fuera_de_la_obra: "Este proveedor ya no está en la obra con ese oficio",
     proveedor_ambiguo: "Elige el proveedor",
+    // F-040 R66 [D-1] · el motivo de F-072 R24 (texto de su Q-11).
+    tipo_fuera_de_sigrid: "El tipo de reclamación ya no está vigente en Sigrid: elige otro",
     duplicada: "Duplicada de otra fila: descarta una o distínguelas",
   };
 
@@ -134,7 +137,9 @@
     referencia_duplicada_en_lote: "La referencia del parte iba repetida en el mismo envío",
     referencia_en_conflicto: "En Sigrid ya hay un parte con esa referencia que no casa (de otra unidad, sin ficha o repetido)",
     unidad_postventa_no_encontrada: "La unidad no está en la obra en Sigrid",
-    tipo_no_valido: "El tipo de reclamación no existe en Sigrid",
+    // F-040 R65 [D-1] · dice qué hacer: el volcado no relee `auxtrcp` (F-072 R29).
+    tipo_no_valido:
+      "El tipo de reclamación no existe o está de baja en Sigrid: cambia el tipo en la revisión y vuelve a aprobarla",
     clase_no_valida: "La clase de reclamación no existe en Sigrid",
     oficio_no_esta_en_la_obra: "El oficio no está en la obra en Sigrid",
     interviniente_no_esta_en_la_obra: "El oficio y el proveedor no están juntos en la obra en Sigrid",
@@ -204,6 +209,8 @@
   const LARGO_DESCRIPCION_CORTA = 80;
 
   const TEXTO_FUERA_DE_LISTA = "no está en la lista de Sigrid de hoy";
+  /** F-040 R67 · la marca del tipo de reclamación que ya no está entre los vigentes. */
+  const TEXTO_LISTADO_NO_VIGENTE = "ya no vigente en Sigrid";
   const LITERAL_NORMALIZAR = "sistema:normalizar_ubicacion";
   const TEXTO_NORMALIZAR = "el sistema (ubicación puesta en el texto exacto de Sigrid)";
 
@@ -503,7 +510,7 @@
     return { obra: datos.obra, filas: filas };
   }
 
-  /** R5 · el resumen de toda la obra, de la respuesta: seis estados y nueve motivos. */
+  /** R5 · el resumen de toda la obra, de la respuesta: seis estados y diez motivos (F-040 R66). */
   function presentarResumen(resumen) {
     if (!resumen) {
       return null;
@@ -545,7 +552,8 @@
       case "urgencia":
         return v.urgencia ? etiquetaDe(cat.urgencias, v.urgencia) : "sin urgencia";
       case "listado":
-        return v.listado ? etiquetaDe(cat.listados, v.listado) : "sin listado";
+        // F-040 R67 · la etiqueta o el código, nunca «sin listado» (el backend no devuelve nulo).
+        return etiquetaDe(cat.listados, v.listado);
       default:
         return "";
     }
@@ -724,6 +732,22 @@
         texto: marcado(conCodigo(v.unidad_nombre, v.unidad_codigo)),
         fueraDeLista: true,
       });
+    }
+    return opciones;
+  }
+
+  /**
+   * F-040 R67 [D-3] · los tipos de reclamación vigentes (`catalogo.listados`),
+   * sin opción en blanco; si el tipo `actual` de la incidencia no está entre
+   * ellos, una opción más con su código y «(ya no vigente en Sigrid)», para
+   * guardar sin cambiarlo (F-072 R21).
+   */
+  function opcionesDeListado(catalogo, actual) {
+    const opciones = ((catalogo && catalogo.listados) || []).map(function (listado) {
+      return { codigo: listado.codigo, etiqueta: listado.etiqueta, fueraDeLista: false };
+    });
+    if (actual && !estaEn(opciones, actual)) {
+      opciones.push({ codigo: actual, etiqueta: actual + " (" + TEXTO_LISTADO_NO_VIGENTE + ")", fueraDeLista: true });
     }
     return opciones;
   }
@@ -1302,7 +1326,7 @@
           oficios: opcionesDeOficio(catalogo, f.vigentes),
           proveedores: proveedoresDe(catalogo, f.oficio_codigo, f.vigentes),
           urgencias: catalogo.urgencias || [],
-          listados: catalogo.listados || [],
+          listados: opcionesDeListado(catalogo, f.vigentes.listado),
         };
       },
 
@@ -1440,6 +1464,7 @@
     ajustarResumen: ajustarResumen,
     ubicacionesDe: ubicacionesDe,
     opcionesDeUnidad: opcionesDeUnidad,
+    opcionesDeListado: opcionesDeListado,
     opcionesDeUbicacion: opcionesDeUbicacion,
     opcionesDeOficio: opcionesDeOficio,
     proveedoresDe: proveedoresDe,

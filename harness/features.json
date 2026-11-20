@@ -694,12 +694,12 @@
         "Cada parte creado lleva los mismos campos que el alta manual de docs/referencia/04_alta_incidencia_sigrid.md",
         "bash harness/init.sh en verde"
       ],
-      "status": "blocked",
+      "status": "in_progress",
+      "spec_aprobada": "2026-11-19",
       "sdd": true,
       "rigor": "critico",
       "priority": 6,
-      "branch": "feature/F-040-volcado-sigrid",
-      "blocked_by": "Aparcada por el humano el 2026-11-05 para hacer F-071 (urgente). No hay fallo. Hecho y en dev (ed935ad): Bloque 1, T4, T5.1, T5.2, T6a (enlaces a bandeja.html, APPROVED; M4 y M5 aceptados por escrito por el humano el 2026-11-05). Decisiones del humano 2026-11-05: miga de pan de bandeja.html como texto sin enlace; tarjeta del inicio a «En producción». Al retomar: T5.3 (clic del humano con la ventana cerrada), T5.4 (F-072 ya está en producción desde el 2026-11-18: se puede hacer), T5.6, resto de T6, T6 bis, T7."
+      "branch": "feature/F-040-volcado-sigrid"
     },
     {
       "id": "F-041",

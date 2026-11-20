@@ -635,9 +635,9 @@ por enlace (F-057).
 
 ## El panel de volcado (F-040)
 
-**Añadido el 2026-10-31 por F-040 (Bloque 1); sin publicar todavía** (la
-publicación y la prueba en producción son T4 y T5 de
-`specs/F-040-volcado-sigrid/tasks.md`, del humano).
+**Añadido el 2026-10-31 por F-040 (Bloque 1); publicado el 2026-11-02** (T4 de
+`specs/F-040-volcado-sigrid/tasks.md`; la prueba en producción, T5, es del
+humano). El tipo de reclamación (F-072) entra con el Bloque 1 bis (2026-11-19).
 
 Vive en `bandeja.html`, entre el resumen de la obra y la lista, **dentro del
 mismo componente** (`appRevision`, un solo `x-data` por página): su estado
@@ -665,9 +665,13 @@ El orden es fijo y cada paso sale de un clic, nunca solo:
    en el primer fallo. Enseña la tabla de lo que se crearía con los nombres
    del catálogo, lo excluido con su motivo, lo que cambió en Sigrid desde el
    registro y la cuenta atrás hasta que el ensayo caduca. Con algún ya creado
-   (`idempotente`), relee el panel y la bandeja.
-4. **«Volcar N partes»** solo abre la confirmación: el recuento por unidad y
-   un campo donde **hay que teclear N**. El segundo botón manda
+   (`idempotente`), relee el panel y la bandeja. La columna «Tipo» enseña el
+   **tipo de reclamación** (F-072) que el backend pone en `envio.tipo`, con la
+   etiqueta de `catalogo.listados` (sin ella, el código tal cual); con más de
+   un tipo entre lo que se crearía, también su recuento. Un tipo de baja sale
+   «No se crea» (`tipo_no_valido`), con qué hacer, y no cuenta en N.
+4. **«Volcar N partes»** solo abre la confirmación: el recuento por unidad (y
+   por tipo, si hay más de uno) y un campo donde **hay que teclear N**. El segundo botón manda
    `POST /api/volcado/volcar`, un ensayo cada vez y en su orden, y **para ante
    cualquier cosa**: un error, un corte, un `sin_respuesta` o un ensayo
    caducado. Enseña qué se creó (con su RS), qué ya estaba, qué se rechazó,

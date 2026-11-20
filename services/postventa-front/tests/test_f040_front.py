@@ -500,3 +500,102 @@ def test_f040_r58_la_documentacion_cuenta_el_panel(ruta, titulo, palabras):
     problemas = palabras_que_faltan(ruta.read_text(encoding="utf-8"), titulo, palabras)
 
     assert problemas == [], f"{ruta.name}: " + "; ".join(problemas)
+
+
+# --- Bloque 1 bis · R63, R64, R67, R68 y R58 (el tipo de F-072, Q-11 y la miga) ----------------
+
+
+def _migas(doc):
+    navs = [e for e in doc.elementos() if e.nombre == "nav" and e.atributos.get("aria-label") == "Estás en"]
+    assert len(navs) == 1, f"{len(navs)} migas; tiene que haber una"
+    return navs[0]
+
+
+def problemas_r68_migas(html: str) -> list[str]:
+    """R68: «Portal de posventa › Bandeja de revisión», con la actual como texto sin enlace. Vacío = correcto."""
+    migas = _migas(leer_html_texto(html))
+    problemas = []
+    enlaces = [(a.atributos.get("href"), a.texto()) for a in migas.elementos() if a.nombre == "a"]
+    if enlaces != [("index.html", "Portal de posventa")]:
+        problemas.append(f"las migas enlazan {enlaces}; solo la portada (index.html) es un enlace")
+    actuales = [e for e in migas.elementos() if e.atributos.get("aria-current") == "page"]
+    if [(e.nombre, e.texto(), "href" in e.atributos) for e in actuales] != [("span", "Bandeja de revisión", False)]:
+        problemas.append('la miga actual es <span aria-current="page">Bandeja de revisión</span>, sin enlace')
+    return problemas
+
+
+def test_f040_r68_la_miga_actual_es_texto_sin_enlace():
+    assert problemas_r68_migas(_bandeja()) == []
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo"),
+    [
+        (
+            '<span aria-current="page">Bandeja de revisión</span>',
+            '<a href="./#/bandeja" class="rs-enlace">Bandeja de revisión</a>',
+        ),
+        ('<span aria-current="page">Bandeja de revisión</span>', "<span>Bandeja de revisión</span>"),
+        ('<span aria-current="page">Bandeja de revisión</span>', '<span aria-current="page">Bandeja</span>'),
+    ],
+    ids=["actual-como-enlace", "actual-sin-aria-current", "actual-con-otro-texto"],
+)
+def test_f040_r68_control_una_miga_actual_mal_salta(viejo, nuevo):
+    real = _bandeja()
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    assert problemas_r68_migas(real.replace(viejo, nuevo)) != []
+
+
+def _campo_listado(doc):
+    etiquetas = [e for e in doc.elementos() if e.nombre == "label" and any(
+        "rs-campo__etiqueta" in h.atributos.get("class", "") and "Listado" in h.texto() for h in e.elementos()
+    )]
+    assert len(etiquetas) == 1, f"{len(etiquetas)} campos «Listado»; tiene que haber uno"
+    return etiquetas[0]
+
+
+def test_f040_r67_el_campo_listado_se_rotula_tipo_de_reclamacion_y_sin_opcion_en_blanco():
+    campo = _campo_listado(leer_html_texto(_bandeja()))
+    rotulo = next(h for h in campo.elementos() if "rs-campo__etiqueta" in h.atributos.get("class", ""))
+    assert rotulo.texto() == "Listado (tipo de reclamación)"
+    opciones = [e for e in campo.elementos() if e.nombre == "option"]
+    assert [o for o in opciones if o.atributos.get("value") == ""] == [], "ninguna <option value=\"\"> (D-3)"
+    assert all(":value" in o.atributos for o in opciones), "las opciones salen todas de opciones().listados"
+    plantillas = [e.atributos.get("x-for") for e in campo.elementos() if e.nombre == "template"]
+    assert plantillas == ["opcion in opciones().listados"]
+
+
+def test_f040_r67_opciones_listados_sale_de_opciones_de_listado():
+    codigo = _sin_comentarios(REVISION_JS.read_text(encoding="utf-8"))
+    assert re.search(r"listados:\s*opcionesDeListado\(catalogo,\s*f\.vigentes\.listado\)", codigo)
+    assert "Sin listado" not in _sin_comentarios_html(_bandeja())
+
+
+def test_f040_r64_el_resumen_del_ensayo_dice_el_recuento_por_tipo():
+    doc = leer_html_texto(_bandeja())
+    panel = _panel(doc)
+    textos = [e for e in panel.elementos() if e.atributos.get("x-text") == "volcadoPorTipo()"]
+    assert len(textos) == 1, "el resumen del ensayo enseña volcadoPorTipo() una vez"
+    assert textos[0].atributos.get("x-show") == "volcadoPorTipo()", "sin recuento por tipo (un tipo) no se pinta"
+    assert any(
+        e.nombre == "template" and e.atributos.get("x-if") == "volcado.vistaEnsayo" for e in textos[0].ancestros()
+    ), "va dentro del bloque del ensayo"
+
+
+DOCUMENTACION_F040_TIPO = (
+    (README, "El panel de volcado (F-040)"),
+    (ARCHITECTURE, "El panel de volcado (F-040)"),
+)
+
+
+@pytest.mark.parametrize(("ruta", "titulo"), DOCUMENTACION_F040_TIPO, ids=["readme-r63", "architecture-r63"])
+def test_f040_r58_r63_la_documentacion_cuenta_el_tipo_y_ya_no_dice_sin_publicar(ruta, titulo):
+    texto = ruta.read_text(encoding="utf-8")
+    problemas = palabras_que_faltan(texto, titulo, ("tipo de reclamación", "catalogo.listados", "F-072"))
+    inicio = texto.index("## " + titulo)
+    fin = texto.find("\n## ", inicio + 1)
+    if "sin publicar todavía" in texto[inicio : fin if fin != -1 else None]:
+        problemas.append(f"«{titulo}» aún dice «sin publicar todavía» (publicado el 2026-11-02)")
+
+    assert problemas == [], f"{ruta.name}: " + "; ".join(problemas)

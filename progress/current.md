@@ -1,11 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Arreglo `Ajustes` sin secretos en `repr` · BLOQUEADO en init.sh (implementer, 2026-11-19)
-> Rama `fix/ajustes-sin-secretos-en-repr`: RED 36a6b3f, GREEN ad3c963, suite del API en verde
-> (10374 passed). `init.sh` en rojo SOLO por el front: 16 controles de mutación de F-038 fallan
-> porque el worktree tiene `services/postventa-front` en CRLF (`core.autocrlf=true`). No es de
-> este cambio. Sin apaños: decide el líder o el humano (`progress/impl_fix_ajustes_sin_secretos_en_repr.md`).
+> ## F-040 · `in_progress`: Bloque 1 bis APROBADO y en `dev` (líder, 2026-11-20)
+> Spec aprobada por el humano el 2026-11-19 (D-1..D-8 = (a), `design.md` §12). T8 (líder), T9–T11 (implementer,
+> mutación 50/50) y review APROBADO (`progress/review_F-040.md`). Mergeado en `dev`. Siguiente: T12 (humano,
+> publicar el front), después T5.3–T5.6 en la 0626 con la escritura real solo con su OK expreso (R69).
+
+> ## Arreglo `Ajustes` sin secretos en `repr` · integrado en `dev` (`5e44232`), review APROBADO (2026-11-19)
 
 > ## F-072 · CERRADA (líder, 2026-11-18)
 > T24 y T26 en verde en producción (`progress/impl_F-072_despliegue.md`), T27 y T28 hechos:

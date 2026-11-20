@@ -1626,7 +1626,8 @@ Nuestros partes se reconocen por la referencia `PVI-` en `RCPCLI`
 
 ## El panel de volcado (F-040)
 
-**Añadido el 2026-10-31 por F-040 (Bloque 1); sin publicar todavía.** Es la
+**Añadido el 2026-10-31 por F-040 (Bloque 1); publicado el 2026-11-02 (`dev`
+`b9a66db`); el tipo de reclamación, del Bloque 1 bis (2026-11-19).** Es la
 cara de las rutas de **F-059** y de la sincronización de **F-065**: el front
 no añade ninguna ruta ni toca el backend.
 
@@ -1641,6 +1642,15 @@ no añade ninguna ruta ni toca el backend.
   `js/api.js`; las tres que no son la lectura del panel, sin reintentos.
 - **Qué escribe.** Solo el volcado escribe, y escribe en Sigrid a través del
   backend (F-059): el front no habla con Sigrid ni con la base.
+- **El tipo de reclamación (F-072).** Cada parte del ensayo lleva en
+  `envio.tipo` el tipo efectivo que pone el backend; el panel no lo calcula ni
+  lee `auxtrcp`: lo enseña con la etiqueta de `catalogo.listados` de
+  `GET /api/revision` (sin ella, el código tal cual). Con más de un tipo entre
+  lo que se crearía, el resumen del ensayo y la confirmación dicen además el
+  recuento por tipo. Un tipo dado de baja sale `rechazado` `tipo_no_valido`
+  («No se crea», con qué hacer) y no cuenta en N. En la revisión, el campo es
+  «Listado (tipo de reclamación)», sin opción en blanco y con el tipo no
+  vigente marcado; el motivo `tipo_fuera_de_sigrid` tiene su texto (Q-11).
 - **Lo que no hace.** No pasa nada a PTE (se avisa de que es a mano), no
   anula ni corrige un parte creado y no guarda la `ficha` de las reclamaciones
   de Sigrid.

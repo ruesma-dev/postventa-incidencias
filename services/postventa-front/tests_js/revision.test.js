@@ -192,9 +192,12 @@ function errorApi(http, codigo, detalle, mensaje) {
   return error;
 }
 
-// --- R4 (a) · los nueve motivos, en su orden -----------------------------------
+// --- R4 (a) · los diez motivos, en su orden -----------------------------------
+// Enmienda de F-040 R66 (Bloque 1 bis, 2026-11-19): eran nueve; F-072 R24 añade
+// `tipo_fuera_de_sigrid` entre `proveedor_ambiguo` y `duplicada`, con el texto
+// de D-1. Lo propio de R66, en `tests_js/f040_tipo.test.js`.
 
-test("f038 R4 (a): los nueve motivos de MotivoNoAprobable, en su orden y con su texto", () => {
+test("f038 R4 (a) [F-040 R66]: los diez motivos de MotivoNoAprobable, en su orden y con su texto", () => {
   assert.deepEqual(Revision.MOTIVOS, [
     "unidad_fuera_de_la_obra",
     "sin_ubicacion",
@@ -204,8 +207,10 @@ test("f038 R4 (a): los nueve motivos de MotivoNoAprobable, en su orden y con su 
     "oficio_fuera_de_la_obra",
     "par_fuera_de_la_obra",
     "proveedor_ambiguo",
+    "tipo_fuera_de_sigrid",
     "duplicada",
   ]);
+  assert.equal(Revision.textoMotivo("tipo_fuera_de_sigrid"), "El tipo de reclamación ya no está vigente en Sigrid: elige otro");
   assert.equal(Revision.textoMotivo("unidad_fuera_de_la_obra"), "La unidad ya no es de la obra en Sigrid");
   assert.equal(Revision.textoMotivo("sin_ubicacion"), "Falta la ubicación");
   assert.equal(Revision.textoMotivo("ubicacion_fuera_de_lista"), "La ubicación no está en la lista");
@@ -507,7 +512,8 @@ const TEXTOS_DE_PARTE = [
   ["referencia_duplicada_en_lote", "La referencia del parte iba repetida en el mismo envío"],
   ["referencia_en_conflicto", "En Sigrid ya hay un parte con esa referencia que no casa (de otra unidad, sin ficha o repetido)"],
   ["unidad_postventa_no_encontrada", "La unidad no está en la obra en Sigrid"],
-  ["tipo_no_valido", "El tipo de reclamación no existe en Sigrid"],
+  // F-040 R65 [D-1] (2026-11-19) sustituye «El tipo de reclamación no existe en Sigrid»: dice qué hacer.
+  ["tipo_no_valido", "El tipo de reclamación no existe o está de baja en Sigrid: cambia el tipo en la revisión y vuelve a aprobarla"],
   ["clase_no_valida", "La clase de reclamación no existe en Sigrid"],
   ["oficio_no_esta_en_la_obra", "El oficio no está en la obra en Sigrid"],
   ["interviniente_no_esta_en_la_obra", "El oficio y el proveedor no están juntos en la obra en Sigrid"],
@@ -725,7 +731,8 @@ test("f038 R21.6: «Ya no se revisa aquí» va con volcada y en duda aunque no t
 
 // --- R5 · el resumen de toda la obra -------------------------------------------------
 
-test("f038 R5: el resumen sale del de la respuesta: seis estados y nueve motivos con su texto", () => {
+// F-040 R66: «nueve motivos» pasa a diez (`tipo_fuera_de_sigrid`); la aserción ya sale de Revision.MOTIVOS.
+test("f038 R5 [F-040 R66]: el resumen sale del de la respuesta: seis estados y diez motivos con su texto", () => {
   const vista = Revision.presentarResumen(resumen());
   assert.equal(vista.total, 10);
   assert.equal(vista.aprobadas, 1);

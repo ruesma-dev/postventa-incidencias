@@ -1,457 +1,117 @@
 <!-- progress/review_F-040.md -->
-# F-040 · Review del Bloque 1 (T1, T2, T3)
+# F-040 · Reviews (desde el 2026-11-19)
 
-**Veredicto: CHANGES_REQUESTED** (C-B1-1, C-B1-2; detalle al final).
+Las reviews del Bloque 1, T4 y T6a (hasta el 2026-11-05, veredicto final
+APPROVED) están en `progress/review_F-040_bloque1.md`, renombrado con `git mv`
+por la decisión D-8 (`specs/F-040-volcado-sigrid/design.md` §12): pasaba de la
+puerta TAMAÑO (457/140).
 
-Reviewer, 2026-10-31. Worktree `postventa-f040`, rama `feature/F-040-volcado-sigrid`, commits `0a5e8d2` (T1),
-`238f9a7` (T2) y `3480353` (T3) sobre `44712d6`; base fija `f97ec6e`. Contra `specs/F-040-volcado-sigrid/`
-(conciliada con F-065 en T0), `docs/CONVENTIONS.md`, `docs/ARCHITECTURE.md` y `CHECKPOINTS.md`.
+## Bloque 1 bis (T9–T11)
 
-**`bash harness/init.sh` no lo he ejecutado**, por encargo: lo corre el líder en paralelo. Lo que he ejecutado
-yo, con su salida real:
+Revisión incremental desde be97272 (T8 del líder; base fija 4b1eb21), commits `d1a0e5d` T9, `288ee16` T10, `fc7f986` T11.
+Reviewer, 2026-11-20.
 
-```
-$ python -m pytest services/postventa-front/tests -q -p no:cacheprovider
-910 passed, 7 skipped in 41.98s
-$ cd services/postventa-front && node --test "tests_js/*.test.js"
-ℹ tests 1112   ℹ pass 1112   ℹ fail 0   ℹ duration_ms 34611
-```
+**Veredicto: APROBADO.**
 
-## Nivel de rigor
+**Nivel de rigor:** `critico`, declarado en `harness/features.json`. Exige RED con salida real, cobertura (N/A por
+lenguaje, abajo), mutación con cero supervivientes sin aceptación escrita y las reglas RM1–RM7.
 
-`critico`, declarado en `harness/features.json` (F-040, `in_progress`, `sdd: true`). Exige fase RED con traza,
-cobertura de lo cambiado y mutación con cero supervivientes salvo aceptación escrita del humano, más la regla
-de orden (mutantes que bajan una puerta un paso).
+### C1 · `ARNES_SIN_CACHE=1 bash harness/init.sh` en el worktree `postventa-f040`, sobre `fc7f986`
 
-## Lo pedido expresamente por el líder
+Exit 0, «ENTORNO LISTO». Raíz 2202 passed / 48 skipped (24 min 58 s); API 10365 passed / 485 skipped (43 min, sin
+caché); front 920 passed / 7 skipped (46,7 s; incluye `test_f007_js`, la suite JS entera: BN12 de F-038 en verde
+ahora que el front está en LF). `PUERTA COBERTURA: N/A (F-040 no cambia líneas Python de producción frente a dev)`;
+`PUERTA TAMAÑO` dentro de los topes; `CAPA E2E: N/A`. Avisos: ruff 112 (deuda previa) y el de `spec_aprobada` (obs. 1).
 
-| Punto | Veredicto | Cómo lo he comprobado |
+### Trazabilidad R63–R68 → código → test
+
+| R | Código (T10) | Tests (y mutantes que he matado yo) |
 |---|---|---|
-| RED real antes del GREEN | **Sí** | `0a5e8d2` solo trae tests (`git show --stat`: ningún `js/` de producción); la traza de `impl_F-040.md` §T1 es salida real de pytest (25 failed) y de node (12 fail, «Cannot find module '../js/volcado.js'»). El propio implementer reconoce que los de `volcado.test.js` caen juntos por el módulo ausente y lo suple con la mutación de T3, que he muestreado (abajo) |
-| Solo `services/postventa-front` (+ README y `docs/ARCHITECTURE.md`) | **Sí** | `git diff --stat 44712d6..HEAD`: front, `docs/ARCHITECTURE.md`, `progress/` y `tasks.md`. Nada en `services/postventa-api`, `infra/`, `staticwebapp.config.json`, ni en los ficheros de «No se toca» de `design.md` §5 |
-| Las tablas de F-038 R21 no cambian | **Sí** | El diff de `js/revision.js` son 14 líneas: el aviso de `cargar()` y la composición de `appRevision()`. `lineaDeVolcado`/`textoMotivoVolcado` intactas |
-| Tests de F-036/F-038 tocados, justificados | **Sí** | `test_f038_front.py` (`SCRIPTS_DE_BANDEJA` 4→5; `_FILTROS_DEL_PANEL` con los dos campos nombrados uno a uno, no `volcado.*`) y `revision.test.js` (los tres constructores componen `Volcado.conPanel` como la página; ninguna aserción cambia), todos con enmienda fechada; `api.test.js` 20→24. Coinciden con `design.md` §5 |
-| Lo que choca solo con su casilla y con todos sus `sigrid_cods` | **Sí** | `paraEnsayar` exige `grupo === "choca" && incluible && incluidas[id] === true`; `confirmadosDelTrozo` copia `fila.sigrid_cods` entero y filtra al trozo. Mutantes E3, E5, E10, E12 muertos (E3 repetido por mí: 8 tests de F-040 en rojo) |
-| Ensayo, volcado y sincronización no se reintentan | **Sí** | `js/api.js`: `revisionSigrid`, `volcadoEnsayo`, `volcadoVolcar` con `sinReintentos: true`; el panel no tiene bucle de reintento. A1–A3 muertos (A3 repetido por mí: muere) |
-| La respuesta de la sincronización no va a `console` ni a almacenamiento | **Sí** | `volcado.js` y `bandeja.html` sin `console.`/`localStorage`/`sessionStorage`/`indexedDB`/`cookie` (test parametrizado); el panel guarda solo `grupos` en memoria, con `reclamacionSinFicha` (sin `ficha`); la traza de `api.js` solo lleva hash, paso, estado y http (test de `api.test.js`) |
-| Un solo flujo escribe con `confirmado: true` | **Sí** | Solo `cuerpoDeVolcado` lo pone; solo `volcar()` llama a `cuerpoDeVolcado` y a `api.volcadoVolcar`; `volcar()` exige `confirmando`, el número tecleado y `volcadoPuedeVolcar()`. El HTML no nombra `confirmado` |
-
-## Las dos lecturas abiertas: decisión
-
-1. **`volcadoPanel` (GET) reintenta: correcto, se queda así.** Los requisitos mandan sobre el resumen de
-   tareas: R53.2 limita `sinReintentos` a «las peticiones de ensayo y de volcado» y R60 a la sincronización;
-   `design.md` §3.3 da a `volcadoPanel` solo `mensajeDelServicio`. `GET /api/volcado` lee nuestra base y **no
-   lee Sigrid** (`design.md` §1), así que reintentarla no es el «reintento contra el ERP» que §0 teme. El riesgo
-   es nulo y el mutante A6 fija la decisión. Lo que hay que arreglar es la letra de la spec, no el código:
-   `tasks.md` T2 («las tres de F-059 con `sinReintentos`») y la fila 3.3 de `design.md` §9 («`sinReintentos` …
-   en las tres funciones») contradicen §3.3. Para el spec-author (O-2).
-2. **«Un solo `confirmado: true`» como recuento por fichero más uno en `js/volcado.js`: correcto.** R52 dice
-   literalmente «aparece en **una sola** función de `js/volcado.js`»; «en todo el front» (`design.md` §7,
-   `tasks.md` T1) es imposible en sentido literal: `oficios.js`, `pipeline.js` y `revision.js` ya traían uno cada
-   uno en `f97ec6e` para sus propias rutas. El test fija `CONFIRMADO_TRUE_POR_FICHERO` contra el código sin
-   comentarios de **todos** los `js/*.js` y `*.html`, así que uno nuevo en cualquier sitio salta, y comprueba que
-   el de `volcado.js` está dentro de `cuerpoDeVolcado`. Es más fuerte que la letra. Ajuste de la letra en
-   `design.md` §7 y `tasks.md` T1, para el spec-author (O-2).
-
-## `azure-apps/postventa_incidencias.md` (R58)
-
-**No en este bloque: con la publicación (T4), no después.** El documento describe lo desplegado; hoy el panel no
-lo está, y escribirlo ahora sería un documento que parece vigente y no lo es. La regla de mantenimiento ata la
-actualización al momento en que **cambia lo que el proyecto consume en producción**, que es T4. Hoy `tasks.md` la
-pone en T6 bis, dentro del Bloque 3, que espera a F-038 `done` (C-1): eso puede dejar el documento atrasado
-semanas con el panel ya publicado. Recomiendo al líder **mover T6 bis al Bloque 2, junto a T4** (O-3). No bloquea
-este bloque.
-
-## Hallazgos que piden cambios
-
-### C-B1-1 · Cargar otra obra con una serie en marcha suelta la serie: la guarda de salida deja de preguntar y «Registrar» vuelve a habilitarse (R55, R56)
-
-`js/volcado.js` l. 926–933 (`volcadoAlCargar`): si `obraCargada` cambia, sustituye `this.volcado` por
-`estadoInicial(obra)` **sin mirar si hay una serie en vuelo**. El botón «Cargar» de `bandeja.html` l. 132 solo se
-desactiva con `cargando` (de la bandeja), no con el panel, y los filtros (l. 117, 129) también llaman a
-`cargar()`. Reproducido con el `api` doble y el reloj doble, en mi scratchpad (no en el árbol):
-
-```
-en marcha: true fase volcando
-tras cargar otra obra: hayVolcadoEnMarcha false puedeRegistrar true obra panel 9902
-resultado visible en el panel nuevo: null
-```
-
-Es decir, a mitad de un volcado de 57 trozos (minutos, `design.md` §8.5):
-
-- el bucle de `volcar()` sigue escribiendo en Sigrid sobre el objeto viejo, que ya nadie pinta;
-- `hayVolcadoEnMarcha` lee el estado nuevo y da `false`: **cerrar la pestaña ya no pregunta** (R55);
-- «Registrar» queda habilitado en la obra nueva con una petición del volcado aún en vuelo, y se puede lanzar
-  una segunda serie en paralelo contra la pasarela (R56; `design.md` §8.3 descarta el paralelo);
-- el resultado (creados, en duda, sin volcar) **se pierde** sin enseñarse (R53.2, R53.4), y `detenerReloj()`
-  mata la cuenta atrás del ensayo viejo.
-
-Igual en la fase `ensayando` y `sincronizando`. Ningún test lo cubre: el de O9 fija el reinicio con el panel
-parado.
-
-**Cambio pedido**: que no se pueda cambiar de obra con una serie en marcha. La forma más corta: `volcadoAlCargar`
-no reinicia el panel mientras `this.volcado.enVuelo` (o la fase sea `sincronizando`/`ensayando`/`volcando`), **y**
-el botón «Cargar» y los dos filtros de la bandeja `:disabled` también con `hayVolcadoEnMarcha()` (o
-`volcado.enVuelo`). Si se elige tocar el `:disabled` de controles de F-038, es una enmienda de su HTML a citar con
-el porqué, como las de `design.md` §5. Test de F-040 que lo fije con el `api` doble: con un volcado en vuelo,
-cargar otra obra no cambia `volcado.obra`, `hayVolcadoEnMarcha` sigue `true`, «Registrar» sigue
-deshabilitado, y al terminar el resultado está en el panel. Y su mutante a mano (quitar la condición) en
-`mutacion_F-040.md`.
-
-### C-B1-2 · Un volcado que falla sin un código de «nada escrito» se da por «sin volcar» en vez de «en duda» (R53.2, R53.4, `design.md` §3.1)
-
-`js/volcado.js` l. 781–801 (`juntarVolcados`): del trozo que paró, solo van a «en duda» los de un corte
-(`http` nulo), los de `volcado_sin_traza` y los `en_duda` de `volcado_sin_respuesta`; **todo lo demás** va a
-«sin volcar». Eso incluye un **500 sin `codigo`** (una excepción no controlada de la Function, que puede llegar
-después de que Sigrid haya escrito) y cualquier 502/504 del proxy o de la plataforma sin cuerpo JSON
-(`ErrorApi.codigo` nulo). Reproducido:
-
-```
-500 sin codigo -> enDuda [] sinMandar [ 'a', 'b' ]
-504 sin codigo -> enDuda [] sinMandar [ 'a' ]
-```
-
-`design.md` §3.1 dice de `juntarVolcados`: «en duda (de los `sin_respuesta`, de `en_duda` del 502, **del trozo
-del 500** o del corte)», sin restringirlo a `volcado_sin_traza`; y §0 pone como riesgo que «la persona cree
-creado lo que está en duda, o al revés». «Sin volcar» le dice a la persona que ese trozo no llegó a Sigrid, que
-es justo lo que el panel no sabe. El texto de la parada (`textoDeParada`, l. 712 y 715) tampoco lo dice: «El
-servicio respondió 500.».
-
-**Cambio pedido**: en la fase `volcado`, clasificar por **lista blanca de lo que la spec documenta como «nada
-escrito»** (`design.md` §1 y §3.2: 400 `peticion_invalida`; 409 `ensayo_no_valido`, `usuario_sigrid_no_mapeado`,
-`usuario_sigrid_inexistente`, `volcado_rechazado_por_la_pasarela`; 502 `ensayo_sin_respuesta`; 503
-`volcado_deshabilitado`, `volcado_rechazado_por_la_pasarela`, `configuracion_de_volcado_invalida`,
-`configuracion_sigrid_incompleta`, `base_de_datos_no_disponible`) → «sin volcar»; `volcado_sin_respuesta` → sus
-`en_duda`; **cualquier otra cosa** (corte, `volcado_sin_traza`, sin `codigo`, código desconocido) → todo el trozo
-«en duda», y `textoDeParada("volcado", …)` con el texto de «no se sabe» de `TEXTO_SIN_RESPUESTA_VOLCADO` (o uno
-equivalente que diga el HTTP). Tests en `volcado.test.js` para 500 sin código, 502 sin código y un código
-desconocido en el volcado, y su mutante a mano. Si el implementer o el líder creen que un 500 sin código
-**no** puede llegar tras escribir, que lo argumente con el código de `function_app.py` y lo decida el humano;
-entonces bastaría con el texto.
-
-## Observaciones (no bloquean)
-
-- **O-1 · «Va» sale casi entero «sin descripción».** `agruparSincronizacion` saca la descripción de
-  `respuesta.incidencias`, que F-065 solo rellena para las incidencias **con algún hallazgo**
-  (`sigrid_bandeja.py` `_incidencias`, l. 286–303). Las de «va» sin hallazgos —en la VILLA 15, casi todas—
-  se pintan «VILLA 15 sin descripción». La spec no exige descripción en «va», así que no es un incumplimiento,
-  pero en T5 se verá. Si se quiere, el texto podría ser neutro («sin coincidencias en Sigrid») en vez de
-  «sin descripción».
-- **O-2 · Letra de la spec** (para el spec-author): `tasks.md` T2 y `design.md` §9 fila 3.3 frente a §3.3 sobre
-  `volcadoPanel`; `design.md` §7 y `tasks.md` T1 «un solo `confirmado: true` en todo el front» frente a R52.
-- **O-3 · T6 bis** al Bloque 2, junto a T4 (sección anterior).
-- **O-4 · Volcar con «algo ha cambiado en Sigrid» a la vista.** Con `guarda.hayCambios` el panel pide volver a
-  registrar pero deja volcar lo previsto. Coherente con la spec (lo excluido no viaja y lo previsto pasó la
-  guarda); lo anoto por si el humano prefiere bloquear el volcado en ese caso.
-
-## Mutación: verificación independiente
-
-- **`harness.mutacion`: 0 mutantes es legítimo.** Recalculado con `harness.alcance.parsear_diff` y
-  `filtrar_produccion` sobre `git diff -U0 f97ec6e..HEAD`: los únicos `.py` del diff son
-  `tests/test_f038_front.py` y `tests/test_f040_front.py`; producción `{}`. **Prueba de control** (ignorando la
-  exclusión de alcance): `generar_mutantes` da 0 en `test_f038_front.py` y 116 en `test_f040_front.py`: el
-  generador funciona, el cero es exclusión por diseño. Campaña de la herramienta no reejecutada: 0 mutantes
-  en 0,0 s, no hay nada que reejecutar.
-- **La campaña a mano, muestreada en una copia desechable** del front en mi scratchpad (`node --test
-  tests_js/volcado.test.js tests_js/api.test.js`, solo tests de la propia feature):
-
-  | Mutante | Resultado | Primer test que lo caza (de F-040) |
-  |---|---|---|
-  | V3 (sin «ningún ensayo con previstos → false») | **vivo**, 0 fallos | — |
-  | R2 (`volcado_sin_traza` no deja el trozo en duda) | muerto, 2 | f040 R53.2, R53.4: en duda salen los sin_respuesta… |
-  | A3 (`revisionSigrid` sin `sinReintentos`) | muerto, 1 | f040 R53, R60: … NO se reintentan |
-  | E3 (lo que choca entra sin casilla) | muerto, 8 | f040 R61: un veredicto desconocido va a choca SIN casilla |
-
-- **Regla de orden (rigor `critico`)**, mutantes que bajan la puerta un paso, en la misma copia:
-
-  | Mutante | Puerta que baja | Resultado |
-  |---|---|---|
-  | ORD1 | la caducidad del trozo, de antes a después de `api.volcadoVolcar` | muerto, 1: «f040 R53.1: con el ensayo de un trozo caducado, ese trozo no se manda» |
-  | ORD2 | la guarda `volcadoPuedeEnsayar()` de `ensayar()`, quitada de delante de la serie | muerto, 9: «f040 R60: con la sincronización en 400 …, ni ensaya ni deja ensayar» |
-  | ORD3 | la fase `sincronizado` (y unos grupos) puesta **antes** de `api.revisionSigrid` | muerto, 7: el mismo test de R60 |
-
-  Los tres los caza un test de la propia feature. Copia borrada del flujo; `git status` del worktree, limpio.
-- **V3 es equivalente: el razonamiento es correcto.** Sin ensayos con previstos, `caducidadMasTemprana([])` da
-  `null`; `caducado({caduca_at_utc: null})` hace `Date.parse("")` → `NaN` → `true` (comportamiento fijado por
-  V7), y `puedeVolcar` devuelve `false` igual. No hay entrada que distinga la versión mutada mientras `caducado`
-  trate lo ilegible como caducado. Mantener la línea es lo correcto (dice la regla de R52 sin depender de un
-  efecto lateral). **La aceptación escrita del humano sigue pendiente**; sin ella, en `critico`, C4 bis no cierra.
-
-## Checkpoints
-
-### C1 — El arnés está completo y en verde
-- [ ] `bash harness/init.sh` exit 0 — **no ejecutado por mí por encargo**; lo corre el líder. Las dos suites del
-  front, en verde (arriba). Sin su resultado este punto no se puede marcar.
-- [x] Existen `CLAUDE.md`, `harness/features.json`, `specs/SPECS.md`, etc.
-
-### C2 — El estado es coherente
-- [x] Una sola `in_progress` en el `features.json` de la rama (F-040). La comprobación global la hace `init.sh`.
-- [x] Rama `feature/F-040-volcado-sigrid`.
-- [x] `progress/current.md` actualizado en T2 con la sesión.
-- N/A Toda feature `done` con resumen en `history.md`: F-040 no pasa a `done` en este bloque.
-
-### C3 — Arquitectura y convenciones
-- [x] Arquitectura: front sin backend; `js/volcado.js` lógica pura separada del componente (`conPanel`); solo
-  habla con `api` inyectado; una sola `x-data`.
-- [x] Primera línea con la ruta en `js/volcado.js`, `tests_js/volcado.test.js`, `tests_js/recorrido_html.js`,
-  `tests/test_f040_front.py` (y test que lo fija).
-- [x] Sin `console`/`print` de debug, sin secretos; datos de test ficticios (`9901`, `@ejemplo.invalid`, `EJ11`,
-  test `datos_reales`).
-- N/A Parte como unidad, lo manuscrito, firmado ≠ conforme, reprocesar: son del pipeline de partes escaneados;
-  este bloque es el panel de volcado y no los toca.
-- [x] Nada hardcodea un número de estado de Sigrid: el panel usa los veredictos y estados del backend; `NPR` solo
-  para elegir un texto.
-- [x] Ningún escaneado ni PDF en git.
-
-### C3 bis — Documentos de fuera
-- N/A No entra ningún documento externo en este bloque.
-
-### C4 — La verificación es real
-- [x] Cada requisito de este bloque con test (tabla abajo).
-- [x] Sin red ni BBDD: `api` doble, `fetch` doble y reloj doble.
-- [x] MANUAL listadas: T4, T5, T5 bis en `tasks.md`.
-
-### C4 bis — El rigor declarado se cumple
-- [x] `rigor: critico` declarado.
-- [x] Fase RED con traza real (`impl_F-040.md` §T1).
-- [x] Cobertura: **N/A justificado por el lenguaje** — el código de producción cambiado es JS y HTML y la puerta
-  `PUERTA COBERTURA` mide `.py`; lo sustituye la mutación a mano, muestreada arriba. La línea de `init.sh` la
-  verá el líder.
-- [x] Mutación: `harness.mutacion` con 0 mutantes, verificado como legítimo (recálculo y control); campaña a mano
-  documentada con cada mutante y su test asesino, muestreada y con tres mutantes de orden míos.
-- [x] Los muertos comprobados: 4 + 3 repetidos en copia desechable, todos cazados por tests de F-040.
-- N/A Tiempo de campaña / workers: la herramienta no evaluó ningún mutante (0 en 0,0 s); la campaña a mano es
-  serial por mutante (guion con una suite por mutante), sin paralelo que corregir.
-- [ ] **Cero supervivientes salvo aceptación escrita del humano**: V3 es equivalente (razonamiento correcto),
-  pero la aceptación escrita del humano falta. La pide el líder.
-- [x] «Evidencias» con los cuatro números (tests, cobertura N/A con motivo, mutantes 82/1, tiempo de la suite).
-- N/A Guarda por definiciones: ningún fichero sale de una lista de «no se toca».
-- [ ] **Los tests cubren lo que la spec pide en los caminos de fallo**: C-B1-1 y C-B1-2 son huecos de
-  comportamiento que ningún test ve.
-
-### C4 ter — Rutas sensibles
-- N/A No existe `harness/rutas_sensibles.json`.
-
-### C5 — La sesión se cerró bien
-- [x] T1, T2, T3 `[x]` con un commit `F-040 Tn: …` cada una. (T4 en adelante son de otros bloques.)
-- [x] Sin temporales sin trackear (`git status` limpio).
-- [x] `features.json`: F-040 `in_progress`, real.
-
-## Cobertura: requisito → test
-
-| R | Test (node `volcado.test.js` salvo que diga otra cosa) |
-|---|---|
-| R50 | pytest `test_f040_r50_*` (panel dentro del único `x-data`, entre resumen y lista; `js/volcado.js` detrás de `js/revision.js`); node «R50, R56: cargar la obra pide GET /api/volcado (solo lee) y nada más»; `resumenDelPanel` |
-| R60 | «R60: con la sincronización en 400 … para ahí» y el resto de paradas de §3.2 (409 ×3, 503 sin código, otro no-200, corte); `api.test.js` «revisionSigrid NO se reintenta»; pytest `test_f040_r50_r60_registrar_es_el_unico_boton_de_entrada` |
-| R61 | `agruparSincronizacion`: cuatro veredictos en tres grupos, `se_enlaza` marcado, recuento de `por_unidad` (va = va + se_enlaza), porqué anulada / criterios / sin hallazgo, `sinSincronizar`, desconocido sin casilla, sin `ficha`; G2 |
-| R62 | `paraEnsayar`, `confirmadosDelTrozo`, `cuerpoDeEnsayo`, `excluidasDeLaGuarda`, texto del `NPR`; pytest `test_f040_r62_*` (ninguna casilla en «ya existe», casilla por incidencia) |
-| R51 | `trocear` (285/5 = 57, n inválido lanza), `juntarEnsayos` (sin `ensayo_id`, nombres del catálogo), «la serie de ensayos para en el primer no-200» |
-| R52 | `cuerpoDeVolcado`, `puedeVolcar`, `confirmacionValida`, `textoConfirmacion` con recuento; «volcar pide un segundo clic y teclear N»; pytest `test_f040_r52_confirmado_true_solo_en_cuerpo_de_volcado` |
-| R53 | paradas en 400/409/500/502/503/corte/200 con `sin_respuesta`; trozo caducado no se manda; relectura; `api.test.js` sin reintentos. **Hueco: C-B1-2** |
-| R54 | un texto para cada motivo, causa y código (listas exportadas contra los textos); desconocido tal cual; §8.9 por `Revision.textoMotivoVolcado` |
-| R55 | pytest `test_f040_r55_*` (sin consola ni almacenamiento; una sola guarda que pregunta también por el volcado); node `hayVolcadoEnMarcha`. **Hueco: C-B1-1** |
-| R56 | pytest `test_f040_r56_*` (solo desde `@click`, nada al cargar); node «con una serie en marcha, ni registrar, ni ensayar, ni volcar»; sesión completa (E9, V5). **Hueco: C-B1-1** |
-| R58 | pytest `test_f040_r58_la_documentacion_cuenta_el_panel` (README y `ARCHITECTURE.md`); `azure-apps`, pendiente (O-3) |
-| R59 | `avisoDePte` solo con algún `creado` |
-
-## Cambios requeridos
-
-1. **C-B1-1** — `services/postventa-front/js/volcado.js` l. 926–933 y `services/postventa-front/bandeja.html`
-   l. 117, 129 y 132: no reiniciar el panel ni dejar cambiar de obra o filtro con una serie en marcha; test de
-   F-040 y mutante a mano.
-2. **C-B1-2** — `services/postventa-front/js/volcado.js` l. 781–801 (`juntarVolcados`) y l. 704–716
-   (`textoDeParada` en fase `volcado`): todo fallo del volcado que no esté en la lista de «nada escrito» deja el
-   trozo en duda y lo dice; tests y mutante a mano.
-3. Pendiente fuera del código: aceptación escrita del humano de V3 (la pide el líder) y `bash harness/init.sh`
-   en verde (el líder).
-
-## Propuesta de automejora (no aplicada)
-
-`CHECKPOINTS.md` C4 bis, o el protocolo del reviewer, podría añadir para las features de front con estado
-asíncrono largo: «con una serie en vuelo, probar que **cualquier** otro control de la página que reinicie el
-estado (cargar, filtros, navegación interna) no suelta la serie ni la guarda de salida». Es el hueco de
-C-B1-1: la mutación por familias se hace sobre las funciones de la feature y no ve a los controles vecinos que
-llegan a ellas.
-
-**Veredicto: CHANGES_REQUESTED** (C-B1-1, C-B1-2).
-
----
-
-## Re-review del Bloque 1 · correcciones `e7ddb2a` (reviewer, 2026-10-31)
-
-**Veredicto: APPROVED, condicionado** a dos cosas que no son del implementer ni puedo comprobar yo: (a)
-`bash harness/init.sh` en verde sobre `e7ddb2a` o posterior (lo corre el líder; no lo he ejecutado, por encargo)
-y (b) la **aceptación escrita del humano** del mutante equivalente V3 (C4 bis en `critico`). Sin las dos, este
-APROBADO no vale para avanzar al Bloque 2.
-
-### Alcance
-
-`git show --stat e7ddb2a`: `bandeja.html`, `js/volcado.js`, `tests_js/volcado.test.js`, `tests_js/revision.test.js`,
-`progress/impl_F-040.md`, `progress/mutacion_F-040.md`, `progress/current.md`. Nada fuera de
-`services/postventa-front` y `progress/`; `js/api.js`, `js/revision.js` y `services/postventa-api` intactos.
-O-1 y O-2 no se han tocado, como se encargó.
-
-### C-B1-1 · corregido
-
-- `volcadoOcupado(estado)` = `enVuelo` o fase `sincronizando` o `hayVolcadoEnMarcha`; `volcadoAlCargar` sale sin
-  reiniciar ni releer si está ocupado. `hayVolcadoEnMarcha` (guarda de salida, R55) no se ensancha: correcto.
-- `bandeja.html`: la obra, el filtro de estado, «Solo las que tienen algo que corregir» y «Cargar» llevan
-  `:disabled` también con `volcadoOcupado()`. Añadir el campo de la obra (su Intro llama a `cargar()`) es
-  correcto: un control deshabilitado no recibe `keydown`.
-- Las relecturas internas de la serie (`volcadoReleer` al final de `ensayar()` y `volcar()`) van **después** de
-  poner `enVuelo = false` y la fase final, así que no las bloquea la puerta nueva.
-- Mi sonda original (`api` doble, volcado en vuelo, cargar otra obra), repetida sobre `e7ddb2a`:
-  `hayVolcadoEnMarcha true puedeRegistrar false obra panel 9901`, y al acabar el resultado está en el panel
-  (`creados: 1`). Antes daba `false / true / 9902 / null`.
-- **Enmienda de F-038, citada con el porqué**: comentario fechado sobre los cuatro controles en `bandeja.html`
-  (C-B1-1, R53/R55/R56, «sin serie en marcha, nada cambia para F-038»), y en `tests_js/revision.test.js` el
-  mutante DS13 enmendado con comentario: cambia el texto buscado y sigue quitando lo mismo (`!obra.trim()`). Bien.
-
-### C-B1-2 · corregido
-
-- Lista blanca `NADA_ESCRITO_EN_EL_VOLCADO` con los diez códigos de `design.md` §1 y §3.2 (el
-  `volcado_rechazado_por_la_pasarela` cubre su 409 y su 503). `juntarVolcados`: `volcado_sin_respuesta` → sus
-  `en_duda` (resto sin volcar, como antes); lista blanca → sin volcar; **todo lo demás** → trozo entero en duda.
-  `textoDeParada("volcado", …)` dice «No se sabe qué ha pasado con este trozo (el servicio respondió N[, código])».
-- Sonda repetida: `500 sin codigo -> enDuda [a, b] sinMandar []`; `504 sin codigo -> enDuda [a]`.
-
-### RED
-
-Traza real pegada en `impl_F-040.md` («Correcciones … · RED»): 5 de 6 tests nuevos en rojo con el fallo concreto
-de cada hallazgo (`'9902' !== '9901'`, `volcadoOcupado is not a function`, el `:disabled` ausente, `+ []` frente
-al trozo en duda). El que pasa en RED es el de «nada escrito sigue sin volcar», a propósito (que la lista no se
-pase de ancha), y lo mata D2. Válido.
-
-### Mutación de las correcciones
-
-`mutacion_F-040.md`: K1–K7 y D1–D5, 12/12 muertos (K3 vivo en primera pasada, muerto con un test del contrato de
-`volcadoOcupado`; razonamiento correcto). Repetidos por mí en una copia desechable del front, solo con
-`volcado.test.js` y `api.test.js`:
-
-| Mutante | Resultado | Primer test (de F-040) |
-|---|---|---|
-| K1 (`volcadoAlCargar` sin la condición) | muerto, 2 | «R55, R56 (C-B1-1): con un volcado en vuelo, cargar otra obra no suelta la serie…» |
-| D1 (vuelta a la clasificación vieja) | muerto, 2 | «R53.2, R53.4 (C-B1-2): un fallo … fuera de la lista de “nada escrito” deja TODO el trozo en duda» |
-| K4 («Cargar» sin `volcadoOcupado()`) | muerto, 1 | «R56 (C-B1-1): con una serie en marcha, ni la obra, ni los filtros, ni “Cargar”…» |
-| V3 (control) | sigue vivo, 0 | equivalente, razonado arriba |
-
-Copia borrada; `git status` del worktree, limpio.
-
-### Suites (salida real)
-
-```
-$ python -m pytest services/postventa-front/tests -q -p no:cacheprovider
-910 passed, 7 skipped in 52.24s
-$ cd services/postventa-front && node --test "tests_js/*.test.js"
-ℹ tests 1119   ℹ pass 1119   ℹ fail 0
-```
-
-### Checkpoints que cambian respecto de la primera pasada
-
-- C4 bis «los tests cubren los caminos de fallo»: **[x]** (C-B1-1 y C-B1-2 con test y mutante).
-- C4 bis «cero supervivientes salvo aceptación escrita»: **pendiente del humano** (V3), condición (b).
-- C1 `init.sh`: **pendiente del líder**, condición (a).
-- El resto, como en la primera pasada.
-
-Siguen abiertas, sin bloquear: O-1 (descripción en «va»), O-2 (letra de la spec), O-3 (T6 bis con T4), O-4.
-
-**Veredicto final: APPROVED** (condicionado a `init.sh` en verde y a la aceptación escrita de V3 por el humano).
-
-### Cierre del Bloque 1 (líder, 2026-10-31)
-
-- **V3 aceptado por escrito por el humano** el 2026-10-31 («acepto v3») como mutante equivalente.
-- `bash harness/init.sh` en verde tras `e7ddb2a`: api en verde (caché), front en verde, cobertura N/A (sin `.py` de
-  producción).
-- Condiciones de la re-review cumplidas: **Bloque 1 APPROVED**. Siguiente: T4 (merge a `dev` y publicar el front
-  con `-SoloFront`, el humano) y T5 en la 0626.
-
-## Review corta de T6a · `af8d091` enlaces a `bandeja.html` (reviewer, 2026-11-04)
-
-**Veredicto: APPROVED**
-
-Alcance: solo el commit `af8d091` (decisión del humano del 2026-11-04: la pestaña «Bandeja de revisión», los pasos
-02/03 y la tarjeta de la portada llevan a `bandeja.html`; el resto de T6 sigue esperando a F-038). Contra `tasks.md`
-T6a, `CHECKPOINTS.md`, `docs/CONVENTIONS.md` y las R de F-035/F-038 que toca.
-
-**Nivel de rigor:** `critico` (declarado en `harness/features.json`). Exige RED, cobertura y mutación. Cobertura y
-`harness.mutacion`: N/A justificado por el lenguaje (el cambio es JS + HTML; la puerta de `init.sh` imprime «N/A,
-F-040 no cambia líneas Python de producción»); los sustituye la mutación a mano, que he repetido en parte.
-
-### Verificación
-
-- `bash harness/init.sh` en el worktree: **ENTORNO LISTO** (raíz 115 passed; api verde por caché; front 910 passed,
-  7 skipped; PUERTA COBERTURA N/A con motivo).
-- `node --test "tests_js/*.test.js"`: 1130/1130.
-- `grep '#/bandeja'` en los `.html` del front: solo la miga de `bandeja.html` (línea 91), que no es pestaña, paso ni
-  tarjeta (la fija R1 de F-038). Cumple la verificación de T6a.
-- Diff: solo los ficheros que nombra T6a (cuatro páginas, `js/portal.js`, guardias de F-035, R14 de F-038, README del
-  front, ARCHITECTURE, tasks e informe). `bandeja.html` y `services/postventa-api/` sin tocar.
-- La fuente sigue siendo `Portal.enlaceSeccion` (campo `enlace`), no un parche en el HTML; `#/bandeja` sigue
-  resolviendo y la sección sigue en `construccion` (R62). `marcadaEnConstruccion` revisada caso a caso: bandeja desde
-  portal/circuito/páginas → sin marca; desde `bandeja.html` (enlace `null`) → con marca (R2/R25 de F-038); demás
-  secciones en construcción → con marca; `desde` desconocido → con marca, nunca lanza.
-- **R14 de F-038 (`test_f038_front.py`) no se debilita**: ahora excluye los enlaces dentro de `data-barra-portal` /
-  `data-recorrido`, que ya vigilan R70/R85. Comprobado con mutantes a mano en una copia desechable (scratchpad,
-  `git archive HEAD`): quitar el enlace real de `importar.html` (línea 202) → R14 rojo (4 fail); añadir un segundo
-  `<a href="bandeja.html">` fuera de barra y tira → rojo (3 fail); `target="_blank"` en la pestaña nueva de
-  `importar.html` → node +2 fail y pytest +1 fail respecto a la línea base de la copia.
-- RED: salida real en el informe (8 de 11 en rojo, con los `actual/expected`), los 3 verdes justificados (no regresión
-  y control). Sección «Evidencias (T6a)» con los cuatro números.
-
-Nota sobre la copia: en la copia por `git archive` la línea base ya da 16 fallos de node (controles de mutantes de
-F-038 que dependen del fin de línea del checkout; en el worktree, 0). Los mutantes se han medido como diferencia
-contra esa línea base.
-
-### M4 y M5: ¿equivalentes? **Sí.**
-
-M4/M5 invierten `seccion.pagina || seccion.enlace` → `seccion.enlace || seccion.pagina` en las ramas «portal» y
-«página real» de `enlaceSeccion`. Solo difieren si una sección tiene a la vez `pagina` y `enlace` no nulos, y
-`SECCIONES` es una lista congelada en la que eso no ocurre (`partes`: `enlace: null`; `bandeja`: `pagina: null`; el
-resto, ambos `null`). En la rama «circuito» la combinación ni siquiera es alcanzable (`pagina !== null` sale antes).
-Reproducido: aplicados los dos a la vez en la copia, node y pytest dan exactamente la línea base (1114/16 y el mismo
-único fallo del puente) → sobreviven, y no hay entrada que los distinga. En rigor `critico` los equivalentes necesitan
-la **aceptación escrita del humano** (como V3 del Bloque 1); el líder debe recabarla antes del cierre de T6.
-
-### Checkpoints (para este commit)
-
-- C1 [x] init.sh verde; ficheros del arnés presentes.
-- C2 [x] una sola `in_progress` (F-040); rama `feature/F-040-volcado-sigrid`. `current.md`/`history.md`: sin cambios
-  en este commit, no aplica cierre.
-- C3 [x] primera línea con ruta en `portal.js` y el test nuevo; sin `console.log`/`debugger`/TODO; sin secretos.
-  Hexagonal: N/A, el cambio es solo del front estático (no hay dominio en él). Reglas de partes/Sigrid/manuscritos:
-  N/A, el commit no toca el pipeline ni Sigrid (solo `href` y atributos).
-- C3 bis N/A: no entra ningún documento de fuera.
-- C4 [x] cada punto de T6a tiene test en `tests_js/f040_enlace_bandeja.test.js` (tabla abajo); sin red ni BBDD.
-  Verificación visual en navegador no hecha: no la pide T6a (cambios estáticos), anotado por el implementer.
-- C4 bis [x] rigor declarado; RED con salida real; cobertura N/A por lenguaje (escrito); mutación a mano 23/21 + 2
-  equivalentes razonados y reproducidos por mí; «Evidencias» presente. Pendiente solo la aceptación humana de M4/M5.
-- C4 ter N/A: no existe `harness/rutas_sensibles.json`.
-- C5 [x] T6a `[x]` con su commit «F-040 T6a: …»; árbol limpio (`git status` vacío tras la review, la copia vive en el
-  scratchpad). T6/T6 bis/T7 siguen `[ ]` por diseño (esperan a F-038); F-040 sigue `in_progress`, correcto.
-
-### Cobertura T6a → test (`tests_js/f040_enlace_bandeja.test.js` salvo indicación)
-
-| Punto de T6a | Test |
-|---|---|
-| `enlaceSeccion('bandeja')` → `bandeja.html` desde portal, circuito y páginas | «enlaceSeccion('bandeja') da bandeja.html…» + R44/R31 de `portal.test.js` |
-| Las demás secciones no cambian | «las demás secciones no cambian de enlace» |
-| `#/bandeja` sigue existiendo, sección en `construccion` | «la ruta #/bandeja de la maqueta sigue existiendo…» + `test_f035_placeholders_vivos.py` |
-| Sin marca lo que va a `bandeja.html`; marca lo que va a la maqueta | «marcadaEnConstruccion: …» + `problemasR66` de `f035_paginas.test.js` |
-| Pestaña y pasos 02/03 en las cuatro páginas | los cuatro «en <página>.html, la pestaña y los pasos 02 y 03…» |
-| Tarjeta de la portada | «la tarjeta «Bandeja de revisión» de la portada va a bandeja.html» + R67 (`test_f035_paginas.py`) |
-| Nada enlaza `#/bandeja` como pestaña/paso/tarjeta | «ninguna pestaña, paso ni tarjeta del front enlaza la maqueta» |
-| `bandeja.html` conserva su marca (R2/R25 de F-038) | guardias de F-038 sin tocar (H7 del informe lo mata) |
-| R14 de F-038 sigue exigiendo un solo enlace real | `test_f038_r14_*` (mutantes míos arriba) |
+| R63 | `volcado.js` `nombreDeTipo` (etiqueta de `catalogo.listados`, si no el código; sin código `""`), fila con `tipo` y `tipo_codigo`; `TEXTO_TIPO` fuera | `f040_tipo.test.js` «R63» ×5 (incl. 2 de T11) y `volcado.test.js` R51 enmendados. `grep TEXTO_TIPO`: solo `TEXTO_TIPO_PENDIENTE` de `portal.js`, ajeno |
+| R64 [D-2] | `recuentoPorTipo` (solo `previsto`), `textoPorTipo` (vacío con < 2), `textoConfirmacion(..., porTipo)` solo con > 1, `volcadoPorTipo()`; `<p x-show x-text="volcadoPorTipo()">` | `f040_tipo` «R64» ×6; `test_f040_r64_el_resumen_del_ensayo…` |
+| R65 [D-1] | `TEXTO_MOTIVO_VOLCADO.tipo_no_valido` con el literal exacto de R65 | `f040_tipo` «R65» ×2 (no suma a N ni a `porTipo`); `TEXTOS_DE_PARTE` |
+| R66 [D-1] | `MOTIVOS` con `tipo_fuera_de_sigrid` entre `proveedor_ambiguo` y `duplicada`; texto exacto de R66 | `f040_tipo` «R66» ×2; `revision.test.js` R4 (a) y R5 |
+| R67 [D-1, D-3] | `opcionesDeListado(catalogo, actual)`; `opciones().listados` con `f.vigentes.listado`; `textoDeCampo("listado")` = etiqueta o código; rótulo «Listado (tipo de reclamación)»; fuera `<option value="">Sin listado</option>` | `f040_tipo` «R67» ×4; `test_f040_r67_…` ×2 |
+| R68 | Miga `<span aria-current="page">Bandeja de revisión</span>` | `test_f040_r68_…` + 3 controles no ciegos |
+| R58 (parte de T10) | README del front y `ARCHITECTURE.md`: «publicado el 2026-11-02», el tipo (R63–R67) | `test_f040_r58_r63_…` ×2; `grep "sin publicar todavía"` en ambos: 0 |
+
+Comprobaciones del encargo: literales D-1 idénticos a R65–R67 (letra a letra) ✔; recuento por tipo solo con > 1
+tipo (D-2) ✔; en el campo del listado no queda `option value=""` y la opción del no vigente sale de
+`opcionesDeListado` con «(ya no vigente en Sigrid)» (D-3) ✔ (los demás `value=""` de `bandeja.html`, l. 628–668,
+son de unidad, ubicación, oficio, proveedor y urgencia, fuera de R67); ningún `href` nuevo en el diff (D-4) ✔;
+miga como texto (R68) ✔; `TEXTO_TIPO` fuera ✔; README y ARCHITECTURE sin «sin publicar todavía» ✔. Las 8
+aserciones de F-038/F-040 que cambian citan el R que las sustituye en el propio test (R66, R65, R63, R68) ✔.
+«Historial»: `presentarHistorial` solo da nombres de campo, no valores; el valor del listado sale por `detalleDe`,
+que es lo que fija el test ✔. Datos de test ficticios (obra 9901, VILLA 9N, OF01, EJ11, etiquetas «…EJEMPLO»,
+tipo 9001); `grep` del diff añadido sin correos, DNI, obras reales ni secretos ✔.
+
+**Alcance tocado:** `services/postventa-front/` (js, `bandeja.html`, README, tests), `docs/ARCHITECTURE.md` y, como
+rastro del arnés, `progress/impl_F-040.md`, `progress/mutacion_F-040_bloque1bis.md` y las casillas T9–T11 de
+`tasks.md`. Nada en `services/postventa-api/`, nada contra Sigrid ni producción ✔.
+
+### Checkpoints
+
+- C1 [x] init.sh sin caché en verde (arriba); ficheros base presentes.
+- C2 [x] una sola activa (F-040 `in_progress`); rama `feature/F-040-volcado-sigrid`. Ver obs. 1 y 2 (del líder).
+- C3 [x] primera línea con ruta en `f040_tipo.test.js` y en los tocados; sin `console.*`/`debugger`/TODO/`print`
+  añadidos; sin secretos ni dependencias nuevas. Arquitectura: el front no añade rutas ni toca el backend. Los
+  puntos de dominio de C3 (partes, firmas, Sigrid, `conest`) N/A: el bloque es presentación pura. Sin PDFs ni
+  `muestras/` en el diff.
+- C3 bis N/A: no entra ningún documento de fuera. C3 ter N/A: no se registra ninguna conversación.
+- C3 quater N/A en este bloque: no cambia lo que se expone ni consume; `azure-apps` de R58 es T6 bis.
+- C4 [x] suites ejecutadas por mí (init.sh); tests de cada R presentes y en verde.
+- C4 bis:
+  - [x] nivel declarado (`critico`).
+  - [x] **RED real**: `d1a0e5d` solo trae tests (`git show --stat`); traza pegada en `impl_F-040.md` §T9. La he
+    reproducido en una copia `git archive d1a0e5d`: `node --test tests_js/f040_tipo.test.js` → 17 tests, 16 fail,
+    1 pass (la guarda «con un solo tipo, no cambia», que debe pasar antes y después).
+  - [x] cobertura: N/A con motivo impreso por la puerta (sin `.py` de producción; justificado por el lenguaje).
+  - [x] `harness.mutacion`: 0 mutantes legítimo. Recalculado con `alcance.parsear_diff(be97272...HEAD)`: los únicos
+    `.py` son `tests/test_f038_front.py` (6 l.) y `tests/test_f040_front.py` (99 l.), `es_produccion` = False.
+    Control: `generar_mutantes` sobre `test_f040_front.py` sin la exclusión da 50 → el generador funciona; el cero es
+    por diseño (JS/HTML).
+  - [x] campaña MANUAL con una fila por mutante y el texto exacto original → mutado (50 filas, 5 familias A–E = las
+    5 de T11: etiqueta y respaldo, recuento con uno y dos tipos, orden de motivos, opción no vigente, migas). Falta
+    la línea y el nº de fallos por fila (obs. 3); los suplo con mi muestreo.
+  - [x] **muestreo de 8 mutantes en el worktree** (≥ 5 pedidos), cada uno sustitución única, suite JS entera
+    (`node --test "tests_js/*.test.js"`) y, en D9 y E2, `pytest` de `test_f040_front.py` + `test_f038_front.py`;
+    base 0 fallos en ambas; fichero restaurado byte a byte tras cada uno. **Todos muertos, y todos por un test
+    de F-040**:
+
+    | Mutante | Fallos | Test asesino de la feature |
+    |---|---|---|
+    | A1 `return String(codigo);` | node 5 | f040 R63 «sale con su etiqueta…», R64, R51 |
+    | A6 sin `Array.isArray` | node 1 | f040 R63 (T11) «…no es una lista no rompe» |
+    | B8 `tipos.length > 0` | node 3 | f040 R64 «con un solo tipo…no cambia», R52 D-12 |
+    | B13 sin `vista.porTipo` | node 1 | f040 R64 «el componente pasa el recuento…» |
+    | C3 `tipo_fuera_de_sigrid` antes de `proveedor_ambiguo` | node 3 | f040 R66 ×2, f038 R4 (a) [F-040 R66] |
+    | D1 sin `actual &&` | node 2 | f040 R67 `opcionesDeListado` ×2 |
+    | D9 `listados: catalogo.listados \|\| []` | node 1 + pytest 1 | f040 R67 «el formulario…», `test_f040_r67_opciones_listados…` |
+    | E2 `<span>` sin `aria-current` | pytest 4 | `test_f040_r68_la_miga_actual…` (+ controles) |
+
+    Al final, `git status --short` y `git diff --stat` vacíos.
+  - [x] RM1: el código de producción medido es el de `288ee16`; `fc7f986` solo añade tests y documentos, así que el
+    alcance medido es el revisado. RM2 N/A: la campaña a mano no declara tiempos de la herramienta.
+  - [x] RM3: ningún equivalente declarado ni muerto sospechoso. RM5 N/A: 0 equivalentes. RM6 [x]: ningún mutante
+    se mató quitando código defensivo; los 4 vivos de la 1.ª pasada (A5–A8) se cerraron con tests, no borrando
+    guardas. RM7 N/A: ningún requisito del bloque protege un orden entre colaboradores.
+  - [x] «Evidencias» con los cuatro números y la fila «Capa e2e» (R63–R68 son `unit`).
+- C4 ter N/A: el bloque no toca rutas sensibles declaradas.
+- C5 N/A para la feature entera (quedan T12, T5.3–T5.6, T6…); del bloque: T9–T11 `[x]` en `tasks.md`, un commit
+  `F-040 Tn:` por tarea; sin temporales sin trackear.
 
 ### Observaciones (no bloquean)
 
-1. La miga «Bandeja de revisión» de `bandeja.html:91` sigue yendo a `./#/bandeja`; el implementer la deja para el
-   líder/humano. Coincido en que no es de T6a; conviene decidirla en T6 o en el cierre de F-038.
-2. D-T6a-1 (sin `:aria-current` en la pestaña/paso 02 del portal) deja `#/bandeja` sin pestaña marcada si se escribe
-   la ruta a mano. Aceptable mientras la maqueta muera en T6.
-3. La tarjeta mantiene el chip «En construcción» apuntando a una página real (D-T6a-4): coherente con R62; su paso a
-   «En producción» es del cierre de F-038.
+1. **Del líder (T8):** `init.sh` avisa «F-040 tiene sdd: true y estado in_progress sin spec_aprobada»: falta
+   `"spec_aprobada": "2026-11-19"` en la entrada de F-040 de `harness/features.json`.
+2. **Del líder:** `progress/current.md` arrastra entradas de F-072 ya cerrada (C2 pide solo la sesión activa).
+3. `progress/mutacion_F-040_bloque1bis.md` no trae la línea ni el nº de fallos de cada fila, como pide C4 bis para
+   las campañas a mano; el texto exacto sí está y la he reproducido (arriba). Para T12 y siguientes, añadirlos.
+4. Literal de R64: «…; por tipo, 2 X y 1 Y.» en vez del boceto «y n₁ X, n₂ Y» de `design.md` §2. R64 no fija el
+   literal y el implementer lo justifica (evita una lista ambigua tras la de unidades). Aceptado; que el humano lo
+   vea en la publicación (T12).
+5. `textoPorTipo` y `textoConfirmacion` repiten el `t.n + " " + t.etiqueta`; deuda menor, no se pide cambio.
 
-### Cambios requeridos
+### Automejora (propuesta, no aplicada)
 
-Ninguno.
+Ninguna nueva: la obs. 3 ya la cubre C4 bis; basta con exigirla.

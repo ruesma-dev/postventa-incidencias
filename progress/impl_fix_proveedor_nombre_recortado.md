@@ -189,3 +189,41 @@ ENTORNO LISTO. Puedes trabajar.
   (con test de ofrecido = guardado) o solo corregir el docstring.
 - Oficio y unidad: siguen a decisión del humano.
 - Nada de push.
+
+## Segunda corrección: `_pares`
+
+Punto 2 del review, decidido por el humano: alinear `_pares`
+(`interface_adapters/api/revision.py`) con la importación y `validar_valores`.
+Merge de `dev` d6be9d6 (trae 5e44232), RED b2768b8, GREEN 24acec3.
+
+- `domain/models/plantilla_incidencias.py`: nueva `nombres_de_los_pares(proveedores)`
+  (primer nombre no vacío del par con `nombre_recortado`; en blanco, `None`).
+- `domain/models/revision.py`: `validar_valores` la usa (sale su bucle).
+- `interface_adapters/api/revision.py`: `_pares` la usa; docstring corregido.
+- `pares_del_desplegable` no se toca (filtra antes por oficio; misma regla).
+
+RED (`.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/test_fix_proveedor_nombre_recortado.py`),
+test parametrizado `test_fix_lo_que_ofrece_pares_es_lo_que_guarda_la_edicion`:
+
+```
+E         {'proveedor_nombre': 'Carpintería Ejemplo, S.L. '} != {'proveedor_nombre': 'Carpintería Ejemplo, S.L.'}
+E         {'proveedor_nombre': ''} != {'proveedor_nombre': 'Carpintería Ejemplo, S.L.'}
+E         {'proveedor_nombre': '   '} != {'proveedor_nombre': None}
+FAILED ...[espacio-final]
+FAILED ...[primera-fila-vacia]
+FAILED ...[en-blanco]
+3 failed, 5 passed in 3.71s
+```
+
+GREEN: `8 passed in 3.39s`; ficheros `*revision*`, `f036`, `f071` y el del arreglo:
+`3004 passed, 24 skipped in 724.04s`.
+
+Mutante (vuelta al `setdefault` con `fila.proveedor_nombre` crudo en `_pares`):
+los mismos 3 fallos, `3 failed, 5 passed in 3.27s`. Revertido con
+`git checkout --`; `git status --short` y `git diff --stat` vacíos.
+
+`ARNES_SIN_CACHE=1 bash harness/init.sh`: EN VERDE. `2202 passed, 48 skipped`;
+api `10382 passed, 485 skipped in 2562.97s`; front `911 passed, 7 skipped`;
+COBERTURA, CARRIL y E2E N/A (rama sin feature); `ENTORNO LISTO`.
+Incidencia: el venv del API estaba vacío; lo reconstruyó el líder.
+Pendiente: review de esta corrección; oficio y unidad, a decisión del humano.

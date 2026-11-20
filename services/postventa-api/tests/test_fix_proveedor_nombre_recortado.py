@@ -15,6 +15,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+import pytest
+
 from domain.models.importacion import IncidenciaEnBandeja
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
@@ -33,6 +35,7 @@ from domain.models.revision import (
     validar_valores,
     valores_importados,
 )
+from interface_adapters.api.revision import _pares
 
 U1 = "9901.03VILLA 1."
 NOMBRE_DE_SIGRID = "Carpintería Ejemplo, S.L. "  # con el espacio final del ERP
@@ -151,3 +154,32 @@ def test_fix_el_nombre_en_blanco_se_guarda_none_como_en_la_importacion() -> None
     vigentes, editados = _editar_sin_tocar_el_proveedor(catalogo)
     assert campos_cambiados(vigentes, editados) == ("descripcion",)
     assert editados.proveedor_nombre is None
+
+
+@pytest.mark.parametrize(
+    "catalogo",
+    [
+        CATALOGO,
+        _catalogo_con(
+            ProveedorEnObra("0046", "EJ07", ""),
+            ProveedorEnObra("0046", "EJ07", NOMBRE_DE_SIGRID),
+        ),
+        _catalogo_con(ProveedorEnObra("0046", "EJ07", "   ")),
+    ],
+    ids=["espacio-final", "primera-fila-vacia", "en-blanco"],
+)
+def test_fix_lo_que_ofrece_pares_es_lo_que_guarda_la_edicion(
+    catalogo: CatalogoObra,
+) -> None:
+    """El desplegable de la edición (`_pares`) ofrece el nombre que se guarda.
+
+    Segunda corrección del review: `_pares` tomaba el nombre crudo de la
+    primera fila; ahora sigue la regla de la importación y de `validar_valores`.
+    """
+    (ofrecido,) = _pares(catalogo)
+    _, editados = _editar_sin_tocar_el_proveedor(catalogo)
+    assert ofrecido == {
+        "oficio_codigo": "0046",
+        "proveedor_codigo": "EJ07",
+        "proveedor_nombre": editados.proveedor_nombre,
+    }

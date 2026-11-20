@@ -6,7 +6,11 @@
 > mutación 50/50) y review APROBADO (`progress/review_F-040.md`). Mergeado en `dev`. Siguiente: T12 (humano,
 > publicar el front), después T5.3–T5.6 en la 0626 con la escritura real solo con su OK expreso (R69).
 
-> ## Arreglo `Ajustes` sin secretos en `repr` · integrado en `dev` (`5e44232`), review APROBADO (2026-11-19)
+> ## Arreglos integrados en `dev` (líder, 2026-11-20), pendientes de publicar el backend
+> - `Ajustes` sin secretos en `repr` (`5e44232`), review APROBADO.
+> - Nombre del proveedor recortado en la edición y en `_pares` (función de dominio `nombres_de_los_pares`), review
+>   APROBADO en segunda vuelta (`progress/review_fix_proveedor_nombre_recortado.md`). Oficio y unidad, sin
+>   arreglar: a decisión del humano.
 
 > ## F-072 · CERRADA (líder, 2026-11-18)
 > T24 y T26 en verde en producción (`progress/impl_F-072_despliegue.md`), T27 y T28 hechos:

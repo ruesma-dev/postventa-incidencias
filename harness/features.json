@@ -695,6 +695,7 @@
         "bash harness/init.sh en verde"
       ],
       "status": "in_progress",
+      "spec_aprobada": "2026-11-19",
       "sdd": true,
       "rigor": "critico",
       "priority": 6,

@@ -164,3 +164,18 @@ del front corre con el `.venv` de la raíz del repositorio principal (no depende
 - `init.sh` (arriba). Review del Bloque 1 bis. T12 (merge y publicación, humano). La fila de prueba de T5.4 a `0003` (D-6)
   es del humano.
 - Fuera de alcance tocado: ninguno. `services/postventa-api/` sin tocar. Nada contra Sigrid ni producción.
+
+## T12 · publicación (humano) y comprobación (líder), 2026-11-21
+
+- Merge del Bloque 1 bis a `dev` (`87e124e`, líder) junto con los arreglos de `Ajustes` y del proveedor;
+  `ARNES_SIN_CACHE=1 bash harness/init.sh` en verde sobre `dev` `8ac908d` (2201 / 10382 / 920 passed).
+- El humano publica backend y front desde una copia limpia de `dev`; `27_ventana_volcado.ps1` sin parámetros:
+  **cerrada**.
+- Comprobación del líder por el front, con la sesión del humano, solo lecturas: `GET /api/health` 200;
+  `js/volcado.js` publicado sin `TEXTO_TIPO` y con `nombreDeTipo` y el recuento por tipo; `js/revision.js` con
+  «Listado (tipo de reclamación)», los textos de D-1 y `tipo_fuera_de_sigrid`, sin «Sin listado»; la miga de
+  `bandeja.html` con la página actual como `span`. `GET /api/revision` de la 0626 (200, 19,5 s) y la 0677
+  (200, 14,7 s): 4 listados; 25 y 38 pares, ninguno con espacio final ni vacío (el arreglo del proveedor,
+  publicado). Application Insights, 3 h: 0 excepciones, ninguna traza de aviso o superior, todas las
+  peticiones 200.
+- Siguiente: T5.3 (humano, 0626, ventana cerrada).

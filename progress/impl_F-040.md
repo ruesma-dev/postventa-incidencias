@@ -179,3 +179,20 @@ del front corre con el `.venv` de la raíz del repositorio principal (no depende
   publicado). Application Insights, 3 h: 0 excepciones, ninguna traza de aviso o superior, todas las
   peticiones 200.
 - Siguiente: T5.3 (humano, 0626, ventana cerrada).
+
+## T5.3 · confirmar con la ventana cerrada (líder, por encargo del humano), 2026-11-23
+
+- El humano encarga al líder hacer las pruebas («haz tú las pruebas»); el clic de confirmar lo da el líder con la
+  sesión del humano. Antes del clic, `VOLCADO_HABILITADO=false` leído en la Function (dos veces).
+- Foto `28_` de la 0626, ANTES: 2 partes `PVI-` (`RS26.09/0439` SAT, `RS26.10/0074` NPR); MAX(cod) del mes
+  `RS26.11/0083`. PASA.
+- «Registrar»: una lectura de `revision/sigrid` (200); la fila «PRUEBA F-040 - ANULAR» sale en **choca** con
+  `RS26.09/0439`. Con su casilla, `volcado/ensayo` 200: «Se crearía 1», columna Tipo «PRIMER LISTADO POSTVENTA
+  (0002)» (R63, etiqueta y código).
+- «Volcar 1 partes»: la confirmación dice «Se va a crear 1 parte en el ERP de producción de la obra 0626: 1 de
+  <unidad>. Escribe 1 para confirmar.» Con el 1: **una** petición `POST volcado/volcar`, **503**; en Application
+  Insights, `volcado/volcar no procede: volcado_deshabilitado (503)`. El panel dice «La ventana del volcado está
+  cerrada. No se ha escrito nada.» y el resultado «Creados 0 · Sin volcar 1». Ningún reintento; después, solo
+  la recarga de la bandeja.
+- Foto `28_` DESPUÉS: idéntica (2 partes `PVI-`, MAX(cod) `RS26.11/0083`). PASA.
+- Siguiente: T5.4, la única escritura real, con la autorización expresa del humano en el chat (R69).

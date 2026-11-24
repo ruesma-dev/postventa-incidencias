@@ -141,8 +141,9 @@ lo fija carácter a carácter; aquí no se duplica.
 
 **Para el dueño de `sigrid-api`**: F-036 **no pide ningún cambio**; depende de
 que `sql/read` siga sirviendo hasta 1.000 filas por petición (§6). Lo que sí le
-pedirá algo son las fichas siguientes, y se dice aquí para que no sorprenda:
-**F-040** volcará la bandeja a Sigrid con el alta en lote de reclamaciones
+pide algo son otras fichas, y se dice aquí para que no sorprenda: el volcado
+(**F-059**, el backend, y **F-040**, su panel en `bandeja.html`, en producción)
+vuelca lo aprobado de la bandeja a Sigrid con el alta en lote de reclamaciones
 (`azure-apps/sigrid_api.md` §8.9, que hoy no admite la urgencia), y **F-039**
 necesitará dar de alta en `obrofc` la pareja oficio–proveedor.
 
@@ -209,8 +210,9 @@ y un test lo fija carácter a carácter; el diseño, en
 
 **Para el dueño de `sigrid-api`**: F-056 **no pide ningún cambio**; como
 F-036, depende de que `sql/read` siga sirviendo hasta 1.000 filas por
-petición. Lo que sí le pedirá algo es **F-040**, que volcará lo aprobado con
-el alta en lote de reclamaciones (§1, «Con F-036»).
+petición. Lo que sí le pide algo es el volcado (**F-059** y el panel de
+**F-040**), que vuelca lo aprobado con el alta en lote de reclamaciones (§1,
+«Con F-036»).
 
 ### Con F-060 · la tercera lectura, también tras importar
 
@@ -595,8 +597,8 @@ anteriores.
   **duplicada** si repite una que ya estaba. `origen` admite ya `excel` y
   `web` (la web de clientes será **F-037**). **No tiene columna de estado de
   revisión**: editar, descartar o aprobar una fila es **F-038**, que la
-  añadirá con su propia tabla. Nada de esta tabla viaja todavía a Sigrid:
-  volcarla es **F-040**.
+  añadirá con su propia tabla. Esta tabla no viaja a Sigrid por sí sola: lo
+  aprobado lo vuelca el panel de **F-040**, por las rutas de **F-059**.
 
   > **Enmienda del 2026-10-08 (F-056).** F-038 se partió por el límite de
   > servicio: la revisión de la bandeja es F-056 en el backend —la tabla
@@ -649,7 +651,7 @@ Ninguna de las trece anteriores cambia.
   bloqueo consultivo, cuyo espacio de claves es del servidor compartido—.
 - Los `CHECK` de longitud y de ambigüedad son los de la bandeja, y el de
   `accion` lleva las cuatro del dominio; no se podrá ampliar, así que el
-  volcado de **F-040** llevará su propia tabla.
+  volcado lleva su propia tabla (`postventa.volcados_sigrid`, de **F-059**).
 - **Sin columnas binarias**: ninguna columna binaria ni JSON. **Volumen**: una fila de menos de 1 KB
   por acción de una persona; decenas o cientos por obra.
 
@@ -1949,8 +1951,8 @@ guion podría chocar; no se filtra, consta aquí
   huella `sha256` y el instante, y ninguna otra; aprobar exige unidad de la
   obra, ubicación de la tipología de su unidad, oficio elegido de `obrofc` y,
   si hay proveedor, un par de `obrofc`, todo contra Sigrid **en ese momento**.
-  No tienen ruta HTTP: son el punto de entrada de **F-040**, que es quien
-  escribirá en el ERP. El detalle, en `specs/F-056-revision-bandeja-backend/`.
+  No tienen ruta HTTP: son el punto de entrada del volcado (**F-059** en el
+  backend y el panel de **F-040**), que es quien escribe en el ERP. El detalle, en `specs/F-056-revision-bandeja-backend/`.
 
 **Desde F-060** (2026-10-13; **desplegada** el 2026-10-13 y verificada en el
 entorno el 2026-10-14) las
@@ -2069,11 +2071,11 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | Rehidratar la sesión al recargar el navegador | **feature nueva**, decidida el 2026-08-26 (D4 de F-019) | Lo guardado **queda guardado** y la cola sobrevive, pero si el usuario recarga la página **pierde el trabajo en curso**: volver a pintarlo exige leer una remesa entera con sus partes, y eso es un método de lectura nuevo en el puerto de persistencia |
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
-| La entrada de incidencias por Excel | F-036 | **Desplegada** desde el 2026-10-02 (verificada en el entorno el 2026-10-05, T29): las rutas de la plantilla, la importación, la bandeja y los catálogos existen en el entorno desplegado. Lo importado **se queda en la bandeja**: no crea ninguna incidencia en Sigrid hasta **F-040**, se revisa y se edita en `bandeja.html` (**F-038**, en producción) |
+| La entrada de incidencias por Excel | F-036 | **Desplegada** desde el 2026-10-02 (verificada en el entorno el 2026-10-05, T29): las rutas de la plantilla, la importación, la bandeja y los catálogos existen en el entorno desplegado. Lo importado **se queda en la bandeja**: se revisa y se edita en `bandeja.html` (**F-038**, en producción) y no crea ninguna incidencia en Sigrid hasta que se aprueba y se vuelca desde el panel de **F-040** (en producción) |
 | Normalizar las ubicaciones | F-060 | **Desplegada** el 2026-10-13 y verificada en el entorno el 2026-10-14 (T26 y T27): la ruta `POST /api/revision/normalizar` existe, la importación normaliza tras registrar filas y el listado deja la línea de tiempos. Lo que aún no está es la velocidad del listado: tras la importación diferida del Bloque 7, la medición M2 (T35) da en caliente p50 5,00 s y máximo 13,21 s, por encima del objetivo (máximo < 10 s, p50 < 3 s); lo que falta, sobre todo las lecturas lentas de `sigrid-api`, va a **F-061** |
-| La revisión de la bandeja | F-056 | **Desplegada** el 2026-10-09 y verificada en el entorno (T19): las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` y la tabla `postventa.revisiones_bandeja` (la crea el DDL al arrancar) ya existen. Lo que aún no está: la página es **F-038** (`bandeja.html`, en producción); nada de lo aprobado llega a Sigrid hasta **F-040** |
-| El volcado a Sigrid | F-059 | **Desplegada el 2026-10-17** (desde `dev` `81049bc`) y **verificada en producción el 2026-10-19** en la obra 0626 (T25 y T26): **un** parte de prueba, autorizado, creado con la ventana abierta y anulado después desde la UI de Sigrid (NO PROCEDE). Las rutas `/api/volcado`, `/api/volcado/ensayo` y `/api/volcado/volcar` y la tabla `postventa.volcados_sigrid` existen en el entorno desplegado. La ventana `VOLCADO_HABILITADO` queda **cerrada** (D-3; cada despliegue la cierra) y se abre para cada volcado con `infra/27_ventana_volcado.ps1`. Lo que aún no está: sin la página de **F-040**, solo se puede volcar llamando a las rutas |
-| Las reclamaciones de Sigrid en la revisión | F-065 | **Desplegada el 2026-10-31** (desde `dev` `ed590bd`) y **verificada en solo lectura** (T-A11 a T-A17, `tasks.md` Bloque A7): la ruta `GET /api/revision/sigrid` y la guarda del ensayo existen en el entorno desplegado. Falta **T-A18**, un ensayo en la 0626 con la guarda, que espera la autorización expresa del humano. Sin ninguna tabla ni variable. Hasta la página de **F-064** y el panel de **F-040**, solo se puede usar llamando a las rutas |
+| La revisión de la bandeja | F-056 | **Desplegada** el 2026-10-09 y verificada en el entorno (T19): las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` y la tabla `postventa.revisiones_bandeja` (la crea el DDL al arrancar) ya existen. Lo que aún no está: la página es **F-038** (`bandeja.html`, en producción); lo aprobado llega a Sigrid con el panel de volcado de **F-040** (en producción) |
+| El volcado a Sigrid | F-059 | **Desplegada el 2026-10-17** (desde `dev` `81049bc`) y **verificada en producción el 2026-10-19** en la obra 0626 (T25 y T26): **un** parte de prueba, autorizado, creado con la ventana abierta y anulado después desde la UI de Sigrid (NO PROCEDE). Las rutas `/api/volcado`, `/api/volcado/ensayo` y `/api/volcado/volcar` y la tabla `postventa.volcados_sigrid` existen en el entorno desplegado. La ventana `VOLCADO_HABILITADO` queda **cerrada** (D-3; cada despliegue la cierra) y se abre para cada volcado con `infra/27_ventana_volcado.ps1`. Se vuelca desde el panel de **F-040** en `bandeja.html` (publicado el 2026-11-02; su primera escritura real, un parte de prueba en la 0626, el 2026-11-24, con la ventana abierta un minuto) |
+| Las reclamaciones de Sigrid en la revisión | F-065 | **Desplegada el 2026-10-31** (desde `dev` `ed590bd`) y **verificada en solo lectura** (T-A11 a T-A17, `tasks.md` Bloque A7): la ruta `GET /api/revision/sigrid` y la guarda del ensayo existen en el entorno desplegado. Falta **T-A18**, un ensayo en la 0626 con la guarda, que espera la autorización expresa del humano. Sin ninguna tabla ni variable. La usa el panel de **F-040** («Registrar», en producción); la página de **F-064**, todavía no |
 | El tipo de reclamación de Sigrid | F-072 | **Implementada en su rama y sin desplegar**: hasta su despliegue, la plantilla ofrece `primero` y `segundo` del YAML, la bandeja no tiene `tipo_reclamacion` y el volcado manda siempre `0002`. El despliegue aplica el primer `ALTER TABLE` (§2) |
 
 > **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo

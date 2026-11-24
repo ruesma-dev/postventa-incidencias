@@ -1090,13 +1090,12 @@ FRASES_DEL_ROTULO = ("En construcción", "no funciona", "inventados", "no es inf
 
 #: Los recuadros de bloque de hoy (R64): {ficha: sección donde va}. Cierre de F-038
 #: (T8, R17): la bandeja pasa a `parcial` y lo que sigue sin funcionar va en los
-#: recuadros de bloque de F-039, F-043 y F-040.
+#: recuadros de bloque de F-039, F-043 y F-040. Cierre de F-040 (R57): sale el suyo.
 ENVOLTORIOS_DE_BLOQUE = {
     "F-037": "entrada",
     "F-045": "inicio",
     "F-039": "bandeja",
     "F-043": "bandeja",
-    "F-040": "bandeja",
 }
 
 #: R67: las tarjetas de la portada, por su chip (`design.md` §16.5).
@@ -1340,8 +1339,9 @@ def test_f035_r63_rs_obras_solo_y_siempre_en_un_recuadro():
 
     assert problemas == [], "R63 enmendado:\n" + "\n".join(problemas)
     # Cierre de F-038 (T8): sale el de sección de `bandeja` y entran los de bloque
-    # de F-039, F-043 y F-040: de siete a nueve.
-    assert len(envoltorios(leer_html(PORTAL))) == 9, "la guardia mira los nueve recuadros de hoy"
+    # de F-039, F-043 y F-040: de siete a nueve. Cierre de F-040 (R57): sale el
+    # suyo, de nueve a ocho.
+    assert len(envoltorios(leer_html(PORTAL))) == 8, "la guardia mira los ocho recuadros de hoy"
 
 
 _CABECERA_DE_BANDEJA = '<h1 class="rs-titulo">Bandeja de revisión</h1>'

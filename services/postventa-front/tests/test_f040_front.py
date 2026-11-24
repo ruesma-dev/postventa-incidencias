@@ -599,3 +599,41 @@ def test_f040_r58_r63_la_documentacion_cuenta_el_tipo_y_ya_no_dice_sin_publicar(
         problemas.append(f"«{titulo}» aún dice «sin publicar todavía» (publicado el 2026-11-02)")
 
     assert problemas == [], f"{ruta.name}: " + "; ".join(problemas)
+
+
+# --- R57 · El cierre en el portal: las dos tarjetas y ningún enlace nuevo [D-4] ---------------------
+
+PORTAL_INDEX = RAIZ_FRONT / "index.html"
+
+#: Lo que dicen ya las dos tarjetas que llevan a `bandeja.html` (R57, D-4).
+FRASE_DEL_VOLCADO = "volcar a Sigrid lo aprobado"
+
+
+def _tarjetas_de_bandeja(seccion: str) -> list:
+    doc = leer_html_texto(PORTAL_INDEX.read_text(encoding="utf-8"))
+    secciones = [e for e in doc.elementos() if e.atributos.get("data-seccion") == seccion]
+    assert len(secciones) == 1, f"{len(secciones)} secciones {seccion}"
+    return [
+        e
+        for e in secciones[0].elementos()
+        if e.nombre == "a" and e.atributos.get("href") == "bandeja.html" and "rs-tarjeta" in e.atributos.get("class", "")
+    ]
+
+
+@pytest.mark.parametrize(("seccion", "rotulo"), [("inicio", "Bandeja de revisión"), ("bandeja", "Revisar la bandeja")])
+def test_f040_r57_las_dos_tarjetas_dicen_que_se_vuelca_y_siguen_en_produccion(seccion, rotulo):
+    tarjetas = _tarjetas_de_bandeja(seccion)
+
+    assert len(tarjetas) == 1, f"#/{seccion}: {len(tarjetas)} tarjetas a bandeja.html; una (D-4: ninguna nueva)"
+    texto = " ".join(tarjetas[0].texto().split())
+    assert rotulo in texto
+    assert "En producción" in texto, "la tarjeta sigue «En producción»"
+    assert FRASE_DEL_VOLCADO in texto, f"#/{seccion}: la tarjeta no dice «{FRASE_DEL_VOLCADO}»"
+
+
+def test_f040_r57_sin_el_recuadro_de_f040_en_la_bandeja_del_portal():
+    texto = PORTAL_INDEX.read_text(encoding="utf-8")
+
+    assert 'data-en-construccion="F-040"' not in texto
+    assert 'data-placeholder="F-040"' not in texto
+    assert "datos.volcado" not in texto

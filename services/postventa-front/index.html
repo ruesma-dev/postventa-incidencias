@@ -15,8 +15,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=80c9887e36">
-  <link rel="stylesheet" href="css/portal.css?v=80c9887e36">
+  <link rel="stylesheet" href="css/styles.css?v=0e5cdd88d0">
+  <link rel="stylesheet" href="css/portal.css?v=0e5cdd88d0">
 </head>
 <!--
   F-035 · El PORTAL de posventa: la portada `/`. Enseña el ciclo entero: lo que
@@ -156,7 +156,7 @@
             <p class="rs-tarjeta__rotulo">Bandeja de revisión</p>
             <p class="rs-tarjeta__texto">
               Lo importado, antes de Sigrid: corregir cada incidencia, descartarla o aprobarla,
-              obra a obra y con su historial.
+              obra a obra y con su historial, y volcar a Sigrid lo aprobado.
             </p>
             <span class="rs-tarjeta__llamada">Revisar la bandeja <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
           </a>
@@ -278,13 +278,16 @@
         </div>
       </section>
 
-      <!-- ── bandeja (§5.3): F-038 en producción, F-039, F-040 y F-043 ──── -->
+      <!-- ── bandeja (§5.3): F-038 y F-040 en producción, F-039 y F-043 ─── -->
       <!-- F-038 está done (su design.md §3.2, R17): la revisión es la página
-           real bandeja.html, que la tarjeta abre en la misma pestaña. Lo que
-           sigue sin funcionar va en sus recuadros de bloque (R64, R65): el
-           industrial propuesto (F-039), la aprobación en bloque (F-043) y el
-           volcado (F-040). La tabla de ejemplo de la bandeja, sus filtros, su
-           selección y los botones de F-038 salieron con el cierre. -->
+           real bandeja.html, que la tarjeta abre en la misma pestaña. F-040
+           también (su design.md §4, R57): el volcado a Sigrid es el panel de
+           esa misma página, y la tarjeta lo dice; no lleva enlace propio
+           (D-4). Lo que sigue sin funcionar va en sus recuadros de bloque
+           (R64, R65): el industrial propuesto (F-039) y la aprobación en
+           bloque (F-043). La tabla de ejemplo de la bandeja, sus filtros, su
+           selección y los botones de F-038 salieron con su cierre; el panel
+           de volcado de ejemplo y sus tres botones, con el de F-040. -->
       <section data-seccion="bandeja" x-show="seccion === 'bandeja'" x-cloak class="rs-seccion">
         <header class="rs-cabecera-seccion">
           <div>
@@ -299,7 +302,7 @@
             <p class="rs-tarjeta__rotulo">Revisar la bandeja</p>
             <p class="rs-tarjeta__texto">
               Lo importado de una obra, antes de Sigrid: corregir cada incidencia, descartarla o
-              aprobarla, con quién y cuándo lo hizo.
+              aprobarla, con quién y cuándo lo hizo, y volcar a Sigrid lo aprobado.
             </p>
             <span class="rs-tarjeta__llamada">Revisar la bandeja <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
           </a>
@@ -455,101 +458,6 @@
                       class="placeholder" aria-disabled="true"
                       title="Todavía no hace nada: lo construye F-043">Aprobar las seleccionadas <span class="placeholder-ficha">F-043</span></button>
             </div>
-          </div>
-        </div>
-
-        <div data-en-construccion="F-040" class="rs-obras rs-obras--bloque">
-          <div class="rs-obras__rotulo">
-            <span class="rs-obras__cinta" aria-hidden="true"></span>
-            <p class="rs-obras__linea">
-              <span class="rs-chip rs-chip--atencion">En construcción</span>
-              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
-              no es información real y no se guarda nada.
-              Lo construirá <span class="rs-obras__ficha">F-040</span> · <span x-text="titulos['F-040']"></span>.
-            </p>
-          </div>
-          <!-- Panel de volcado a Sigrid (F-040), con el vocabulario del contrato
-               del alta en lote (R40). Solo se enseña: no se llama a nada. -->
-          <div class="rs-panel space-y-5">
-            <h2 class="rs-rotulo">
-              Volcado a Sigrid <span class="rs-ficha" x-text="datos.volcado.ficha"></span>
-            </h2>
-            <p class="rs-entradilla">
-              Solo lo aprobado es candidato al volcado. Se vuelca obra a obra: cada lote es de una sola obra.
-            </p>
-            <div class="rs-acciones">
-              <button type="button" data-placeholder="F-040" @click="placeholder('bandeja.verVolcado')"
-                      class="placeholder" aria-disabled="true"
-                      title="Todavía no hace nada: lo construye F-040">Ver qué se crearía en Sigrid <span class="placeholder-ficha">F-040</span></button>
-              <button type="button" data-placeholder="F-040" @click="placeholder('bandeja.volcar')"
-                      class="placeholder" aria-disabled="true"
-                      title="Todavía no hace nada: lo construye F-040">Volcar a Sigrid <span class="placeholder-ficha">F-040</span></button>
-              <button type="button" data-placeholder="F-040" @click="placeholder('bandeja.reintentarVolcado')"
-                      class="placeholder" aria-disabled="true"
-                      title="Todavía no hace nada: lo construye F-040">Reintentar los rechazados y no procesados <span class="placeholder-ficha">F-040</span></button>
-            </div>
-
-            <template x-for="r in [{ titulo: 'Ensayo (dry-run): no se crea nada', resultado: datos.volcado.dryRun }, { titulo: 'Volcado hecho', resultado: datos.volcado.hecho }]" :key="r.titulo">
-              <div class="rs-subpanel">
-                <div class="rs-subpanel__cabecera">
-                  <h3 class="rs-subpanel__titulo">
-                    <span x-text="r.titulo"></span> · obra <span x-text="obra(r.resultado.obra)"></span>
-                  </h3>
-                  <span x-show="r.resultado === datos.volcado.dryRun" class="rs-chip rs-chip--info">Simulación</span>
-                  <span x-show="r.resultado === datos.volcado.hecho" class="rs-chip rs-chip--ok">Hecho en Sigrid</span>
-                </div>
-                <dl class="rs-contadores">
-                  <div><dt>previstos</dt><dd x-text="resumenVolcado(r.resultado).previstos"></dd></div>
-                  <div><dt>creados</dt><dd x-text="resumenVolcado(r.resultado).creados"></dd></div>
-                  <div><dt>idempotentes</dt><dd x-text="resumenVolcado(r.resultado).idempotentes"></dd></div>
-                  <div><dt>rechazados</dt><dd x-text="resumenVolcado(r.resultado).rechazados"></dd></div>
-                  <div><dt>no_procesados</dt><dd x-text="resumenVolcado(r.resultado).no_procesados"></dd></div>
-                </dl>
-                <div class="rs-marco mt-4">
-                  <table class="rs-tabla rs-tabla--compacta">
-                    <thead>
-                      <tr>
-                        <th>Referencia externa</th>
-                        <th>Unidad de posventa</th>
-                        <th>Estado</th>
-                        <th>Código de Sigrid</th>
-                        <th>Motivo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <template x-for="p in r.resultado.partes" :key="p.referenciaExterna">
-                        <tr>
-                          <td class="rs-mono whitespace-nowrap" x-text="p.referenciaExterna"></td>
-                          <td class="rs-mono whitespace-nowrap" x-text="p.unidad.cod"></td>
-                          <td>
-                            <span class="rs-chip" :data-estado="p.estado" x-text="estadoVolcado(p.estado)"></span>
-                            <span class="rs-nota rs-mono block mt-1" x-text="p.estado"></span>
-                          </td>
-                          <td class="whitespace-nowrap">
-                            <span class="rs-mono" x-text="p.cod || '—'"></span>
-                            <span x-show="p.provisional" class="rs-provisional">provisional</span>
-                          </td>
-                          <td>
-                            <template x-if="p.motivo">
-                              <div>
-                                <span class="rs-mono rs-nota--error" x-text="p.motivo.codigo"></span>
-                                <span class="rs-nota block" x-text="p.motivo.mensaje"></span>
-                              </div>
-                            </template>
-                          </td>
-                        </tr>
-                      </template>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </template>
-
-            <template x-for="p in datos.volcado.pendientes" :key="p">
-              <p class="rs-pendiente">
-                <span x-text="p"></span> <span class="rs-ficha" x-text="datos.volcado.ficha"></span>
-              </p>
-            </template>
           </div>
         </div>
       </section>

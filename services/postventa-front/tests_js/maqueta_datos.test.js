@@ -31,11 +31,9 @@
 //                         referenciaExterna
 //   propuestas.oficiosObra {"<obra>": [{oficio, proveedor {cod, res},
 //                          comentario}]}
-//   volcado.catalogos     tipos/formas/oficios [{cod, res}], estados
-//                         [{cod, etiqueta}], motivos ["<código>"]
-//   volcado.dryRun/hecho  {obra, partes: [{referenciaExterna, unidad
-//                          {cod, res}, estado, cod, provisional, motivo
-//                          {codigo, mensaje} | null}]}
+//   incidencias.catalogos tipos/formas/oficios [{cod, res}] (hasta el
+//                          cierre de F-040, `volcado.catalogos`, con
+//                          `estados` y `motivos`, y `volcado.dryRun/hecho`)
 //   *.pendientes[]        "Pendiente: <qué falta>"
 //
 // El módulo se carga DENTRO de cada test y no en la cabecera: en la fase RED
@@ -94,7 +92,6 @@ const BLOQUES = {
   capitulos: "F-046",
   vinculos: "F-047",
   datamart: "F-048",
-  volcado: "F-040",
 };
 
 //: Campos del alta que trae cada fila (R38) y los únicos que admiten `null`:
@@ -116,35 +113,6 @@ const ADMITEN_NULL = new Set(["ubicacion", "oficio", "intervinientes"]);
 
 //: Estados de `conest` para partes de reclamación (R21), por código.
 const ESTADOS_CONEST = ["SAT", "PTE", "TER", "NPR", "CER"];
-
-//: Estados por parte del contrato de `sigrid/partes-reclamacion` y su
-//: etiqueta legible (`design.md` §5.3, R40).
-const ETIQUETAS_VOLCADO = {
-  previsto: "Se crearía",
-  creado: "Creado en Sigrid",
-  idempotente: "Ya estaba creado: no se duplica",
-  rechazado: "No se crea: hay que corregirlo",
-  no_procesado: "No se llegó a intentar: se puede reenviar",
-};
-
-//: Lista cerrada de códigos de parte del contrato (`sigrid_api.md` §8.9).
-const MOTIVOS_CONTRATO = [
-  "referencia_no_permitida",
-  "referencia_duplicada_en_lote",
-  "referencia_en_conflicto",
-  "unidad_postventa_no_encontrada",
-  "tipo_no_valido",
-  "clase_no_valida",
-  "oficio_no_esta_en_la_obra",
-  "interviniente_no_esta_en_la_obra",
-  "interviniente_ambiguo",
-  "interviniente_repetido",
-  "numeracion_agotada",
-  "colision_de_clave",
-  "filas_afectadas_inesperadas",
-  "error_de_escritura",
-  "presupuesto_de_tiempo_agotado",
-];
 
 //: Oficios del catálogo general de Sigrid que cita el alta manual
 //: (`04_alta_incidencia_sigrid.md` §3 y §4), con su resumen real (D-10).
@@ -236,7 +204,7 @@ test("f035 R24: las obras son 99NN con nombre de ejemplo, y toda obra citada exi
   const d = datos();
   const obras = d.obras.filas;
 
-  assert.ok(obras.length >= 2, "hacen falta al menos dos obras para enseñar el volcado por obra");
+  assert.ok(obras.length >= 2, "hacen falta al menos dos obras de ejemplo");
   for (const obra of obras) {
     assert.match(obra.cod, /^99\d\d$/, `obra ${obra.cod}: el código de ejemplo es 99NN`);
     assert.match(obra.res, /ejemplo/i, `obra ${obra.cod}: el nombre tiene que decir «Ejemplo»`);
@@ -246,8 +214,7 @@ test("f035 R24: las obras son 99NN con nombre de ejemplo, y toda obra citada exi
   for (const { fila, donde } of filasConAlta(d)) {
     assert.ok(conocidas.has(fila.obra), `${donde}: la obra ${fila.obra} no está en obras.filas`);
   }
-  assert.ok(conocidas.has(d.volcado.dryRun.obra), "la obra del dry-run no está en obras.filas");
-  assert.ok(conocidas.has(d.volcado.hecho.obra), "la obra del volcado hecho no está en obras.filas");
+  // Cierre de F-040 (R57): las obras del dry-run y del volcado hecho se fueron con el bloque volcado.
 });
 
 test("f035 R24: las incidencias son RS99.NN/NNNN con identificador de ruta EJ-NNNN", () => {
@@ -405,15 +372,15 @@ test("f035 R26: todo pendiente dice «Pendiente: <qué falta>»", () => {
   assert.ok(cuantos > 0, "no hay ni un pendiente en los datos de ejemplo");
 });
 
-test("f035 R26: están los pendientes mínimos (plantilla, proforma y las dudas del alta)", () => {
+// Cierre de F-040 (R57): los tres pendientes del alta (tipo 0003, causante y
+// estado en que nace el parte) se fueron con el bloque volcado; los
+// resolvieron F-059, F-072 y R59 de F-040.
+test("f035 R26: están los pendientes mínimos (plantilla y proforma)", () => {
   const d = datos();
   const texto = (bloque) => (d[bloque].pendientes || []).join("\n");
 
   assert.match(texto("impresion"), /plantilla/i, "F-044: falta el pendiente de la plantilla");
   assert.match(texto("vinculos"), /proforma/i, "F-047: falta el pendiente del enlace con la proforma");
-  assert.match(texto("volcado"), /0003/, "F-040: falta el pendiente del tipo 0003");
-  assert.match(texto("volcado"), /causante/i, "F-040: falta el pendiente de intervinientes y causante");
-  assert.match(texto("volcado"), /estado/i, "F-040: falta el pendiente del estado en que nace el parte");
 });
 
 // ── R38 · Los campos del alta en cada fila ──────────────────────────────────
@@ -474,8 +441,9 @@ test("f035 R38: los intervinientes salen de los oficios de la obra con su provee
 
 // ── R39 · Tipos y oficios por código de su catálogo ────────────────────────
 
+// Cierre de F-040 (R57): los catálogos se leen de `incidencias.catalogos`, adonde se mudaron.
 test("f035 R39: los catálogos del alta llevan los códigos reales de Sigrid (D-10)", () => {
-  const { catalogos } = datos().volcado;
+  const { catalogos } = datos().incidencias;
 
   const tipos = Object.fromEntries(catalogos.tipos.map((t) => [String(t.cod), t.res]));
   assert.equal(tipos["0002"], "PRIMER LISTADO POSTVENTA");
@@ -494,7 +462,7 @@ test("f035 R39: los catálogos del alta llevan los códigos reales de Sigrid (D-
 
 test("f035 R39: todo tipo, forma y oficio usado en los datos está en su catálogo", () => {
   const d = datos();
-  const { catalogos } = d.volcado;
+  const { catalogos } = d.incidencias;
   const tipos = codigos(catalogos.tipos);
   const formas = codigos(catalogos.formas);
   const oficios = codigos(catalogos.oficios);
@@ -527,93 +495,13 @@ test("f035 R39: exactamente una fila de ejemplo de la bandeja (bloque de F-039) 
   assert.equal(d.propuestas.filas.filter((fila) => String(fila.tipo) === "0003").length, 1);
 });
 
-// ── R40 · El panel de volcado, con el contrato de sigrid/partes-reclamacion ─
-
-test("f035 R40: los estados y los motivos son los del contrato, con su etiqueta legible", () => {
-  const { catalogos } = datos().volcado;
-
-  const etiquetas = Object.fromEntries(catalogos.estados.map((e) => [e.cod, e.etiqueta]));
-  assert.deepEqual(etiquetas, ETIQUETAS_VOLCADO);
-  assert.deepEqual([...catalogos.motivos].sort(), [...MOTIVOS_CONTRATO].sort());
-});
-
-test("f035 R40: cada resultado es de una sola obra, con referencias PVI- únicas y estados del contrato", () => {
-  const { dryRun, hecho, catalogos } = datos().volcado;
-  const estados = new Set(catalogos.estados.map((e) => e.cod));
-
-  assert.notEqual(dryRun.obra, hecho.obra, "los dos resultados de ejemplo son de obras distintas");
-  for (const [nombre, resultado] of [["dryRun", dryRun], ["hecho", hecho]]) {
-    assert.ok(resultado.partes.length > 0, `${nombre}: sin partes`);
-    const referencias = resultado.partes.map((p) => p.referenciaExterna);
-    assert.equal(new Set(referencias).size, referencias.length, `${nombre}: referencias repetidas`);
-    for (const parte of resultado.partes) {
-      assert.match(parte.referenciaExterna, /^PVI-/, `${nombre}: la referencia empieza por PVI-`);
-      assert.ok(estados.has(parte.estado), `${nombre}: estado ${parte.estado} fuera del contrato`);
-      assert.ok(
-        parte.unidad.cod.startsWith(`${resultado.obra}.`),
-        `${nombre}: la unidad ${parte.unidad.cod} no es de la obra ${resultado.obra} (un lote, una obra)`,
-      );
-    }
-  }
-});
-
-test("f035 R40: el dry-run no crea nada y sus códigos previstos son provisionales", () => {
-  const { dryRun } = datos().volcado;
-  const estados = dryRun.partes.map((p) => p.estado);
-
-  assert.ok(!estados.includes("creado"), "en un dry-run ningún parte está creado");
-  for (const esperado of ["previsto", "idempotente", "rechazado"]) {
-    assert.ok(estados.includes(esperado), `el dry-run de ejemplo enseña un parte ${esperado}`);
-  }
-  for (const parte of dryRun.partes) {
-    if (parte.estado === "previsto") {
-      assert.match(parte.cod, /^RS99\.09\/\d{4}$/, "un previsto lleva el código que tendría");
-      assert.equal(parte.provisional, true, "el código de un previsto es provisional (contrato §8.9)");
-    } else {
-      // Un idempotente ya estaba creado: su código es el de verdad.
-      assert.equal(parte.provisional, false, `un ${parte.estado} no lleva código provisional`);
-    }
-  }
-});
-
-test("f035 R40: el volcado hecho no tiene previstos y enseña los cuatro resultados reales", () => {
-  const { hecho } = datos().volcado;
-  const estados = hecho.partes.map((p) => p.estado);
-
-  assert.ok(!estados.includes("previsto"), "en un volcado hecho ningún parte queda previsto");
-  for (const esperado of ["creado", "idempotente", "rechazado", "no_procesado"]) {
-    assert.ok(estados.includes(esperado), `el volcado hecho de ejemplo enseña un parte ${esperado}`);
-  }
-  for (const parte of hecho.partes) {
-    assert.equal(parte.provisional, false, "en un volcado hecho ningún código es provisional");
-    if (parte.estado === "creado" || parte.estado === "idempotente") {
-      assert.match(parte.cod, /^RS99\.09\/\d{4}$/, `un ${parte.estado} lleva su código de Sigrid`);
-    }
-  }
-});
-
-test("f035 R40: rechazados y no procesados llevan motivo de la lista cerrada; los demás, ninguno", () => {
-  const { dryRun, hecho, catalogos } = datos().volcado;
-  const motivos = new Set(catalogos.motivos);
-
-  for (const parte of [...dryRun.partes, ...hecho.partes]) {
-    if (parte.estado === "rechazado" || parte.estado === "no_procesado") {
-      assert.ok(parte.motivo, `${parte.referenciaExterna}: un ${parte.estado} dice por qué`);
-      assert.ok(motivos.has(parte.motivo.codigo), `${parte.motivo.codigo} no es de la lista cerrada`);
-      assert.ok(parte.motivo.mensaje, `${parte.referenciaExterna}: el motivo lleva su mensaje`);
-      assert.equal(parte.cod, null, `${parte.referenciaExterna}: sin crear, no hay código de Sigrid`);
-    } else {
-      assert.equal(parte.motivo, null, `${parte.referenciaExterna}: un ${parte.estado} no lleva motivo`);
-    }
-    if (parte.estado === "no_procesado") {
-      assert.equal(
-        parte.motivo.codigo,
-        "presupuesto_de_tiempo_agotado",
-        "el contrato solo da no_procesado con presupuesto_de_tiempo_agotado",
-      );
-    }
-  }
-});
+// ── R40 · El panel de volcado de ejemplo ────────────────────────────────────
+//
+// Cierre de F-040 (R57, `specs/F-040-volcado-sigrid/design.md` §4): el panel
+// de ejemplo y su bloque `volcado` salieron de la maqueta con sus cinco tests
+// (estados y motivos del contrato, una obra por resultado, el dry-run, el
+// volcado hecho y los motivos de rechazados y no procesados). El volcado de
+// verdad lo prueban `tests_js/volcado.test.js` y `tests_js/f040_tipo.test.js`.
 
 // ── R41 · Dónde está archivado un parte, con la estructura de Posventa ──────
 
@@ -640,4 +528,22 @@ test("f035 R41: la carpeta de archivo es la de Posventa, ficticia, sin fichero n
       `${fila.id}: la villa de la carpeta no es la de la unidad (tres cifras, F-049)`,
     );
   }
+});
+
+// ── F-040 R57 · Los catálogos del alta, mudados ─────────────────────────────
+//
+// `specs/F-040-volcado-sigrid/design.md` §4: el bloque `volcado` sale con el
+// cierre de F-040; `tipos`, `formas` y `oficios` no se borran, se mudan al
+// bloque `incidencias` (F-041, la ficha que edita esos campos), y lo que solo
+// servía al panel de ejemplo (`estados`, `motivos`) se va con él.
+
+test("f040 R57: sin bloque volcado; tipos, formas y oficios mudados a incidencias.catalogos", () => {
+  const d = datos();
+
+  assert.equal("volcado" in d, false, "el bloque volcado (F-040) sale con su cierre");
+  const { catalogos } = d.incidencias;
+  assert.ok(catalogos, "los catálogos del alta viven en incidencias.catalogos");
+  assert.deepEqual(Object.keys(catalogos).sort(), ["formas", "oficios", "tipos"]);
+  assert.ok(catalogos.tipos.some((t) => String(t.cod) === "0002"), "el tipo 0002 sigue");
+  assert.ok(catalogos.oficios.length >= 5, "los oficios del alta siguen");
 });

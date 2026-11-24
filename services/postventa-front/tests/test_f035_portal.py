@@ -2802,27 +2802,10 @@ def test_f035_r55_el_movimiento_reducido_gana_por_especificidad(hoja):
 
 # --- R40 · Cada chip del volcado, en su panel (cambio requerido 2) ---------------
 #
-# «Dry-run siempre primero» es la regla central del volcado: el panel del
-# volcado hecho no puede salir etiquetado «Simulación» ni al revés (mutante S1).
-
-CHIPS_DEL_VOLCADO = {
-    "Simulación": "r.resultado === datos.volcado.dryRun",
-    "Hecho en Sigrid": "r.resultado === datos.volcado.hecho",
-}
-
-
-def test_f035_r40_cada_chip_del_volcado_va_en_su_panel():
-    bloque = seccion(leer_html(PORTAL), "bandeja")
-
-    for texto, condicion in CHIPS_DEL_VOLCADO.items():
-        chip = _uno(
-            [e for e in bloque.elementos() if "rs-chip" in clases(e) and e.texto() == texto],
-            f"chip «{texto}» del volcado",
-        )
-        assert _normaliza(chip.atributos.get("x-show", "")) == condicion, (
-            f"el chip «{texto}» se enseña con x-show=\"{condicion}\", "
-            f"no con «{chip.atributos.get('x-show')}»"
-        )
+# Cierre de F-040 (R57, `specs/F-040-volcado-sigrid/design.md` §4): los chips
+# «Simulación» y «Hecho en Sigrid» se fueron con el panel de volcado de ejemplo
+# de `#/bandeja`, y este test con ellos. «Dry-run siempre primero» lo prueban
+# ahora el panel real y su suite (`tests_js/volcado.test.js`, `test_f040_front.py`).
 
 
 # --- §5.2 · Los errores de la importación de ejemplo ------------------------------
@@ -2838,8 +2821,9 @@ def test_f035_r40_cada_chip_del_volcado_va_en_su_panel():
 
 #: Los chips de estado del portal (medido: 4; conest ×3 y volcado). Cierre de
 #: F-038 (T8): el de revisión (`fila.estado`) salió con la tabla de ejemplo de la
-#: bandeja; los estados de revisión los pinta `bandeja.html`.
-CHIPS_DE_ESTADO = 4
+#: bandeja; los estados de revisión los pinta `bandeja.html`. Cierre de F-040
+#: (R57): el de volcado (`p.estado`) salió con su panel de ejemplo: quedan 3.
+CHIPS_DE_ESTADO = 3
 
 
 def test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto():
@@ -2934,8 +2918,9 @@ def test_f035_r60_styles_css_no_puede_esconder_ni_desactivar_el_circuito():
 _FICHA_DE_BLOQUE = re.compile(r"^datos\.(\w+)\.ficha$")
 _PENDIENTES_DE_BLOQUE = re.compile(r"datos\.(\w+)\.pendientes")
 #: Los chips F-0NN de los paneles de la maqueta (medido: 10; 8 desde la
-#: enmienda del 2026-10-05, que retiró los dos del panel de F-036 en `entrada`).
-CHIPS_DE_FICHA = 8
+#: enmienda del 2026-10-05, que retiró los dos del panel de F-036 en `entrada`;
+#: 6 desde el cierre de F-040, R57, que retiró los dos de su panel de volcado).
+CHIPS_DE_FICHA = 6
 
 
 def test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes():

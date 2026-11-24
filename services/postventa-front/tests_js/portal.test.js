@@ -258,14 +258,12 @@ const SECCIONES_DEL_PORTAL = SECCIONES_ESPERADAS.map(([id]) => id).filter((id) =
 //: Cierre de F-038 (T8, su `design.md` §3.2): salen sus tres (`bandeja.editar`,
 //: `bandeja.descartar`, `bandeja.aprobar`), y `bandeja.aprobarSeleccionadas` y
 //: `bandeja.reintentarVolcado` pasan a `enBloque: false`: en `#/bandeja` ya no
-//: hay filas que seleccionar.
+//: hay filas que seleccionar. Cierre de F-040 (R57, su `design.md` §4): salen
+//: sus tres (`bandeja.verVolcado`, `bandeja.volcar`, `bandeja.reintentarVolcado`).
 const PLACEHOLDERS_ESPERADOS = [
   ["entrada.verContratoWeb", "F-037", "Ver el contrato de entrada", false],
   ["bandeja.cambiarIndustrial", "F-039", "Cambiar industrial", false],
   ["bandeja.aprobarSeleccionadas", "F-043", "Aprobar las seleccionadas", false],
-  ["bandeja.verVolcado", "F-040", "Ver qué se crearía en Sigrid", false],
-  ["bandeja.volcar", "F-040", "Volcar a Sigrid", false],
-  ["bandeja.reintentarVolcado", "F-040", "Reintentar los rechazados y no procesados", false],
   ["incidencias.cambiarEstadoBloque", "F-043", "Cambiar estado…", true],
   ["incidencias.asignarIndustrialBloque", "F-043", "Asignar industrial…", true],
   ["incidencias.imprimirBloque", "F-044", "Imprimir los partes", true],
@@ -982,15 +980,8 @@ test("f035 R8: están los placeholders del inventario, con su ficha, etiqueta y 
   }
 });
 
-test("f035 R8: el volcado explica que va por obra y que reintentar no duplica", () => {
-  const { placeholderPorId } = portal();
-
-  for (const id of ["bandeja.verVolcado", "bandeja.volcar"]) {
-    const { explicacion } = placeholderPorId(id);
-    assert.match(explicacion, /obra/i, `${id}: el volcado va por obra`);
-    assert.match(explicacion, /PVI-/, `${id}: la referencia PVI- evita duplicar`);
-  }
-});
+// Cierre de F-040 (R57): «el volcado explica que va por obra y que reintentar
+// no duplica» salió con sus placeholders; lo dice el panel real de bandeja.html.
 
 test("f035 R8: placeholderPorId encuentra cada entrada y devuelve null si no existe", () => {
   const { PLACEHOLDERS, placeholderPorId } = portal();
@@ -1039,8 +1030,9 @@ test("f035 R12: un placeholder que no es en bloque no habla de la selección", (
   const aviso = textoPlaceholder("ficha.guardar", { seleccionadas: 3 });
 
   assert.doesNotMatch(aviso, /\b3 incidencias\b/);
-  // Cierre de F-038 (T8): los dos de la bandeja que contaban su selección.
-  for (const id of ["bandeja.aprobarSeleccionadas", "bandeja.reintentarVolcado"]) {
+  // Cierre de F-038 (T8): los dos de la bandeja que contaban su selección; el
+  // segundo, `bandeja.reintentarVolcado`, salió con el cierre de F-040 (R57).
+  for (const id of ["bandeja.aprobarSeleccionadas"]) {
     assert.doesNotMatch(textoPlaceholder(id, { seleccionadas: 3 }), /selección actual/, id);
   }
 });
@@ -1216,63 +1208,11 @@ test("f035 R39: etiquetaCatalogo enseña código · resumen, el 0003 como pendie
 });
 
 // ── R40 · El resumen del volcado ────────────────────────────────────────────
-
-test("f035 R40: resumenVolcado cuenta por estado con los nombres del contrato", () => {
-  const { resumenVolcado } = portal();
-
-  const resumen = resumenVolcado([
-    { estado: "previsto" },
-    { estado: "previsto" },
-    { estado: "creado" },
-    { estado: "idempotente" },
-    { estado: "rechazado" },
-    { estado: "no_procesado" },
-    { estado: "desconocido" },
-  ]);
-
-  assert.deepEqual(resumen, {
-    previstos: 2,
-    creados: 1,
-    idempotentes: 1,
-    rechazados: 1,
-    no_procesados: 1,
-  });
-});
-
-test("f035 R40: resumenVolcado de una lista vacía es todo cero", () => {
-  const { resumenVolcado } = portal();
-
-  assert.deepEqual(resumenVolcado([]), {
-    previstos: 0,
-    creados: 0,
-    idempotentes: 0,
-    rechazados: 0,
-    no_procesados: 0,
-  });
-});
-
-test("f035 R40: etiquetaEstadoVolcado da la etiqueta legible; un estado desconocido, tal cual", () => {
-  const { etiquetaEstadoVolcado } = portal();
-  const estados = [
-    { cod: "previsto", etiqueta: "Se crearía" },
-    { cod: "no_procesado", etiqueta: "No se llegó a intentar: se puede reenviar" },
-  ];
-
-  assert.equal(etiquetaEstadoVolcado("previsto", estados), "Se crearía");
-  assert.equal(etiquetaEstadoVolcado("no_procesado", estados), "No se llegó a intentar: se puede reenviar");
-  assert.equal(etiquetaEstadoVolcado("raro", estados), "raro");
-  assert.equal(etiquetaEstadoVolcado("previsto", []), "previsto");
-});
-
-test("f035 R40: el resumen de los dos resultados de ejemplo sale de sus filas", () => {
-  const { resumenVolcado } = portal();
-  const { dryRun, hecho } = datos().volcado;
-
-  assert.equal(resumenVolcado(dryRun.partes).creados, 0, "un dry-run no crea nada");
-  assert.ok(resumenVolcado(dryRun.partes).previstos > 0);
-  assert.equal(resumenVolcado(hecho.partes).previstos, 0, "un volcado hecho no deja previstos");
-  assert.ok(resumenVolcado(hecho.partes).creados > 0);
-});
+//
+// Cierre de F-040 (R57, `specs/F-040-volcado-sigrid/design.md` §4):
+// `resumenVolcado` y `etiquetaEstadoVolcado` salieron de `js/portal.js` con el
+// panel de ejemplo, y sus cuatro tests con ellas. Que ya no estén lo fija
+// «f040 R57: sin los placeholders del volcado…», al final de este fichero.
 
 // ── Cierre de F-038 (T8) · El detalle de la bandeja abre las filas de F-039 ─
 
@@ -1549,22 +1489,19 @@ test("f035 R6: buscarPorId devuelve la fila o null, sin lanzar", () => {
 /**
  * Los códigos de los catálogos de estado que pinta el portal. Cierre de F-038
  * (T8): los cinco de revisión se fueron con el bloque `bandeja` de la maqueta
- * (`design.md` §3.2 de F-038); los pinta `bandeja.html`, no el portal.
+ * (`design.md` §3.2 de F-038); los pinta `bandeja.html`, no el portal. Cierre
+ * de F-040 (R57): los cinco del volcado, con el bloque `volcado`.
  */
 function codigosDeEstado() {
   const { ESTADOS } = portal();
-  const d = datos();
-  return [
-    ...ESTADOS.map((e) => e.cod),
-    ...d.volcado.catalogos.estados.map((e) => e.cod),
-  ];
+  return ESTADOS.map((e) => e.cod);
 }
 
-test("f035 R57: cada código de estado (conest y volcado) tiene su regla [data-estado] en css/portal.css", () => {
+test("f035 R57: cada código de estado de conest tiene su regla [data-estado] en css/portal.css", () => {
   const css = leer("css/portal.css").replace(/\/\*[\s\S]*?\*\//g, " ");
   const codigos = codigosDeEstado();
 
-  assert.equal(codigos.length, 10, "cinco de conest y cinco de volcado");
+  assert.equal(codigos.length, 5, "los cinco de conest (los del volcado salieron con el cierre de F-040)");
   const faltan = codigos.filter((cod) => !css.includes(`[data-estado="${cod}"]`));
   assert.deepEqual(faltan, [], `css/portal.css no pinta estos estados: ${faltan.join(", ")}`);
 });
@@ -1585,14 +1522,15 @@ test("f035 R57: todo elemento de index.html con data-estado es un rs-chip con su
   assert.ok(expresiones.some((x) => /\binc\.estado\b/.test(x)), "los estados de conest de las incidencias");
   // Cierre de F-038 (T8): el portal ya no pinta estados de revisión (`fila.estado`).
   assert.ok(!expresiones.some((x) => /\bfila\.estado\b/.test(x)), "los estados de revisión son de bandeja.html");
-  assert.ok(expresiones.some((x) => /\bp\.estado\b/.test(x)), "los estados de volcado");
+  // Cierre de F-040 (R57): el portal ya no pinta estados de volcado (`p.estado`).
+  assert.ok(!expresiones.some((x) => /\bp\.estado\b/.test(x)), "los estados de volcado son de bandeja.html");
 });
 
 test("f035 R57: ningún estado se pinta fuera de su chip (salvo las opciones de un filtro)", () => {
   const sueltos = elementos(arbol(leer("index.html"))).filter(
     (e) =>
       e.nombre !== "option" &&
-      /\b(etiquetaEstado|estadoVolcado)\(/.test(e.atributos["x-text"] || "") &&
+      /\betiquetaEstado\(/.test(e.atributos["x-text"] || "") &&
       !(":data-estado" in e.atributos),
   );
 
@@ -1796,5 +1734,36 @@ test("f035 R11: el aviso de un placeholder se ve en su tarjeta, y sin aviso no h
     c.placeholder(portal().PLACEHOLDERS[0].id);
     assert.ok(c.aviso, "el placeholder deja su aviso");
     assert.equal(clasesEn(tarjeta, c).has("rs-toast--visible"), true, "con aviso, en su tarjeta");
+  });
+});
+
+// ── F-040 R57 · El cierre de la ficha en el portal ──────────────────────────
+//
+// `specs/F-040-volcado-sigrid/design.md` §4: el volcado es real en
+// `bandeja.html`; en la maqueta no queda nada de F-040 (ni sus tres
+// placeholders, ni sus funciones, ni su título), y el componente sigue
+// etiquetando tipo, forma y oficio con los catálogos mudados.
+
+test("f040 R57: sin los placeholders del volcado, sin sus funciones y sin el título de F-040", () => {
+  const Portal = portal();
+
+  for (const id of ["bandeja.verVolcado", "bandeja.volcar", "bandeja.reintentarVolcado"]) {
+    assert.equal(Portal.placeholderPorId(id), null, `${id} sigue en PLACEHOLDERS`);
+  }
+  assert.deepEqual(Portal.PLACEHOLDERS.filter((p) => p.ficha === "F-040"), [], "ninguna entrada de F-040");
+  assert.equal("resumenVolcado" in Portal, false, "resumenVolcado era del panel de ejemplo");
+  assert.equal("etiquetaEstadoVolcado" in Portal, false, "etiquetaEstadoVolcado era del panel de ejemplo");
+  assert.equal("F-040" in Portal.TITULOS_FICHAS, false, "F-040 está done: sin título");
+});
+
+test("f040 R57: el componente etiqueta tipo, forma y oficio con los catálogos mudados y sin nada del volcado", () => {
+  conVentanaFalsa(() => {
+    const c = nuevoComponente();
+
+    assert.equal(c.tipo("0002"), "0002 · PRIMER LISTADO POSTVENTA");
+    assert.equal(c.forma("1"), "1 · Escrita");
+    assert.equal(c.oficio("0005"), "0005 · Carpintería PVC");
+    assert.equal("estadoVolcado" in c, false, "estadoVolcado era del panel de ejemplo");
+    assert.equal("resumenVolcado" in c, false, "resumenVolcado era del panel de ejemplo");
   });
 });

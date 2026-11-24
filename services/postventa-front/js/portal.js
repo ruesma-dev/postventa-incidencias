@@ -20,7 +20,6 @@
 //   textoPlaceholder / seleccionadasPara    el aviso de un placeholder (R11, R12)
 //   filtrarIncidencias / alternarSeleccion                    solo en pantalla (R19, R20)
 //   etiquetaEstado / formatoImporte / etiquetaCatalogo        cómo se enseña (R21, R22, R39)
-//   resumenVolcado / etiquetaEstadoVolcado                    el panel de volcado (R40)
 //   buscarPorId                                               abrir una ficha o un detalle (R6)
 //
 // La regla de retirada (`design.md` §7.3): cuando una ficha F-0NN construya su
@@ -117,7 +116,6 @@
   const TITULOS_FICHAS = Object.freeze({
     "F-037": "Entrada desde la web de clientes: el contrato con el proyecto independiente",
     "F-039": "Propuesta del industrial al crear la incidencia",
-    "F-040": "Volcar a Sigrid las incidencias aprobadas",
     "F-041": "Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid",
     "F-042": "No procede: justificación obligatoria y email al cliente",
     "F-043": "Operaciones en bloque sobre incidencias",
@@ -135,8 +133,10 @@
    * tarjeta «Partes firmados» de `inicio` (D-7). `enBloque` marca las que
    * dicen a cuántas afectarían con la selección actual (R12). Desde el cierre
    * de F-038 (`design.md` §3.2 de F-038) `#/bandeja` ya no tiene filas que
-   * seleccionar: `bandeja.aprobarSeleccionadas` y `bandeja.reintentarVolcado`
-   * pasaron a `enBloque: false`.
+   * seleccionar: `bandeja.aprobarSeleccionadas` pasó a `enBloque: false`. Con
+   * el de F-040 (`design.md` §4 de F-040) salieron sus tres entradas
+   * (`bandeja.verVolcado`, `bandeja.volcar` y `bandeja.reintentarVolcado`):
+   * el volcado es el panel de `bandeja.html`.
    */
   const PLACEHOLDERS = congelarLista([
     {
@@ -158,27 +158,6 @@
       ficha: "F-043",
       etiqueta: "Aprobar las seleccionadas",
       explicacion: "Aprobará de una vez todas las filas marcadas de la bandeja.",
-      enBloque: false,
-    },
-    {
-      id: "bandeja.verVolcado",
-      ficha: "F-040",
-      etiqueta: "Ver qué se crearía en Sigrid",
-      explicacion: "Hará un ensayo del volcado, obra a obra y sin crear nada en Sigrid: dirá qué partes se crearían, cuáles ya existían y cuáles se rechazarían. La referencia PVI- de cada parte hace que reintentar no duplique.",
-      enBloque: false,
-    },
-    {
-      id: "bandeja.volcar",
-      ficha: "F-040",
-      etiqueta: "Volcar a Sigrid",
-      explicacion: "Creará en Sigrid los partes de lo aprobado, en un lote por obra. Reintentar no duplica: la referencia PVI- hace que lo ya creado vuelva como «ya estaba creado».",
-      enBloque: false,
-    },
-    {
-      id: "bandeja.reintentarVolcado",
-      ficha: "F-040",
-      etiqueta: "Reintentar los rechazados y no procesados",
-      explicacion: "Reenviará, obra a obra, los partes rechazados una vez corregidos y los no procesados; la referencia PVI- impide duplicar lo ya creado.",
       enBloque: false,
     },
     {
@@ -311,15 +290,6 @@
   const TEXTO_TIPO_PENDIENTE = "Pendiente: qué es y cuándo se usa";
   const SIN_COMPLETAR = "sin completar";
   const SIN_ENLAZAR = "sin enlazar";
-
-  /** Nombre del estado del contrato de volcado → clave de su resumen (R40). */
-  const CLAVE_RESUMEN_VOLCADO = Object.freeze({
-    previsto: "previstos",
-    creado: "creados",
-    idempotente: "idempotentes",
-    rechazado: "rechazados",
-    no_procesado: "no_procesados",
-  });
 
   // ── Rutas ─────────────────────────────────────────────────────────────────
 
@@ -557,26 +527,6 @@
     return entrada.cod + " · " + entrada.res;
   }
 
-  // ── El panel de volcado (R40) ─────────────────────────────────────────────
-
-  /** Cuenta por estado con los nombres del resumen del contrato. */
-  function resumenVolcado(partes) {
-    const resumen = { previstos: 0, creados: 0, idempotentes: 0, rechazados: 0, no_procesados: 0 };
-    (partes || []).forEach(function (parte) {
-      const clave = Object.prototype.hasOwnProperty.call(CLAVE_RESUMEN_VOLCADO, parte.estado)
-        ? CLAVE_RESUMEN_VOLCADO[parte.estado]
-        : null;
-      if (clave) resumen[clave] += 1;
-    });
-    return resumen;
-  }
-
-  /** La etiqueta legible de un estado del volcado; uno desconocido, tal cual. */
-  function etiquetaEstadoVolcado(estado, estados) {
-    const entrada = (estados || []).find(function (e) { return e.cod === estado; });
-    return entrada ? entrada.etiqueta : String(estado);
-  }
-
   const Portal = {
     SECCIONES: SECCIONES,
     PAGINAS: PAGINAS,
@@ -600,8 +550,6 @@
     etiquetaEstado: etiquetaEstado,
     formatoImporte: formatoImporte,
     etiquetaCatalogo: etiquetaCatalogo,
-    resumenVolcado: resumenVolcado,
-    etiquetaEstadoVolcado: etiquetaEstadoVolcado,
   };
 
   if (typeof window !== "undefined") {

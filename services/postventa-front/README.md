@@ -219,8 +219,8 @@ como R28). `Portal.enConstruccion(id)` lo consulta.
    solo lleva recuadros de bloque (`data-en-construccion="F-0NN"`) en lo que
    le falte: hoy, la web de clientes (F-037) en `entrada`, el registro sin
    firma (F-045) en la tarjeta «Partes firmados» y, desde el cierre de F-038,
-   el industrial propuesto (F-039), la aprobación en bloque (F-043) y el
-   volcado (F-040) en `bandeja` (R63–R65). El rótulo no se
+   el industrial propuesto (F-039) y la aprobación en bloque (F-043) en
+   `bandeja` (R63–R65; el del volcado, F-040, salió con su cierre). El rótulo no se
    puede cerrar ni esconder (ni `x-show`, ni `hidden`, ni `sr-only`, ni
    `style`). Fuera de los recuadros, `index.html` solo admite una **lista
    cerrada** de directivas de Alpine (R63 enmendado): un dato inventado que
@@ -636,8 +636,15 @@ por enlace (F-057).
 ## El panel de volcado (F-040)
 
 **Añadido el 2026-10-31 por F-040 (Bloque 1); publicado el 2026-11-02** (T4 de
-`specs/F-040-volcado-sigrid/tasks.md`; la prueba en producción, T5, es del
-humano). El tipo de reclamación (F-072) entra con el Bloque 1 bis (2026-11-19).
+`specs/F-040-volcado-sigrid/tasks.md`; la prueba en producción, T5, se hizo en
+la 0626 entre el 2026-11-02 y el 2026-11-24). El tipo de reclamación (F-072)
+entra con el Bloque 1 bis (2026-11-19). **Cierre en el portal (R57 de F-040)**:
+un solo commit, el que pone F-040 en `done`, quita de la maqueta su panel de
+volcado de ejemplo (tres placeholders, `resumenVolcado`,
+`etiquetaEstadoVolcado` y el bloque `volcado` de `MaquetaDatos`, cuyos
+catálogos `tipos`, `formas` y `oficios` se mudan a `incidencias.catalogos`);
+sin enlace nuevo (D-4): las tarjetas «Bandeja de revisión» de la portada y
+«Revisar la bandeja» de `#/bandeja` dicen «y volcar a Sigrid lo aprobado».
 
 Vive en `bandeja.html`, entre el resumen de la obra y la lista, **dentro del
 mismo componente** (`appRevision`, un solo `x-data` por página): su estado

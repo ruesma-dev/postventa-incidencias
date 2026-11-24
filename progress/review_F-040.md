@@ -115,3 +115,20 @@ rastro del arnés, `progress/impl_F-040.md`, `progress/mutacion_F-040_bloque1bis
 ### Automejora (propuesta, no aplicada)
 
 Ninguna nueva: la obs. 3 ya la cubre C4 bis; basta con exigirla.
+
+## Review corta de T6 y T6 bis
+
+Revisión incremental desde `5c7d8a1`… no: desde `c0e887b` (T5.4–T5.5), commits `03992e0`, `a0c15a8`, `8dbb559`, `de46416` y `azure-apps` `be26951`. Reviewer, 2026-11-24. **Veredicto: APROBADO.** Rigor `critico`; R57/R58 son `unit` y no tocan Python (cobertura N/A impresa; mutación no aplica a JS/HTML/CSS).
+
+- [x] **C1** `bash harness/init.sh` en el worktree: exit 0, `ENTORNO LISTO` (raíz 2202 passed; avisos esperados: `ok_humano`, `blocked`, ruff previo). `node --test "tests_js/*.test.js"` reejecutado: 1144/1144. Tests de documentación del API (copia ↔ origen): 766 passed.
+- [x] **R57 en un solo commit** (`a0c15a8`) con F-040 `done`: fuera recuadro `data-en-construccion="F-040"`, 3 placeholders, `resumenVolcado`, `etiquetaEstadoVolcado`, `CLAVE_RESUMEN_VOLCADO`, título de F-040, `estadoVolcado`/`resumenVolcado` del componente y bloque `volcado`; sin enlace nuevo (D-4); las dos tarjetas dicen «y volcar a Sigrid lo aprobado» y la 02 sigue «En producción»; F-039 y F-043 conservan sus recuadros. Ningún resto vivo: `grep` sin usos de lo quitado (el `datos.volcado` de `js/volcado.js:301` es la respuesta de la API). CSS `.rs-contadores`/`.rs-provisional` sin otros usos.
+- [x] **Tests quitados, uno a uno**: JS −10 (5 de R40 en `maqueta_datos.test.js`; «R8: el volcado explica…» y 4 de R40 en `portal.test.js`), pytest −1 (chips «Simulación»/«Hecho en Sigrid»); todos leían solo `datos.volcado`, los placeholders de F-040 o sus dos funciones. Los ajustados (R24, R26, R39, R12, R57, R65, recuentos 9→8, 4→3, 8→6) solo pierden la parte del panel. Cada uno lleva su «Cierre de F-040 (R57)». +3 JS y +3 pytest nuevos, con RED real en el informe.
+- [x] **Catálogos mudados a `incidencias.catalogos`**: aceptado. §4 no fija destino; R23 exige ficha no `done` y F-041 es la que edita esos campos; `tipos`/`formas`/`oficios` idénticos byte a byte; lo fija «f040 R57: sin bloque volcado…». `motivos` sale además de `estados` (§4 solo nombra `estados`): coherente con «lo que solo le servía».
+- [x] **R58**: `INTEGRACION.md` y la copia sin F-040 en futuro (quedan menciones en presente o en notas fechadas); los hunks de R58 son idénticos en los dos. `azure-apps`: commit aparte, solo `postventa_incidencias.md`, sin push.
+- [x] **C3/C5**: sin secretos, GUID, IP, host del SWA ni datos personales en lo añadido (`grep` sobre el diff); primera línea con ruta en los `progress/` nuevos; finales LF en todo lo tocado (`git ls-files --eol`), `dev_front.ps1` sigue CRLF y no se tocó. T5.6 en commit propio con la decisión del humano.
+
+**Observaciones (no bloquean):**
+1. El informe dice «antes 1154: −13 del panel, +3 R57»; medido: base `a0c15a8~1` 1151 tests JS, cabeza 1144 (−10, +3).
+2. Restos menores fuera de la lista de §4: `js/maqueta_datos.js:566` y `:568` («lo confirman F-039 y F-040», «la forma exacta la fija F-040») y las reglas `[data-estado="previsto"…]` de `css/portal.css`, ya sin uso en el portal. Para el cierre de F-041/F-039.
+3. La copia de `azure-apps` arrastra divergencias previas ajenas a F-040: la fila F-072 (origen «sin desplegar», copia «desplegada el 2026-11-18») y «Desde F-059» (copia «no está desplegada todavía»). El origen está atrasado en F-072: que lo refresque F-072.
+4. `azure-apps` `main` va 2 por delante: el push del humano incluye también `64f8ace` (`dedicacion`), ajeno.

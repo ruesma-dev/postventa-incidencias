@@ -672,13 +672,6 @@ input[type="checkbox"]:disabled {
   color: var(--rs-acero-texto);
 }
 
-.rs-provisional {
-  margin-left: 0.4rem;
-  font-size: 0.78rem;
-  font-style: italic;
-  color: var(--rs-acero-texto);
-}
-
 /* ---------- Chips de estado (R57): color por data-estado, siempre con texto ---- */
 
 .rs-chip[data-estado]::before {
@@ -966,40 +959,6 @@ input[type="checkbox"]:disabled {
   font-size: 0.95rem;
   font-weight: 400;
   color: var(--rs-acero-texto);
-}
-
-/* El resumen del volcado por estado: cifra grande y el nombre del contrato. */
-.rs-contadores {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
-  gap: 0.5rem;
-  margin: 0;
-}
-
-.rs-contadores > div {
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-end;
-  gap: 0.15rem;
-  padding: 0.6rem 0.8rem;
-  background-color: var(--rs-lienzo);
-  border-radius: var(--rs-radio-sm);
-}
-
-.rs-contadores dt {
-  font-family: var(--rs-fuente-mono);
-  font-size: 0.72rem;
-  color: var(--rs-acero-texto);
-}
-
-.rs-contadores dd {
-  margin: 0;
-  font-family: var(--rs-fuente-titulos);
-  font-size: 1.4rem;
-  font-weight: 700;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  color: var(--rs-tinta);
 }
 
 .rs-historial {

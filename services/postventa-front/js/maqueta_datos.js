@@ -99,7 +99,7 @@
   };
 
   // Formas de comunicación y tipos de reclamación, por código (catálogos de
-  // `volcado.catalogos`). «1» es «Escrita», el defecto del contrato.
+  // `incidencias.catalogos`). «1» es «Escrita», el defecto del contrato.
   const ESCRITA = "1";
   const PRIMER_LISTADO = "0002";
 
@@ -107,7 +107,7 @@
 
   const MaquetaDatos = {
     // Tres obras de ejemplo. Las usan la propuesta de industrial, las
-    // incidencias, el volcado y el coste; las retira F-041, que es la primera
+    // incidencias y el coste; las retira F-041, que es la primera
     // que lee obras reales.
     obras: {
       ficha: "F-041",
@@ -253,6 +253,27 @@
     // archivado dicen dónde, con la estructura de Posventa y sin fichero (R41).
     incidencias: {
       ficha: "F-041",
+      // Los catálogos del alta, por código y con su resumen real (D-10 de
+      // F-035): los usan `tipo()`, `forma()` y `oficio()` de
+      // `js/portal_app.js`. Vivían en el bloque `volcado` (F-040) y se
+      // mudaron aquí con su cierre (`design.md` §4 de F-040): esta es la
+      // ficha que edita esos campos. Quien retire este bloque, los vuelve a
+      // mudar si aún los usa alguien.
+      catalogos: {
+        tipos: [
+          { cod: "0002", res: "PRIMER LISTADO POSTVENTA" },
+          // Sale por defecto en el escritorio y nadie sabe qué es (R39).
+          { cod: "0003", res: null },
+        ],
+        formas: [{ cod: "1", res: "Escrita" }],
+        oficios: [
+          { cod: "0005", res: "Carpintería PVC" },
+          { cod: "0011", res: "Electricidad" },
+          { cod: "0021", res: "Impermeabilizaciones" },
+          { cod: "0024", res: "Jardinería" },
+          { cod: "0143", res: "Carpintería de madera" },
+        ],
+      },
       filas: [
         {
           id: "EJ-0001",
@@ -620,115 +641,6 @@
         { fase: "No procede", dato: "Justificaciones y correos enviados", fichas: ["F-042"], estado: "pendiente" },
         { fase: "Partes y cierre", dato: "Partes firmados, sin firma y cierres", fichas: ["F-045"], estado: "pendiente" },
         { fase: "Coste y venta", dato: "Coste por capítulo y vínculo con la venta", fichas: ["F-046", "F-047"], estado: "pendiente" },
-      ],
-    },
-
-    // El volcado a Sigrid (F-040), con el vocabulario del contrato del alta
-    // en lote de `sigrid-api` (`azure-apps/sigrid_api.md` §8.9): estados por
-    // parte, códigos de motivo y resumen. Solo se ENSEÑA; no se llama a nada.
-    // Los catálogos del alta viven aquí porque existen para el volcado; si
-    // F-038 los necesita antes, se los lleva (`design.md` §7.1).
-    volcado: {
-      ficha: "F-040",
-      catalogos: {
-        tipos: [
-          { cod: "0002", res: "PRIMER LISTADO POSTVENTA" },
-          // Sale por defecto en el escritorio y nadie sabe qué es (R39).
-          { cod: "0003", res: null },
-        ],
-        formas: [{ cod: "1", res: "Escrita" }],
-        oficios: [
-          { cod: "0005", res: "Carpintería PVC" },
-          { cod: "0011", res: "Electricidad" },
-          { cod: "0021", res: "Impermeabilizaciones" },
-          { cod: "0024", res: "Jardinería" },
-          { cod: "0143", res: "Carpintería de madera" },
-        ],
-        estados: [
-          { cod: "previsto", etiqueta: "Se crearía" },
-          { cod: "creado", etiqueta: "Creado en Sigrid" },
-          { cod: "idempotente", etiqueta: "Ya estaba creado: no se duplica" },
-          { cod: "rechazado", etiqueta: "No se crea: hay que corregirlo" },
-          { cod: "no_procesado", etiqueta: "No se llegó a intentar: se puede reenviar" },
-        ],
-        motivos: [
-          "referencia_no_permitida",
-          "referencia_duplicada_en_lote",
-          "referencia_en_conflicto",
-          "unidad_postventa_no_encontrada",
-          "tipo_no_valido",
-          "clase_no_valida",
-          "oficio_no_esta_en_la_obra",
-          "interviniente_no_esta_en_la_obra",
-          "interviniente_ambiguo",
-          "interviniente_repetido",
-          "numeracion_agotada",
-          "colision_de_clave",
-          "filas_afectadas_inesperadas",
-          "error_de_escritura",
-          "presupuesto_de_tiempo_agotado",
-        ],
-      },
-      // Ensayo (dry-run) de la obra 9901: nada creado; los códigos de los
-      // previstos son provisionales. El idempotente ya existía: su código es
-      // el de verdad.
-      dryRun: {
-        obra: "9901",
-        partes: [
-          { referenciaExterna: "PVI-EJEMPLO-0201", unidad: UPV["9901-1"], estado: "previsto", cod: "RS99.09/0001", provisional: true, motivo: null },
-          { referenciaExterna: "PVI-EJEMPLO-0202", unidad: UPV["9901-2"], estado: "previsto", cod: "RS99.09/0002", provisional: true, motivo: null },
-          { referenciaExterna: "PVI-EJEMPLO-0203", unidad: UPV["9901-3"], estado: "previsto", cod: "RS99.09/0003", provisional: true, motivo: null },
-          { referenciaExterna: "PVI-EJEMPLO-0204", unidad: UPV["9901-4"], estado: "idempotente", cod: "RS99.09/0041", provisional: false, motivo: null },
-          {
-            referenciaExterna: "PVI-EJEMPLO-0205",
-            unidad: UPV["9901-5"],
-            estado: "rechazado",
-            cod: null,
-            provisional: false,
-            motivo: {
-              codigo: "oficio_no_esta_en_la_obra",
-              mensaje: "El oficio 0024 · Jardinería no está entre los oficios de la obra 9901 (ejemplo).",
-            },
-          },
-        ],
-      },
-      // Volcado hecho de la obra 9902: ningún previsto; los cuatro resultados
-      // reales.
-      hecho: {
-        obra: "9902",
-        partes: [
-          { referenciaExterna: "PVI-EJEMPLO-0008", unidad: UPV["9902-4"], estado: "creado", cod: "RS99.09/0004", provisional: false, motivo: null },
-          { referenciaExterna: "PVI-EJEMPLO-0301", unidad: UPV["9902-1"], estado: "creado", cod: "RS99.09/0005", provisional: false, motivo: null },
-          { referenciaExterna: "PVI-EJEMPLO-0302", unidad: UPV["9902-2"], estado: "idempotente", cod: "RS99.09/0042", provisional: false, motivo: null },
-          {
-            referenciaExterna: "PVI-EJEMPLO-0303",
-            unidad: UPV["9902-3"],
-            estado: "rechazado",
-            cod: null,
-            provisional: false,
-            motivo: {
-              codigo: "interviniente_ambiguo",
-              mensaje: "El oficio 0143 tiene dos proveedores en la obra 9902: hay que indicar cuál (ejemplo).",
-            },
-          },
-          {
-            referenciaExterna: "PVI-EJEMPLO-0304",
-            unidad: UPV["9902-5"],
-            estado: "no_procesado",
-            cod: null,
-            provisional: false,
-            motivo: {
-              codigo: "presupuesto_de_tiempo_agotado",
-              mensaje: "No dio tiempo a intentarlo dentro del lote: se puede reenviar sin riesgo (ejemplo).",
-            },
-          },
-        ],
-      },
-      pendientes: [
-        "Pendiente: el volcado real espera a que sigrid-api despliegue el alta en lote",
-        "Pendiente: qué es el tipo de reclamación 0003 y qué regla elige entre 0002 y 0003",
-        "Pendiente: qué oficio lleva el parte si hay varios intervinientes y quién marca Causante",
-        "Pendiente: en qué estado queda el parte recién creado (la captura de Posventa lo enseña en PTE; el alta en lote lo deja en el estado inicial de la serie, SAT)",
       ],
     },
   };

@@ -694,7 +694,7 @@
         "Cada parte creado lleva los mismos campos que el alta manual de docs/referencia/04_alta_incidencia_sigrid.md",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "spec_aprobada": "2026-11-19",
       "sdd": true,
       "rigor": "critico",

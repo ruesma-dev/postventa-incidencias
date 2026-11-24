@@ -19,7 +19,7 @@
 function portalPosventa() {
   const Portal = window.Portal;
   const datos = window.MaquetaDatos;
-  const catalogos = datos.volcado.catalogos;
+  const catalogos = datos.incidencias.catalogos;
   const idsIncidencia = datos.incidencias.filas.map((fila) => fila.id);
 
   return {
@@ -185,14 +185,6 @@ function portalPosventa() {
 
     forma(cod) {
       return Portal.etiquetaCatalogo(cod, catalogos.formas);
-    },
-
-    estadoVolcado(estado) {
-      return Portal.etiquetaEstadoVolcado(estado, catalogos.estados);
-    },
-
-    resumenVolcado(resultado) {
-      return Portal.resumenVolcado(resultado.partes);
     },
 
     propuesta(idFila) {

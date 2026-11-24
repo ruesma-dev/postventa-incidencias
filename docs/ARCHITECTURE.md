@@ -1265,9 +1265,15 @@ la maqueta no pueden hablar con el backend. Diseño:
   lleva «En producción»; y en `#/bandeja` hay una tarjeta «Revisar la
   bandeja» a `bandeja.html` y, cada uno en su recuadro de bloque, lo que
   sigue en construcción: el industrial propuesto
-  (F-039), la aprobación en bloque (F-043) y el panel de volcado de la
-  maqueta (F-040). La tabla de ejemplo de la bandeja, sus filtros y los
-  botones de F-038 salieron de la maqueta.
+  (F-039) y la aprobación en bloque (F-043). La tabla de ejemplo de la
+  bandeja, sus filtros y los botones de F-038 salieron de la maqueta. Con el
+  cierre de F-040 (R57, un único commit, el que la pone en `done`) salió
+  también su panel de volcado de ejemplo, con sus tres placeholders,
+  `resumenVolcado`, `etiquetaEstadoVolcado` y el bloque `volcado` de
+  `MaquetaDatos` (sus catálogos `tipos`, `formas` y `oficios` se mudaron a
+  `incidencias.catalogos`); sin enlace nuevo (D-4 de F-040): las dos
+  tarjetas que llevan a `bandeja.html` dicen ya «y volcar a Sigrid lo
+  aprobado».
 - **`importar.html`** enlaza a la página de su obra («Revisar esta obra en la
   bandeja de revisión», `bandeja.html?obra=<obra>`, misma pestaña); su
   bandeja sigue siendo de solo lectura.

@@ -2439,3 +2439,35 @@ Lo que enseñó:
 - **Una verificación en producción por la API del front** (con la sesión del
   humano) cubre la T26 entera sin interfaz: la plantilla se puede leer y
   rellenar en el navegador sin descargarla.
+
+## F-040 · El panel de volcado a Sigrid en la bandeja — CERRADA el 2026-11-24
+
+**Cerrada.** Rama `feature/F-040-volcado-sigrid`. Bloque 1 aprobado tras C-B1-1 y C-B1-2; Bloque 1 bis (tipo de
+reclamación, textos de Q-11, migas) aprobado; review corta de T6 y T6 bis, APROBADO (`progress/review_F-040.md`).
+
+Qué queda: en `bandeja.html`, el panel «Volcado a Sigrid» (`js/volcado.js`) sobre las rutas de F-059 y la de F-065:
+«Registrar» lee Sigrid, «Ensayar» comprueba sin escribir (columna Tipo con nombre y código, recuento por tipo y por
+unidad), y «Volcar» crea partes solo con la confirmación tecleada del número y la ventana `VOLCADO_HABILITADO`
+abierta. La revisión edita el «Listado (tipo de reclamación)» con los tipos vigentes de Sigrid. El portal pierde la
+maqueta del volcado (R57) y la documentación y `azure-apps` lo cuentan en presente (R58).
+
+Evidencias: JS del front 1144/1144, pytest del front 941; mutación a mano 82 mutantes en el Bloque 1 (1 equivalente
+aceptado) y 50/50 muertos en el Bloque 1 bis. En producción (0626): T5.3, con la ventana cerrada, una sola petición
+`volcado/volcar` → 503 `volcado_deshabilitado` y Sigrid sin cambios; T5.4, con la ventana abierta ~1 minuto, **un**
+parte `RS26.11/0091` en SAT, tipo `0003`, sin pasar a PTE; T5.5, sin correo ni `oid` en el navegador.
+
+Lo que enseñó:
+
+- **La palabra ABRIR de `27_` la teclea una persona.** El control de permisos de la sesión no deja que el agente la
+  responda por un envoltorio: la ventana la abre el humano y el líder la cierra.
+- **Abrir o cerrar la ventana reinicia la Function** y corta las peticiones en vuelo (`TaskCanceledException` en
+  `revision`): conviene no tener una carga de la bandeja a medias al abrirla.
+- **sigrid-api no anula partes**: solo la UI de Sigrid (NO PROCEDE). Un `sql/write` a mano no es alternativa.
+
+Deuda declarada al cerrar:
+
+- El parte de prueba `RS26.11/0091` **no se anula**, por decisión del humano (2026-11-24): queda en SAT.
+- T5 bis (0677, solo ensayos) queda aparte, cuando Posventa registre la 0677 (P-3).
+- Restos menores para F-039/F-041: notas «la forma exacta la fija F-040» en `js/maqueta_datos.js` y las reglas
+  `[data-estado="previsto"…]` de `css/portal.css`.
+- La copia de `azure-apps` arrastra divergencias ajenas a F-040 en la fila de F-072: que las refresque F-072.

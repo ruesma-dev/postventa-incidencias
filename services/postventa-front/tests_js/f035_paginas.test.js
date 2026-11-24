@@ -597,9 +597,10 @@ test("f035 R65: fichasDeSeccion da cada ficha de la sección con su título, en 
   // Cierre de F-038 (T8): F-038 está done y su título salió de TITULOS_FICHAS
   // (`design.md` §7.3 de F-035): la sección ya no la nombra.
   assert.equal("F-038" in TITULOS_FICHAS, false, "F-038 está done: sin título");
+  // Cierre de F-040 (R57): igual que F-038.
+  assert.equal("F-040" in TITULOS_FICHAS, false, "F-040 está done: sin título");
   assert.deepEqual(fichasDeSeccion("bandeja"), [
     { ficha: "F-039", titulo: TITULOS_FICHAS["F-039"] },
-    { ficha: "F-040", titulo: TITULOS_FICHAS["F-040"] },
     { ficha: "F-043", titulo: TITULOS_FICHAS["F-043"] },
   ]);
   assert.deepEqual(fichasDeSeccion("impresion"), [{ ficha: "F-044", titulo: TITULOS_FICHAS["F-044"] }]);

@@ -24,146 +24,11 @@ de la puerta TAMAÑO (520/220).
 
 ## Bloque 1 bis · implementer, 2026-11-19 (T9–T11)
 
-Alcance: solo `services/postventa-front`, su README y `docs/ARCHITECTURE.md`. Nada contra Sigrid ni producción;
-datos de test ficticios (obra 9901, tipos `0002`/`0003` con etiquetas «…EJEMPLO», `9001` desconocido).
-
-### T9 · RED
-
-Tests nuevos: `tests_js/f040_tipo.test.js` (R63–R67, 20 casos) y, en `tests/test_f040_front.py`, R68 (miga actual
-como `span`, con 3 controles), R67 (rótulo y sin `option value=""`; `opciones().listados` de `opcionesDeListado`),
-R64 (`volcadoPorTipo()` en el resumen del ensayo) y R58/R63 (README y ARCHITECTURE con el tipo y sin «sin publicar
-todavía»). Aserciones de F-038/F-040 que cambian, cada una con su R citado en el propio test:
-
-| Test | Antes | Ahora | R |
-|---|---|---|---|
-| `revision.test.js` «f038 R4 (a)» | nueve motivos | diez, `tipo_fuera_de_sigrid` antes de `duplicada`, con su texto | R66 |
-| `revision.test.js` «f038 R5» | título «nueve motivos» | «diez» (la aserción ya sale de `MOTIVOS`) | R66 |
-| `revision.test.js` `TEXTOS_DE_PARTE` | «…no existe en Sigrid» | el texto de D-1 | R65 |
-| `volcado.test.js` `catalogo().listados` | `[]` | `0002` y `0003` con etiqueta | R63 |
-| `volcado.test.js` «f040 R51 juntarEnsayos» | «0002 PRIMER LISTADO POSTVENTA» ×4 | la etiqueta del catálogo | R63 |
-| `volcado.test.js` «sin nombre en el catálogo» | tipo `0003` → `0003` | `9001` → `9001` (0003 ya tiene etiqueta) | R63 |
-| `test_f038_front.py` `MIGAS_DE_BANDEJA` | dos enlaces | solo el de la portada; el `span`, en `test_f040_front.py` | R68 |
-| `test_f038_front.py` control «miga-a-otra-seccion» | estropeaba el enlace `./#/bandeja` | estropea el de `index.html` | R68 |
-
-Comando y resultado (traza recortada; base `be97272` + los tests):
-
-```
-$ node --test services/postventa-front/tests_js/f040_tipo.test.js services/postventa-front/tests_js/revision.test.js services/postventa-front/tests_js/volcado.test.js
-ℹ tests 394  ℹ pass 374  ℹ fail 20
-✖ f040 R63: el tipo de cada parte del ensayo sale con su etiqueta de catalogo.listados
-  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
-  +   '0002 PRIMER LISTADO POSTVENTA',
-✖ f040 R63: un tipo que no está en catalogo.listados … sale con su código tal cual
-✖ f040 R63: la tabla fija TEXTO_TIPO (Q-1, «siempre 0002») ya no existe
-  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /TEXTO_TIPO/.
-✖ f040 R64: recuentoPorTipo … / juntarEnsayos cuenta por tipo … / con dos tipos, la confirmación …
-✖ f040 R64: textoPorTipo … / el componente pasa el recuento por tipo …
-  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /; por tipo, 2 PRIMER LISTADO EJEMPLO \(0002\) y 1 POST VENTA EJEMPLO \(0003\)\. Escribe 3/.
-✖ f040 R65: tipo_no_valido tiene el texto que dice qué hacer … / un rechazado por tipo_no_valido …
-✖ f040 R66: diez motivos, con tipo_fuera_de_sigrid entre proveedor_ambiguo y duplicada, y su texto
-  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:  9 !== 10
-✖ f040 R66: el resumen cuenta diez motivos …
-✖ f040 R67: opcionesDeListado con el tipo actual vigente …
-  TypeError: Revision.opcionesDeListado is not a function
-✖ f040 R67: … con un tipo de baja … / el formulario … / en el detalle y el historial … nunca «sin listado»
-  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /sin listado/.
-✖ f038 R4 (a) [F-040 R66]: los diez motivos …   ✖ f038 R21.4: … quince códigos de parte (tipo_no_valido)
-✖ f040 R51: juntarEnsayos hace una tabla con los nombres del catálogo, el tipo …
-✖ f038 T5 (BN12): control … ← AJENO: ver «Finales de línea» abajo; ya rojo en be97272 sin tocar nada
-✔ f040 R64: con un solo tipo, el texto de la confirmación no cambia   ← guarda de no-regresión: pasa antes y después
-
-$ python -m pytest services/postventa-front/tests -q
-FAILED test_f038_front.py::test_f038_r1_migas_de_su_seccion_y_sin_subnavegacion
-  AssertionError: bandeja.html: migas [('index.html', 'Portal de posventa'), ('./#/bandeja', 'Bandeja de revisión')], no [('index.html', 'Portal de posventa')]
-FAILED test_f040_front.py::test_f040_r68_la_miga_actual_es_texto_sin_enlace            assert ['las migas e..., sin enlace'] == []
-FAILED test_f040_front.py::test_f040_r68_control_una_miga_actual_mal_salta[×3]         el control ya no encuentra una sola vez: '<span aria-current="page">…'
-FAILED test_f040_front.py::test_f040_r67_el_campo_listado_se_rotula_tipo_de_reclamacion_y_sin_opcion_en_blanco
-  AssertionError: assert 'Listado' == 'Listado (tipo de reclamación)'
-FAILED test_f040_front.py::test_f040_r67_opciones_listados_sale_de_opciones_de_listado
-FAILED test_f040_front.py::test_f040_r64_el_resumen_del_ensayo_dice_el_recuento_por_tipo
-FAILED test_f040_front.py::test_f040_r58_r63_la_documentacion_cuenta_el_tipo_y_ya_no_dice_sin_publicar[readme-r63, architecture-r63]
-FAILED test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde   (la suite JS de arriba)
-11 failed, 909 passed, 7 skipped
-```
-
-**Finales de línea (ajeno, ya en rojo en `be97272`).** `git ls-files --eol` da `w/crlf` en 18 ficheros del front
-de este worktree (`core.autocrlf=true`), `bandeja.html` entre ellos; el índice está en LF. El control BN12 de F-038
-(`revision.test.js`) busca `'@click="cancelarFormulario()"\n'` y con CRLF no lo encuentra: falla en la base sin
-tocar nada (`node --test "tests_js/*.test.js"`: 1131/1132, solo BN12). No se cambian los finales de línea (encargo);
-la verificación en LF va en T10, sobre una copia limpia del commit.
-
-### T10 · GREEN (`288ee16`)
-
-| Fichero | Qué |
-|---|---|
-| `js/volcado.js` | Fuera `TEXTO_TIPO`. `nombreDeTipo` (privada): etiqueta de `catalogo.listados`, si no el código, sin código `""`. La fila del ensayo lleva `tipo` (etiqueta) y `tipo_codigo`. Nuevas `recuentoPorTipo(filas, catalogo)` y `textoPorTipo(porTipo)` (vacío con < 2 tipos); `juntarEnsayos` da `porTipo` (solo `previsto`); `textoConfirmacion(n, porUnidad, obra, porTipo)` añade «; por tipo, …» solo con > 1; método `volcadoPorTipo()` |
-| `js/revision.js` | `MOTIVOS` 10 (`tipo_fuera_de_sigrid` entre `proveedor_ambiguo` y `duplicada`) y su texto D-1; `tipo_no_valido` con el texto de R65; `textoDeCampo("listado")` = etiqueta o código (nunca «sin listado»); nueva `opcionesDeListado(catalogo, actual)`, usada por `opciones().listados` con `f.vigentes.listado` |
-| `bandeja.html` | Miga actual `<span aria-current="page">`; campo «Listado (tipo de reclamación)» sin `<option value="">`; `<p x-show/x-text="volcadoPorTipo()">` en el resumen del ensayo |
-| `README.md` del front, `docs/ARCHITECTURE.md` | Sección del panel: publicado el 2026-11-02 (fuera «sin publicar todavía») y el tipo de reclamación (R63, R64, R65; en ARCHITECTURE también R66/R67) |
-
-Decisiones (dentro de la spec, para el reviewer):
-- **Literal de R64**: confirmación «…: 2 de VILLA 91 y 1 de VILLA 92; por tipo, 2 <etiqueta> y 1 <etiqueta>. Escribe 3
-  para confirmar.»; resumen «Por tipo: 2 <etiqueta> y 1 <etiqueta>». El boceto de §2 («y n₁ …») daba una lista
-  ambigua tras la de unidades; se separa con «; por tipo,». El formato de la etiqueta es el de `catalogo.listados`.
-- **R67, «actual»** = el tipo guardado (`formulario.vigentes.listado`): la opción del no vigente sigue aunque se elija otro
-  en el desplegable, para poder volver a él sin recargar. Su forma `{codigo, etiqueta, fueraDeLista}` (el HTML usa
-  `codigo` y `etiqueta`, como antes).
-- **Listado nulo en el detalle** (no debería llegar: el backend no devuelve nulo): sale vacío, no «sin listado» ni un
-  `0002` inferido.
-- **Finales de línea**: los ficheros CRLF del worktree se editaron conservando CRLF (comprobado: nº de `\r\n` = nº de
-  `\n` en `bandeja.html`, README y ARCHITECTURE); los LF siguen en LF. El índice sigue en LF.
-
-Verificación (comandos del encargo; `node --test services/postventa-front/tests_js` con un directorio no funciona en
-Node v24.14.1 de este equipo —«test at services\postventa-front\tests_js:1:1 … test failed», también en la base—, así
-que se usa el patrón de `test_f007_js.py`, `node --test "tests_js/*.test.js"`):
-
-```
-# worktree postventa-f040 (front en CRLF), tras T11
-$ node --test "tests_js/*.test.js"                     ℹ tests 1151  ℹ pass 1150  ℹ fail 1   ✖ f038 T5 (BN12) ← ajeno (CRLF)
-$ python -m pytest services/postventa-front/tests tests/test_f035_placeholders_vivos.py -q
-FAILED test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde   (el mismo BN12)   1 failed, 938 passed, 7 skipped
-
-# copia limpia de 288ee16 en LF (git -c core.autocrlf=false worktree add --detach, en el scratchpad)
-$ node --test "tests_js/*.test.js"                     ℹ tests 1149  ℹ pass 1149  ℹ fail 0
-$ python -m pytest … (con dev_front.ps1 en CRLF, como pide su test F-007 R36)   939 passed, 7 skipped
-```
-
-O sea: con el front en LF y `dev_front.ps1` en CRLF (lo que el encargo da por hecho) todo está en verde; el único rojo
-del worktree es BN12, por el checkout en CRLF de `bandeja.html`, y no lo toca este bloque.
-
-### T11 · Mutación (`progress/mutacion_F-040_bloque1bis.md`)
-
-50 mutantes en 5 familias (A etiqueta del tipo y respaldo 10, B recuento por tipo con uno y dos tipos 16, C orden de los
-motivos y textos 5, D opción del no vigente, rótulo e historial 13, E migas 5), en la copia LF (BN12 taparía al
-asesino en el worktree). Primera pasada 46/50; **vivos A5–A8** (envio sin `tipo`, `listados` que no es lista, sin
-`envio`): huecos reales, cerrados con dos tests «(T11)» en `tests_js/f040_tipo.test.js`; segunda pasada 4/4.
-**50/50 muertos; ningún superviviente ni equivalente pendiente de aceptación.** Cada mutante se restauró byte a byte;
-`git status` del worktree limpio de mutantes; la copia, retirada (`git worktree remove`).
-
-### `bash harness/init.sh`: NO EJECUTADO
-
-El líder avisó durante el encargo de que el venv del API (`services/postventa-api/.venv`) está vacío y pidió no
-ejecutar `init.sh` ni el pytest del API hasta que avise de que está reconstruido. Ese aviso no ha llegado; el pytest
-del front corre con el `.venv` de la raíz del repositorio principal (no depende del del API). **Pendiente**: lanzar
-`bash harness/init.sh` en este worktree cuando el venv esté; cabe esperar en rojo el BN12 (CRLF, ajeno).
-
-### Evidencias (Bloque 1 bis)
-
-| Evidencia | Valor |
-|---|---|
-| Tests JS | 1151 (antes 1132: +19 de `f040_tipo.test.js`); worktree 1150/1151 (BN12 ajeno); copia LF 1149/1149 en `288ee16` (sin los 2 de T11) |
-| Tests pytest del front + `test_f035_placeholders_vivos` | 939 + 7 skipped; worktree 938 + 1 rojo (el de la suite JS) |
-| Cobertura de líneas cambiadas | N/A: no hay `.py` de producción (la puerta mide Python); rigor crítico cubierto con mutación |
-| Mutantes | 50 generados, 50 muertos, 0 supervivientes, 0 equivalentes |
-| Tiempo de la suite | JS ~6 s; pytest del front ~19 s |
-| Capa e2e | Sin requisitos `(capa: e2e)` en R63–R68 (todos `unit`) |
-| Documento del ecosistema | No en este bloque (R58 de `azure-apps` es T6 bis) |
-
-### Pendiente
-
-- `init.sh` (arriba). Review del Bloque 1 bis. T12 (merge y publicación, humano). La fila de prueba de T5.4 a `0003` (D-6)
-  es del humano.
-- Fuera de alcance tocado: ninguno. `services/postventa-api/` sin tocar. Nada contra Sigrid ni producción.
+Detalle completo, con las trazas RED de T9 sin recortar, en `progress/impl_F-040_bloque1bis.md` (movido allí el
+2026-11-24 por la puerta TAMAÑO). Resumen: R63–R68 (tipo de reclamación con su etiqueta, recuento por tipo, textos
+de Q-11, `opcionesDeListado`, miga como texto); RED con 20 casos JS y 11 pytest en rojo; GREEN en `288ee16`
+(copia LF: 1149/1149 JS, 939 pytest); mutación 50/50 muertos, 0 supervivientes
+(`progress/mutacion_F-040_bloque1bis.md`).
 
 ## T12 · publicación (humano) y comprobación (líder), 2026-11-21
 
@@ -223,3 +88,133 @@ del front corre con el `.venv` de la raíz del repositorio principal (no depende
   la consola durante la carga la cubre la comprobación del 2026-11-02.
 - Siguiente: T5.6, anular `RS26.11/0091` desde la UI de Sigrid (NO PROCEDE, sin correo), **humano**; luego la
   foto `28_` en `NPR` (líder).
+
+## T6 y T6 bis · implementer, 2026-11-24
+
+Encargo del líder: solo T6 y T6 bis. **Cambio del líder a mitad, por decisión del humano (2026-11-24)**: T5.6 hecha
+sin anular `RS26.11/0091` (queda en SAT), y T6 como dice la spec: **F-040 `done` en su único commit**, sin desviación.
+
+### Commits
+
+| Commit | Qué |
+|---|---|
+| `03992e0` | `F-040 T5.6`: `tasks.md` T5.6 `[x]` con la nota del humano (commit propio, antes de T6) |
+| `a0c15a8` | `F-040 T6`: cierre de R57 **y** F-040 `done` en `harness/features.json`, un solo commit (D-11 de F-038) |
+| `8dbb559` | `F-040 T6 bis`: `docs/INTEGRACION.md` sin F-040 en futuro (R58) |
+| `azure-apps` `be26951` | `postventa_incidencias.md`, commit aparte en `main`, **sin push** |
+
+### T6 · RED (requisito central: R57)
+
+Tests nuevos, escritos antes del código: `tests_js/portal.test.js` «f040 R57: sin los placeholders del volcado…» y
+«…el componente etiqueta tipo, forma y oficio con los catálogos mudados…»; `tests_js/maqueta_datos.test.js` «f040 R57:
+sin bloque volcado; tipos, formas y oficios mudados a incidencias.catalogos»; `tests/test_f040_front.py` R57 (las dos
+tarjetas, ×2, y sin el recuadro de F-040). Y F-040 a `done` en `features.json` antes de tocar la maqueta:
+
+```
+$ python -m pytest tests/test_f035_placeholders_vivos.py -q
+FAILED test_f035_r28_ninguna_ficha_done_deja_restos_en_la_maqueta
+FAILED test_f035_r28_la_guardia_mira_una_ficha_que_pasa_a_done
+FAILED test_f035_r28_el_escaner_cuenta_el_recuadro_en_construccion_de_una_ficha
+E         F-040 está done y deja index.html:461   (y :481, :484, :487)
+E         F-040 está done y deja js/portal.js:165  (y :172, :179)
+E         F-040 está done y deja js/maqueta_datos.js:632
+3 failed, 16 passed
+$ node --test --test-name-pattern="f040 R57" services/postventa-front/tests_js/portal.test.js services/postventa-front/tests_js/maqueta_datos.test.js
+  AssertionError [ERR_ASSERTION]: el bloque volcado (F-040) sale con su cierre
+  AssertionError [ERR_ASSERTION]: bandeja.verVolcado sigue en PLACEHOLDERS
+  AssertionError [ERR_ASSERTION]: estadoVolcado era del panel de ejemplo
+$ python -m pytest services/postventa-front/tests/test_f040_front.py -q -k r57
+E  AssertionError: #/inicio: la tarjeta no dice «volcar a Sigrid lo aprobado»
+E  assert 'volcar a Sigrid lo aprobado' in '02 En producción Bandeja de revisión Lo importado, … con su historial. …'
+E  AssertionError: #/bandeja: la tarjeta no dice «volcar a Sigrid lo aprobado»
+E  assert 'data-en-construccion="F-040"' not in '<!-- servic…'
+```
+
+### T6 · GREEN (`a0c15a8`)
+
+| Fichero | Qué |
+|---|---|
+| `index.html` | Fuera el recuadro `data-en-construccion="F-040"` (panel de ejemplo, 3 botones, resultados, pendientes). [D-4] sin enlace nuevo; las tarjetas «Revisar la bandeja» (`#/bandeja`) y 02 «Bandeja de revisión» (inicio, sigue «En producción») acaban en «, y volcar a Sigrid lo aprobado.» |
+| `js/maqueta_datos.js` | Fuera el bloque `volcado`; `tipos`, `formas`, `oficios` **mudados** a `incidencias.catalogos` (F-041). `estados` y `motivos` se van (solo servían al panel). La fila «Volcado a Sigrid» del datamart (F-048) se queda |
+| `js/portal.js` | Fuera `bandeja.verVolcado`, `bandeja.volcar`, `bandeja.reintentarVolcado`, `CLAVE_RESUMEN_VOLCADO`, `resumenVolcado`, `etiquetaEstadoVolcado` y `"F-040"` de `TITULOS_FICHAS` (la sección `bandeja` sigue `parcial`, por F-039 y F-043) |
+| `js/portal_app.js` | `catalogos` = `datos.incidencias.catalogos`; fuera `estadoVolcado` y `resumenVolcado` |
+| `css/portal.css` y las 5 páginas | Fuera `.rs-contadores` y `.rs-provisional`, que la guardia H-5 da por muertas sin el panel; `?v=` nueva (`0e5cdd88d0`) en las cinco, como pide T21 de F-035 |
+| README del front, `docs/ARCHITECTURE.md` | El cierre contado; el recuadro de F-040, fuera de la lista de los de bloque |
+
+Tests que solo servían al panel de ejemplo, quitados o ajustados, cada uno con su «Cierre de F-040 (R57)» en el
+fichero: `maqueta_datos.test.js` (`BLOQUES` sin `volcado`; R24 sin las obras del dry-run; R26 sin los 3 pendientes del
+alta; R39 lee `incidencias.catalogos`; fuera los 5 de R40 y `ETIQUETAS_VOLCADO`/`MOTIVOS_CONTRATO`); `portal.test.js`
+(3 filas de `PLACEHOLDERS_ESPERADOS`; fuera «f035 R8: el volcado explica…» y los 4 de R40; R12 sin
+`reintentarVolcado`; R57 con los 5 estados de conest y sin `p.estado`); `f035_paginas.test.js` (R65 sin F-040);
+`test_f035_portal.py` (fuera el de los chips «Simulación»/«Hecho en Sigrid»; `CHIPS_DE_ESTADO` 4→3,
+`CHIPS_DE_FICHA` 8→6); `test_f035_paginas.py` (`ENVOLTORIOS_DE_BLOQUE` sin F-040; recuadros 9→8).
+
+Decisiones (para el reviewer): **adónde se mudan los catálogos** (el diseño no lo dice): a `incidencias` (F-041), la
+ficha que edita esos campos; todo bloque de `MaquetaDatos` necesita una ficha no `done` (R23), así que no podían ir
+sueltos. **No se tocan** (fuera de la lista de §4, y la guardia no los cuenta como restos): la nota «la forma exacta la
+fija F-040» de `MaquetaDatos.incidencias.campos`, «(la forma exacta la fija el volcado)» de `index.html` (bloque de
+F-039) y las reglas `[data-estado="previsto"…]` de `css/portal.css` (como las de revisión que dejó F-038).
+**`css/portal.css` y el `?v=` de las cinco páginas** no están en la lista de §5: los exige la guardia H-5 al quitar el
+panel, igual que en el cierre de F-038.
+
+Verificación sobre `a0c15a8` (comandos del encargo):
+
+```
+$ python -m pytest tests/test_f035_placeholders_vivos.py services/postventa-front/tests     941 passed, 7 skipped in 16.28s
+$ node --test services/postventa-front/tests_js        ℹ tests 1  ℹ fail 1  (Cannot find module …\tests_js: Node v24.14.1
+                                                       no acepta un directorio; igual en la base, ver Bloque 1 bis)
+$ cd services/postventa-front && node --test "tests_js/*.test.js"   ℹ tests 1144  ℹ pass 1144  ℹ fail 0  (6,1 s)
+```
+
+Finales de línea: el front de este worktree está ya en LF (`git ls-files --eol`: `w/lf` en todo lo tocado), así que
+BN12 pasa. `docs/ARCHITECTURE.md` y `docs/INTEGRACION.md` estaban en CRLF en el worktree: se re-sacaron en LF
+(`rm` + `git -c core.autocrlf=false checkout`) antes de editarlos; índice y worktree, LF.
+
+### T6 bis (R58)
+
+- `docs/INTEGRACION.md`: las frases de F-040 en futuro (l. 145, 212, 599, 652, 1952, 2072, 2074, 2075, 2076) dicen ya
+  que el panel existe y vuelca por las rutas de F-059 (y «Registrar» usa la de F-065). La l. 160 («candidato al
+  volcado de F-040») y la 1987 («la página … es F-040») ya estaban en presente.
+- `azure-apps`: `git pull --rebase` («Current branch main is up to date», sin conflicto); solo
+  `postventa_incidencias.md`, con las mismas frases que `INTEGRACION.md` (la copia dice `sigrid_api.md` donde el
+  origen dice `azure-apps/sigrid_api.md`) y una línea en la cabecera: refrescada el 2026-11-24 con el cierre de F-040,
+  consume las rutas de F-059 y la de F-065, nada nuevo fuera del proyecto. Commit `be26951` en `main`. **Sin push**;
+  ojo: `main` queda 2 por delante de `origin` (el otro es `64f8ace`, de `dedicacion`, ajeno y anterior).
+- Comprobación con los tests de documentación del API, que comparan la copia con el origen
+  (`test_f065_c4_c6_las_filas_de_la_copia_son_las_de_integracion`): `.venv/Scripts/python.exe -m pytest tests -k
+  "documentacion or integracion or identificadores or secretos or arquitectura"` → con solo `INTEGRACION.md` editado,
+  2 failed (las filas «El volcado a Sigrid» y «Las reclamaciones…», justo lo que se refresca); con la copia al día,
+  **1037 passed, 23 skipped**.
+- Sin secretos, GUID, IP, host del SWA ni datos personales en ninguno de los dos documentos.
+
+### `bash harness/init.sh`
+
+En el worktree, sobre `8dbb559` (con este informe aún sin commitear), **exit 0, en verde**:
+
+```
+[OK] pytest en verde (con medición de cobertura)          2202 passed, 48 skipped in 956.30s
+[OK] servicio api: pytest en verde (caché)                1604 passed, 77 skipped
+[OK] servicio front: pytest en verde                      922 passed, 7 skipped in 27.02s
+[OK] PUERTA COBERTURA: N/A (F-040 no cambia líneas Python de producción frente a dev)
+[AVISO] PUERTA TAMAÑO: N/A (no hay papeleo abierto que medir: … ninguna activa)
+[OK] PUERTA CARRIL: N/A (F-040 está cerrada)
+[OK] CAPA E2E: N/A (sin feature en curso)
+[AVISO] F-040 está done sin ok_humano: anota en harness/features.json el día en que el humano dio el OK al resumen
+```
+El aviso de `ok_humano` es del líder (PARADA 2). `BACKLOG.md`, regenerado por `init.sh`, va en el commit del informe.
+
+### Evidencias (T6 y T6 bis)
+
+| Evidencia | Valor |
+|---|---|
+| Tests JS del front | 1144/1144 (antes 1154: −13 del panel de ejemplo, +3 R57) |
+| pytest del front + guardia de la raíz | 941 passed, 7 skipped (−1 del panel, +3 R57) |
+| Cobertura de líneas cambiadas | N/A: ningún `.py` de producción tocado; ver `PUERTA COBERTURA` arriba |
+| Mutantes | No lanzada: es de la pasada de campaña del líder, y el cambio es solo JS/HTML/CSS (la herramienta muta Python). Lo central de R57 lo fija la guardia de la raíz (R28), con sus controles |
+| Tiempo de la suite | JS 6,1 s; pytest del front 16,3 s |
+| Capa e2e | R57 y R58 son `unit`: N/A |
+
+### Pendiente
+
+- Review corta de T6 (si falla, se revierte `a0c15a8` entero) y T7 (líder). Push de la rama y de `azure-apps`
+  (`pull` y después `push`), del humano. T5 bis sigue aparte (P-3).

@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-040 · CERRADA y en `dev` (líder, 2026-11-24)
+> T5.3 (503 con la ventana cerrada), T5.4 (`RS26.11/0091`, SAT, tipo 0003; ventana abierta por el humano y cerrada
+> por el líder), T5.5 y T5.6 (el parte no se anula, por decisión del humano). T6 (R57) y T6 bis (R58) del
+> implementer, review corta APROBADO; T7 en `progress/history.md`. Pendiente del humano: push de `dev` y de
+> `azure-apps` (`be26951`, con `64f8ace` de `dedicacion`, ajeno) y publicar el front (T6 lo cambia). Falta
+> `ok_humano` de F-040 en `harness/features.json` cuando el humano dé el OK. T5 bis (0677) queda aparte (P-3).
+
 > ## F-040 · `in_progress`: Bloque 1 bis APROBADO y en `dev` (líder, 2026-11-20)
 > Spec aprobada por el humano el 2026-11-19 (D-1..D-8 = (a), `design.md` §12). T8 (líder), T9–T11 (implementer,
 > mutación 50/50) y review APROBADO (`progress/review_F-040.md`). Mergeado en `dev`. Siguiente: T12 (humano,

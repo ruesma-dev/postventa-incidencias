@@ -196,3 +196,30 @@ del front corre con el `.venv` de la raíz del repositorio principal (no depende
   la recarga de la bandeja.
 - Foto `28_` DESPUÉS: idéntica (2 partes `PVI-`, MAX(cod) `RS26.11/0083`). PASA.
 - Siguiente: T5.4, la única escritura real, con la autorización expresa del humano en el chat (R69).
+
+## T5.4 · la escritura real (líder, con la autorización expresa del humano), 2026-11-24
+
+- Autorización del humano en el chat para T5.4 entera («si», 2026-11-24). La ventana la abre **el humano**
+  (`27_ -Abrir`, tecleando ABRIR): el control de permisos de la sesión no deja que el líder responda esa palabra.
+- [D-6] La fila de prueba, editada a `0003` POST VENTA desde la página (queda «Registrada: PRIMER LISTADO
+  POSTVENTA (0002)» en el detalle) y vuelta a aprobar. Ensayo de calentamiento con la ventana cerrada: «Se
+  crearía 1», Tipo «POST VENTA (0003)».
+- Con la ventana abierta (`VOLCADO_HABILITADO=true` leído): «Registrar», casilla de la fila (choca con
+  `RS26.09/0439`), ensayo 200 (previstos 1, `con_conflicto_confirmado=1`), «Volcar 1 partes», el 1 y «Volcar en
+  Sigrid»: **una** petición `POST volcado/volcar` 200; Application Insights: `creados=1 idempotentes=0
+  rechazados=0 no_procesados=0 sin_respuesta=0`, `sigrid_cod=RS26.11/0091`. El panel: «Creados: 1» y el aviso
+  de PTE (R59: el parte queda en SAT; pasarlo a PTE es de Posventa, a mano).
+- **Enseguida** `27_ -Cerrar` (el líder): releída, `false`. La ventana estuvo abierta ~1 minuto.
+- Foto `28_ -CodigoObra 0626 -Referencia PVI-<id>`: **un** parte con la referencia, ficha `rcp` 1, `RS26.11/0091`,
+  estado **SAT**, tipo **0003**, oficio 0005, 1 interviniente, 0 causantes, UPV de la obra. PASA. **No se pasa a PTE.**
+- Un «Registrar» más, sin ensayar: una lectura de `revision/sigrid`; «Ninguna candidata», volcadas 2.
+- Nota: dos `TaskCanceledException` de `Functions.revision` a la hora de abrir la ventana: es el reinicio de la
+  Function por el cambio de la App Setting, que corta la petición en vuelo; ninguna en el volcado.
+
+## T5.5 · sin `oid` ni correo (líder), 2026-11-24
+
+- Tras T5.4: `localStorage` y `sessionStorage` vacíos (sin `@` ni GUID). Consola: sin mensajes con `@`, `oid` ni
+  GUID desde que se empezó a seguir (después del volcado; la carga de la página no quedó cubierta). La parte de
+  la consola durante la carga la cubre la comprobación del 2026-11-02.
+- Siguiente: T5.6, anular `RS26.11/0091` desde la UI de Sigrid (NO PROCEDE, sin correo), **humano**; luego la
+  foto `28_` en `NPR` (líder).

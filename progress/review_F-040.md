@@ -118,7 +118,7 @@ Ninguna nueva: la obs. 3 ya la cubre C4 bis; basta con exigirla.
 
 ## Review corta de T6 y T6 bis
 
-Revisión incremental desde `5c7d8a1`… no: desde `c0e887b` (T5.4–T5.5), commits `03992e0`, `a0c15a8`, `8dbb559`, `de46416` y `azure-apps` `be26951`. Reviewer, 2026-11-24. **Veredicto: APROBADO.** Rigor `critico`; R57/R58 son `unit` y no tocan Python (cobertura N/A impresa; mutación no aplica a JS/HTML/CSS).
+Revisión incremental desde `c0e887b` (T5.4–T5.5), commits `03992e0`, `a0c15a8`, `8dbb559`, `de46416` y `azure-apps` `be26951`. Reviewer, 2026-11-24. **Veredicto: APROBADO.** Rigor `critico`; R57/R58 son `unit` y no tocan Python (cobertura N/A impresa; mutación no aplica a JS/HTML/CSS).
 
 - [x] **C1** `bash harness/init.sh` en el worktree: exit 0, `ENTORNO LISTO` (raíz 2202 passed; avisos esperados: `ok_humano`, `blocked`, ruff previo). `node --test "tests_js/*.test.js"` reejecutado: 1144/1144. Tests de documentación del API (copia ↔ origen): 766 passed.
 - [x] **R57 en un solo commit** (`a0c15a8`) con F-040 `done`: fuera recuadro `data-en-construccion="F-040"`, 3 placeholders, `resumenVolcado`, `etiquetaEstadoVolcado`, `CLAVE_RESUMEN_VOLCADO`, título de F-040, `estadoVolcado`/`resumenVolcado` del componente y bloque `volcado`; sin enlace nuevo (D-4); las dos tarjetas dicen «y volcar a Sigrid lo aprobado» y la 02 sigue «En producción»; F-039 y F-043 conservan sus recuadros. Ningún resto vivo: `grep` sin usos de lo quitado (el `datos.volcado` de `js/volcado.js:301` es la respuesta de la API). CSS `.rs-contadores`/`.rs-provisional` sin otros usos.

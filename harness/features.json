@@ -696,6 +696,8 @@
       ],
       "status": "done",
       "spec_aprobada": "2026-11-19",
+      "ok_humano": "2026-11-25",
+      "fecha_cierre": "2026-11-25",
       "sdd": true,
       "rigor": "critico",
       "priority": 6,
